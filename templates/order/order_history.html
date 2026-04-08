@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}My Orders — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold text-gray-800 mb-6">My Orders</h1>
+
+  {% if orders %}
+  <div class="space-y-4">
+    {% for order in orders %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <!-- Order header -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50 flex-wrap gap-2">
+        <div class="flex items-center gap-4">
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wider">Order</p>
+            <p class="font-bold text-brand">{{ order.order_ref }}</p>
+          </div>
+          <div class="hidden sm:block">
+            <p class="text-xs text-gray-400">Date</p>
+            <p class="text-sm font-medium text-gray-700">{{ order.created_at|date:"M d, Y" }}</p>
+          </div>
+          <div class="hidden sm:block">
+            <p class="text-xs text-gray-400">Total</p>
+            <p class="text-sm font-bold text-gray-800">GHS {{ order.total_amount }}</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Order status badge -->
+          <span class="text-xs font-semibold px-3 py-1 rounded-full
+                       {% if order.status == 'delivered' %}bg-green-100 text-green-700
+                       {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
+                       {% elif order.status == 'cancelled' %}bg-red-100 text-red-700
+                       {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
+                       {% else %}bg-gray-100 text-gray-600{% endif %}">
+            {{ order.get_status_display }}
+          </span>
+
+          <!-- Payment status -->
+          <span class="text-xs font-semibold px-3 py-1 rounded-full
+                       {% if order.payment_status == 'paid' %}bg-green-100 text-green-700
+                       {% elif order.payment_status == 'failed' %}bg-red-100 text-red-700
+                       {% else %}bg-orange-100 text-orange-700{% endif %}">
+            {{ order.get_payment_status_display }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Order items -->
+      <div class="px-5 py-4 space-y-2">
+        {% for item in order.items.all %}
+        <div class="flex items-center justify-between text-sm text-gray-600">
+          <span class="truncate max-w-[280px]">{{ item.product_name }} × {{ item.quantity }}</span>
+          <span class="font-medium flex-shrink-0 ml-4">GHS {{ item.subtotal }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Footer -->
+      <div class="px-5 py-3 bg-gray-50 flex items-center justify-between text-xs text-gray-400 flex-wrap gap-2">
+        <span>📍 {{ order.delivery_city }} · {{ order.delivery_phone }}</span>
+        {% if order.status == 'pending' or order.status == 'confirmed' %}
+        <a href="https://wa.me/233XXXXXXXXX?text=Hi!+My+order+ref+is+{{ order.order_ref }}"
+           target="_blank"
+           class="text-green-600 font-semibold hover:underline">
+          Track on WhatsApp →
+        </a>
+        {% elif order.status == 'delivered' %}
+        <span class="text-green-600 font-semibold">✓ Delivered</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="flex flex-col items-center justify-center py-24 text-center">
+    <div class="text-7xl mb-5">📦</div>
+    <h3 class="text-xl font-semibold text-gray-700 mb-2">No orders yet</h3>
+    <p class="text-gray-400 text-sm mb-6">Start shopping and your orders will appear here.</p>
+    <a href="{% url 'products:list' %}"
+       class="bg-brand text-white font-semibold px-8 py-3 rounded-xl hover:bg-brand-dark transition-colors">
+      Browse Products
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+
+  <!-- Breadcrumb -->
+  <nav class="text-sm text-gray-400 mb-6 flex items-center gap-2">
+    <a href="{% url 'products:list' %}" class="hover:text-brand">Shop</a>
+    <span>›</span>
+    {% if product.category %}
+    <a href="{% url 'products:list' %}?category={{ product.category.slug }}" class="hover:text-brand">{{ product.category.name }}</a>
+    <span>›</span>
+    {% endif %}
+    <span class="text-gray-600 truncate max-w-xs">{{ product.name }}</span>
+  </nav>
+
+  <div class="flex flex-col md:flex-row gap-10">
+
+    <!-- IMAGE GALLERY -->
+    <div class="md:w-1/2">
+      <!-- Main image -->
+      <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-3">
+        {% with images.first as main_img %}
+        {% if main_img %}
+        <img id="main-image" src="{{ main_img.image.url }}" alt="{{ product.name }}"
+             class="w-full h-80 md:h-96 object-cover"/>
+        {% else %}
+        <div class="w-full h-80 md:h-96 bg-gray-100 flex items-center justify-center text-8xl">📦</div>
+        {% endif %}
+        {% endwith %}
+      </div>
+
+      <!-- Thumbnails -->
+      {% if images|length > 1 %}
+      <div class="flex gap-2 overflow-x-auto pb-1">
+        {% for img in images %}
+        <button onclick="document.getElementById('main-image').src='{{ img.image.url }}'"
+                class="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2
+                       {% if forloop.first %}border-brand{% else %}border-transparent{% endif %}
+                       hover:border-brand transition-colors">
+          <img src="{{ img.image.url }}" alt="" class="w-full h-full object-cover"/>
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- PRODUCT INFO -->
+    <div class="md:w-1/2">
+      {% if product.category %}
+      <span class="inline-block bg-brand-light text-brand text-xs font-semibold px-3 py-1 rounded-full mb-3">
+        {{ product.category.name }}
+      </span>
+      {% endif %}
+
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-3">{{ product.name }}</h1>
+
+      <!-- Price -->
+      <div class="flex items-baseline gap-3 mb-4">
+        <span class="text-3xl font-bold text-brand">GHS {{ product.selling_price }}</span>
+      </div>
+
+      <!-- Stock status -->
+      {% if product.is_in_stock %}
+        {% if product.stock_qty <= product.low_stock_alert %}
+        <div class="flex items-center gap-2 text-orange-600 text-sm font-medium mb-4">
+          <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+          Only {{ product.stock_qty }} left in stock — order soon!
+        </div>
+        {% else %}
+        <div class="flex items-center gap-2 text-green-600 text-sm font-medium mb-4">
+          <span class="w-2 h-2 rounded-full bg-green-500"></span>
+          In Stock ({{ product.stock_qty }} available)
+        </div>
+        {% endif %}
+      {% else %}
+      <div class="flex items-center gap-2 text-gray-400 text-sm font-medium mb-4">
+        <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+        Out of Stock
+      </div>
+      {% endif %}
+
+      <!-- Description -->
+      <div class="text-sm text-gray-600 leading-relaxed mb-6 border-t border-gray-100 pt-4">
+        {{ product.description|linebreaksbr }}
+      </div>
+
+      <!-- Add to cart -->
+      {% if product.is_in_stock %}
+      <div class="flex items-center gap-3 mb-4">
+        <!-- Quantity picker -->
+        <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden">
+          <button onclick="changeQty(-1)" class="w-10 h-12 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-xl font-bold">−</button>
+          <input type="number" id="qty-input" value="1" min="1" max="{{ product.stock_qty }}"
+                 class="w-14 h-12 text-center text-sm font-bold border-0 focus:outline-none"/>
+          <button onclick="changeQty(1)" class="w-10 h-12 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-xl font-bold">+</button>
+        </div>
+
+        <button id="add-btn" onclick="addToCartDetail({{ product.pk }})"
+                class="flex-1 bg-brand hover:bg-brand-dark text-white font-semibold
+                       py-3 px-6 rounded-xl transition-colors text-sm">
+          {% if in_cart %}✓ Added to Cart{% else %}Add to Cart{% endif %}
+        </button>
+      </div>
+
+      <a href="{% url 'cart:detail' %}"
+         class="block w-full text-center border-2 border-brand text-brand font-semibold
+                py-3 rounded-xl hover:bg-brand-light transition-colors text-sm">
+        View Cart & Checkout
+      </a>
+      {% else %}
+      <div class="bg-gray-100 text-gray-500 text-center py-3 rounded-xl font-medium text-sm">
+        Currently Unavailable
+      </div>
+      {% endif %}
+
+      <!-- Info badges -->
+      <div class="mt-6 grid grid-cols-3 gap-3">
+        <div class="text-center bg-gray-50 rounded-xl p-3">
+          <div class="text-xl mb-1">🚚</div>
+          <p class="text-xs font-medium text-gray-600">Fast Delivery</p>
+        </div>
+        <div class="text-center bg-gray-50 rounded-xl p-3">
+          <div class="text-xl mb-1">📱</div>
+          <p class="text-xs font-medium text-gray-600">Pay via MoMo</p>
+        </div>
+        <div class="text-center bg-gray-50 rounded-xl p-3">
+          <div class="text-xl mb-1">💬</div>
+          <p class="text-xs font-medium text-gray-600">WhatsApp Support</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RELATED PRODUCTS -->
+  {% if related %}
+  <div class="mt-16">
+    <h2 class="text-xl font-bold text-gray-800 mb-5">You Might Also Like</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      {% for p in related %}
+      <a href="{% url 'products:detail' p.slug %}"
+         class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden group">
+        {% with p.images.first as img %}
+        {% if img %}
+        <img src="{{ img.image.url }}" alt="{{ p.name }}"
+             class="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-300"/>
+        {% else %}
+        <div class="w-full h-36 bg-gray-100 flex items-center justify-center text-4xl">📦</div>
+        {% endif %}
+        {% endwith %}
+        <div class="p-3">
+          <p class="text-sm font-semibold text-gray-800 line-clamp-2 mb-1">{{ p.name }}</p>
+          <p class="text-brand font-bold text-sm">GHS {{ p.selling_price }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const maxQty = {{ product.stock_qty }};
+
+  function changeQty(delta) {
+    const input = document.getElementById('qty-input');
+    const val   = Math.min(maxQty, Math.max(1, parseInt(input.value) + delta));
+    input.value = val;
+  }
+
+  function addToCartDetail(productId) {
+    const btn = document.getElementById('add-btn');
+    const qty = document.getElementById('qty-input').value;
+    btn.innerHTML = 'Adding...'; btn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+    fd.append('quantity', qty);
+
+    fetch(`/cart/add/${productId}/`, {
+      method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: fd
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        btn.innerHTML = '✓ Added to Cart';
+        btn.classList.replace('bg-brand', 'bg-green-600');
+        updateCartBadge(d.cart_count);
+        setTimeout(() => { btn.innerHTML = 'Add to Cart'; btn.disabled = false; btn.classList.replace('bg-green-600','bg-brand'); }, 2500);
+      } else { btn.innerHTML = 'Out of Stock'; }
+    });
+  }
+</script>
+{% endblock %}

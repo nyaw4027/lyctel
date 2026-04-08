@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Lynctel — Quality Imports Delivered in Ghana{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<section class="bg-gradient-to-br from-brand to-blue-800 text-white">
+  <div class="max-w-6xl mx-auto px-4 py-16 md:py-24 flex flex-col md:flex-row items-center gap-10">
+    <div class="flex-1 text-center md:text-left">
+      <span class="inline-block bg-white bg-opacity-20 text-sm px-4 py-1 rounded-full mb-4">
+        🇬🇭 Fast Delivery Across Ghana
+      </span>
+      <h1 class="text-4xl md:text-5xl font-bold leading-tight mb-4">
+        Quality Imports.<br/>Delivered to You.
+      </h1>
+      <p class="text-blue-100 text-lg mb-8 max-w-md">
+        Browse our curated selection of imported goods — electronics, fashion, gadgets and more — shipped straight to your door.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+        <a href="{% url 'products:list' %}"
+           class="bg-white text-brand font-bold px-8 py-3 rounded-xl hover:bg-blue-50 transition-colors text-center">
+          Shop Now
+        </a>
+        <a href="#categories"
+           class="border border-white border-opacity-50 text-white px-8 py-3 rounded-xl hover:bg-white hover:bg-opacity-10 transition-colors text-center">
+          Browse Categories
+        </a>
+      </div>
+    </div>
+    <div class="flex-1 flex justify-center">
+      <div class="grid grid-cols-2 gap-3 max-w-xs w-full">
+        {% for p in featured %}
+        <a href="{% url 'products:detail' p.slug %}"
+           class="bg-white bg-opacity-10 hover:bg-opacity-20 rounded-2xl p-3 transition-all group">
+          {% with p.images.first as img %}
+          {% if img %}
+          <img src="{{ img.image.url }}" alt="{{ p.name }}"
+               class="w-full h-24 object-cover rounded-lg mb-2 group-hover:scale-105 transition-transform"/>
+          {% else %}
+          <div class="w-full h-24 bg-white bg-opacity-20 rounded-lg mb-2 flex items-center justify-center text-3xl">📦</div>
+          {% endif %}
+          {% endwith %}
+          <p class="text-xs font-semibold truncate">{{ p.name }}</p>
+          <p class="text-xs text-blue-200">GHS {{ p.selling_price }}</p>
+        </a>
+        {% empty %}
+        <!-- placeholder tiles when no featured products yet -->
+        {% for i in "1234" %}
+        <div class="bg-white bg-opacity-10 rounded-2xl p-3 h-36 flex items-center justify-center">
+          <span class="text-3xl opacity-40">📦</span>
+        </div>
+        {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST BADGES -->
+<section class="bg-white border-b border-gray-100">
+  <div class="max-w-6xl mx-auto px-4 py-5 grid grid-cols-2 md:grid-cols-4 gap-4">
+    {% for icon, title, sub in badges %}{% endfor %}
+    <div class="flex items-center gap-3 text-sm">
+      <span class="text-2xl">🚚</span>
+      <div><p class="font-semibold text-gray-800">Fast Delivery</p><p class="text-gray-500 text-xs">Accra same day</p></div>
+    </div>
+    <div class="flex items-center gap-3 text-sm">
+      <span class="text-2xl">📱</span>
+      <div><p class="font-semibold text-gray-800">MoMo Payment</p><p class="text-gray-500 text-xs">MTN, Vodafone, AirtelTigo</p></div>
+    </div>
+    <div class="flex items-center gap-3 text-sm">
+      <span class="text-2xl">✅</span>
+      <div><p class="font-semibold text-gray-800">Quality Assured</p><p class="text-gray-500 text-xs">Verified imports only</p></div>
+    </div>
+    <div class="flex items-center gap-3 text-sm">
+      <span class="text-2xl">💬</span>
+      <div><p class="font-semibold text-gray-800">WhatsApp Support</p><p class="text-gray-500 text-xs">7 days a week</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CATEGORIES -->
+<section id="categories" class="max-w-6xl mx-auto px-4 py-12">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">Shop by Category</h2>
+    <a href="{% url 'products:list' %}" class="text-sm text-brand hover:underline">View all →</a>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+    {% for category in categories %}
+    <a href="{% url 'products:list' %}?category={{ category.slug }}"
+       class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand
+              transition-all p-4 flex flex-col items-center gap-2 group">
+      {% if category.icon %}
+      <img src="{{ category.icon.url }}" alt="{{ category.name }}" class="w-10 h-10 object-cover rounded-lg"/>
+      {% else %}
+      <div class="w-10 h-10 bg-brand-light rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+        </svg>
+      </div>
+      {% endif %}
+      <span class="text-xs font-semibold text-gray-700 text-center group-hover:text-brand transition-colors">
+        {{ category.name }}
+      </span>
+    </a>
+    {% empty %}
+    <div class="col-span-full text-center py-8 text-gray-400 text-sm">No categories yet — add some in admin.</div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- NEW ARRIVALS -->
+<section class="max-w-6xl mx-auto px-4 pb-12">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">New Arrivals</h2>
+    <a href="{% url 'products:list' %}" class="text-sm text-brand hover:underline">See all →</a>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+    {% for product in new_products %}
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden group flex flex-col">
+      <a href="{% url 'products:detail' product.slug %}" class="block overflow-hidden">
+        {% with product.images.first as img %}
+        {% if img %}
+        <img src="{{ img.image.url }}" alt="{{ product.name }}"
+             class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"/>
+        {% else %}
+        <div class="w-full h-40 bg-gray-100 flex items-center justify-center text-4xl">📦</div>
+        {% endif %}
+        {% endwith %}
+      </a>
+      <div class="p-3 flex flex-col flex-1">
+        <a href="{% url 'products:detail' product.slug %}"
+           class="text-sm font-semibold text-gray-800 hover:text-brand line-clamp-2 mb-2">
+          {{ product.name }}
+        </a>
+        <div class="mt-auto flex items-center justify-between">
+          <span class="font-bold text-brand text-sm">GHS {{ product.selling_price }}</span>
+          {% if product.is_in_stock %}
+          <button onclick="quickAdd({{ product.pk }}, this)"
+                  class="text-xs bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded-lg transition-colors">
+            + Cart
+          </button>
+          {% else %}
+          <span class="text-xs text-gray-400">Out of stock</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full text-center py-12 text-gray-400 text-sm">No products yet — add some in admin.</div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- CTA BANNER -->
+<section class="bg-brand-light border-y border-blue-100">
+  <div class="max-w-6xl mx-auto px-4 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
+    <div>
+      <h3 class="text-2xl font-bold text-gray-800 mb-1">Want to deliver for us?</h3>
+      <p class="text-gray-600 text-sm">Join our rider network. Earn commission on every delivery you complete.</p>
+    </div>
+    <a href="mailto:contact@lynctel.com?subject=Rider%20Application"
+       class="flex-shrink-0 bg-brand text-white font-semibold px-8 py-3 rounded-xl hover:bg-brand-dark transition-colors">
+      Apply as Rider
+    </a>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function quickAdd(productId, btn) {
+    const orig = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '...';
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+    fd.append('quantity', 1);
+    fetch(`/cart/add/${productId}/`, {
+      method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: fd
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        btn.innerHTML = '✓';
+        btn.classList.replace('bg-brand','bg-green-500');
+        updateCartBadge(d.cart_count);
+        setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; btn.classList.replace('bg-green-500','bg-brand'); }, 2000);
+      }
+    });
+  }
+</script>
+{% endblock %}

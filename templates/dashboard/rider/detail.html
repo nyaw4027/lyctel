@@ -1,0 +1,124 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ profile.rider.get_full_name }} — Rider{% endblock %}
+{% block page_title %}Rider Profile{% endblock %}
+{% block page_title_lg %}Rider: {{ profile.rider.get_full_name }}{% endblock %}
+
+{% block content %}
+<a href="{% url 'dashboard:rider_list' %}" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand mb-6">← Back to riders</a>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Profile card -->
+  <div class="space-y-5">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-14 h-14 rounded-full bg-brand-light flex items-center justify-center text-2xl font-bold text-brand">
+          {{ profile.rider.first_name|first|upper }}
+        </div>
+        <div>
+          <p class="font-bold text-gray-800">{{ profile.rider.get_full_name }}</p>
+          <p class="text-sm text-gray-500">{{ profile.rider.phone }}</p>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-sm text-gray-600 border-t border-gray-50 pt-4">
+        <div class="flex justify-between"><span class="text-gray-400">Status</span>
+          <span class="font-semibold {% if profile.status == 'available' %}text-green-600{% else %}text-gray-600{% endif %}">
+            {{ profile.get_status_display }}
+          </span>
+        </div>
+        <div class="flex justify-between"><span class="text-gray-400">Vehicle</span><span>{{ profile.vehicle_type|default:"—" }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Plate</span><span>{{ profile.vehicle_plate|default:"—" }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Zone</span><span>{{ profile.zone.name|default:"—" }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Total earned</span>
+          <span class="font-bold text-green-600">GHS {{ profile.total_earnings|floatformat:2 }}</span>
+        </div>
+      </div>
+
+      <!-- Verify toggle -->
+      <form method="POST" class="mt-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="verify"/>
+        <button class="w-full py-2.5 rounded-xl text-sm font-semibold transition-colors
+                       {% if profile.is_verified %}bg-red-50 text-red-600 hover:bg-red-100{% else %}bg-green-50 text-green-600 hover:bg-green-100{% endif %}">
+          {% if profile.is_verified %}Unverify Rider{% else %}Verify Rider ✓{% endif %}
+        </button>
+      </form>
+    </div>
+
+    <!-- Commission rate -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-800 mb-3">Commission Rate</h2>
+      <form method="POST" class="flex gap-2">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_commission"/>
+        <input type="number" name="commission_rate" value="{{ profile.commission_rate }}"
+               min="0" max="100" step="0.5"
+               class="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
+        <span class="flex items-center text-gray-500 font-bold">%</span>
+        <button class="bg-brand text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-brand-dark transition-colors">
+          Save
+        </button>
+      </form>
+      <p class="text-xs text-gray-400 mt-2">Rider earns this % of the delivery fee per order.</p>
+    </div>
+
+    <!-- Zone -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-800 mb-3">Delivery Zone</h2>
+      <form method="POST" class="flex gap-2">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_zone"/>
+        <select name="zone_id"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
+          <option value="">Any zone</option>
+          {% for zone in zones %}
+          <option value="{{ zone.pk }}" {% if profile.zone_id == zone.pk %}selected{% endif %}>{{ zone.name }}</option>
+          {% endfor %}
+        </select>
+        <button class="bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-900 transition-colors">
+          Save
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Deliveries table -->
+  <div class="lg:col-span-2">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-50">
+        <h2 class="font-bold text-gray-800">Recent Deliveries</h2>
+      </div>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
+            <th class="px-5 py-3 text-left font-semibold">Order</th>
+            <th class="px-5 py-3 text-left font-semibold">Date</th>
+            <th class="px-5 py-3 text-left font-semibold">Status</th>
+            <th class="px-5 py-3 text-right font-semibold">Commission</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for delivery in deliveries %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-5 py-3 font-bold text-brand">{{ delivery.order.order_ref }}</td>
+            <td class="px-5 py-3 text-gray-500">{{ delivery.assigned_at|date:"M d, Y" }}</td>
+            <td class="px-5 py-3">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                           {% if delivery.status == 'delivered' %}bg-green-100 text-green-700
+                           {% elif delivery.status == 'en_route' %}bg-blue-100 text-blue-700
+                           {% else %}bg-gray-100 text-gray-600{% endif %}">
+                {{ delivery.get_status_display }}
+              </span>
+            </td>
+            <td class="px-5 py-3 text-right font-bold text-green-600">GHS {{ delivery.rider_commission }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="px-5 py-8 text-center text-gray-400">No deliveries yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

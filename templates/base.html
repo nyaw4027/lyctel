@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}ShopGH{% endblock %}</title>
+
+  <!-- Tailwind CSS (CDN for dev — swap for compiled build in production) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#1A56DB', dark: '#1345B7', light: '#EBF0FF' },
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Cart badge bounce animation */
+    @keyframes badge-pop { 0%,100%{transform:scale(1)} 50%{transform:scale(1.35)} }
+    .badge-pop { animation: badge-pop 0.3s ease; }
+
+    /* Smooth page transitions */
+    body { opacity: 1; transition: opacity 0.15s ease; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c5c5c5; border-radius: 3px; }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+  <!-- ── NAVBAR ─────────────────────────────────────── -->
+  <nav class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
+
+      <!-- Logo -->
+      <a href="{% url 'products:list' %}" class="flex items-center gap-2 font-bold text-xl text-brand">
+        <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17M17 13v4a2 2 0 11-4 0M9 17a2 2 0 11-4 0"/>
+        </svg>
+        ShopGH
+      </a>
+
+      <!-- Search bar (desktop) -->
+      <form method="GET" action="{% url 'products:list' %}" class="hidden md:flex flex-1 max-w-md mx-8">
+        <div class="relative w-full">
+          <input type="text" name="q" value="{{ search_query|default:'' }}"
+                 placeholder="Search products..."
+                 class="w-full pl-4 pr-10 py-2 text-sm border border-gray-300 rounded-full
+                        focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"/>
+          <button type="submit" class="absolute right-3 top-2.5 text-gray-400 hover:text-brand">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+            </svg>
+          </button>
+        </div>
+      </form>
+
+      <!-- Right nav -->
+      <div class="flex items-center gap-4">
+
+        {% if user.is_authenticated %}
+          <!-- Orders link -->
+          <a href="{% url 'order:history' %}"
+             class="hidden md:block text-sm text-gray-600 hover:text-brand transition-colors">
+            My Orders
+          </a>
+          <!-- User menu -->
+          <div class="relative group">
+            <button class="flex items-center gap-1 text-sm text-gray-700 hover:text-brand">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M5.121 17.804A4 4 0 019 16h6a4 4 0 013.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <span class="hidden md:inline">{{ user.get_short_name|default:user.phone }}</span>
+            </button>
+            <div class="absolute right-0 mt-1 w-44 bg-white border border-gray-100 rounded-lg shadow-lg
+                        opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                        transition-all duration-150 z-50">
+              {% if user.is_admin %}
+              <a href="/admin/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-light">Admin Panel</a>
+              {% endif %}
+              <a href="{% url 'order:history' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-light">My Orders</a>
+              <hr class="my-1 border-gray-100">
+              <a href="/accounts/logout/" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">Sign Out</a>
+            </div>
+          </div>
+        {% else %}
+          <a href="/accounts/login/"
+             class="text-sm text-gray-600 hover:text-brand transition-colors">Sign In</a>
+          <a href="/accounts/signup/"
+             class="text-sm bg-brand text-white px-4 py-1.5 rounded-full hover:bg-brand-dark transition-colors">
+            Sign Up
+          </a>
+        {% endif %}
+
+        <!-- Cart icon with badge -->
+        <a href="{% url 'cart:cart_detail' %}" id="cart-btn"
+           class="relative flex items-center justify-center w-10 h-10 rounded-full
+                  hover:bg-gray-100 transition-colors">
+          <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184
+                     1.707.707 1.707H17M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/>
+          </svg>
+          <span id="cart-count"
+                class="{% if cart_count == 0 %}hidden{% endif %}
+                       absolute -top-1 -right-1 bg-red-500 text-white text-xs
+                       font-bold w-5 h-5 rounded-full flex items-center justify-center leading-none">
+            {{ cart_count }}
+          </span>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- Mobile search -->
+    <div class="md:hidden px-4 pb-3">
+      <form method="GET" action="{% url 'products:list' %}">
+        <input type="text" name="q" value="{{ search_query|default:'' }}"
+               placeholder="Search products..."
+               class="w-full px-4 py-2 text-sm border border-gray-300 rounded-full
+                      focus:outline-none focus:ring-2 focus:ring-brand"/>
+      </form>
+    </div>
+  </nav>
+
+  <!-- ── FLASH MESSAGES ─────────────────────────────── -->
+  {% if messages %}
+  <div id="messages" class="max-w-6xl mx-auto px-4 pt-4 w-full space-y-2">
+    {% for message in messages %}
+    <div class="flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium
+                {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200
+                {% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+                {% elif message.tags == 'warning' %}bg-yellow-50 text-yellow-800 border border-yellow-200
+                {% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}">
+      <span>{{ message }}</span>
+      <button onclick="this.parentElement.remove()" class="ml-4 opacity-60 hover:opacity-100">✕</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ── PAGE CONTENT ───────────────────────────────── -->
+  <main class="flex-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── FOOTER ─────────────────────────────────────── -->
+  <footer class="bg-white border-t border-gray-200 mt-16">
+    <div class="max-w-6xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm text-gray-600">
+      <div>
+        <p class="font-bold text-lg text-brand mb-2">ShopGH</p>
+        <p>Quality imported goods delivered to your door across Ghana.</p>
+      </div>
+      <div>
+        <p class="font-semibold text-gray-800 mb-2">Quick Links</p>
+        <ul class="space-y-1">
+          <li><a href="{% url 'products:list' %}" class="hover:text-brand">Shop</a></li>
+         <li>
+    {% if product.id %}
+        <a href="{% url 'products:detail' product.id %}" class="hover:text-brand">
+            {{ product.name }}
+        </a>
+    {% else %}
+        <span class="hover:text-brand">{{ product.name }}</span>
+    {% endif %}
+</li>
+          {% if user.is_authenticated %}
+          <li><a href="{% url 'order:history' %}" class="hover:text-brand">My Orders</a></li>
+          {% endif %}
+        </ul>
+      </div>
+      <div>
+        <p class="font-semibold text-gray-800 mb-2">Contact</p>
+        <p>📞 WhatsApp: +233 XX XXX XXXX</p>
+        <p class="mt-1">📍 Accra, Ghana</p>
+      </div>
+    </div>
+    <div class="border-t border-gray-100 text-center py-4 text-xs text-gray-400">
+      &copy; {% now "Y" %} ShopGH. All rights reserved.
+    </div>
+  </footer>
+
+  <!-- ── CART COUNT UPDATER (global JS) ─────────────── -->
+  <script>
+    // Update cart badge count without page reload (called after AJAX add-to-cart)
+    function updateCartBadge(count) {
+      const badge = document.getElementById('cart-count');
+      if (!badge) return;
+      badge.textContent = count;
+      if (count > 0) {
+        badge.classList.remove('hidden');
+        badge.classList.add('badge-pop');
+        setTimeout(() => badge.classList.remove('badge-pop'), 300);
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    // Auto-dismiss flash messages after 5s
+    setTimeout(() => {
+      const msgs = document.getElementById('messages');
+      if (msgs) msgs.style.transition = 'opacity 0.5s', msgs.style.opacity = '0';
+      setTimeout(() => msgs && msgs.remove(), 500);
+    }, 5000);
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

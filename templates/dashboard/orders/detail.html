@@ -1,0 +1,179 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ order.order_ref }} — Lynctel Admin{% endblock %}
+{% block page_title %}{{ order.order_ref }}{% endblock %}
+{% block page_title_lg %}Order {{ order.order_ref }}{% endblock %}
+
+{% block content %}
+<a href="{% url 'dashboard:order_list' %}" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand mb-6">← Back to orders</a>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- LEFT: order info -->
+  <div class="lg:col-span-2 space-y-5">
+
+    <!-- Items -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+        <h2 class="font-bold text-gray-800">Order Items</h2>
+        <span class="text-xs font-bold text-brand">GHS {{ order.total_amount }}</span>
+      </div>
+      <div class="divide-y divide-gray-50">
+        {% for item in order.items.all %}
+        <div class="px-5 py-3 flex items-center justify-between text-sm">
+          <div>
+            <p class="font-medium text-gray-800">{{ item.product_name }}</p>
+            <p class="text-xs text-gray-400">GHS {{ item.unit_price }} × {{ item.quantity }}</p>
+          </div>
+          <span class="font-bold">GHS {{ item.subtotal }}</span>
+        </div>
+        {% endfor %}
+        <div class="px-5 py-3 flex justify-between text-sm text-gray-500">
+          <span>Subtotal</span><span>GHS {{ order.subtotal }}</span>
+        </div>
+        <div class="px-5 py-3 flex justify-between text-sm text-gray-500">
+          <span>Delivery fee</span><span>GHS {{ order.delivery_fee }}</span>
+        </div>
+        <div class="px-5 py-3 flex justify-between font-bold text-gray-800">
+          <span>Total</span><span>GHS {{ order.total_amount }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delivery info -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-800 mb-3">Delivery Info</h2>
+      <div class="space-y-2 text-sm text-gray-600">
+        <div class="flex gap-3"><span class="text-gray-400 w-24 flex-shrink-0">Address</span><span class="font-medium text-gray-800">{{ order.delivery_address }}</span></div>
+        <div class="flex gap-3"><span class="text-gray-400 w-24 flex-shrink-0">City</span><span class="font-medium text-gray-800">{{ order.delivery_city }}</span></div>
+        <div class="flex gap-3"><span class="text-gray-400 w-24 flex-shrink-0">Phone</span><span class="font-medium text-gray-800">{{ order.delivery_phone }}</span></div>
+        {% if order.customer_note %}
+        <div class="flex gap-3"><span class="text-gray-400 w-24 flex-shrink-0">Note</span><span class="italic text-gray-600">{{ order.customer_note }}</span></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Assign rider -->
+    {% if not delivery %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-800 mb-4">Assign Rider</h2>
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="assign_rider"/>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Select Rider</label>
+            <select name="rider_id" required
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
+              <option value="">Choose rider...</option>
+              {% for rider in riders %}
+              <option value="{{ rider.pk }}">{{ rider.rider.get_full_name }} ({{ rider.status }})</option>
+              {% empty %}
+              <option disabled>No available riders</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Delivery Zone</label>
+            <select name="zone_id" required
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
+              <option value="">Choose zone...</option>
+              {% for zone in zones %}
+              <option value="{{ zone.pk }}">{{ zone.name }} — GHS {{ zone.delivery_fee }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <button class="bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+          Assign Rider
+        </button>
+      </form>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-800 mb-3">Delivery Assignment</h2>
+      <div class="space-y-2 text-sm text-gray-600">
+        <div class="flex gap-3"><span class="text-gray-400 w-28">Rider</span><span class="font-medium text-gray-800">{{ delivery.rider.rider.get_full_name }}</span></div>
+        <div class="flex gap-3"><span class="text-gray-400 w-28">Zone</span><span class="font-medium">{{ delivery.zone.name }}</span></div>
+        <div class="flex gap-3"><span class="text-gray-400 w-28">Commission</span><span class="font-medium text-green-600">GHS {{ delivery.rider_commission }}</span></div>
+        <div class="flex gap-3"><span class="text-gray-400 w-28">Status</span>
+          <span class="font-semibold {% if delivery.status == 'delivered' %}text-green-600{% else %}text-blue-600{% endif %}">
+            {{ delivery.get_status_display }}
+          </span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Status history -->
+    {% if history %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-800 mb-3">Status History</h2>
+      <div class="space-y-3">
+        {% for h in history %}
+        <div class="flex items-start gap-3 text-sm">
+          <div class="w-2 h-2 rounded-full bg-brand mt-1.5 flex-shrink-0"></div>
+          <div>
+            <p class="text-gray-700"><span class="font-semibold">{{ h.old_status|default:"New" }}</span> → <span class="font-semibold">{{ h.new_status }}</span></p>
+            {% if h.note %}<p class="text-gray-400 text-xs">{{ h.note }}</p>{% endif %}
+            <p class="text-gray-400 text-xs">{{ h.changed_at|date:"M d, H:i" }} by {{ h.changed_by.get_full_name|default:"System" }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT: actions -->
+  <div class="space-y-5">
+
+    <!-- Update order status -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-800 mb-4">Order Status</h2>
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_status"/>
+        <select name="status"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand mb-3">
+          {% for val, label in order.Status.choices %}
+          <option value="{{ val }}" {% if order.status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <textarea name="note" rows="2" placeholder="Optional note..."
+                  class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand mb-3"></textarea>
+        <button class="w-full bg-brand hover:bg-brand-dark text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
+          Update Status
+        </button>
+      </form>
+    </div>
+
+    <!-- Update payment status -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-800 mb-4">Payment Status</h2>
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_payment"/>
+        <select name="payment_status"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand mb-3">
+          {% for val, label in order.PaymentStatus.choices %}
+          <option value="{{ val }}" {% if order.payment_status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <button class="w-full bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
+          Update Payment
+        </button>
+      </form>
+    </div>
+
+    <!-- Customer info -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-800 mb-3">Customer</h2>
+      <div class="text-sm text-gray-600 space-y-1">
+        <p class="font-semibold text-gray-800">{{ order.customer.get_full_name|default:"—" }}</p>
+        <p>📞 {{ order.customer.phone }}</p>
+        {% if order.customer.email %}<p>✉ {{ order.customer.email }}</p>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

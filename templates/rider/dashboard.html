@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Rider Dashboard — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-xl font-bold text-gray-800">My Dashboard</h1>
+      <p class="text-sm text-gray-500">{{ request.user.get_full_name }}</p>
+    </div>
+    <form method="POST" action="{% url 'rider:toggle_status' %}">
+      {% csrf_token %}
+      <button type="submit"
+              class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors
+                     {% if profile.status == 'available' %}bg-green-100 text-green-700 hover:bg-green-200
+                     {% elif profile.status == 'on_delivery' %}bg-blue-100 text-blue-700
+                     {% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}"
+              {% if profile.status == 'on_delivery' %}disabled{% endif %}>
+        <span class="w-2 h-2 rounded-full
+                     {% if profile.status == 'available' %}bg-green-500
+                     {% elif profile.status == 'on_delivery' %}bg-blue-500
+                     {% else %}bg-gray-400{% endif %}"></span>
+        {% if profile.status == 'available' %}Available
+        {% elif profile.status == 'on_delivery' %}On Delivery
+        {% else %}Offline — Go Online{% endif %}
+      </button>
+    </form>
+  </div>
+
+  <!-- STATS -->
+  <div class="grid grid-cols-3 gap-3 mb-6">
+    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+      <p class="text-xl font-bold text-gray-800">{{ total_deliveries }}</p>
+      <p class="text-xs text-gray-500 mt-0.5">Delivered</p>
+    </div>
+    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+      <p class="text-xl font-bold text-green-600">{{ total_earnings|floatformat:0 }}</p>
+      <p class="text-xs text-gray-500 mt-0.5">Earned (GHS)</p>
+    </div>
+    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+      <p class="text-xl font-bold text-orange-500">{{ pending_payout|floatformat:0 }}</p>
+      <p class="text-xs text-gray-500 mt-0.5">Pending (GHS)</p>
+    </div>
+  </div>
+
+  <!-- ACTIVE DELIVERIES -->
+  <h2 class="text-base font-bold text-gray-800 mb-3">Active Deliveries</h2>
+
+  {% if active_deliveries %}
+  <div class="space-y-4 mb-8">
+    {% for delivery in active_deliveries %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+      <!-- Header -->
+      <div class="px-4 py-3 flex items-center justify-between border-b border-gray-50">
+        <span class="font-bold text-brand text-sm">{{ delivery.order.order_ref }}</span>
+        <span class="text-xs font-semibold px-3 py-1 rounded-full
+                     {% if delivery.status == 'assigned' %}bg-yellow-100 text-yellow-700
+                     {% elif delivery.status == 'picked_up' %}bg-blue-100 text-blue-700
+                     {% elif delivery.status == 'en_route' %}bg-indigo-100 text-indigo-700
+                     {% else %}bg-green-100 text-green-700{% endif %}">
+          {{ delivery.get_status_display }}
+        </span>
+      </div>
+
+      <!-- Progress steps -->
+      <div class="px-4 pt-3 pb-1">
+        <div class="relative flex justify-between items-center mb-1">
+          <div class="absolute left-0 right-0 h-1 bg-gray-200 top-2.5 z-0"></div>
+          {% for s, label in delivery.Status.choices|slice:":4" %}
+          {% with forloop.counter as step_num %}
+          <div class="relative z-10 flex flex-col items-center gap-1">
+            <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs
+                        {% if delivery.status == 'delivered' and step_num <= 4 %}bg-brand border-brand text-white
+                        {% elif delivery.status == 'en_route' and step_num <= 3 %}bg-brand border-brand text-white
+                        {% elif delivery.status == 'picked_up' and step_num <= 2 %}bg-brand border-brand text-white
+                        {% elif delivery.status == 'assigned' and step_num <= 1 %}bg-brand border-brand text-white
+                        {% else %}bg-white border-gray-300 text-gray-400{% endif %}">
+              {% if delivery.status == 'delivered' and step_num <= 4 %}✓
+              {% elif delivery.status == 'en_route' and step_num <= 3 %}✓
+              {% elif delivery.status == 'picked_up' and step_num <= 2 %}✓
+              {% elif delivery.status == 'assigned' and step_num <= 1 %}✓
+              {% else %}{{ step_num }}{% endif %}
+            </div>
+            <span class="text-xs text-gray-400 whitespace-nowrap">{{ label }}</span>
+          </div>
+          {% endwith %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Address -->
+      <div class="px-4 py-3">
+        <a href="{% url 'rider:delivery_detail' delivery.pk %}"
+           class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl mb-3 hover:bg-brand-light transition-colors">
+          <span class="text-xl flex-shrink-0">📍</span>
+          <div class="min-w-0 flex-1">
+            <p class="font-semibold text-gray-800 text-sm">{{ delivery.order.delivery_address }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">{{ delivery.order.delivery_city }} · 📞 {{ delivery.order.delivery_phone }}</p>
+          </div>
+          <svg class="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+
+        <!-- WhatsApp customer -->
+        <a href="https://wa.me/{{ delivery.order.delivery_phone }}?text=Hi!+I'm+your+Lynctel+rider+for+order+{{ delivery.order.order_ref }}.+I'm+on+my+way!"
+           target="_blank"
+           class="flex items-center justify-center gap-2 w-full bg-green-50 hover:bg-green-100
+                  text-green-700 font-semibold text-sm py-2.5 rounded-xl mb-3 transition-colors">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.12 1.532 5.855L.057 23.714a.5.5 0 00.612.612l5.937-1.474A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/>
+          </svg>
+          WhatsApp Customer
+        </a>
+
+        <!-- Action buttons -->
+        <div class="grid grid-cols-2 gap-2">
+          {% if delivery.status == 'assigned' %}
+          <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+            {% csrf_token %}<input type="hidden" name="status" value="picked_up"/>
+            <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-3 rounded-xl transition-colors">
+              📦 Picked Up
+            </button>
+          </form>
+          {% elif delivery.status == 'picked_up' %}
+          <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+            {% csrf_token %}<input type="hidden" name="status" value="en_route"/>
+            <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-3 rounded-xl transition-colors">
+              🛵 En Route
+            </button>
+          </form>
+          {% elif delivery.status == 'en_route' %}
+          <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+            {% csrf_token %}<input type="hidden" name="status" value="delivered"/>
+            <button class="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-sm py-3 rounded-xl transition-colors"
+                    onclick="return confirm('Confirm delivery completed?')">
+              ✅ Delivered!
+            </button>
+          </form>
+          {% endif %}
+
+          <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}"
+                onsubmit="return confirm('Mark as failed? This will notify the admin.')">
+            {% csrf_token %}<input type="hidden" name="status" value="failed"/>
+            <button class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-sm py-3 rounded-xl transition-colors">
+              ✕ Can't Deliver
+            </button>
+          </form>
+        </div>
+
+        <p class="text-center text-xs text-gray-400 mt-2">
+          Commission: <span class="font-bold text-green-600">GHS {{ delivery.rider_commission }}</span>
+        </p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center mb-8">
+    <p class="text-5xl mb-3">🛵</p>
+    <p class="font-semibold text-gray-700 mb-1">No active deliveries</p>
+    <p class="text-sm text-gray-400">
+      {% if profile.status == 'offline' %}Go online to receive delivery assignments.
+      {% else %}You're online — waiting for orders from admin.{% endif %}
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- EARNINGS HISTORY -->
+  <h2 class="text-base font-bold text-gray-800 mb-3">Earnings History</h2>
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    {% if recent_earnings %}
+    <div class="divide-y divide-gray-50">
+      {% for earning in recent_earnings %}
+      <div class="px-4 py-3 flex items-center justify-between">
+        <div>
+          <p class="text-sm font-semibold text-gray-800">{{ earning.delivery.order.order_ref }}</p>
+          <p class="text-xs text-gray-400">{{ earning.created_at|date:"M d, Y" }}</p>
+        </div>
+        <div class="text-right">
+          <p class="font-bold text-green-600">+GHS {{ earning.amount }}</p>
+          <span class="text-xs {% if earning.status == 'paid' %}text-green-500{% else %}text-orange-500{% endif %}">
+            {{ earning.get_status_display }}
+          </span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-center py-10 text-gray-400 text-sm">No earnings yet. Complete deliveries to start.</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

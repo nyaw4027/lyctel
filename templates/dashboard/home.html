@@ -1,0 +1,125 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Overview — Lynctel Admin{% endblock %}
+{% block page_title %}Overview{% endblock %}
+{% block page_title_lg %}Overview{% endblock %}
+
+{% block content %}
+
+<!-- STAT CARDS -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Revenue</p>
+    <p class="text-2xl font-bold text-gray-800">GHS {{ total_revenue|floatformat:2 }}</p>
+    <p class="text-xs text-green-600 mt-1">+GHS {{ week_revenue|floatformat:2 }} this week</p>
+  </div>
+
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Orders</p>
+    <p class="text-2xl font-bold text-gray-800">{{ total_orders }}</p>
+    {% if pending_orders %}
+    <p class="text-xs text-orange-500 mt-1">{{ pending_orders }} pending</p>
+    {% else %}
+    <p class="text-xs text-green-600 mt-1">All cleared ✓</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Products</p>
+    <p class="text-2xl font-bold text-gray-800">{{ total_products }}</p>
+    {% if low_stock %}
+    <p class="text-xs text-red-500 mt-1">{{ low_stock }} low stock</p>
+    {% else %}
+    <p class="text-xs text-gray-400 mt-1">Stock OK</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Customers</p>
+    <p class="text-2xl font-bold text-gray-800">{{ total_customers }}</p>
+    <p class="text-xs text-gray-400 mt-1">{{ active_riders }} riders active</p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- RECENT ORDERS -->
+  <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+      <h2 class="font-bold text-gray-800">Recent Orders</h2>
+      <a href="{% url 'dashboard:order_list' %}" class="text-xs text-brand hover:underline">View all →</a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
+            <th class="px-5 py-3 text-left font-semibold">Order</th>
+            <th class="px-5 py-3 text-left font-semibold">Customer</th>
+            <th class="px-5 py-3 text-left font-semibold">Amount</th>
+            <th class="px-5 py-3 text-left font-semibold">Status</th>
+            <th class="px-5 py-3 text-left font-semibold"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for order in recent_orders %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-5 py-3 font-bold text-brand">{{ order.order_ref }}</td>
+            <td class="px-5 py-3 text-gray-600">
+              {{ order.customer.get_full_name|default:order.customer.phone|default:"—" }}
+            </td>
+            <td class="px-5 py-3 font-semibold">GHS {{ order.total_amount }}</td>
+            <td class="px-5 py-3">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                           {% if order.status == 'delivered' %}bg-green-100 text-green-700
+                           {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
+                           {% elif order.status == 'cancelled' %}bg-red-100 text-red-700
+                           {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
+                           {% else %}bg-gray-100 text-gray-600{% endif %}">
+                {{ order.get_status_display }}
+              </span>
+            </td>
+            <td class="px-5 py-3">
+              <a href="{% url 'dashboard:order_detail' order.pk %}"
+                 class="text-xs text-brand hover:underline">View</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="px-5 py-8 text-center text-gray-400 text-sm">No orders yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LOW STOCK ALERTS -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+      <h2 class="font-bold text-gray-800">Low Stock Alert</h2>
+      <a href="{% url 'dashboard:product_list' %}" class="text-xs text-brand hover:underline">Manage →</a>
+    </div>
+    <div class="divide-y divide-gray-50">
+      {% for product in low_stock_products %}
+      <div class="px-5 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3 min-w-0">
+          {% with product.images.first as img %}
+          {% if img %}
+          <img src="{{ img.image.url }}" class="w-9 h-9 rounded-lg object-cover flex-shrink-0"/>
+          {% else %}
+          <div class="w-9 h-9 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center text-lg">📦</div>
+          {% endif %}
+          {% endwith %}
+          <p class="text-sm font-medium text-gray-700 truncate">{{ product.name }}</p>
+        </div>
+        <span class="flex-shrink-0 ml-2 text-xs font-bold
+                     {% if product.stock_qty == 0 %}text-red-600{% else %}text-orange-500{% endif %}">
+          {{ product.stock_qty }} left
+        </span>
+      </div>
+      {% empty %}
+      <div class="px-5 py-8 text-center text-gray-400 text-sm">All products well stocked ✓</div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

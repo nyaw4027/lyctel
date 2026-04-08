@@ -1,0 +1,55 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Riders — Lynctel Admin{% endblock %}
+{% block page_title %}Riders{% endblock %}
+{% block page_title_lg %}Riders{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
+        <th class="px-5 py-3 text-left font-semibold">Rider</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Phone</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Zone</th>
+        <th class="px-5 py-3 text-left font-semibold">Status</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Commission</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Verified</th>
+        <th class="px-5 py-3 text-right font-semibold"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      {% for rider in riders %}
+      <tr class="hover:bg-gray-50">
+        <td class="px-5 py-3 font-semibold text-gray-800">{{ rider.rider.get_full_name|default:rider.rider.phone }}</td>
+        <td class="px-5 py-3 text-gray-500 hidden md:table-cell">{{ rider.rider.phone }}</td>
+        <td class="px-5 py-3 text-gray-500 hidden md:table-cell">{{ rider.zone.name|default:"—" }}</td>
+        <td class="px-5 py-3">
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                       {% if rider.status == 'available' %}bg-green-100 text-green-700
+                       {% elif rider.status == 'on_delivery' %}bg-blue-100 text-blue-700
+                       {% else %}bg-gray-100 text-gray-500{% endif %}">
+            {{ rider.get_status_display }}
+          </span>
+        </td>
+        <td class="px-5 py-3 text-gray-600 hidden md:table-cell">{{ rider.commission_rate }}%</td>
+        <td class="px-5 py-3 hidden md:table-cell">
+          {% if rider.is_verified %}
+          <span class="text-green-600 text-sm">✓ Verified</span>
+          {% else %}
+          <span class="text-gray-400 text-xs">Unverified</span>
+          {% endif %}
+        </td>
+        <td class="px-5 py-3 text-right">
+          <a href="{% url 'dashboard:rider_detail' rider.pk %}"
+             class="text-xs bg-gray-100 hover:bg-brand hover:text-white text-gray-600 px-3 py-1.5 rounded-lg transition-colors">
+            Manage
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="px-5 py-12 text-center text-gray-400">No riders yet. Users sign up and you promote them to rider role.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

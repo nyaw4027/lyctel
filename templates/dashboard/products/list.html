@@ -1,0 +1,111 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Products — Lynctel Admin{% endblock %}
+{% block page_title %}Products{% endblock %}
+{% block page_title_lg %}Products{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+  <div class="flex items-center gap-3 flex-wrap">
+    <!-- Search -->
+    <form method="GET" class="flex items-center gap-2">
+      <input type="text" name="q" value="{{ query }}" placeholder="Search products..."
+             class="px-4 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand w-52"/>
+      {% if filter_cat %}<input type="hidden" name="category" value="{{ filter_cat }}">{% endif %}
+      {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}">{% endif %}
+      <button class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm px-4 py-2 rounded-xl">Search</button>
+    </form>
+
+    <!-- Status filter -->
+    <form method="GET">
+      {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+      <select name="status" onchange="this.form.submit()"
+              class="text-sm border border-gray-300 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand">
+        <option value="">All statuses</option>
+        <option value="active"       {% if filter_status == 'active' %}selected{% endif %}>Active</option>
+        <option value="out_of_stock" {% if filter_status == 'out_of_stock' %}selected{% endif %}>Out of Stock</option>
+        <option value="hidden"       {% if filter_status == 'hidden' %}selected{% endif %}>Hidden</option>
+      </select>
+    </form>
+  </div>
+
+  <a href="{% url 'dashboard:product_add' %}"
+     class="bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+    + Add Product
+  </a>
+</div>
+
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
+        <th class="px-5 py-3 text-left font-semibold">Product</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Category</th>
+        <th class="px-5 py-3 text-left font-semibold">Price</th>
+        <th class="px-5 py-3 text-left font-semibold">Stock</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Status</th>
+        <th class="px-5 py-3 text-right font-semibold">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      {% for product in products %}
+      <tr class="hover:bg-gray-50">
+        <td class="px-5 py-3">
+          <div class="flex items-center gap-3">
+            {% with product.images.first as img %}
+            {% if img %}
+            <img src="{{ img.image.url }}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0"/>
+            {% else %}
+            <div class="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center">📦</div>
+            {% endif %}
+            {% endwith %}
+            <div class="min-w-0">
+              <p class="font-semibold text-gray-800 truncate max-w-[180px]">{{ product.name }}</p>
+              <p class="text-xs text-gray-400">GHS {{ product.cost_price }} cost</p>
+            </div>
+          </div>
+        </td>
+        <td class="px-5 py-3 text-gray-500 hidden md:table-cell">
+          {{ product.category.name|default:"—" }}
+        </td>
+        <td class="px-5 py-3 font-bold text-brand">GHS {{ product.selling_price }}</td>
+        <td class="px-5 py-3">
+          <span class="font-semibold {% if product.stock_qty == 0 %}text-red-600{% elif product.stock_qty <= 5 %}text-orange-500{% else %}text-green-600{% endif %}">
+            {{ product.stock_qty }}
+          </span>
+        </td>
+        <td class="px-5 py-3 hidden md:table-cell">
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                       {% if product.status == 'active' %}bg-green-100 text-green-700
+                       {% elif product.status == 'hidden' %}bg-gray-100 text-gray-600
+                       {% else %}bg-red-100 text-red-700{% endif %}">
+            {{ product.get_status_display }}
+          </span>
+        </td>
+        <td class="px-5 py-3 text-right">
+          <div class="flex items-center justify-end gap-2">
+            <a href="{% url 'dashboard:product_edit' product.pk %}"
+               class="text-xs bg-gray-100 hover:bg-brand hover:text-white text-gray-600 px-3 py-1.5 rounded-lg transition-colors">
+              Edit
+            </a>
+            <form method="POST" action="{% url 'dashboard:product_delete' product.pk %}"
+                  onsubmit="return confirm('Delete {{ product.name }}?')">
+              {% csrf_token %}
+              <button class="text-xs bg-red-50 hover:bg-red-500 hover:text-white text-red-500 px-3 py-1.5 rounded-lg transition-colors">
+                Delete
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="px-5 py-12 text-center text-gray-400">
+          No products found.
+          <a href="{% url 'dashboard:product_add' %}" class="text-brand hover:underline ml-1">Add your first product →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
