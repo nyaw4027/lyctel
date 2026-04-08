@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Pay GHS {{ order.total_amount }} — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto px-4 py-16 text-center">
+
+  <!-- Spinner while Flutterwave loads -->
+  <div id="waiting" class="">
+    <div class="w-16 h-16 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-5"></div>
+    <h2 class="text-lg font-bold text-gray-800 mb-1">Opening payment window...</h2>
+    <p class="text-sm text-gray-500 mb-2">Order <span class="font-bold text-brand">{{ order.order_ref }}</span></p>
+    <p class="text-2xl font-bold text-brand mb-6">GHS {{ order.total_amount }}</p>
+    <p class="text-xs text-gray-400">A secure payment window will open shortly.<br/>Do not close or refresh this page.</p>
+  </div>
+
+  <!-- Fallback if popup blocked -->
+  <div id="fallback" class="hidden">
+    <p class="text-sm text-gray-600 mb-4">If the payment window didn't open automatically:</p>
+    <button id="pay-btn"
+            class="bg-brand hover:bg-brand-dark text-white font-bold px-8 py-3 rounded-xl transition-colors">
+      Open Payment Window
+    </button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Flutterwave Inline JS SDK -->
+<script src="https://checkout.flutterwave.com/v3.js"></script>
+<script>
+  const config = {{ flw_config|safe }};
+
+  // Override the redirect to ensure it goes to our callback
+  config.callback = function(response) {
+    // On successful payment in inline mode, redirect to callback
+    window.location.href = `/checkout/payment/callback/?status=${response.status}&tx_ref=${response.tx_ref}&transaction_id=${response.transaction_id}`;
+  };
+
+  config.onclose = function() {
+    // If user closes popup without paying
+    document.getElementById('waiting').classList.add('hidden');
+    document.getElementById('fallback').classList.remove('hidden');
+  };
+
+  // Auto-trigger payment popup
+  window.onload = function() {
+    setTimeout(function() {
+      try {
+        FlutterwaveCheckout(config);
+      } catch(e) {
+        document.getElementById('waiting').classList.add('hidden');
+        document.getElementById('fallback').classList.remove('hidden');
+      }
+    }, 800);
+  };
+
+  // Manual trigger button
+  document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('pay-btn');
+    if (btn) {
+      btn.addEventListener('click', function() {
+        FlutterwaveCheckout(config);
+      });
+    }
+  });
+</script>
+{% endblock %}

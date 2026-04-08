@@ -103,3 +103,8 @@ LOGOUT_REDIRECT_URL = '/'
 
 # ── Default primary key ────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+FLW_PUBLIC_KEY     = 'FLWPUBK_TEST-xxxxx'   # from Flutterwave dashboard
+FLW_SECRET_KEY     = 'FLWSECK_TEST-xxxxx'   # from Flutterwave dashboard
+FLW_WEBHOOK_SECRET = 'my-secret-string'     # you choose this

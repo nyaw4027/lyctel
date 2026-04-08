@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Payment Failed — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto px-4 py-16 text-center">
+
+  <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5">
+    <svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+  </div>
+
+  <h1 class="text-2xl font-bold text-gray-800 mb-2">Payment Not Completed</h1>
+  <p class="text-gray-500 text-sm mb-2">
+    Your order <span class="font-bold text-brand">{{ order.order_ref }}</span> has been saved.
+  </p>
+  <p class="text-gray-400 text-xs mb-8">
+    No money has been taken. You can try again with a different payment method.
+  </p>
+
+  <!-- Order summary -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6 text-left">
+    <div class="flex justify-between text-sm mb-2">
+      <span class="text-gray-500">Order</span>
+      <span class="font-bold text-brand">{{ order.order_ref }}</span>
+    </div>
+    <div class="flex justify-between text-sm mb-2">
+      <span class="text-gray-500">Amount</span>
+      <span class="font-bold">GHS {{ order.total_amount }}</span>
+    </div>
+    <div class="flex justify-between text-sm">
+      <span class="text-gray-500">Deliver to</span>
+      <span class="font-medium">{{ order.delivery_city }}</span>
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-3">
+    <!-- Retry payment — POST back to payment page with order details reloaded -->
+    <a href="{% url 'order:history' %}"
+       class="w-full bg-brand hover:bg-brand-dark text-white font-bold py-3 rounded-xl transition-colors">
+      Try Payment Again
+    </a>
+
+    <a href="https://wa.me/233XXXXXXXXX?text=Hi!+I+had+a+payment+issue+for+order+{{ order.order_ref }}"
+       target="_blank"
+       class="w-full bg-green-50 hover:bg-green-100 text-green-700 font-semibold py-3 rounded-xl transition-colors text-sm">
+      Get Help on WhatsApp
+    </a>
+
+    <a href="{% url 'frontend:home' %}" class="text-sm text-gray-400 hover:text-brand">
+      Back to Homepage
+    </a>
+  </div>
+</div>
+{% endblock %}
