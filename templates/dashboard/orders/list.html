@@ -1,201 +1,83 @@
 {% extends "dashboard/base.html" %}
-{% block title %}{{ action }} Product — Lynctel Admin{% endblock %}
-{% block page_title %}{{ action }} Product{% endblock %}
-{% block page_title_lg %}{{ action }} Product{% endblock %}
+{% block title %}Orders — Lynctel Admin{% endblock %}
+{% block page_title %}Orders{% endblock %}
+{% block page_title_lg %}Orders{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl">
-  <a href="{% url 'dashboard:product_list' %}" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand mb-6">
-    ← Back to products
-  </a>
-
-  <form method="POST" enctype="multipart/form-data" class="space-y-6">
-    {% csrf_token %}
-
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
-      <h2 class="font-bold text-gray-800 text-lg">Product Details</h2>
-
-      <!-- Name -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
-        <input type="text" name="name"
-               value="{{ product.name|default:form_data.name|default:'' }}"
-               placeholder="e.g. Wireless Bluetooth Earbuds"
-               class="w-full px-4 py-2.5 border {% if errors.name %}border-red-400{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-        {% if errors.name %}<p class="text-red-500 text-xs mt-1">{{ errors.name }}</p>{% endif %}
-      </div>
-
-      <!-- Category -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-        <select name="category_id"
-                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
-          <option value="">No category</option>
-          {% for cat in categories %}
-          <option value="{{ cat.pk }}"
-                  {% if product.category_id == cat.pk or form_data.category_id == cat.pk|stringformat:"s" %}selected{% endif %}>
-            {{ cat.name }}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <!-- Description -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-        <textarea name="description" rows="4" placeholder="Describe the product..."
-                  class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none">{{ product.description|default:form_data.description|default:'' }}</textarea>
-      </div>
-
-      <!-- Prices -->
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Cost Price (GHS) *</label>
-          <input type="number" name="cost_price" step="0.01" min="0"
-                 value="{{ product.cost_price|default:form_data.cost_price|default:'' }}"
-                 placeholder="0.00"
-                 class="w-full px-4 py-2.5 border {% if errors.cost_price %}border-red-400{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-          <p class="text-xs text-gray-400 mt-1">What you paid (import cost)</p>
-          {% if errors.cost_price %}<p class="text-red-500 text-xs mt-1">{{ errors.cost_price }}</p>{% endif %}
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (GHS) *</label>
-          <input type="number" name="selling_price" step="0.01" min="0"
-                 value="{{ product.selling_price|default:form_data.selling_price|default:'' }}"
-                 placeholder="0.00"
-                 class="w-full px-4 py-2.5 border {% if errors.selling_price %}border-red-400{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-          <p class="text-xs text-gray-400 mt-1">What customer pays</p>
-          {% if errors.selling_price %}<p class="text-red-500 text-xs mt-1">{{ errors.selling_price }}</p>{% endif %}
-        </div>
-      </div>
-
-      <!-- Margin preview -->
-      <div id="margin-preview" class="hidden bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-green-700">
-        Profit per unit: <span id="margin-val" class="font-bold">—</span>
-      </div>
-
-      <!-- Stock -->
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
-          <input type="number" name="stock_qty" min="0"
-                 value="{{ product.stock_qty|default:form_data.stock_qty|default:0 }}"
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-          <select name="status"
-                  class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
-            <option value="active"       {% if product.status == 'active' or not product %}selected{% endif %}>Active</option>
-            <option value="hidden"       {% if product.status == 'hidden' %}selected{% endif %}>Hidden</option>
-            <option value="out_of_stock" {% if product.status == 'out_of_stock' %}selected{% endif %}>Out of Stock</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Featured toggle -->
-      <label class="flex items-center gap-3 cursor-pointer">
-        <input type="checkbox" name="is_featured"
-               {% if product.is_featured %}checked{% endif %}
-               class="w-4 h-4 text-brand rounded focus:ring-brand"/>
-        <span class="text-sm font-medium text-gray-700">Feature this product on homepage</span>
-      </label>
-    </div>
-
-    <!-- Images -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-      <h2 class="font-bold text-gray-800 text-lg mb-4">Product Images</h2>
-
-      <!-- Existing images -->
-      {% if product.images.all %}
-      <div class="flex gap-3 flex-wrap mb-4">
-        {% for img in product.images.all %}
-        <div class="relative group">
-          <img src="{{ img.image.url }}" class="w-24 h-24 object-cover rounded-xl border border-gray-200"/>
-          <form method="POST" action="{% url 'dashboard:product_image_delete' img.pk %}"
-                class="absolute inset-0 bg-black bg-opacity-50 rounded-xl opacity-0 group-hover:opacity-100
-                       flex items-center justify-center transition-opacity"
-                onsubmit="return confirm('Remove this image?')">
-            {% csrf_token %}
-            <button type="submit" class="text-white text-xs font-bold bg-red-500 px-3 py-1 rounded-lg">Remove</button>
-          </form>
-          {% if img.is_primary %}
-          <span class="absolute top-1 left-1 bg-brand text-white text-xs px-2 py-0.5 rounded-full">Main</span>
-          {% endif %}
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
-
-      <!-- Upload new -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">
-          {% if product %}Add more images{% else %}Upload images{% endif %}
-        </label>
-        <input type="file" name="images" multiple accept="image/*" id="image-input"
-               class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl
-                      file:border-0 file:text-sm file:font-semibold file:bg-brand-light
-                      file:text-brand hover:file:bg-blue-100 cursor-pointer"/>
-        <p class="text-xs text-gray-400 mt-1">You can select multiple images. First image becomes the main photo.</p>
-      </div>
-
-      <!-- Preview -->
-      <div id="image-preview" class="flex gap-3 flex-wrap mt-3"></div>
-    </div>
-
-    <!-- Submit -->
-    <div class="flex items-center gap-3">
-      <button type="submit"
-              class="bg-brand hover:bg-brand-dark text-white font-semibold px-8 py-3 rounded-xl transition-colors">
-        {% if product %}Save Changes{% else %}Add Product{% endif %}
-      </button>
-      <a href="{% url 'dashboard:product_list' %}"
-         class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
-    </div>
+<div class="flex items-center gap-3 mb-6 flex-wrap">
+  <form method="GET" class="flex gap-2">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search orders..."
+           class="px-4 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand w-64"/>
+    <button class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm px-4 py-2 rounded-xl">Search</button>
+  </form>
+  <form method="GET">
+    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+    <select name="status" onchange="this.form.submit()"
+            class="text-sm border border-gray-300 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand">
+      <option value="">All statuses</option>
+      {% for val, label in status_choices %}
+      <option value="{{ val }}" {% if filter_status == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
   </form>
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-  // Profit margin preview
-  const cost = document.querySelector('input[name="cost_price"]');
-  const sell = document.querySelector('input[name="selling_price"]');
-  const preview = document.getElementById('margin-preview');
-  const marginVal = document.getElementById('margin-val');
-
-  function updateMargin() {
-    const c = parseFloat(cost.value) || 0;
-    const s = parseFloat(sell.value) || 0;
-    if (c > 0 && s > 0) {
-      const margin = s - c;
-      const pct    = ((margin / s) * 100).toFixed(1);
-      marginVal.textContent = `GHS ${margin.toFixed(2)} (${pct}%)`;
-      preview.classList.remove('hidden');
-      marginVal.className = margin > 0 ? 'font-bold text-green-700' : 'font-bold text-red-600';
-    } else {
-      preview.classList.add('hidden');
-    }
-  }
-
-  cost.addEventListener('input', updateMargin);
-  sell.addEventListener('input', updateMargin);
-  updateMargin();
-
-  // Image preview
-  document.getElementById('image-input').addEventListener('change', function() {
-    const container = document.getElementById('image-preview');
-    container.innerHTML = '';
-    [...this.files].forEach(file => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = document.createElement('img');
-        img.src = e.target.result;
-        img.className = 'w-24 h-24 object-cover rounded-xl border-2 border-brand';
-        container.appendChild(img);
-      };
-      reader.readAsDataURL(file);
-    });
-  });
-</script>
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
+        <th class="px-5 py-3 text-left font-semibold">Order</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Customer</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">City</th>
+        <th class="px-5 py-3 text-left font-semibold">Total</th>
+        <th class="px-5 py-3 text-left font-semibold">Status</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Payment</th>
+        <th class="px-5 py-3 text-right font-semibold"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      {% for order in orders %}
+      <tr class="hover:bg-gray-50">
+        <td class="px-5 py-3">
+          <p class="font-bold text-brand">{{ order.order_ref }}</p>
+          <p class="text-xs text-gray-400">{{ order.created_at|date:"M d, H:i" }}</p>
+        </td>
+        <td class="px-5 py-3 text-gray-600 hidden md:table-cell">
+          {{ order.customer.get_full_name|default:order.customer.phone|default:"—" }}
+        </td>
+        <td class="px-5 py-3 text-gray-600 hidden md:table-cell">{{ order.delivery_city }}</td>
+        <td class="px-5 py-3 font-bold">GHS {{ order.total_amount }}</td>
+        <td class="px-5 py-3">
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+            {% if order.status == 'delivered' %}bg-green-100 text-green-700
+            {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
+            {% elif order.status == 'cancelled' %}bg-red-100 text-red-700
+            {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
+            {% else %}bg-gray-100 text-gray-600{% endif %}">
+            {{ order.get_status_display }}
+          </span>
+        </td>
+        <td class="px-5 py-3 hidden md:table-cell">
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+            {% if order.payment_status == 'paid' %}bg-green-100 text-green-700
+            {% elif order.payment_status == 'failed' %}bg-red-100 text-red-700
+            {% else %}bg-orange-100 text-orange-700{% endif %}">
+            {{ order.get_payment_status_display }}
+          </span>
+        </td>
+        <td class="px-5 py-3 text-right">
+          <a href="{% url 'dashboard:order_detail' order.pk %}"
+             class="text-xs bg-gray-100 hover:bg-brand hover:text-white text-gray-600 px-3 py-1.5 rounded-lg transition-colors">
+            Manage
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="px-5 py-12 text-center text-gray-400">No orders yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}
