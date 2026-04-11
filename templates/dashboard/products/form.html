@@ -15,44 +15,39 @@
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
       <h2 class="font-bold text-gray-800 text-lg">Product Details</h2>
 
-      <!-- Name -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
         <input type="text" name="name"
-               value="{{ product.name|default:form_data.name|default:'' }}"
+               value="{{ product.name|default:'' }}"
                placeholder="e.g. Wireless Bluetooth Earbuds"
                class="w-full px-4 py-2.5 border {% if errors.name %}border-red-400{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
         {% if errors.name %}<p class="text-red-500 text-xs mt-1">{{ errors.name }}</p>{% endif %}
       </div>
 
-      <!-- Category -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
         <select name="category_id"
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
           <option value="">No category</option>
           {% for cat in categories %}
-          <option value="{{ cat.pk }}"
-                  {% if product.category_id == cat.pk or form_data.category_id == cat.pk|stringformat:"s" %}selected{% endif %}>
+          <option value="{{ cat.pk }}" {% if product.category_id == cat.pk %}selected{% endif %}>
             {{ cat.name }}
           </option>
           {% endfor %}
         </select>
       </div>
 
-      <!-- Description -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
         <textarea name="description" rows="4" placeholder="Describe the product..."
-                  class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none">{{ product.description|default:form_data.description|default:'' }}</textarea>
+                  class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none">{{ product.description|default:'' }}</textarea>
       </div>
 
-      <!-- Prices -->
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Cost Price (GHS) *</label>
           <input type="number" name="cost_price" step="0.01" min="0"
-                 value="{{ product.cost_price|default:form_data.cost_price|default:'' }}"
+                 value="{{ product.cost_price|default:'' }}"
                  placeholder="0.00"
                  class="w-full px-4 py-2.5 border {% if errors.cost_price %}border-red-400{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
           <p class="text-xs text-gray-400 mt-1">What you paid (import cost)</p>
@@ -61,7 +56,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (GHS) *</label>
           <input type="number" name="selling_price" step="0.01" min="0"
-                 value="{{ product.selling_price|default:form_data.selling_price|default:'' }}"
+                 value="{{ product.selling_price|default:'' }}"
                  placeholder="0.00"
                  class="w-full px-4 py-2.5 border {% if errors.selling_price %}border-red-400{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
           <p class="text-xs text-gray-400 mt-1">What customer pays</p>
@@ -74,26 +69,24 @@
         Profit per unit: <span id="margin-val" class="font-bold">—</span>
       </div>
 
-      <!-- Stock -->
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
           <input type="number" name="stock_qty" min="0"
-                 value="{{ product.stock_qty|default:form_data.stock_qty|default:0 }}"
+                 value="{{ product.stock_qty|default:0 }}"
                  class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
           <select name="status"
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
-            <option value="active"       {% if product.status == 'active' or not product %}selected{% endif %}>Active</option>
+            <option value="active"       {% if not product or product.status == 'active' %}selected{% endif %}>Active</option>
             <option value="hidden"       {% if product.status == 'hidden' %}selected{% endif %}>Hidden</option>
             <option value="out_of_stock" {% if product.status == 'out_of_stock' %}selected{% endif %}>Out of Stock</option>
           </select>
         </div>
       </div>
 
-      <!-- Featured toggle -->
       <label class="flex items-center gap-3 cursor-pointer">
         <input type="checkbox" name="is_featured"
                {% if product.is_featured %}checked{% endif %}
@@ -106,7 +99,6 @@
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <h2 class="font-bold text-gray-800 text-lg mb-4">Product Images</h2>
 
-      <!-- Existing images -->
       {% if product.images.all %}
       <div class="flex gap-3 flex-wrap mb-4">
         {% for img in product.images.all %}
@@ -127,7 +119,6 @@
       </div>
       {% endif %}
 
-      <!-- Upload new -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">
           {% if product %}Add more images{% else %}Upload images{% endif %}
@@ -136,21 +127,18 @@
                class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl
                       file:border-0 file:text-sm file:font-semibold file:bg-brand-light
                       file:text-brand hover:file:bg-blue-100 cursor-pointer"/>
-        <p class="text-xs text-gray-400 mt-1">You can select multiple images. First image becomes the main photo.</p>
+        <p class="text-xs text-gray-400 mt-1">Select multiple images. First image becomes the main photo.</p>
       </div>
 
-      <!-- Preview -->
       <div id="image-preview" class="flex gap-3 flex-wrap mt-3"></div>
     </div>
 
-    <!-- Submit -->
     <div class="flex items-center gap-3">
       <button type="submit"
               class="bg-brand hover:bg-brand-dark text-white font-semibold px-8 py-3 rounded-xl transition-colors">
         {% if product %}Save Changes{% else %}Add Product{% endif %}
       </button>
-      <a href="{% url 'dashboard:product_list' %}"
-         class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
+      <a href="{% url 'dashboard:product_list' %}" class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
     </div>
   </form>
 </div>
@@ -158,10 +146,9 @@
 
 {% block extra_js %}
 <script>
-  // Profit margin preview
   const cost = document.querySelector('input[name="cost_price"]');
   const sell = document.querySelector('input[name="selling_price"]');
-  const preview = document.getElementById('margin-preview');
+  const preview  = document.getElementById('margin-preview');
   const marginVal = document.getElementById('margin-val');
 
   function updateMargin() {
@@ -182,7 +169,6 @@
   sell.addEventListener('input', updateMargin);
   updateMargin();
 
-  // Image preview
   document.getElementById('image-input').addEventListener('change', function() {
     const container = document.getElementById('image-preview');
     container.innerHTML = '';

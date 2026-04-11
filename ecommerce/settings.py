@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'frontend',
     'accounts',
     'dashboard',
+    'reviews',
 ]
 
 MIDDLEWARE = [

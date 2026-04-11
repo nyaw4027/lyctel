@@ -13,6 +13,7 @@ urlpatterns = [
     path('orders/', include('order.urls', namespace='order')),
     path('dashboard/', include('dashboard.urls')),
     path('rider/', include('rider.urls')),
+    path('', include('reviews.urls')),
 ]
 
 if settings.DEBUG:
