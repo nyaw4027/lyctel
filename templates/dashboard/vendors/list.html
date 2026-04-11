@@ -1,0 +1,93 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Vendors — Lynctel Admin{% endblock %}
+{% block page_title %}Vendors{% endblock %}
+{% block page_title_lg %}Vendors{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-xs text-gray-400 uppercase bg-gray-50">
+        <th class="px-5 py-3 text-left font-semibold">Shop</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Owner</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">MoMo</th>
+        <th class="px-5 py-3 text-left font-semibold">Status</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Commission</th>
+        <th class="px-5 py-3 text-right font-semibold"></th>
+      </tr>
+    </thead>
+
+    <tbody class="divide-y divide-gray-50">
+      {% for vendor in vendors %}
+      <tr class="hover:bg-gray-50">
+        
+        <!-- Shop -->
+        <td class="px-5 py-3">
+          <div class="flex items-center gap-3">
+            {% if vendor.logo %}
+              <img src="{{ vendor.logo.url }}" class="w-9 h-9 rounded-lg object-cover"/>
+            {% else %}
+              <div class="w-9 h-9 rounded-lg bg-brand-light flex items-center justify-center font-bold text-brand">
+                {{ vendor.shop_name|default:"V"|slice:":1"|upper }}
+              </div>
+            {% endif %}
+            <div>
+              <p class="font-semibold text-gray-800">{{ vendor.shop_name }}</p>
+              <p class="text-xs text-gray-400">
+                {{ vendor.joined_at|date:"M d, Y" }}
+              </p>
+            </div>
+          </div>
+        </td>
+
+        <!-- Owner -->
+        <td class="px-5 py-3 text-gray-600 hidden md:table-cell">
+          {{ vendor.owner.get_full_name|default:vendor.owner.phone }}
+        </td>
+
+        <!-- MoMo -->
+        <td class="px-5 py-3 text-gray-600 hidden md:table-cell">
+          {{ vendor.momo_number|default:"—" }}
+        </td>
+
+        <!-- Status -->
+        <td class="px-5 py-3">
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+            {% if vendor.status == 'active' %}
+              bg-green-100 text-green-700
+            {% elif vendor.status == 'pending' %}
+              bg-yellow-100 text-yellow-700
+            {% else %}
+              bg-red-100 text-red-700
+            {% endif %}
+          ">
+            {{ vendor.get_status_display }}
+          </span>
+        </td>
+
+        <!-- Commission -->
+        <td class="px-5 py-3 text-gray-600 hidden md:table-cell">
+          {{ vendor.commission_rate|default:"0" }}%
+        </td>
+
+        <!-- Actions -->
+        <td class="px-5 py-3 text-right">
+          <a href="{% url 'dashboard:vendor_detail' vendor.pk %}"
+             class="text-xs bg-gray-100 hover:bg-brand hover:text-white text-gray-600 px-3 py-1.5 rounded-lg transition-colors">
+            Manage
+          </a>
+        </td>
+
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="px-5 py-12 text-center text-gray-400">
+          No vendor applications yet.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

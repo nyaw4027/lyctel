@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ vendor.shop_name }} Dashboard — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-8">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div class="flex items-center gap-3">
+      {% if vendor.logo %}
+      <img src="{{ vendor.logo.url }}" class="w-12 h-12 rounded-xl object-cover"/>
+      {% else %}
+      <div class="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center text-xl font-bold text-brand">
+        {{ vendor.shop_name|first|upper }}
+      </div>
+      {% endif %}
+      <div>
+        <h1 class="text-xl font-bold text-gray-800">{{ vendor.shop_name }}</h1>
+        <a href="{% url 'vendors:shop' vendor.slug %}" target="_blank"
+           class="text-xs text-brand hover:underline">View your shop →</a>
+      </div>
+    </div>
+    <a href="{% url 'vendors:product_add' %}"
+       class="bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+      + Add Product
+    </a>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-3 gap-4 mb-8">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
+      <p class="text-2xl font-bold text-brand">GHS {{ total_revenue|floatformat:2 }}</p>
+      <p class="text-xs text-gray-500 mt-1">Total Revenue (90%)</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
+      <p class="text-2xl font-bold text-orange-500">GHS {{ pending_payout|floatformat:2 }}</p>
+      <p class="text-xs text-gray-500 mt-1">Pending Payout</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
+      <p class="text-2xl font-bold text-gray-800">{{ total_orders }}</p>
+      <p class="text-xs text-gray-500 mt-1">Orders Fulfilled</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Products -->
+    <div class="lg:col-span-2">
+      <h2 class="font-bold text-gray-800 mb-4">Your Products ({{ products|length }})</h2>
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {% if products %}
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-xs text-gray-400 uppercase bg-gray-50">
+              <th class="px-4 py-3 text-left font-semibold">Product</th>
+              <th class="px-4 py-3 text-left font-semibold">Price</th>
+              <th class="px-4 py-3 text-left font-semibold">Stock</th>
+              <th class="px-4 py-3 text-left font-semibold">Status</th>
+              <th class="px-4 py-3 text-right font-semibold"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {% for product in products %}
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  {% with product.images.first as img %}
+                  {% if img %}
+                  <img src="{{ img.image.url }}" class="w-9 h-9 object-cover rounded-lg"/>
+                  {% else %}
+                  <div class="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center text-lg">📦</div>
+                  {% endif %}
+                  {% endwith %}
+                  <span class="font-medium text-gray-800 truncate max-w-[140px]">{{ product.name }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 font-bold text-brand">GHS {{ product.selling_price }}</td>
+              <td class="px-4 py-3 {% if product.stock_qty == 0 %}text-red-500{% elif product.stock_qty <= 5 %}text-orange-500{% else %}text-green-600{% endif %} font-semibold">
+                {{ product.stock_qty }}
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-xs px-2 py-0.5 rounded-full font-semibold
+                             {% if product.status == 'active' %}bg-green-100 text-green-700
+                             {% elif product.status == 'hidden' %}bg-gray-100 text-gray-600
+                             {% else %}bg-red-100 text-red-600{% endif %}">
+                  {{ product.get_status_display }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <a href="{% url 'vendors:product_edit' product.pk %}"
+                     class="text-xs bg-gray-100 hover:bg-brand hover:text-white text-gray-600 px-3 py-1.5 rounded-lg transition-colors">Edit</a>
+                  <form method="POST" action="{% url 'vendors:product_delete' product.pk %}"
+                        onsubmit="return confirm('Delete {{ product.name }}?')">
+                    {% csrf_token %}
+                    <button class="text-xs bg-red-50 hover:bg-red-500 hover:text-white text-red-500 px-3 py-1.5 rounded-lg transition-colors">Del</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-12 text-gray-400">
+          <p class="text-4xl mb-3">📦</p>
+          <p class="font-medium text-gray-600 mb-1">No products yet</p>
+          <a href="{% url 'vendors:product_add' %}" class="text-brand text-sm hover:underline">Add your first product →</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Recent orders -->
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold text-gray-800">Recent Sales</h2>
+        <a href="{% url 'vendors:earnings' %}" class="text-xs text-brand hover:underline">All earnings →</a>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+        {% for item in recent_orders %}
+        <div class="px-4 py-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-sm font-semibold text-brand">{{ item.order.order_ref }}</p>
+              <p class="text-xs text-gray-400 truncate max-w-[140px]">{{ item.product_name }}</p>
+            </div>
+            <p class="text-sm font-bold text-green-600">+GHS {{ item.subtotal }}</p>
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-8 text-gray-400 text-sm">No sales yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

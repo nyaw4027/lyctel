@@ -1,0 +1,141 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ vendor.shop_name }} — Vendor Admin{% endblock %}
+{% block page_title %}{{ vendor.shop_name }}{% endblock %}
+{% block page_title_lg %}Vendor: {{ vendor.shop_name }}{% endblock %}
+
+{% block content %}
+<a href="{% url 'dashboard:vendor_list' %}" class="text-sm text-gray-500 hover:text-brand mb-6 inline-block">← Back to vendors</a>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Left: vendor info + actions -->
+  <div class="space-y-5">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div class="flex items-center gap-3 mb-4">
+        {% if vendor.logo %}
+        <img src="{{ vendor.logo.url }}" class="w-14 h-14 rounded-xl object-cover"/>
+        {% else %}
+        <div class="w-14 h-14 rounded-xl bg-brand-light flex items-center justify-center text-2xl font-bold text-brand">
+          {{ vendor.shop_name|first|upper }}
+        </div>
+        {% endif %}
+        <div>
+          <p class="font-bold text-gray-800">{{ vendor.shop_name }}</p>
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+                       {% if vendor.status == 'active' %}bg-green-100 text-green-700
+                       {% elif vendor.status == 'pending' %}bg-yellow-100 text-yellow-700
+                       {% else %}bg-red-100 text-red-700{% endif %}">
+            {{ vendor.get_status_display }}
+          </span>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-sm text-gray-600 border-t border-gray-50 pt-4">
+        <div class="flex justify-between"><span class="text-gray-400">Owner</span><span>{{ vendor.owner.get_full_name|default:vendor.owner.phone }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Phone</span><span>{{ vendor.phone }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">MoMo payout</span><span>{{ vendor.momo_number }} ({{ vendor.get_momo_network_display }})</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Location</span><span>{{ vendor.location|default:"—" }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Joined</span><span>{{ vendor.joined_at|date:"M d, Y" }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Pending payout</span><span class="font-bold text-orange-500">GHS {{ pending|floatformat:2 }}</span></div>
+      </div>
+
+      <!-- Approve / Suspend -->
+      <div class="mt-4 space-y-2">
+        {% if vendor.status == 'pending' %}
+        <form method="POST">
+          {% csrf_token %}<input type="hidden" name="action" value="approve"/>
+          <button class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
+            ✓ Approve Vendor
+          </button>
+        </form>
+        {% elif vendor.status == 'active' %}
+        <a href="{% url 'vendors:shop' vendor.slug %}" target="_blank"
+           class="block w-full text-center border border-gray-200 text-gray-600 font-semibold py-2.5 rounded-xl text-sm hover:border-brand hover:text-brand transition-colors">
+          View Shop →
+        </a>
+        <form method="POST" onsubmit="return confirm('Suspend this vendor?')">
+          {% csrf_token %}<input type="hidden" name="action" value="suspend"/>
+          <button class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-2.5 rounded-xl text-sm transition-colors">
+            Suspend Vendor
+          </button>
+        </form>
+        {% elif vendor.status == 'suspended' %}
+        <form method="POST">
+          {% csrf_token %}<input type="hidden" name="action" value="approve"/>
+          <button class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
+            Re-activate Vendor
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Commission rate -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h2 class="font-bold text-gray-800 mb-3">Commission Rate</h2>
+      <form method="POST" class="flex gap-2">
+        {% csrf_token %}<input type="hidden" name="action" value="update_commission"/>
+        <input type="number" name="commission_rate" value="{{ vendor.commission_rate }}"
+               min="0" max="50" step="0.5"
+               class="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
+        <span class="flex items-center text-gray-500 font-bold">%</span>
+        <button class="bg-brand text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-brand-dark transition-colors">Save</button>
+      </form>
+      <p class="text-xs text-gray-400 mt-2">Default is 10%. Lynctel earns this % of every sale.</p>
+    </div>
+  </div>
+
+  <!-- Right: earnings + payout -->
+  <div class="lg:col-span-2">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+        <h2 class="font-bold text-gray-800">Earnings & Payouts</h2>
+        {% if earnings %}
+        <form method="POST" id="payout-form">
+          {% csrf_token %}<input type="hidden" name="action" value="mark_paid"/>
+          {% for e in earnings %}{% if e.status == 'pending' %}
+          <input type="hidden" name="earning_ids" value="{{ e.pk }}"/>
+          {% endif %}{% endfor %}
+          <button class="text-xs bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+                  onclick="return confirm('Mark all pending as paid? (GHS {{ pending|floatformat:2 }} to {{ vendor.momo_number }})')">
+            Mark All Paid (GHS {{ pending|floatformat:2 }})
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase bg-gray-50">
+            <th class="px-5 py-3 text-left font-semibold">Order</th>
+            <th class="px-5 py-3 text-left font-semibold">Date</th>
+            <th class="px-5 py-3 text-right font-semibold">Gross</th>
+            <th class="px-5 py-3 text-right font-semibold">Commission</th>
+            <th class="px-5 py-3 text-right font-semibold">Vendor gets</th>
+            <th class="px-5 py-3 text-right font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for e in earnings %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-5 py-3 font-bold text-brand">{{ e.order.order_ref }}</td>
+            <td class="px-5 py-3 text-gray-400">{{ e.created_at|date:"M d" }}</td>
+            <td class="px-5 py-3 text-right text-gray-600">GHS {{ e.gross_amount }}</td>
+            <td class="px-5 py-3 text-right text-red-400">-GHS {{ e.commission }}</td>
+            <td class="px-5 py-3 text-right font-bold text-green-600">GHS {{ e.net_amount }}</td>
+            <td class="px-5 py-3 text-right">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+                           {% if e.status == 'paid' %}bg-green-100 text-green-700{% else %}bg-orange-100 text-orange-700{% endif %}">
+                {{ e.get_status_display }}
+              </span>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="px-5 py-10 text-center text-gray-400">No earnings yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

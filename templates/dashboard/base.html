@@ -85,6 +85,12 @@
         Riders
       </a>
 
+      <a href="{% url 'dashboard:vendor_list' %}"
+   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+          {% if 'vendor' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+  Vendors
+</a>
+
       <hr class="border-gray-800 my-2"/>
 
       <a href="{% url 'frontend:home' %}" target="_blank"

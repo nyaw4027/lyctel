@@ -1,3 +1,5 @@
 from django.contrib import admin
-
-# Register your models here.
+from .models import Vendor, VendorEarning, AppCommission
+admin.site.register(Vendor)
+admin.site.register(VendorEarning)
+admin.site.register(AppCommission)

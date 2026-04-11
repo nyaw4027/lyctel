@@ -24,8 +24,7 @@ urlpatterns = [
 
     # Categories
     path('categories/',                   views.category_list,       name='category_list'),
-
-    # vendors
-    path('vendors/', views.vendor_list, name='vendor_list'),
-    path('vendors/<int:pk>/', views.vendor_detail, name='vendor_detail'),
+    path('vendors/',           views.vendor_list,       name='vendor_list'),
+    path('vendors/<int:pk>/',  views.vendor_detail,     name='vendor_detail'),
+    path('commissions/',       views.commission_overview, name='commissions'),
 ]

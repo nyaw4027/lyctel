@@ -297,3 +297,51 @@ def earnings(request):
         'pending':  pending,
         'paid_out': paid_out,
     })
+
+
+
+
+    """
+Add these two WhatsApp triggers to your existing vendors/views.py:
+
+1. In the apply() view — after Vendor.objects.create(...)
+2. In the vendor_detail() dashboard view — after vendor.status = ACTIVE
+"""
+
+# ── In apply() view, after vendor is created ──────────────
+# Add this block right after vendor.save() at the end of the create section:
+
+"""
+# Notify admin of new vendor application
+try:
+    from notifications.whatsapp import notify_admin_vendor_applied
+    notify_admin_vendor_applied(vendor)
+except Exception:
+    pass
+"""
+
+
+# ── In dashboard vendor_detail() view, after action == 'approve' ──
+# Add this block right after vendor.save():
+
+"""
+# Notify vendor they've been approved
+try:
+    from notifications.whatsapp import notify_vendor_approved
+    notify_vendor_approved(vendor)
+except Exception:
+    pass
+"""
+
+
+# ── In dashboard vendor_detail() view, after action == 'assign_rider' ──
+# Add this block in dashboard/views.py after Delivery.objects.create():
+
+"""
+# Notify rider of new delivery assignment
+try:
+    from notifications.whatsapp import notify_rider_assigned
+    notify_rider_assigned(delivery)  # delivery is the newly created Delivery object
+except Exception:
+    pass
+"""
