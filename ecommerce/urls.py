@@ -14,6 +14,7 @@ urlpatterns = [
     path('dashboard/', include('dashboard.urls')),
     path('rider/', include('rider.urls')),
     path('', include('reviews.urls')),
+    path('', include('vendors.urls')),
 ]
 
 if settings.DEBUG:

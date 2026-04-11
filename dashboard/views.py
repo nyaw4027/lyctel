@@ -392,3 +392,84 @@ def category_list(request):
     return render(request, 'dashboard/categories/list.html', {
         'categories': categories,
     })
+
+
+
+
+
+
+
+
+
+    # Add these to your existing dashboard/views.py
+# (append below the existing rider_detail view)
+
+from vendors.models import Vendor, VendorEarning, AppCommission
+from django.utils import timezone
+
+
+@admin_required
+def vendor_list(request):
+    vendors = Vendor.objects.select_related('owner').order_by('-joined_at')
+    return render(request, 'dashboard/vendors/list.html', {'vendors': vendors})
+
+
+@admin_required
+def vendor_detail(request, pk):
+    vendor   = get_object_or_404(Vendor, pk=pk)
+    earnings = VendorEarning.objects.filter(vendor=vendor).order_by('-created_at')[:20]
+    pending  = VendorEarning.objects.filter(
+        vendor=vendor, status='pending'
+    ).aggregate(t=models.Sum('net_amount'))['t'] or 0
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'approve':
+            vendor.status      = Vendor.Status.ACTIVE
+            vendor.approved_at = timezone.now()
+            vendor.save()
+            messages.success(request, f'"{vendor.shop_name}" approved!')
+
+        elif action == 'suspend':
+            vendor.status = Vendor.Status.SUSPENDED
+            vendor.save()
+            messages.warning(request, f'"{vendor.shop_name}" suspended.')
+
+        elif action == 'update_commission':
+            rate = request.POST.get('commission_rate')
+            if rate:
+                vendor.commission_rate = rate
+                vendor.save()
+                messages.success(request, f'Commission updated to {rate}%.')
+
+        elif action == 'mark_paid':
+            earning_ids = request.POST.getlist('earning_ids')
+            VendorEarning.objects.filter(
+                pk__in=earning_ids, vendor=vendor
+            ).update(status='paid', paid_at=timezone.now())
+            messages.success(request, 'Earnings marked as paid.')
+
+        return redirect('dashboard:vendor_detail', pk=pk)
+
+    return render(request, 'dashboard/vendors/detail.html', {
+        'vendor':   vendor,
+        'earnings': earnings,
+        'pending':  pending,
+    })
+
+
+@admin_required
+def commission_overview(request):
+    """See all commissions Lynctel has earned."""
+    from django.db.models import Sum
+    commissions = AppCommission.objects.select_related(
+        'order', 'vendor'
+    ).order_by('-created_at')
+
+    total = commissions.aggregate(t=Sum('amount'))['t'] or 0
+
+    return render(request, 'dashboard/vendors/commissions.html', {
+        'commissions': commissions,
+        'total':       total,
+    })
