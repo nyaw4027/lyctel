@@ -51,6 +51,37 @@
 
       <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">{{ product.name }}</h1>
 
+      {# ============================================================ #}
+{# ADD THIS BLOCK inside product_detail.html                   #}
+{# Place it just BELOW the product name <h1> tag               #}
+{# ============================================================ #}
+
+{% if product.vendor %}
+<a href="{% url 'vendors:shop' product.vendor.slug %}"
+   class="inline-flex items-center gap-2 bg-gray-50 hover:bg-brand-light border border-gray-200
+          hover:border-brand rounded-xl px-3 py-2 mb-4 transition-colors group">
+  {% if product.vendor.logo %}
+  <img src="{{ product.vendor.logo.url }}"
+       class="w-7 h-7 rounded-lg object-cover flex-shrink-0"/>
+  {% else %}
+  <div class="w-7 h-7 rounded-lg bg-brand flex items-center justify-center
+              text-white font-bold text-xs flex-shrink-0">
+    {{ product.vendor.shop_name|first|upper }}
+  </div>
+  {% endif %}
+  <div class="text-left">
+    <p class="text-xs text-gray-400">Sold by</p>
+    <p class="text-sm font-semibold text-gray-800 group-hover:text-brand transition-colors">
+      {{ product.vendor.shop_name }}
+    </p>
+  </div>
+  <svg class="w-4 h-4 text-gray-400 group-hover:text-brand ml-1 transition-colors"
+       fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+  </svg>
+</a>
+{% endif %}
+
       <!-- Rating summary -->
       {% if review_count %}
       <div class="flex items-center gap-2 mb-4">

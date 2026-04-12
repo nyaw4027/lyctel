@@ -20,7 +20,6 @@
          class="fixed inset-y-0 left-0 z-50 w-60 bg-gray-900 text-white flex flex-col
                 transition-transform duration-200 -translate-x-full lg:translate-x-0">
 
-    <!-- Logo -->
     <div class="px-5 py-5 border-b border-gray-800">
       <a href="{% url 'dashboard:home' %}" class="flex items-center gap-2 font-bold text-lg">
         <svg class="w-6 h-6 text-brand" fill="currentColor" viewBox="0 0 24 24">
@@ -31,7 +30,6 @@
       <p class="text-xs text-gray-500 mt-1">{{ request.user.get_full_name }}</p>
     </div>
 
-    <!-- Nav -->
     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
       {% with request.resolver_match.url_name as url_name %}
 
@@ -53,7 +51,6 @@
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
         Orders
-        {% if pending_count %}<span class="ml-auto bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{{ pending_count }}</span>{% endif %}
       </a>
 
       <a href="{% url 'dashboard:product_list' %}"
@@ -85,11 +82,16 @@
         Riders
       </a>
 
+      <!-- VENDORS (new) -->
       <a href="{% url 'dashboard:vendor_list' %}"
-   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-          {% if 'vendor' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
-  Vendors
-</a>
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                {% if 'vendor' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+        </svg>
+        Vendors
+      </a>
 
       <hr class="border-gray-800 my-2"/>
 
@@ -104,7 +106,6 @@
       {% endwith %}
     </nav>
 
-    <!-- Sign out -->
     <div class="px-3 py-4 border-t border-gray-800">
       <a href="{% url 'accounts:logout' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-red-900 hover:text-red-200 transition-colors">
@@ -116,26 +117,20 @@
     </div>
   </aside>
 
-  <!-- MAIN CONTENT -->
+  <!-- MAIN -->
   <div class="flex-1 lg:ml-60 flex flex-col min-h-screen">
-
-    <!-- Top bar -->
     <header class="bg-white border-b border-gray-200 px-4 lg:px-6 h-14 flex items-center justify-between sticky top-0 z-40">
-      <!-- Mobile menu toggle -->
       <button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')"
               class="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
       </button>
-      <h1 class="text-sm font-semibold text-gray-700 lg:hidden">{% block page_title %}Dashboard{% endblock %}</h1>
+      <h1 class="text-sm font-semibold text-gray-700">{% block page_title %}Dashboard{% endblock %}</h1>
       <h1 class="text-sm font-semibold text-gray-700 hidden lg:block">{% block page_title_lg %}{% endblock %}</h1>
-      <div class="flex items-center gap-3 text-sm text-gray-500">
-        <span class="hidden md:inline">{{ request.user.get_full_name|default:request.user.phone }}</span>
-      </div>
+      <span class="text-sm text-gray-500 hidden md:block">{{ request.user.get_full_name|default:request.user.phone }}</span>
     </header>
 
-    <!-- Flash messages -->
     {% if messages %}
     <div class="px-4 lg:px-6 pt-4 space-y-2">
       {% for message in messages %}
@@ -150,16 +145,11 @@
     </div>
     {% endif %}
 
-    <!-- Page content -->
     <main class="flex-1 px-4 lg:px-6 py-6">
       {% block content %}{% endblock %}
     </main>
   </div>
 </div>
-
-<!-- Overlay for mobile -->
-<div onclick="document.getElementById('sidebar').classList.add('-translate-x-full')"
-     class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden" id="overlay"></div>
 
 {% block extra_js %}{% endblock %}
 </body>

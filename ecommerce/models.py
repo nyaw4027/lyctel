@@ -7,6 +7,7 @@ class User(AbstractUser):
         CUSTOMER = 'customer', 'Customer'
         ADMIN    = 'admin',    'Admin'
         RIDER    = 'rider',    'Rider'
+        VENDOR   = 'vendor',   'Vendor'
 
     role        = models.CharField(max_length=10, choices=Role.choices, default=Role.CUSTOMER)
     phone       = models.CharField(max_length=15, unique=True)

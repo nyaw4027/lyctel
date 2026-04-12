@@ -9,9 +9,8 @@
   <div class="space-y-4">
     {% for order in orders %}
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <!-- Order header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50 flex-wrap gap-2">
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4 flex-wrap">
           <div>
             <p class="text-xs text-gray-400 uppercase tracking-wider">Order</p>
             <p class="font-bold text-brand">{{ order.order_ref }}</p>
@@ -25,9 +24,7 @@
             <p class="text-sm font-bold text-gray-800">GHS {{ order.total_amount }}</p>
           </div>
         </div>
-
-        <div class="flex items-center gap-3">
-          <!-- Order status badge -->
+        <div class="flex items-center gap-2 flex-wrap">
           <span class="text-xs font-semibold px-3 py-1 rounded-full
                        {% if order.status == 'delivered' %}bg-green-100 text-green-700
                        {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
@@ -36,8 +33,6 @@
                        {% else %}bg-gray-100 text-gray-600{% endif %}">
             {{ order.get_status_display }}
           </span>
-
-          <!-- Payment status -->
           <span class="text-xs font-semibold px-3 py-1 rounded-full
                        {% if order.payment_status == 'paid' %}bg-green-100 text-green-700
                        {% elif order.payment_status == 'failed' %}bg-red-100 text-red-700
@@ -47,28 +42,21 @@
         </div>
       </div>
 
-      <!-- Order items -->
-      <div class="px-5 py-4 space-y-2">
+      <div class="px-5 py-3 space-y-1.5">
         {% for item in order.items.all %}
         <div class="flex items-center justify-between text-sm text-gray-600">
-          <span class="truncate max-w-[280px]">{{ item.product_name }} × {{ item.quantity }}</span>
-          <span class="font-medium flex-shrink-0 ml-4">GHS {{ item.subtotal }}</span>
+          <span class="truncate max-w-[240px]">{{ item.product_name }} × {{ item.quantity }}</span>
+          <span class="font-medium ml-4 flex-shrink-0">GHS {{ item.subtotal }}</span>
         </div>
         {% endfor %}
       </div>
 
-      <!-- Footer -->
-      <div class="px-5 py-3 bg-gray-50 flex items-center justify-between text-xs text-gray-400 flex-wrap gap-2">
-        <span>📍 {{ order.delivery_city }} · {{ order.delivery_phone }}</span>
-        {% if order.status == 'pending' or order.status == 'confirmed' %}
-        <a href="https://wa.me/233XXXXXXXXX?text=Hi!+My+order+ref+is+{{ order.order_ref }}"
-           target="_blank"
-           class="text-green-600 font-semibold hover:underline">
-          Track on WhatsApp →
+      <div class="px-5 py-3 bg-gray-50 flex items-center justify-between flex-wrap gap-2">
+        <span class="text-xs text-gray-400">📍 {{ order.delivery_city }} · {{ order.delivery_phone }}</span>
+        <a href="{% url 'order:tracking' order.order_ref %}"
+           class="text-xs {% if order.status not in 'delivered,cancelled,refunded' %}bg-brand hover:bg-brand-dark text-white px-4 py-1.5 rounded-lg{% else %}text-brand hover:underline{% endif %} font-semibold transition-colors">
+          {% if order.status not in 'delivered,cancelled,refunded' %}Track Order{% else %}View Details →{% endif %}
         </a>
-        {% elif order.status == 'delivered' %}
-        <span class="text-green-600 font-semibold">✓ Delivered</span>
-        {% endif %}
       </div>
     </div>
     {% endfor %}

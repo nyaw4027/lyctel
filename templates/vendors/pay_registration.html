@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Pay Registration Fee — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto px-4 py-16 text-center">
+
+  <!-- Icon -->
+  <div class="w-20 h-20 bg-brand-light rounded-full flex items-center justify-center mx-auto mb-5">
+    <svg class="w-10 h-10 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+    </svg>
+  </div>
+
+  <h1 class="text-2xl font-bold text-gray-800 mb-2">Almost There!</h1>
+  <p class="text-gray-500 text-sm mb-2">
+    Pay the one-time registration fee to activate your shop:
+  </p>
+  <p class="text-4xl font-bold text-brand mb-2">GHS 100</p>
+  <p class="text-xs text-gray-400 mb-8">
+    Shop name: <span class="font-semibold text-gray-700">{{ shop_name }}</span>
+  </p>
+
+  <!-- What you get -->
+  <div class="bg-green-50 border border-green-100 rounded-2xl p-5 text-left mb-8 text-sm">
+    <p class="font-semibold text-green-800 mb-3">What you get:</p>
+    <ul class="space-y-2 text-green-700">
+      <li class="flex items-center gap-2"><span>✓</span> Your own shop page on Lynctel</li>
+      <li class="flex items-center gap-2"><span>✓</span> Keep 90% of every sale</li>
+      <li class="flex items-center gap-2"><span>✓</span> We handle delivery across Ghana</li>
+      <li class="flex items-center gap-2"><span>✓</span> Unlimited product listings</li>
+      <li class="flex items-center gap-2"><span>✓</span> Weekly MoMo payouts</li>
+    </ul>
+  </div>
+
+  <!-- Waiting state -->
+  <div id="waiting" class="hidden">
+    <div class="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+    <p class="text-sm text-gray-500">Opening payment window...</p>
+  </div>
+
+  <!-- Pay button -->
+  <button id="pay-btn"
+          onclick="startPayment()"
+          class="w-full bg-brand hover:bg-brand-dark text-white font-bold py-4 rounded-xl
+                 transition-colors text-lg mb-3">
+    Pay GHS 100 & Open Shop
+  </button>
+
+  <a href="{% url 'vendors:apply' %}" class="text-sm text-gray-400 hover:text-brand">
+    ← Go back
+  </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://checkout.flutterwave.com/v3.js"></script>
+<script>
+  const config = {{ flw_config|safe }};
+
+  config.callback = function(response) {
+    window.location.href = `/vendor/apply/payment/callback/?status=${response.status}&tx_ref=${response.tx_ref}&transaction_id=${response.transaction_id}`;
+  };
+
+  config.onclose = function() {
+    document.getElementById('pay-btn').disabled = false;
+    document.getElementById('pay-btn').innerHTML = 'Pay GHS 100 & Open Shop';
+    document.getElementById('waiting').classList.add('hidden');
+  };
+
+  function startPayment() {
+    document.getElementById('pay-btn').disabled = true;
+    document.getElementById('pay-btn').innerHTML = 'Opening...';
+    document.getElementById('waiting').classList.remove('hidden');
+    setTimeout(() => FlutterwaveCheckout(config), 500);
+  }
+</script>
+{% endblock %}

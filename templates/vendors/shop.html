@@ -1,97 +1,176 @@
-{% comment %}templates/vendors/shop.html{% endcomment %}
 {% extends "base.html" %}
 {% block title %}{{ vendor.shop_name }} — Lynctel{% endblock %}
-{% block content %}
-<div class="max-w-6xl mx-auto px-4 py-8">
 
-  <!-- Shop banner -->
-  <div class="bg-gradient-to-r from-brand to-blue-700 rounded-2xl overflow-hidden mb-8">
-    {% if vendor.banner %}
-    <img src="{{ vendor.banner.url }}" class="w-full h-40 object-cover opacity-60"/>
-    {% endif %}
-    <div class="px-8 py-8 {% if vendor.banner %}-mt-32 relative{% endif %}">
-      <div class="flex items-center gap-4">
-        {% if vendor.logo %}
-        <img src="{{ vendor.logo.url }}" class="w-16 h-16 rounded-xl object-cover border-2 border-white"/>
-        {% else %}
-        <div class="w-16 h-16 rounded-xl bg-white flex items-center justify-center text-2xl font-bold text-brand">
-          {{ vendor.shop_name|first|upper }}
+{% block content %}
+
+<!-- Shop Banner -->
+<div class="relative">
+  {% if vendor.banner %}
+  <img src="{{ vendor.banner.url }}" class="w-full h-52 object-cover"/>
+  <div class="absolute inset-0 bg-black bg-opacity-40"></div>
+  {% else %}
+  <div class="w-full h-52 bg-gradient-to-br from-brand to-blue-700"></div>
+  {% endif %}
+  <div class="absolute bottom-0 left-0 right-0 px-4 pb-6">
+    <div class="max-w-6xl mx-auto flex items-end gap-4">
+      {% if vendor.logo %}
+      <img src="{{ vendor.logo.url }}"
+           class="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-lg flex-shrink-0"/>
+      {% else %}
+      <div class="w-20 h-20 rounded-2xl bg-white flex items-center justify-center
+                  text-brand font-bold text-3xl border-4 border-white shadow-lg flex-shrink-0">
+        {{ vendor.shop_name|first|upper }}
+      </div>
+      {% endif %}
+      <div class="text-white pb-1">
+        <div class="flex items-center gap-2 mb-0.5">
+          <h1 class="text-xl font-bold">{{ vendor.shop_name }}</h1>
+          <span class="text-xs bg-green-500 text-white font-semibold px-2 py-0.5 rounded-full">✓ Verified</span>
         </div>
-        {% endif %}
-        <div class="text-white">
-          <h1 class="text-2xl font-bold">{{ vendor.shop_name }}</h1>
-          {% if vendor.location %}<p class="text-blue-100 text-sm">📍 {{ vendor.location }}</p>{% endif %}
-          {% if vendor.description %}<p class="text-blue-100 text-sm mt-1">{{ vendor.description|truncatechars:100 }}</p>{% endif %}
-        </div>
+        {% if vendor.location %}<p class="text-blue-100 text-sm">📍 {{ vendor.location }}</p>{% endif %}
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Search -->
-  <form method="GET" class="mb-6">
-    <div class="relative max-w-md">
-      <input type="text" name="q" value="{{ search }}" placeholder="Search {{ vendor.shop_name }}..."
-             class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-      <button type="submit" class="absolute right-3 top-2.5 text-gray-400 hover:text-brand">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
-        </svg>
-      </button>
+<div class="max-w-6xl mx-auto px-4 py-8">
+
+  <!-- Stats row -->
+  <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
+    <div class="flex-1">
+      {% if vendor.description %}
+      <p class="text-gray-600 text-sm max-w-xl leading-relaxed">{{ vendor.description }}</p>
+      {% endif %}
     </div>
-  </form>
+    <div class="flex gap-6 text-center flex-shrink-0">
+      <div><p class="text-xl font-bold text-gray-800">{{ total_products }}</p><p class="text-xs text-gray-400">Products</p></div>
+      <div><p class="text-xl font-bold text-gray-800">{{ vendor.total_sales }}</p><p class="text-xs text-gray-400">Orders</p></div>
+      <div><p class="text-xl font-bold text-gray-800">{{ vendor.joined_at|date:"Y" }}</p><p class="text-xs text-gray-400">Since</p></div>
+    </div>
+  </div>
+
+  <!-- Search + sort -->
+  <div class="flex flex-col sm:flex-row gap-3 mb-5">
+    <form method="GET" class="flex-1 flex gap-2">
+      {% if filter_cat %}<input type="hidden" name="category" value="{{ filter_cat }}">{% endif %}
+      <div class="relative flex-1">
+        <input type="text" name="q" value="{{ search }}"
+               placeholder="Search {{ vendor.shop_name }}..."
+               class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
+        <button type="submit" class="absolute right-3 top-2.5 text-gray-400 hover:text-brand">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+          </svg>
+        </button>
+      </div>
+    </form>
+    <form method="GET" id="sort-form">
+      {% if search %}<input type="hidden" name="q" value="{{ search }}">{% endif %}
+      {% if filter_cat %}<input type="hidden" name="category" value="{{ filter_cat }}">{% endif %}
+      <select name="sort" onchange="document.getElementById('sort-form').submit()"
+              class="px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
+        <option value="newest"     {% if sort == 'newest'     %}selected{% endif %}>Newest</option>
+        <option value="price_low"  {% if sort == 'price_low'  %}selected{% endif %}>Price ↑</option>
+        <option value="price_high" {% if sort == 'price_high' %}selected{% endif %}>Price ↓</option>
+        <option value="name"       {% if sort == 'name'       %}selected{% endif %}>A–Z</option>
+      </select>
+    </form>
+  </div>
+
+  <!-- Category pills -->
+  {% if categories %}
+  <div class="flex gap-2 overflow-x-auto pb-2 mb-6">
+    <a href="{% url 'vendors:shop' vendor.slug %}"
+       class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium border transition-colors
+              {% if not filter_cat %}bg-brand text-white border-brand{% else %}bg-white border-gray-300 text-gray-600 hover:border-brand hover:text-brand{% endif %}">
+      All ({{ total_products }})
+    </a>
+    {% for cat in categories %}
+    <a href="?category={{ cat.slug }}{% if search %}&q={{ search }}{% endif %}"
+       class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium border transition-colors
+              {% if filter_cat == cat.slug %}bg-brand text-white border-brand{% else %}bg-white border-gray-300 text-gray-600 hover:border-brand hover:text-brand{% endif %}">
+      {{ cat.name }}
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   <!-- Products -->
   {% if products %}
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
     {% for product in products %}
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden group flex flex-col">
-      <a href="{% url 'products:detail' product.slug %}" class="block overflow-hidden">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md
+                transition-all overflow-hidden group flex flex-col">
+      <a href="{% url 'products:detail' product.slug %}" class="block overflow-hidden relative">
         {% with product.images.first as img %}
         {% if img %}
-        <img src="{{ img.image.url }}" alt="{{ product.name }}" class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"/>
+        <img src="{{ img.image.url }}" alt="{{ product.name }}"
+             class="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300"/>
         {% else %}
-        <div class="w-full h-40 bg-gray-100 flex items-center justify-center text-4xl">📦</div>
+        <div class="w-full h-44 bg-gray-100 flex items-center justify-center text-5xl">📦</div>
         {% endif %}
         {% endwith %}
+        {% if not product.is_in_stock %}
+        <span class="absolute top-2 left-2 bg-gray-700 text-white text-xs px-2 py-0.5 rounded-full">Out of stock</span>
+        {% elif product.stock_qty <= product.low_stock_alert %}
+        <span class="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">Only {{ product.stock_qty }} left</span>
+        {% endif %}
       </a>
       <div class="p-3 flex flex-col flex-1">
         <a href="{% url 'products:detail' product.slug %}"
-           class="text-sm font-semibold text-gray-800 hover:text-brand line-clamp-2 mb-auto">
+           class="text-sm font-semibold text-gray-800 hover:text-brand line-clamp-2 mb-1 leading-tight">
           {{ product.name }}
         </a>
-        <div class="flex items-center justify-between mt-2">
+        {% if product.category %}<span class="text-xs text-gray-400 mb-2">{{ product.category.name }}</span>{% endif %}
+        <div class="mt-auto flex items-center justify-between gap-2">
           <span class="font-bold text-brand text-sm">GHS {{ product.selling_price }}</span>
           {% if product.is_in_stock %}
-          <button onclick="quickAdd({{ product.pk }}, this)"
+          <button onclick="addToCart({{ product.pk }}, this)"
                   class="text-xs bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded-lg transition-colors">
             + Cart
           </button>
           {% else %}
-          <span class="text-xs text-gray-400">Out of stock</span>
+          <span class="text-xs text-gray-400">Unavailable</span>
           {% endif %}
         </div>
       </div>
     </div>
     {% endfor %}
   </div>
+
   {% else %}
-  <div class="text-center py-20 text-gray-400">
-    <p class="text-5xl mb-3">🔍</p>
-    <p class="font-medium text-gray-600">No products found</p>
-    {% if search %}<a href="{% url 'vendors:shop' vendor.slug %}" class="text-brand text-sm hover:underline">Clear search</a>{% endif %}
+  <div class="flex flex-col items-center justify-center py-24 text-center">
+    <p class="text-6xl mb-4">🔍</p>
+    <h3 class="text-lg font-semibold text-gray-700 mb-1">No products found</h3>
+    {% if search or filter_cat %}
+    <a href="{% url 'vendors:shop' vendor.slug %}" class="text-brand text-sm hover:underline mt-2">Clear filters →</a>
+    {% else %}
+    <p class="text-gray-400 text-sm">This shop hasn't added products yet.</p>
+    {% endif %}
   </div>
   {% endif %}
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  function quickAdd(productId, btn) {
-    const orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '...';
-    const fd = new FormData(); fd.append('csrfmiddlewaretoken', CSRF_TOKEN); fd.append('quantity', 1);
-    fetch(`/cart/add/${productId}/`, { method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: fd })
-    .then(r => r.json()).then(d => {
-      if (d.success) { btn.innerHTML = '✓'; btn.classList.replace('bg-brand','bg-green-500'); updateCartBadge(d.cart_count); setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; btn.classList.replace('bg-green-500','bg-brand'); }, 2000); }
+  function addToCart(productId, btn) {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '...'; btn.disabled = true;
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+    fd.append('quantity', 1);
+    fetch(`/cart/add/${productId}/`, {
+      method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: fd
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        btn.innerHTML = '✓'; btn.classList.replace('bg-brand', 'bg-green-500');
+        updateCartBadge(d.cart_count);
+        setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; btn.classList.replace('bg-green-500', 'bg-brand'); }, 2000);
+      }
     });
   }
 </script>
