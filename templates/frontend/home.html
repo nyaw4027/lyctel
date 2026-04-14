@@ -3,166 +3,246 @@
 
 {% block content %}
 
-<!-- HERO -->
-<section class="bg-gradient-to-br from-brand to-blue-800 text-white">
-  <div class="max-w-6xl mx-auto px-4 py-16 md:py-24 flex flex-col md:flex-row items-center gap-10">
-    <div class="flex-1 text-center md:text-left">
-      <span class="inline-block bg-white bg-opacity-20 text-sm px-4 py-1 rounded-full mb-4">
-        🇬🇭 Fast Delivery Across Ghana
-      </span>
-      <h1 class="text-4xl md:text-5xl font-bold leading-tight mb-4">
-        Quality Imports.<br/>Delivered to You.
-      </h1>
-      <p class="text-blue-100 text-lg mb-8 max-w-md">
-        Browse our curated selection of imported goods — electronics, fashion, gadgets and more — shipped straight to your door.
-      </p>
-      <div class="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
-        <a href="{% url 'products:list' %}"
-           class="bg-white text-brand font-bold px-8 py-3 rounded-xl hover:bg-blue-50 transition-colors text-center">
-          Shop Now
-        </a>
-        <a href="#categories"
-           class="border border-white border-opacity-50 text-white px-8 py-3 rounded-xl hover:bg-white hover:bg-opacity-10 transition-colors text-center">
-          Browse Categories
-        </a>
-      </div>
-    </div>
-    <div class="flex-1 flex justify-center">
-      <div class="grid grid-cols-2 gap-3 max-w-xs w-full">
-        {% for p in featured %}
-        <a href="{% url 'products:detail' p.slug %}"
-           class="bg-white bg-opacity-10 hover:bg-opacity-20 rounded-2xl p-3 transition-all group">
-          {% with p.images.first as img %}
-          {% if img %}
-          <img src="{{ img.image.url }}" alt="{{ p.name }}"
-               class="w-full h-24 object-cover rounded-lg mb-2 group-hover:scale-105 transition-transform"/>
-          {% else %}
-          <div class="w-full h-24 bg-white bg-opacity-20 rounded-lg mb-2 flex items-center justify-center text-3xl">📦</div>
-          {% endif %}
-          {% endwith %}
-          <p class="text-xs font-semibold truncate">{{ p.name }}</p>
-          <p class="text-xs text-blue-200">GHS {{ p.selling_price }}</p>
-        </a>
-        {% empty %}
-        <!-- placeholder tiles when no featured products yet -->
-        {% for i in "1234" %}
-        <div class="bg-white bg-opacity-10 rounded-2xl p-3 h-36 flex items-center justify-center">
-          <span class="text-3xl opacity-40">📦</span>
+<!-- ── HERO ───────────────────────────────────────────── -->
+<section class="relative overflow-hidden bg-navy">
+
+  <!-- Background pattern -->
+  <div class="absolute inset-0 opacity-5"
+       style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 32px 32px;"></div>
+
+  <!-- Gold accent blob -->
+  <div class="absolute top-0 right-0 w-96 h-96 bg-gold opacity-10 rounded-full
+              translate-x-1/3 -translate-y-1/4 blur-3xl pointer-events-none"></div>
+
+  <div class="relative max-w-7xl mx-auto px-4 md:px-6 py-16 md:py-24">
+    <div class="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+
+      <!-- Left: copy -->
+      <div class="flex-1 text-center lg:text-left">
+        <div class="inline-flex items-center gap-2 bg-white/10 text-gold text-xs font-semibold
+                    px-4 py-2 rounded-full mb-6 fade-up fade-up-1">
+          <span class="w-1.5 h-1.5 bg-gold rounded-full"></span>
+          Fast Delivery Across Ghana 🇬🇭
         </div>
-        {% endfor %}
-        {% endfor %}
+        <h1 class="font-display font-800 text-4xl md:text-5xl lg:text-6xl text-white
+                   leading-tight mb-6 fade-up fade-up-2">
+          Quality Imports.<br/>
+          <span class="shimmer">Delivered Fast.</span>
+        </h1>
+        <p class="text-gray-300 text-lg mb-8 max-w-lg mx-auto lg:mx-0 fade-up fade-up-3
+                  leading-relaxed">
+          Browse electronics, fashion, gadgets and more — imported and delivered straight to your door.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start fade-up fade-up-3">
+          <a href="{% url 'products:list' %}"
+             class="bg-gold hover:bg-gold-dark text-navy font-semibold px-8 py-3.5
+                    rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/30">
+            Shop Now
+          </a>
+          <a href="{% url 'vendors:directory' %}"
+             class="bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-3.5
+                    rounded-2xl transition-colors btn-press text-center">
+            Browse Shops
+          </a>
+        </div>
+      </div>
+
+      <!-- Right: featured product cards -->
+      <div class="flex-1 w-full max-w-sm mx-auto lg:mx-0">
+        {% if featured %}
+        <div class="grid grid-cols-2 gap-3">
+          {% for p in featured %}
+          <a href="{% url 'products:detail' p.slug %}"
+             class="bg-white/10 hover:bg-white/15 backdrop-blur-sm rounded-2xl
+                    overflow-hidden transition-all duration-200 group border border-white/10
+                    fade-up" style="animation-delay: {{ forloop.counter0|add:'2' }}00ms; opacity:0">
+            {% with p.images.first as img %}
+            {% if img %}
+            <img src="{{ img.image.url }}" alt="{{ p.name }}"
+                 class="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-300"/>
+            {% else %}
+            <div class="w-full h-28 bg-white/5 flex items-center justify-center text-3xl">📦</div>
+            {% endif %}
+            {% endwith %}
+            <div class="p-3">
+              <p class="text-white text-xs font-medium truncate">{{ p.name }}</p>
+              <p class="text-gold text-xs font-semibold mt-0.5">GHS {{ p.selling_price }}</p>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="grid grid-cols-2 gap-3">
+          {% for i in "1234" %}
+          <div class="bg-white/10 rounded-2xl h-44 animate-pulse"></div>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
 </section>
 
-<!-- TRUST BADGES -->
-<section class="bg-white border-b border-gray-100">
-  <div class="max-w-6xl mx-auto px-4 py-5 grid grid-cols-2 md:grid-cols-4 gap-4">
-    {% for icon, title, sub in badges %}{% endfor %}
-    <div class="flex items-center gap-3 text-sm">
-      <span class="text-2xl">🚚</span>
-      <div><p class="font-semibold text-gray-800">Fast Delivery</p><p class="text-gray-500 text-xs">Accra same day</p></div>
-    </div>
-    <div class="flex items-center gap-3 text-sm">
-      <span class="text-2xl">📱</span>
-      <div><p class="font-semibold text-gray-800">MoMo Payment</p><p class="text-gray-500 text-xs">MTN, Vodafone, AirtelTigo</p></div>
-    </div>
-    <div class="flex items-center gap-3 text-sm">
-      <span class="text-2xl">✅</span>
-      <div><p class="font-semibold text-gray-800">Quality Assured</p><p class="text-gray-500 text-xs">Verified imports only</p></div>
-    </div>
-    <div class="flex items-center gap-3 text-sm">
-      <span class="text-2xl">💬</span>
-      <div><p class="font-semibold text-gray-800">WhatsApp Support</p><p class="text-gray-500 text-xs">7 days a week</p></div>
+<!-- ── TRUST BADGES ───────────────────────────────────── -->
+<section class="border-b border-gray-100 bg-white">
+  <div class="max-w-7xl mx-auto px-4 md:px-6 py-5">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      {% for icon, title, sub in badge_list %}{% endfor %}
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gold-light rounded-xl flex items-center justify-center text-xl flex-shrink-0">🚚</div>
+        <div><p class="font-semibold text-navy text-sm">Fast Delivery</p><p class="text-gray-400 text-xs">Accra same day</p></div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">📱</div>
+        <div><p class="font-semibold text-navy text-sm">MoMo Payment</p><p class="text-gray-400 text-xs">MTN, Vodafone, AirtelTigo</p></div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">✅</div>
+        <div><p class="font-semibold text-navy text-sm">Quality Assured</p><p class="text-gray-400 text-xs">Verified imports only</p></div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">💬</div>
+        <div><p class="font-semibold text-navy text-sm">WhatsApp Support</p><p class="text-gray-400 text-xs">7 days a week</p></div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- CATEGORIES -->
-<section id="categories" class="max-w-6xl mx-auto px-4 py-12">
-  <div class="flex items-center justify-between mb-6">
-    <h2 class="text-2xl font-bold text-gray-800">Shop by Category</h2>
-    <a href="{% url 'products:list' %}" class="text-sm text-brand hover:underline">View all →</a>
+<!-- ── CATEGORIES ─────────────────────────────────────── -->
+{% if categories %}
+<section class="max-w-7xl mx-auto px-4 md:px-6 py-14">
+  <div class="flex items-end justify-between mb-8">
+    <div>
+      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-2">Browse by</p>
+      <h2 class="font-display font-700 text-2xl md:text-3xl text-navy">Categories</h2>
+    </div>
+    <a href="{% url 'products:list' %}"
+       class="text-sm font-semibold text-navy hover:text-gold transition-colors flex items-center gap-1">
+      View all <span>→</span>
+    </a>
   </div>
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+  <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
     {% for category in categories %}
     <a href="{% url 'products:list' %}?category={{ category.slug }}"
-       class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand
-              transition-all p-4 flex flex-col items-center gap-2 group">
+       class="group bg-white hover:bg-navy rounded-2xl border border-gray-100
+              p-4 flex flex-col items-center gap-2.5 transition-all duration-200
+              hover:border-navy hover:shadow-lg hover:shadow-navy/10 card-hover">
       {% if category.icon %}
-      <img src="{{ category.icon.url }}" alt="{{ category.name }}" class="w-10 h-10 object-cover rounded-lg"/>
+      <img src="{{ category.icon.url }}" alt="{{ category.name }}"
+           class="w-10 h-10 object-cover rounded-xl"/>
       {% else %}
-      <div class="w-10 h-10 bg-brand-light rounded-lg flex items-center justify-center">
-        <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+      <div class="w-10 h-10 bg-gold-light rounded-xl flex items-center justify-center
+                  group-hover:bg-gold/20 transition-colors">
+        <svg class="w-5 h-5 text-gold-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
         </svg>
       </div>
       {% endif %}
-      <span class="text-xs font-semibold text-gray-700 text-center group-hover:text-brand transition-colors">
+      <span class="text-xs font-semibold text-center text-navy group-hover:text-white
+                   transition-colors leading-tight">
         {{ category.name }}
       </span>
     </a>
-    {% empty %}
-    <div class="col-span-full text-center py-8 text-gray-400 text-sm">No categories yet — add some in admin.</div>
     {% endfor %}
   </div>
 </section>
+{% endif %}
 
-<!-- NEW ARRIVALS -->
-<section class="max-w-6xl mx-auto px-4 pb-12">
-  <div class="flex items-center justify-between mb-6">
-    <h2 class="text-2xl font-bold text-gray-800">New Arrivals</h2>
-    <a href="{% url 'products:list' %}" class="text-sm text-brand hover:underline">See all →</a>
-  </div>
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-    {% for product in new_products %}
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden group flex flex-col">
-      <a href="{% url 'products:detail' product.slug %}" class="block overflow-hidden">
-        {% with product.images.first as img %}
-        {% if img %}
-        <img src="{{ img.image.url }}" alt="{{ product.name }}"
-             class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"/>
-        {% else %}
-        <div class="w-full h-40 bg-gray-100 flex items-center justify-center text-4xl">📦</div>
-        {% endif %}
-        {% endwith %}
+<!-- ── NEW ARRIVALS ───────────────────────────────────── -->
+<section class="bg-white py-14">
+  <div class="max-w-7xl mx-auto px-4 md:px-6">
+    <div class="flex items-end justify-between mb-8">
+      <div>
+        <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-2">Just landed</p>
+        <h2 class="font-display font-700 text-2xl md:text-3xl text-navy">New Arrivals</h2>
+      </div>
+      <a href="{% url 'products:list' %}"
+         class="text-sm font-semibold text-navy hover:text-gold transition-colors flex items-center gap-1">
+        See all <span>→</span>
       </a>
-      <div class="p-3 flex flex-col flex-1">
-        <a href="{% url 'products:detail' product.slug %}"
-           class="text-sm font-semibold text-gray-800 hover:text-brand line-clamp-2 mb-2">
-          {{ product.name }}
-        </a>
-        <div class="mt-auto flex items-center justify-between">
-          <span class="font-bold text-brand text-sm">GHS {{ product.selling_price }}</span>
-          {% if product.is_in_stock %}
-          <button onclick="quickAdd({{ product.pk }}, this)"
-                  class="text-xs bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded-lg transition-colors">
-            + Cart
-          </button>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      {% for product in new_products %}
+      <div class="group bg-cream rounded-2xl overflow-hidden card-hover border border-gray-100 flex flex-col">
+        <a href="{% url 'products:detail' product.slug %}" class="relative block overflow-hidden">
+          {% with product.images.first as img %}
+          {% if img %}
+          <img src="{{ img.image.url }}" alt="{{ product.name }}"
+               class="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-500"/>
           {% else %}
-          <span class="text-xs text-gray-400">Out of stock</span>
+          <div class="w-full h-44 bg-gray-100 flex items-center justify-center">
+            <span class="text-5xl opacity-20">📦</span>
+          </div>
           {% endif %}
+          {% endwith %}
+          {% if product.is_featured %}
+          <span class="absolute top-2.5 right-2.5 bg-gold text-navy text-[10px] font-bold
+                       px-2 py-0.5 rounded-full">⭐ Pick</span>
+          {% endif %}
+        </a>
+        <div class="p-3.5 flex flex-col flex-1">
+          <a href="{% url 'products:detail' product.slug %}"
+             class="text-sm font-semibold text-navy hover:text-gold transition-colors
+                    line-clamp-2 mb-2 leading-snug">
+            {{ product.name }}
+          </a>
+          <div class="mt-auto flex items-center justify-between">
+            <span class="font-display font-700 text-navy text-base">GHS {{ product.selling_price }}</span>
+            {% if product.is_in_stock %}
+            <button onclick="quickAdd({{ product.pk }}, this)"
+                    class="text-xs bg-navy hover:bg-gold hover:text-navy text-white
+                           font-semibold px-3 py-1.5 rounded-xl transition-all duration-200 btn-press">
+              + Add
+            </button>
+            {% else %}
+            <span class="text-xs text-gray-400">Out of stock</span>
+            {% endif %}
+          </div>
         </div>
       </div>
+      {% empty %}
+      <div class="col-span-full text-center py-16 text-gray-400">
+        <p class="text-4xl mb-3">📦</p>
+        <p>No products yet — add some in admin.</p>
+      </div>
+      {% endfor %}
     </div>
-    {% empty %}
-    <div class="col-span-full text-center py-12 text-gray-400 text-sm">No products yet — add some in admin.</div>
-    {% endfor %}
   </div>
 </section>
 
-<!-- CTA BANNER -->
-<section class="bg-brand-light border-y border-blue-100">
-  <div class="max-w-6xl mx-auto px-4 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
-    <div>
-      <h3 class="text-2xl font-bold text-gray-800 mb-1">Want to deliver for us?</h3>
-      <p class="text-gray-600 text-sm">Join our rider network. Earn commission on every delivery you complete.</p>
+<!-- ── VENDOR CTA ─────────────────────────────────────── -->
+<section class="max-w-7xl mx-auto px-4 md:px-6 py-14">
+  <div class="bg-navy rounded-3xl overflow-hidden relative">
+    <div class="absolute inset-0 opacity-5"
+         style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 28px 28px;"></div>
+    <div class="absolute right-0 top-0 w-72 h-72 bg-gold opacity-10 rounded-full
+                translate-x-1/4 -translate-y-1/4 blur-3xl pointer-events-none"></div>
+    <div class="relative px-8 md:px-12 py-12 flex flex-col md:flex-row items-center gap-6 justify-between">
+      <div>
+        <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-2">For sellers</p>
+        <h2 class="font-display font-700 text-2xl md:text-3xl text-white mb-2">
+          Start Selling on Lynctel
+        </h2>
+        <p class="text-gray-400 text-sm max-w-md">
+          Open your shop, list your products, and reach thousands of customers across Ghana.
+          Keep 90% of every sale. Register for just GHS 100.
+        </p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+        <a href="{% url 'vendors:apply' %}"
+           class="bg-gold hover:bg-gold-dark text-navy font-semibold px-8 py-3.5
+                  rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/20
+                  whitespace-nowrap">
+          Open Your Shop
+        </a>
+        <a href="{% url 'vendors:directory' %}"
+           class="bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-3.5
+                  rounded-2xl transition-colors text-center whitespace-nowrap">
+          Browse Shops
+        </a>
+      </div>
     </div>
-    <a href="mailto:contact@lynctel.com?subject=Rider%20Application"
-       class="flex-shrink-0 bg-brand text-white font-semibold px-8 py-3 rounded-xl hover:bg-brand-dark transition-colors">
-      Apply as Rider
-    </a>
   </div>
 </section>
 
@@ -183,9 +263,14 @@
     .then(d => {
       if (d.success) {
         btn.innerHTML = '✓';
-        btn.classList.replace('bg-brand','bg-green-500');
+        btn.classList.add('bg-gold', 'text-navy');
+        btn.classList.remove('bg-navy', 'text-white');
         updateCartBadge(d.cart_count);
-        setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; btn.classList.replace('bg-green-500','bg-brand'); }, 2000);
+        setTimeout(() => {
+          btn.innerHTML = orig; btn.disabled = false;
+          btn.classList.remove('bg-gold', 'text-navy');
+          btn.classList.add('bg-navy', 'text-white');
+        }, 2000);
       }
     });
   }

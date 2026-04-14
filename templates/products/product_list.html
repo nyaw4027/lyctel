@@ -2,34 +2,39 @@
 {% block title %}Shop — Lynctel{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 py-8">
+<div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
 
   <!-- Page header -->
   <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
-    <div>
+    <div class="fade-up fade-up-1">
       {% if search_query %}
-        <h1 class="text-xl font-bold text-gray-800">Results for "{{ search_query }}"</h1>
-        <p class="text-sm text-gray-500">{{ products|length }} product{{ products|length|pluralize }} found</p>
+        <p class="text-gold text-xs font-semibold uppercase tracking-wider mb-1">Results</p>
+        <h1 class="font-display font-700 text-2xl text-navy">"{{ search_query }}"</h1>
+        <p class="text-gray-400 text-sm mt-0.5">{{ products|length }} product{{ products|length|pluralize }} found</p>
       {% elif active_category %}
-        <h1 class="text-xl font-bold text-gray-800">
+        <p class="text-gold text-xs font-semibold uppercase tracking-wider mb-1">Category</p>
+        <h1 class="font-display font-700 text-2xl text-navy">
           {% for c in categories %}{% if c.slug == active_category %}{{ c.name }}{% endif %}{% endfor %}
         </h1>
       {% else %}
-        <h1 class="text-xl font-bold text-gray-800">All Products</h1>
-        <p class="text-sm text-gray-500">{{ products|length }} item{{ products|length|pluralize }} available</p>
+        <p class="text-gold text-xs font-semibold uppercase tracking-wider mb-1">Browse</p>
+        <h1 class="font-display font-700 text-2xl text-navy">All Products</h1>
+        <p class="text-gray-400 text-sm mt-0.5">{{ products|length }} item{{ products|length|pluralize }}</p>
       {% endif %}
     </div>
 
     <!-- Sort -->
-    <form method="GET" id="sort-form">
+    <form method="GET" id="sort-form" class="fade-up fade-up-2">
       {% if active_category %}<input type="hidden" name="category" value="{{ active_category }}">{% endif %}
       {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
-      <select name="sort" onchange="this.form.submit()"
-              class="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand">
-        <option value="newest"     {% if sort_by == 'newest'     %}selected{% endif %}>Newest</option>
+      <select name="sort" onchange="document.getElementById('sort-form').submit()"
+              class="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white
+                     text-navy font-medium cursor-pointer">
+        <option value="newest"     {% if sort_by == 'newest'     %}selected{% endif %}>Newest first</option>
         <option value="price_low"  {% if sort_by == 'price_low'  %}selected{% endif %}>Price: Low → High</option>
         <option value="price_high" {% if sort_by == 'price_high' %}selected{% endif %}>Price: High → Low</option>
         <option value="name"       {% if sort_by == 'name'       %}selected{% endif %}>Name A–Z</option>
+        <option value="top_rated"  {% if sort_by == 'top_rated'  %}selected{% endif %}>Top Rated</option>
       </select>
     </form>
   </div>
@@ -38,41 +43,48 @@
 
     <!-- SIDEBAR -->
     <aside class="hidden md:block w-52 flex-shrink-0">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Categories</p>
-      <ul class="space-y-1">
-        <li>
-          <a href="{% url 'products:list' %}"
-             class="block px-3 py-2 rounded-lg text-sm transition-colors
-                    {% if not active_category %}bg-brand-light text-brand font-semibold{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
-            All Products
-          </a>
-        </li>
-        {% for cat in categories %}
-        <li>
-          <a href="{% url 'products:list' %}?category={{ cat.slug }}"
-             class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors
-                    {% if active_category == cat.slug %}bg-brand-light text-brand font-semibold{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
-            {% if cat.icon %}<img src="{{ cat.icon.url }}" class="w-4 h-4 rounded object-cover" alt=""/>{% endif %}
-            {{ cat.name }}
-          </a>
-        </li>
-        {% endfor %}
-      </ul>
+
+      <!-- Categories -->
+      <div class="mb-6">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Categories</p>
+        <ul class="space-y-1">
+          <li>
+            <a href="{% url 'products:list' %}"
+               class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                      {% if not active_category %}bg-navy text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-navy{% endif %}">
+              All Products
+            </a>
+          </li>
+          {% for cat in categories %}
+          <li>
+            <a href="{% url 'products:list' %}?category={{ cat.slug }}"
+               class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                      {% if active_category == cat.slug %}bg-navy text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-navy{% endif %}">
+              {% if cat.icon %}
+              <img src="{{ cat.icon.url }}" class="w-4 h-4 rounded object-cover flex-shrink-0"/>
+              {% endif %}
+              {{ cat.name }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
     </aside>
 
-    <!-- MAIN -->
+    <!-- PRODUCT GRID -->
     <div class="flex-1">
+
       <!-- Mobile category pills -->
-      <div class="flex gap-2 overflow-x-auto pb-3 mb-4 md:hidden">
+      <div class="flex gap-2 overflow-x-auto pb-3 mb-5 md:hidden scrollbar-hide">
         <a href="{% url 'products:list' %}"
-           class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium
-                  {% if not active_category %}bg-brand text-white{% else %}bg-white border border-gray-300 text-gray-600{% endif %}">
+           class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-semibold transition-colors
+                  {% if not active_category %}bg-navy text-white{% else %}bg-white border border-gray-200 text-gray-600{% endif %}">
           All
         </a>
         {% for cat in categories %}
         <a href="{% url 'products:list' %}?category={{ cat.slug }}"
-           class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium
-                  {% if active_category == cat.slug %}bg-brand text-white{% else %}bg-white border border-gray-300 text-gray-600{% endif %}">
+           class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-semibold transition-colors
+                  {% if active_category == cat.slug %}bg-navy text-white{% else %}bg-white border border-gray-200 text-gray-600{% endif %}">
           {{ cat.name }}
         </a>
         {% endfor %}
@@ -81,44 +93,72 @@
       {% if products %}
       <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {% for product in products %}
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md
-                    transition-all overflow-hidden group flex flex-col">
-          <a href="{% url 'products:detail' product.slug %}" class="relative block overflow-hidden">
+        <div class="group bg-white rounded-2xl overflow-hidden border border-gray-100
+                    card-hover flex flex-col fade-up"
+             style="animation-delay: {{ forloop.counter0 }}0ms; opacity: 0">
+
+          <a href="{% url 'products:detail' product.slug %}"
+             class="relative block overflow-hidden bg-cream">
             {% with product.images.first as img %}
             {% if img %}
             <img src="{{ img.image.url }}" alt="{{ product.name }}"
-                 class="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300"/>
+                 class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"/>
             {% else %}
-            <div class="w-full h-44 bg-gray-100 flex items-center justify-center text-5xl">📦</div>
+            <div class="w-full h-48 flex items-center justify-center">
+              <span class="text-5xl opacity-20">📦</span>
+            </div>
             {% endif %}
             {% endwith %}
-            {% if not product.is_in_stock %}
-            <span class="absolute top-2 left-2 bg-gray-600 text-white text-xs px-2 py-0.5 rounded-full">Out of stock</span>
-            {% elif product.stock_qty <= product.low_stock_alert %}
-            <span class="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">Only {{ product.stock_qty }} left</span>
-            {% endif %}
+
+            <!-- Badges -->
+            <div class="absolute top-2.5 left-2.5 flex flex-col gap-1">
+              {% if not product.is_in_stock %}
+              <span class="bg-gray-800/80 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+                Out of stock
+              </span>
+              {% elif product.stock_qty <= product.low_stock_alert %}
+              <span class="bg-orange-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+                Only {{ product.stock_qty }} left
+              </span>
+              {% endif %}
+            </div>
             {% if product.is_featured %}
-            <span class="absolute top-2 right-2 bg-brand text-white text-xs px-2 py-0.5 rounded-full">⭐ Featured</span>
+            <span class="absolute top-2.5 right-2.5 bg-gold text-navy text-[10px] font-bold
+                         px-2.5 py-1 rounded-full">⭐</span>
             {% endif %}
           </a>
 
-          <div class="p-3 flex flex-col flex-1">
+          <div class="p-4 flex flex-col flex-1">
+            <!-- Vendor badge -->
+            {% if product.vendor %}
+            <a href="{% url 'vendors:shop' product.vendor.slug %}"
+               class="text-[10px] text-gold-dark font-semibold mb-1.5 hover:underline">
+              🏪 {{ product.vendor.shop_name }}
+            </a>
+            {% endif %}
+
             <a href="{% url 'products:detail' product.slug %}"
-               class="text-sm font-semibold text-gray-800 hover:text-brand line-clamp-2 mb-1 leading-tight">
+               class="text-sm font-semibold text-navy hover:text-gold transition-colors
+                      line-clamp-2 mb-1 leading-snug">
               {{ product.name }}
             </a>
             {% if product.category %}
-            <span class="text-xs text-gray-400 mb-2">{{ product.category.name }}</span>
+            <span class="text-xs text-gray-400 mb-3">{{ product.category.name }}</span>
             {% endif %}
+
             <div class="mt-auto flex items-center justify-between gap-2">
-              <span class="font-bold text-brand">GHS {{ product.selling_price }}</span>
+              <span class="font-display font-700 text-navy text-base">
+                GHS {{ product.selling_price }}
+              </span>
               {% if product.is_in_stock %}
               <button onclick="addToCart({{ product.pk }}, this)"
-                      class="text-xs bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded-lg transition-colors">
-                + Cart
+                      class="text-xs bg-navy hover:bg-gold hover:text-navy text-white
+                             font-semibold px-3 py-2 rounded-xl transition-all duration-200 btn-press
+                             flex-shrink-0">
+                + Add
               </button>
               {% else %}
-              <span class="text-xs text-gray-400">Unavailable</span>
+              <span class="text-xs text-gray-300 font-medium">Unavailable</span>
               {% endif %}
             </div>
           </div>
@@ -127,14 +167,18 @@
       </div>
 
       {% else %}
-      <div class="flex flex-col items-center justify-center py-24 text-center">
-        <div class="text-6xl mb-4">🔍</div>
-        <h3 class="text-lg font-semibold text-gray-700 mb-1">No products found</h3>
+      <!-- Empty state -->
+      <div class="flex flex-col items-center justify-center py-28 text-center">
+        <div class="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center text-4xl mb-5">🔍</div>
+        <h3 class="font-display font-700 text-xl text-navy mb-2">No products found</h3>
         {% if search_query %}
-        <p class="text-sm text-gray-500 mb-4">Try a different search term</p>
-        <a href="{% url 'products:list' %}" class="text-brand text-sm hover:underline">Clear search</a>
+        <p class="text-gray-400 text-sm mb-5">No results for "{{ search_query }}"</p>
+        <a href="{% url 'products:list' %}"
+           class="bg-navy text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-navy-700 transition-colors">
+          Clear search
+        </a>
         {% else %}
-        <p class="text-sm text-gray-500">Check back soon — new stock incoming!</p>
+        <p class="text-gray-400 text-sm">Check back soon — new stock coming!</p>
         {% endif %}
       </div>
       {% endif %}
@@ -158,11 +202,11 @@
     .then(d => {
       if (d.success) {
         btn.innerHTML = '✓ Added';
-        btn.classList.replace('bg-brand', 'bg-green-500');
+        btn.classList.add('bg-green-600'); btn.classList.remove('bg-navy');
         updateCartBadge(d.cart_count);
         setTimeout(() => {
-          btn.innerHTML = '+ Cart'; btn.disabled = false;
-          btn.classList.replace('bg-green-500', 'bg-brand');
+          btn.innerHTML = '+ Add'; btn.disabled = false;
+          btn.classList.remove('bg-green-600'); btn.classList.add('bg-navy');
         }, 2000);
       } else { btn.innerHTML = 'Out of stock'; btn.disabled = false; }
     });
