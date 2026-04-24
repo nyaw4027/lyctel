@@ -1,97 +1,131 @@
 {% extends "base.html" %}
-{% block title %}{{ vendor.shop_name }} Dashboard — Lynctel{% endblock %}
+{% block title %}{{ vendor.shop_name }} — Dashboard{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 py-8">
+<div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
 
   <!-- Header -->
-  <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
-    <div class="flex items-center gap-3">
+  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center gap-4">
       {% if vendor.logo %}
-      <img src="{{ vendor.logo.url }}" class="w-12 h-12 rounded-xl object-cover"/>
+      <img src="{{ vendor.logo.url }}" class="w-14 h-14 rounded-2xl object-cover border-2 border-gray-100"/>
       {% else %}
-      <div class="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center text-xl font-bold text-brand">
+      <div class="w-14 h-14 rounded-2xl bg-navy flex items-center justify-center
+                  text-white font-display font-700 text-xl">
         {{ vendor.shop_name|first|upper }}
       </div>
       {% endif %}
       <div>
-        <h1 class="text-xl font-bold text-gray-800">{{ vendor.shop_name }}</h1>
+        <h1 class="font-display font-700 text-2xl text-navy">{{ vendor.shop_name }}</h1>
         <a href="{% url 'vendors:shop' vendor.slug %}" target="_blank"
-           class="text-xs text-brand hover:underline">View your shop →</a>
+           class="text-xs text-gold-dark hover:underline font-medium flex items-center gap-1">
+          View live shop <span>→</span>
+        </a>
       </div>
     </div>
     <a href="{% url 'vendors:product_add' %}"
-       class="bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+       class="bg-navy hover:bg-navy-700 text-white font-semibold text-sm
+              px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
       + Add Product
     </a>
   </div>
 
   <!-- Stats -->
-  <div class="grid grid-cols-3 gap-4 mb-8">
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
-      <p class="text-2xl font-bold text-brand">GHS {{ total_revenue|floatformat:2 }}</p>
-      <p class="text-xs text-gray-500 mt-1">Total Revenue (90%)</p>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Revenue (90%)</p>
+      <p class="font-display font-700 text-2xl text-navy">GHS {{ total_revenue|floatformat:2 }}</p>
     </div>
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
-      <p class="text-2xl font-bold text-orange-500">GHS {{ pending_payout|floatformat:2 }}</p>
-      <p class="text-xs text-gray-500 mt-1">Pending Payout</p>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Pending Payout</p>
+      <p class="font-display font-700 text-2xl text-orange-500">GHS {{ pending_payout|floatformat:2 }}</p>
     </div>
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
-      <p class="text-2xl font-bold text-gray-800">{{ total_orders }}</p>
-      <p class="text-xs text-gray-500 mt-1">Orders Fulfilled</p>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Orders</p>
+      <p class="font-display font-700 text-2xl text-navy">{{ total_orders }}</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Products</p>
+      <p class="font-display font-700 text-2xl text-navy">{{ products|length }}</p>
+      {% if low_stock_count > 0 %}
+      <p class="text-xs text-red-500 mt-1">{{ low_stock_count }} low stock</p>
+      {% endif %}
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Tabs -->
+  <div class="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-6 w-fit overflow-x-auto">
+    {% for tab_id, tab_label in tabs %}
+    <button onclick="showTab('{{ tab_id }}')" id="tab-{{ tab_id }}"
+            class="tab-btn px-5 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap
+                   {% if forloop.first %}bg-white text-navy shadow-sm{% else %}text-gray-500{% endif %}">
+      {{ tab_label }}
+    </button>
+    {% endfor %}
+  </div>
 
-    <!-- Products -->
-    <div class="lg:col-span-2">
-      <h2 class="font-bold text-gray-800 mb-4">Your Products ({{ products|length }})</h2>
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {% if products %}
+  <!-- PRODUCTS -->
+  <div id="panel-products">
+    {% if low_stock_count > 0 %}
+    <div class="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-4 text-sm text-orange-700">
+      ⚠️ {{ low_stock_count }} product{{ low_stock_count|pluralize }} running low on stock.
+    </div>
+    {% endif %}
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-50 flex justify-between items-center">
+        <h2 class="font-semibold text-navy">Products ({{ products|length }})</h2>
+        <a href="{% url 'vendors:product_add' %}"
+           class="text-xs bg-navy text-white font-semibold px-4 py-2 rounded-xl hover:bg-navy-700 transition-colors">
+          + Add
+        </a>
+      </div>
+      {% if products %}
+      <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="text-xs text-gray-400 uppercase bg-gray-50">
-              <th class="px-4 py-3 text-left font-semibold">Product</th>
-              <th class="px-4 py-3 text-left font-semibold">Price</th>
-              <th class="px-4 py-3 text-left font-semibold">Stock</th>
-              <th class="px-4 py-3 text-left font-semibold">Status</th>
-              <th class="px-4 py-3 text-right font-semibold"></th>
+              <th class="px-5 py-3 text-left">Product</th>
+              <th class="px-5 py-3 text-left hidden md:table-cell">Category</th>
+              <th class="px-5 py-3 text-left">Price</th>
+              <th class="px-5 py-3 text-left">Stock</th>
+              <th class="px-5 py-3 text-left hidden md:table-cell">Status</th>
+              <th class="px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-50">
-            {% for product in products %}
+            {% for p in products %}
             <tr class="hover:bg-gray-50">
-              <td class="px-4 py-3">
-                <div class="flex items-center gap-2">
-                  {% with product.images.first as img %}
-                  {% if img %}
-                  <img src="{{ img.image.url }}" class="w-9 h-9 object-cover rounded-lg"/>
-                  {% else %}
-                  <div class="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center text-lg">📦</div>
-                  {% endif %}
+              <td class="px-5 py-3">
+                <div class="flex items-center gap-3">
+                  {% with p.images.first as img %}
+                  {% if img %}<img src="{{ img.image.url }}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0"/>
+                  {% else %}<div class="w-10 h-10 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center">📦</div>{% endif %}
                   {% endwith %}
-                  <span class="font-medium text-gray-800 truncate max-w-[140px]">{{ product.name }}</span>
+                  <div class="min-w-0">
+                    <p class="font-semibold text-navy truncate max-w-[160px]">{{ p.name }}</p>
+                    <a href="{% url 'products:detail' p.slug %}" target="_blank"
+                       class="text-xs text-gold-dark hover:underline">View →</a>
+                  </div>
                 </div>
               </td>
-              <td class="px-4 py-3 font-bold text-brand">GHS {{ product.selling_price }}</td>
-              <td class="px-4 py-3 {% if product.stock_qty == 0 %}text-red-500{% elif product.stock_qty <= 5 %}text-orange-500{% else %}text-green-600{% endif %} font-semibold">
-                {{ product.stock_qty }}
+              <td class="px-5 py-3 text-gray-500 hidden md:table-cell">{{ p.category.name|default:"—" }}</td>
+              <td class="px-5 py-3 font-700 text-navy">GHS {{ p.selling_price }}</td>
+              <td class="px-5 py-3 font-semibold {% if p.stock_qty == 0 %}text-red-600{% elif p.stock_qty <= 5 %}text-orange-500{% else %}text-green-600{% endif %}">
+                {{ p.stock_qty }}
               </td>
-              <td class="px-4 py-3">
-                <span class="text-xs px-2 py-0.5 rounded-full font-semibold
-                             {% if product.status == 'active' %}bg-green-100 text-green-700
-                             {% elif product.status == 'hidden' %}bg-gray-100 text-gray-600
+              <td class="px-5 py-3 hidden md:table-cell">
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                             {% if p.status == 'active' %}bg-green-100 text-green-700
+                             {% elif p.status == 'hidden' %}bg-gray-100 text-gray-600
                              {% else %}bg-red-100 text-red-600{% endif %}">
-                  {{ product.get_status_display }}
+                  {{ p.get_status_display }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-right">
+              <td class="px-5 py-3 text-right">
                 <div class="flex items-center justify-end gap-2">
-                  <a href="{% url 'vendors:product_edit' product.pk %}"
-                     class="text-xs bg-gray-100 hover:bg-brand hover:text-white text-gray-600 px-3 py-1.5 rounded-lg transition-colors">Edit</a>
-                  <form method="POST" action="{% url 'vendors:product_delete' product.pk %}"
-                        onsubmit="return confirm('Delete {{ product.name }}?')">
+                  <a href="{% url 'vendors:product_edit' p.pk %}"
+                     class="text-xs bg-gray-100 hover:bg-navy hover:text-white text-gray-600 px-3 py-1.5 rounded-lg transition-colors">Edit</a>
+                  <form method="POST" action="{% url 'vendors:product_delete' p.pk %}" onsubmit="return confirm('Delete {{ p.name }}?')">
                     {% csrf_token %}
                     <button class="text-xs bg-red-50 hover:bg-red-500 hover:text-white text-red-500 px-3 py-1.5 rounded-lg transition-colors">Del</button>
                   </form>
@@ -101,38 +135,191 @@
             {% endfor %}
           </tbody>
         </table>
-        {% else %}
-        <div class="text-center py-12 text-gray-400">
-          <p class="text-4xl mb-3">📦</p>
-          <p class="font-medium text-gray-600 mb-1">No products yet</p>
-          <a href="{% url 'vendors:product_add' %}" class="text-brand text-sm hover:underline">Add your first product →</a>
-        </div>
-        {% endif %}
       </div>
-    </div>
-
-    <!-- Recent orders -->
-    <div>
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-bold text-gray-800">Recent Sales</h2>
-        <a href="{% url 'vendors:earnings' %}" class="text-xs text-brand hover:underline">All earnings →</a>
+      {% else %}
+      <div class="text-center py-16 text-gray-400">
+        <p class="text-5xl mb-3">📦</p>
+        <p class="font-semibold text-navy mb-1">No products yet</p>
+        <a href="{% url 'vendors:product_add' %}" class="text-sm text-gold-dark hover:underline">Add your first product →</a>
       </div>
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
-        {% for item in recent_orders %}
-        <div class="px-4 py-3">
-          <div class="flex justify-between items-start">
-            <div>
-              <p class="text-sm font-semibold text-brand">{{ item.order.order_ref }}</p>
-              <p class="text-xs text-gray-400 truncate max-w-[140px]">{{ item.product_name }}</p>
-            </div>
-            <p class="text-sm font-bold text-green-600">+GHS {{ item.subtotal }}</p>
-          </div>
-        </div>
-        {% empty %}
-        <div class="text-center py-8 text-gray-400 text-sm">No sales yet.</div>
-        {% endfor %}
-      </div>
+      {% endif %}
     </div>
   </div>
+
+  <!-- ORDERS -->
+  <div id="panel-orders" class="hidden">
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-50"><h2 class="font-semibold text-navy">Your Sales</h2></div>
+      {% if recent_orders %}
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase bg-gray-50">
+            <th class="px-5 py-3 text-left">Order</th>
+            <th class="px-5 py-3 text-left hidden md:table-cell">Product</th>
+            <th class="px-5 py-3 text-left hidden md:table-cell">Date</th>
+            <th class="px-5 py-3 text-left">Status</th>
+            <th class="px-5 py-3 text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for item in recent_orders %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-5 py-3 font-bold text-gold-dark">{{ item.order.order_ref }}</td>
+            <td class="px-5 py-3 text-gray-600 hidden md:table-cell truncate max-w-[160px]">{{ item.product_name }}</td>
+            <td class="px-5 py-3 text-gray-400 hidden md:table-cell">{{ item.order.created_at|date:"M d, Y" }}</td>
+            <td class="px-5 py-3">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                           {% if item.order.status == 'delivered' %}bg-green-100 text-green-700
+                           {% elif item.order.status == 'dispatched' %}bg-blue-100 text-blue-700
+                           {% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                {{ item.order.get_status_display }}
+              </span>
+            </td>
+            <td class="px-5 py-3 text-right font-700 text-green-600">+GHS {{ item.subtotal }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="text-center py-16 text-gray-400">
+        <p class="text-5xl mb-3">🛍️</p>
+        <p class="font-semibold text-navy mb-1">No sales yet</p>
+        <p class="text-sm">Share your shop link to get your first sale.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- EARNINGS -->
+  <div id="panel-earnings" class="hidden">
+    <div class="grid grid-cols-3 gap-4 mb-5">
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+        <p class="font-display font-700 text-2xl text-navy">GHS {{ total_revenue|floatformat:2 }}</p>
+        <p class="text-xs text-gray-400 mt-1">Total Earned</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+        <p class="font-display font-700 text-2xl text-orange-500">GHS {{ pending_payout|floatformat:2 }}</p>
+        <p class="text-xs text-gray-400 mt-1">Pending</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+        <p class="font-display font-700 text-2xl text-green-600">GHS {{ paid_out|floatformat:2 }}</p>
+        <p class="text-xs text-gray-400 mt-1">Paid Out</p>
+      </div>
+    </div>
+    <div class="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-sm text-yellow-800 mb-5">
+      💳 Payouts sent to <strong>{{ vendor.momo_number }}</strong> every Monday.
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase bg-gray-50">
+            <th class="px-5 py-3 text-left">Order</th>
+            <th class="px-5 py-3 text-right hidden md:table-cell">Sale</th>
+            <th class="px-5 py-3 text-right hidden md:table-cell">Commission</th>
+            <th class="px-5 py-3 text-right">You Earn</th>
+            <th class="px-5 py-3 text-right">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for e in earnings %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-5 py-3 font-bold text-gold-dark">{{ e.order.order_ref }}</td>
+            <td class="px-5 py-3 text-right text-gray-400 hidden md:table-cell">GHS {{ e.gross_amount }}</td>
+            <td class="px-5 py-3 text-right text-red-400 hidden md:table-cell">-GHS {{ e.commission }}</td>
+            <td class="px-5 py-3 text-right font-700 text-green-600">GHS {{ e.net_amount }}</td>
+            <td class="px-5 py-3 text-right">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                           {% if e.status == 'paid' %}bg-green-100 text-green-700{% else %}bg-orange-100 text-orange-700{% endif %}">
+                {{ e.get_status_display }}
+              </span>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="px-5 py-12 text-center text-gray-400">No earnings yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="panel-settings" class="hidden">
+    <div class="max-w-2xl bg-white rounded-2xl border border-gray-100 p-6">
+      <h2 class="font-semibold text-navy mb-5">Shop Settings</h2>
+      <form method="POST" action="{% url 'vendors:settings' %}" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Shop Name</label>
+          <input type="text" name="shop_name" value="{{ vendor.shop_name }}"
+                 class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea name="description" rows="3"
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm resize-none">{{ vendor.description }}</textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <input type="tel" name="phone" value="{{ vendor.phone }}"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            <input type="text" name="location" value="{{ vendor.location }}"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">MoMo Payout Number</label>
+            <input type="tel" name="momo_number" value="{{ vendor.momo_number }}"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Network</label>
+            <select name="momo_network" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white">
+              <option value="mtn"        {% if vendor.momo_network == 'mtn'        %}selected{% endif %}>MTN</option>
+              <option value="vodafone"   {% if vendor.momo_network == 'vodafone'   %}selected{% endif %}>Vodafone</option>
+              <option value="airteltigo" {% if vendor.momo_network == 'airteltigo' %}selected{% endif %}>AirtelTigo</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Shop Logo</label>
+          {% if vendor.logo %}
+          <div class="flex items-center gap-3 mb-2">
+            <img src="{{ vendor.logo.url }}" class="w-12 h-12 rounded-xl object-cover"/>
+            <span class="text-xs text-gray-400">Current logo</span>
+          </div>
+          {% endif %}
+          <input type="file" name="logo" accept="image/*"
+                 class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
+                        file:rounded-xl file:border-0 file:text-sm file:font-semibold
+                        file:bg-gray-100 file:text-navy cursor-pointer"/>
+        </div>
+        <button type="submit"
+                class="bg-navy hover:bg-navy-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
+          Save Changes
+        </button>
+      </form>
+    </div>
+  </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function showTab(name) {
+    ['products','orders','earnings','settings'].forEach(t => {
+      document.getElementById('panel-' + t).classList.toggle('hidden', t !== name);
+      const btn = document.getElementById('tab-' + t);
+      if (btn) {
+        if (t === name) { btn.classList.add('bg-white','text-navy','shadow-sm'); btn.classList.remove('text-gray-500'); }
+        else { btn.classList.remove('bg-white','text-navy','shadow-sm'); btn.classList.add('text-gray-500'); }
+      }
+    });
+  }
+</script>
 {% endblock %}

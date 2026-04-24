@@ -17,6 +17,13 @@ from order.models import Order, OrderItem
 from .models import Payment
 
 
+MOMO_OPTIONS = [
+    ('mtn_momo',      'MTN Mobile Money', 'bg-yellow-100 text-yellow-700', 'MTN'),
+    ('vodafone_cash', 'Vodafone Cash',    'bg-red-100 text-red-600',       'VDF'),
+    ('airteltigo',    'AirtelTigo Money', 'bg-blue-100 text-blue-700',     'ATL'),
+]
+
+
 def get_or_create_cart(request):
     if request.user.is_authenticated:
         cart, _ = Cart.objects.get_or_create(user=request.user)
@@ -56,26 +63,33 @@ def payment_page(request):
             )
             for item in cart.items.select_related('product').all():
                 OrderItem.objects.create(
-                    order=order, product=item.product,
-                    product_name=item.product.name,
-                    unit_price=item.product.selling_price,
-                    quantity=item.quantity,
+                    order        = order,
+                    product      = item.product,
+                    product_name = item.product.name,
+                    unit_price   = item.product.selling_price,
+                    quantity     = item.quantity,
                 )
                 item.product.stock_qty -= item.quantity
                 item.product.save()
 
-        tx_ref  = f"LYN-{order.order_ref}-{uuid.uuid4().hex[:6].upper()}"
+        tx_ref = f"LYN-{order.order_ref}-{uuid.uuid4().hex[:6].upper()}"
         Payment.objects.create(
-            order=order, method=payment_method,
-            amount=pending_order['total'],
-            transaction_id=tx_ref, momo_number=momo_number,
-            status=Payment.Status.PENDING,
+            order          = order,
+            method         = payment_method,
+            amount         = pending_order['total'],
+            transaction_id = tx_ref,
+            momo_number    = momo_number,
+            status         = Payment.Status.PENDING,
         )
 
         cart.items.all().delete()
         del request.session['pending_order']
 
-        network_map = {'mtn_momo': 'MTN', 'vodafone_cash': 'VDF', 'airteltigo': 'ATL'}
+        network_map = {
+            'mtn_momo':      'MTN',
+            'vodafone_cash': 'VDF',
+            'airteltigo':    'ATL',
+        }
         is_momo = payment_method in network_map
 
         flw_config = {
@@ -90,19 +104,31 @@ def payment_page(request):
                 'phone_number': order.delivery_phone,
                 'name':         order.customer.get_full_name() or order.customer.phone,
             },
-            'customizations': {'title': 'Lynctel', 'description': f'Order {order.order_ref}'},
+            'customizations': {
+                'title':       'Lynctel',
+                'description': f'Order {order.order_ref}',
+            },
             'meta': {'order_ref': order.order_ref},
         }
         if is_momo and momo_number:
-            flw_config['mobile_money'] = {'phone': momo_number, 'network': network_map[payment_method]}
+            flw_config['mobile_money'] = {
+                'phone':   momo_number,
+                'network': network_map[payment_method],
+            }
 
         return render(request, 'payment/pay.html', {
-            'order': order, 'flw_config': json.dumps(flw_config),
-            'FLW_PUBLIC_KEY': settings.FLW_PUBLIC_KEY, 'cart_count': 0,
+            'order':          order,
+            'flw_config':     json.dumps(flw_config),
+            'FLW_PUBLIC_KEY': settings.FLW_PUBLIC_KEY,
+            'cart_count':     0,
         })
 
+    # GET — show payment method selection
     return render(request, 'payment/payment.html', {
-        'pending_order': pending_order, 'cart': cart, 'cart_count': cart.total_items,
+        'pending_order': pending_order,
+        'cart':          cart,
+        'cart_count':    cart.total_items,
+        'momo_options':  MOMO_OPTIONS,
     })
 
 
@@ -126,16 +152,19 @@ def payment_callback(request):
     if status == 'successful' and trans_id:
         if _verify_flw_transaction(trans_id, order.total_amount):
             _mark_paid(order, payment, trans_id, {'verified_via': 'callback'})
-            messages.success(request, f'Payment confirmed! Order {order.order_ref} processing.')
+            messages.success(request, f'Payment confirmed! Order {order.order_ref} is being processed.')
             return redirect('order:confirmation', order_ref=order.order_ref)
-        payment.status = Payment.Status.FAILED; payment.save()
-        messages.error(request, 'Verification failed. Contact support.')
+        payment.status = Payment.Status.FAILED
+        payment.save()
+        messages.error(request, 'Payment verification failed. Contact support.')
     elif status == 'cancelled':
-        payment.status = Payment.Status.CANCELLED; payment.save()
-        messages.warning(request, 'Payment cancelled.')
+        payment.status = Payment.Status.CANCELLED
+        payment.save()
+        messages.warning(request, 'Payment was cancelled.')
     else:
-        payment.status = Payment.Status.FAILED; payment.save()
-        messages.error(request, 'Payment failed. Try again.')
+        payment.status = Payment.Status.FAILED
+        payment.save()
+        messages.error(request, 'Payment failed. Please try again.')
 
     return render(request, 'payment/failed.html', {'order': order, 'cart_count': 0})
 
@@ -160,6 +189,7 @@ def flutterwave_webhook(request):
                     _mark_paid(order, payment, str(data.get('id', '')), data)
         except Payment.DoesNotExist:
             pass
+
     return HttpResponse(status=200)
 
 
@@ -188,18 +218,15 @@ def _mark_paid(order, payment, gateway_ref, gateway_data):
         payment.gateway_response = gateway_data
         payment.paid_at          = timezone.now()
         payment.save()
+
         order.payment_status = Order.PaymentStatus.PAID
         order.status         = Order.Status.CONFIRMED
         order.save()
+
         _split_commissions(order)
 
 
 def _split_commissions(order):
-    """
-    10% of each vendor product sale → Lynctel (AppCommission)
-    90% → vendor (VendorEarning)
-    Your own products: no split, 100% stays with you.
-    """
     try:
         from vendors.models import VendorEarning, AppCommission
     except ImportError:
@@ -210,11 +237,11 @@ def _split_commissions(order):
         if not product or not product.vendor:
             continue
 
-        vendor      = product.vendor
-        gross       = item.unit_price * item.quantity
-        rate        = vendor.commission_rate / 100
-        commission  = round(gross * rate, 2)
-        net_vendor  = round(gross - commission, 2)
+        vendor     = product.vendor
+        gross      = item.unit_price * item.quantity
+        rate       = vendor.commission_rate / 100
+        commission = round(gross * rate, 2)
+        net_vendor = round(gross - commission, 2)
 
         AppCommission.objects.create(
             order=order, vendor=vendor,

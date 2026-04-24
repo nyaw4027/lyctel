@@ -2,144 +2,156 @@
 {% block title %}Your Cart — Lynctel{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 py-8">
-  <h1 class="text-2xl font-bold text-gray-800 mb-6">
-    Your Cart
-    {% if cart.total_items %}<span class="text-base font-normal text-gray-400">({{ cart.total_items }} item{{ cart.total_items|pluralize }})</span>{% endif %}
-  </h1>
+<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+
+  <div class="mb-6">
+    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Shopping</p>
+    <h1 class="font-display font-700 text-2xl text-navy">Your Cart
+      {% if cart.total_items %}
+      <span class="text-gray-400 font-400 text-lg ml-2">({{ cart.total_items }} item{{ cart.total_items|pluralize }})</span>
+      {% endif %}
+    </h1>
+  </div>
 
   {% if cart_items %}
-  <div class="flex flex-col lg:flex-row gap-8">
+  <div class="flex flex-col lg:flex-row gap-6">
 
-    <!-- ITEMS -->
-    <div class="flex-1 space-y-3">
+    <!-- CART ITEMS -->
+    <div class="flex-1 space-y-3" id="cart-items">
       {% for item in cart_items %}
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex gap-4" id="row-{{ item.pk }}">
+      <div id="row-{{ item.pk }}"
+           class="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4
+                  transition-all duration-300">
         <a href="{% url 'products:detail' item.product.slug %}" class="flex-shrink-0">
           {% with item.product.images.first as img %}
           {% if img %}
-          <img src="{{ img.image.url }}" alt="{{ item.product.name }}" class="w-20 h-20 object-cover rounded-xl"/>
+          <img src="{{ img.image.url }}" class="w-20 h-20 rounded-xl object-cover"/>
           {% else %}
-          <div class="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center text-3xl">📦</div>
+          <div class="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-3xl">📦</div>
           {% endif %}
           {% endwith %}
         </a>
 
         <div class="flex-1 min-w-0">
           <a href="{% url 'products:detail' item.product.slug %}"
-             class="font-semibold text-gray-800 hover:text-brand text-sm leading-snug block mb-1 line-clamp-2">
+             class="font-semibold text-navy hover:text-gold transition-colors line-clamp-2 text-sm leading-snug">
             {{ item.product.name }}
           </a>
-          <p class="text-xs text-gray-400 mb-3">GHS {{ item.product.selling_price }} each</p>
-
-          <!-- Qty controls -->
-          <div class="flex items-center gap-2">
-            <button onclick="updateQty({{ item.pk }}, {{ item.quantity }}, -1)"
-                    class="w-8 h-8 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100 font-bold text-lg flex items-center justify-center">−</button>
-            <span id="qty-{{ item.pk }}" class="text-sm font-bold w-6 text-center">{{ item.quantity }}</span>
-            <button onclick="updateQty({{ item.pk }}, {{ item.quantity }}, 1)"
-                    class="w-8 h-8 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100 font-bold text-lg flex items-center justify-center">+</button>
-          </div>
+          {% if item.product.vendor %}
+          <p class="text-xs text-gray-400 mt-0.5">🏪 {{ item.product.vendor.shop_name }}</p>
+          {% endif %}
+          <p class="font-display font-700 text-navy mt-1 text-sm">GHS {{ item.product.selling_price }}</p>
         </div>
 
-        <div class="flex flex-col items-end justify-between">
-          <span class="font-bold text-brand text-sm" id="sub-{{ item.pk }}">GHS {{ item.subtotal }}</span>
-          <button onclick="updateQty({{ item.pk }}, 0, 0)"
-                  class="text-xs text-red-400 hover:text-red-600 transition-colors">Remove</button>
+        <!-- Qty -->
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <button onclick="updateQty({{ item.pk }}, -1)"
+                  class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-navy hover:text-white
+                         flex items-center justify-center font-bold transition-colors text-gray-600">−</button>
+          <span id="qty-{{ item.pk }}" class="w-8 text-center font-semibold text-navy text-sm">
+            {{ item.quantity }}
+          </span>
+          <button onclick="updateQty({{ item.pk }}, 1)"
+                  class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-navy hover:text-white
+                         flex items-center justify-center font-bold transition-colors text-gray-600">+</button>
+        </div>
+
+        <!-- Subtotal -->
+        <div class="text-right flex-shrink-0 min-w-[80px]">
+          <p id="sub-{{ item.pk }}" class="font-display font-700 text-navy text-sm">
+            GHS {{ item.subtotal }}
+          </p>
+          <button onclick="removeItem({{ item.pk }})"
+                  class="text-xs text-red-400 hover:text-red-600 transition-colors mt-1">
+            Remove
+          </button>
         </div>
       </div>
       {% endfor %}
 
-      <a href="{% url 'products:list' %}" class="inline-flex items-center gap-2 text-sm text-brand hover:underline mt-1">
+      <a href="{% url 'products:list' %}"
+         class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-navy transition-colors mt-2">
         ← Continue Shopping
       </a>
     </div>
 
-    <!-- SUMMARY -->
-    <div class="lg:w-76">
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 sticky top-20">
-        <h2 class="font-bold text-gray-800 mb-4">Order Summary</h2>
+    <!-- ORDER SUMMARY -->
+    <div class="w-full lg:w-80 flex-shrink-0">
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 sticky top-20">
+        <h2 class="font-display font-700 text-navy text-lg mb-4">Order Summary</h2>
 
-        <!-- Zone selector -->
-        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Delivery Zone</label>
-        <select id="zone-select" onchange="calcDelivery(this)"
-                class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand mb-4">
-          <option value="" data-fee="0">Select your area...</option>
-          {% for zone in zones %}
-          <option value="{{ zone.pk }}" data-fee="{{ zone.delivery_fee }}">
-            {{ zone.name }} — GHS {{ zone.delivery_fee }}
-          </option>
-          {% endfor %}
-        </select>
-
-        <!-- Breakdown -->
-        <div class="space-y-2 text-sm text-gray-600 border-t border-gray-100 pt-3">
+        <div class="space-y-3 text-sm mb-5">
           <div class="flex justify-between">
-            <span>Subtotal</span>
-            <span id="s-subtotal">GHS {{ cart.total_price }}</span>
+            <span class="text-gray-500">Subtotal</span>
+            <span id="summary-subtotal" class="font-semibold text-navy">GHS {{ cart.total_price }}</span>
           </div>
           <div class="flex justify-between">
-            <span>Delivery</span>
-            <span id="s-delivery" class="text-gray-400">—</span>
+            <span class="text-gray-400">Delivery fee</span>
+            <span class="text-gray-400 text-xs">At checkout</span>
           </div>
-          <div class="flex justify-between font-bold text-gray-800 text-base border-t border-gray-100 pt-2">
-            <span>Total</span>
-            <span id="s-total">GHS {{ cart.total_price }}</span>
+          <div class="border-t border-gray-100 pt-3 flex justify-between">
+            <span class="font-display font-700 text-navy">Total</span>
+            <span id="summary-total" class="font-display font-700 text-navy text-base">
+              GHS {{ cart.total_price }}
+            </span>
           </div>
         </div>
 
         {% if user.is_authenticated %}
         <a href="{% url 'order:checkout' %}"
-           class="block w-full mt-5 bg-brand hover:bg-brand-dark text-white font-semibold
-                  text-center py-3 rounded-xl transition-colors">
-          Checkout →
+           class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold
+                  text-center py-3.5 rounded-xl transition-colors btn-press mb-3 text-sm">
+          Proceed to Checkout →
         </a>
         {% else %}
-        <a href="{% url 'login' %}?next={% url 'order:checkout' %}"
-           class="block w-full mt-5 bg-brand hover:bg-brand-dark text-white font-semibold
-                  text-center py-3 rounded-xl transition-colors">
-          Sign in to Checkout
+        <a href="{% url 'accounts:login' %}?next={% url 'order:checkout' %}"
+           class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold
+                  text-center py-3.5 rounded-xl transition-colors btn-press mb-3 text-sm">
+          Sign In to Checkout →
         </a>
+        <p class="text-center text-xs text-gray-400 mb-3">
+          Don't have an account?
+          <a href="{% url 'accounts:signup' %}" class="text-gold-dark hover:underline">Sign up free</a>
+        </p>
         {% endif %}
 
-        <div class="mt-4 flex flex-wrap gap-2 justify-center">
-          <span class="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">MTN MoMo</span>
-          <span class="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">Vodafone Cash</span>
-          <span class="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">AirtelTigo</span>
-          <span class="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">Card</span>
+        <div class="border-t border-gray-100 pt-3">
+          <p class="text-xs text-center text-gray-400 mb-2">Secure payment via</p>
+          <div class="flex items-center justify-center gap-2 flex-wrap">
+            <span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">MTN MoMo</span>
+            <span class="text-xs font-semibold bg-red-100 text-red-600 px-2.5 py-1 rounded-full">Vodafone</span>
+            <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">AirtelTigo</span>
+            <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">Card</span>
+          </div>
         </div>
       </div>
     </div>
+
   </div>
 
   {% else %}
   <div class="flex flex-col items-center justify-center py-28 text-center">
-    <div class="text-7xl mb-5">🛒</div>
-    <h3 class="text-xl font-semibold text-gray-700 mb-2">Your cart is empty</h3>
-    <p class="text-gray-400 text-sm mb-6">Browse our products and add something you love.</p>
+    <div class="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center text-5xl mb-6">🛒</div>
+    <h2 class="font-display font-700 text-2xl text-navy mb-2">Your cart is empty</h2>
+    <p class="text-gray-400 text-sm mb-8 max-w-xs">
+      Browse our products and add items you love.
+    </p>
     <a href="{% url 'products:list' %}"
-       class="bg-brand text-white font-semibold px-8 py-3 rounded-xl hover:bg-brand-dark transition-colors">
-      Browse Products
+       class="bg-navy hover:bg-navy-700 text-white font-semibold px-8 py-3.5
+              rounded-2xl transition-colors btn-press">
+      Start Shopping
     </a>
   </div>
   {% endif %}
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  const subtotal = parseFloat("{{ cart.total_price }}");
-
-  function calcDelivery(sel) {
-    const fee   = parseFloat(sel.options[sel.selectedIndex].dataset.fee) || 0;
-    const total = subtotal + fee;
-    document.getElementById('s-delivery').textContent = fee ? `GHS ${fee.toFixed(2)}` : '—';
-    document.getElementById('s-delivery').className   = fee ? 'font-medium text-gray-800' : 'text-gray-400';
-    document.getElementById('s-total').textContent    = `GHS ${total.toFixed(2)}`;
-  }
-
-  function updateQty(itemId, currentQty, delta) {
-    const newQty = delta === 0 ? 0 : Math.max(0, currentQty + delta);
+  function updateQty(itemId, delta) {
+    const qtyEl = document.getElementById('qty-' + itemId);
+    const newQty = Math.max(1, parseInt(qtyEl.textContent) + delta);
     const fd = new FormData();
     fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
     fd.append('quantity', newQty);
@@ -148,17 +160,30 @@
     })
     .then(r => r.json())
     .then(d => {
-      if (!d.success) return;
-      if (newQty <= 0) {
-        document.getElementById(`row-${itemId}`)?.remove();
-      } else {
-        document.getElementById(`qty-${itemId}`).textContent = newQty;
+      if (d.success) {
+        qtyEl.textContent = newQty;
+        document.getElementById('sub-' + itemId).textContent = 'GHS ' + d.item_subtotal;
+        document.getElementById('summary-subtotal').textContent = 'GHS ' + d.cart_total;
+        document.getElementById('summary-total').textContent = 'GHS ' + d.cart_total;
+        updateCartBadge(d.cart_count);
       }
-      updateCartBadge(d.cart_count);
-      document.getElementById('s-subtotal').textContent = `GHS ${d.cart_total}`;
-      const zone = document.getElementById('zone-select');
-      if (zone) calcDelivery(zone);
-      if (d.cart_count === 0) location.reload();
+    });
+  }
+
+  function removeItem(itemId) {
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+    fetch(`/cart/remove/${itemId}/`, {
+      method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: fd
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        const row = document.getElementById('row-' + itemId);
+        if (row) { row.style.opacity = '0'; setTimeout(() => row.remove(), 300); }
+        updateCartBadge(d.cart_count);
+        if (d.cart_count === 0) setTimeout(() => location.reload(), 350);
+      }
     });
   }
 </script>

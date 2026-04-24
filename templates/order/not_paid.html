@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Payment Pending — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto px-4 py-16 text-center">
+
+  <div class="w-16 h-16 mx-auto bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-2xl mb-4">
+    !
+  </div>
+
+  <h1 class="text-xl font-bold text-gray-800">Payment Not Completed</h1>
+
+  <p class="text-gray-500 mt-2 text-sm">
+    This order has not been paid yet or payment is still processing.
+  </p>
+
+  <div class="mt-6 bg-gray-50 rounded-xl p-4 text-sm text-left">
+    <p><strong>Order:</strong> {{ order.order_ref }}</p>
+    <p><strong>Status:</strong> {{ order.payment_status }}</p>
+    <p><strong>Total:</strong> GHS {{ order.total_amount }}</p>
+  </div>
+
+  <div class="mt-6 flex gap-3">
+    <a href="{% url 'payment:page' %}"
+       class="flex-1 bg-brand text-white py-3 rounded-xl font-semibold">
+      Retry Payment
+    </a>
+
+    <a href="{% url 'order:history' %}"
+       class="flex-1 bg-gray-100 py-3 rounded-xl font-semibold">
+      My Orders
+    </a>
+  </div>
+
+</div>
+{% endblock %}

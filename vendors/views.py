@@ -1,14 +1,19 @@
+from datetime import timedelta
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Sum, Count, Q, Avg
-from django.utils.text import slugify
+from django.db.models import Sum, Count, Q
+from django.db.models.functions import TruncDay
 from django.utils import timezone
+from django.utils.text import slugify
 
 from products.models import Product, Category, ProductImage
 from order.models import Order, OrderItem
 from .models import Vendor, VendorEarning
 
+
+# ── GUARD DECORATOR ───────────────────────────────────────
 
 def vendor_required(view_func):
     @login_required
@@ -27,10 +32,9 @@ def vendor_required(view_func):
     return wrapper
 
 
-# ── VENDOR DIRECTORY ──────────────────────────────────────
+# ── PUBLIC: VENDOR DIRECTORY ──────────────────────────────
 
 def directory(request):
-    """Public page listing all active vendor shops."""
     vendors = Vendor.objects.filter(
         status=Vendor.Status.ACTIVE
     ).annotate(product_count=Count('products')).order_by('-joined_at')
@@ -43,28 +47,29 @@ def directory(request):
             Q(location__icontains=search)
         )
 
-    cart_count = _get_cart_count(request)
-
     return render(request, 'vendors/directory.html', {
         'vendors':    vendors,
         'search':     search,
-        'cart_count': cart_count,
+        'cart_count': _get_cart_count(request),
     })
 
 
-# ── PUBLIC VENDOR SHOP PAGE ───────────────────────────────
+# ── PUBLIC: VENDOR SHOP PAGE ──────────────────────────────
 
 def shop_page(request, slug):
-    """Individual vendor storefront."""
-    vendor = get_object_or_404(Vendor, slug=slug, status=Vendor.Status.ACTIVE)
+    vendor = get_object_or_404(
+        Vendor, slug=slug, status=Vendor.Status.ACTIVE
+    )
 
-    products = vendor.products.filter(
-        status='active'
-    ).prefetch_related('images').select_related('category')
+    products = (
+        vendor.products
+        .filter(status='active')
+        .select_related('category')
+        .prefetch_related('images')
+    )
 
-    # Filters
     search     = request.GET.get('q', '').strip()
-    filter_cat = request.GET.get('category', '')
+    filter_cat = request.GET.get('category', '').strip()
     sort       = request.GET.get('sort', 'newest')
 
     if search:
@@ -82,26 +87,26 @@ def shop_page(request, slug):
     }
     products = products.order_by(sort_map.get(sort, '-created_at'))
 
-    # Categories that this vendor actually has products in
-    categories = Category.objects.filter(
-        products__vendor=vendor,
-        products__status='active',
-        is_active=True
-    ).distinct()
+    categories = (
+        Category.objects
+        .filter(products__vendor=vendor, products__status='active', is_active=True)
+        .annotate(product_count=Count('products'))
+        .distinct()
+    )
 
     return render(request, 'vendors/shop.html', {
-        'vendor':        vendor,
-        'products':      products,
-        'categories':    categories,
+        'vendor':         vendor,
+        'products':       products,
+        'categories':     categories,
         'total_products': vendor.products.filter(status='active').count(),
-        'search':        search,
-        'filter_cat':    filter_cat,
-        'sort':          sort,
-        'cart_count':    _get_cart_count(request),
+        'search':         search,
+        'filter_cat':     filter_cat,
+        'sort':           sort,
+        'cart_count':     _get_cart_count(request),
     })
 
 
-# ── APPLY TO BECOME A VENDOR ─────────────────────────────
+# ── APPLY TO BECOME A VENDOR ──────────────────────────────
 
 def apply(request):
     if request.user.is_authenticated:
@@ -120,20 +125,19 @@ def apply(request):
         location     = request.POST.get('location', '').strip()
         momo_number  = request.POST.get('momo_number', '').strip()
         momo_network = request.POST.get('momo_network', '')
-
-        first_name = request.POST.get('first_name', '').strip()
-        last_name  = request.POST.get('last_name', '').strip()
-        password   = request.POST.get('password', '')
+        first_name   = request.POST.get('first_name', '').strip()
+        last_name    = request.POST.get('last_name', '').strip()
+        password     = request.POST.get('password', '')
 
         errors = {}
         if not shop_name:   errors['shop_name']   = 'Shop name is required.'
-        if not phone:       errors['phone']       = 'Phone number is required.'
-        if not momo_number: errors['momo_number'] = 'MoMo number is required for payouts.'
+        if not phone:       errors['phone']        = 'Phone number is required.'
+        if not momo_number: errors['momo_number']  = 'MoMo number is required for payouts.'
 
         if not request.user.is_authenticated:
-            if not first_name: errors['first_name'] = 'First name is required.'
-            if not password:   errors['password']   = 'Password is required.'
-            if len(password) < 6: errors['password'] = 'Password must be at least 6 characters.'
+            if not first_name:    errors['first_name'] = 'First name is required.'
+            if not password:      errors['password']   = 'Password is required.'
+            if len(password) < 6: errors['password']   = 'Password must be at least 6 characters.'
             from ecommerce.models import User
             if User.objects.filter(phone=phone).exists():
                 errors['phone'] = 'An account with this number already exists. Sign in first.'
@@ -145,12 +149,12 @@ def apply(request):
 
         if not request.user.is_authenticated:
             from ecommerce.models import User
-            from django.contrib.auth import login
+            from django.contrib.auth import login as auth_login
             user = User.objects.create_user(
                 username=phone, phone=phone, password=password,
                 first_name=first_name, last_name=last_name, role='customer',
             )
-            login(request, user)
+            auth_login(request, user)
         else:
             user = request.user
 
@@ -182,27 +186,120 @@ def pending(request):
 
 @vendor_required
 def dashboard(request):
-    vendor   = request.vendor
-    products = vendor.products.prefetch_related('images').order_by('-created_at')
-    earnings = VendorEarning.objects.filter(vendor=vendor)
+    vendor = request.vendor
 
-    total_revenue  = earnings.aggregate(t=Sum('net_amount'))['t'] or 0
-    pending_payout = earnings.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
-    total_orders   = earnings.count()
+    products = (
+        vendor.products
+        .prefetch_related('images')
+        .select_related('category')
+        .order_by('-created_at')
+    )
+    earnings = VendorEarning.objects.filter(vendor=vendor).select_related('order')
 
-    recent_orders = OrderItem.objects.filter(
-        product__vendor=vendor, order__payment_status='paid',
-    ).select_related('order', 'product').order_by('-order__created_at')[:10]
+    # Core stats
+    total_revenue   = earnings.aggregate(t=Sum('net_amount'))['t'] or 0
+    pending_payout  = earnings.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
+    paid_out        = earnings.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
+    total_orders    = earnings.count()
+    low_stock_count = products.filter(status='active', stock_qty__lte=5).count()
+
+    # Today's stats
+    today         = timezone.now().date()
+    orders_today  = OrderItem.objects.filter(
+        product__vendor=vendor,
+        order__created_at__date=today,
+        order__payment_status='paid',
+    ).count()
+    revenue_today = earnings.filter(created_at__date=today).aggregate(t=Sum('net_amount'))['t'] or 0
+
+    # Last 7 days chart data
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    daily_sales = (
+        earnings.filter(created_at__gte=seven_days_ago)
+        .annotate(day=TruncDay('created_at'))
+        .values('day')
+        .annotate(total=Sum('net_amount'))
+        .order_by('day')
+    )
+
+    # Top selling product
+    top_product = (
+        vendor.products
+        .annotate(total_sold=Sum('orderitem__quantity'))
+        .order_by('-total_sold')
+        .first()
+    )
+
+    # Low stock products
+    low_stock_products = vendor.products.filter(status='active', stock_qty__lte=5)[:5]
+
+    # Recent orders
+    recent_orders = (
+        OrderItem.objects
+        .filter(product__vendor=vendor, order__payment_status='paid')
+        .select_related('order', 'product')
+        .order_by('-order__created_at')[:20]
+    )
+
+    tabs = [
+        ('products', 'Products'),
+        ('orders',   'Orders'),
+        ('earnings', 'Earnings'),
+        ('settings', 'Settings'),
+    ]
 
     return render(request, 'vendors/dashboard.html', {
-        'vendor':         vendor,
-        'products':       products,
-        'total_revenue':  total_revenue,
-        'pending_payout': pending_payout,
-        'total_orders':   total_orders,
-        'recent_orders':  recent_orders,
-        'cart_count':     0,
+        'vendor':              vendor,
+        'products':            products,
+        'earnings':            earnings.order_by('-created_at'),
+        'recent_orders':       recent_orders,
+        'tabs':                tabs,
+
+        # Stats
+        'total_revenue':       total_revenue,
+        'pending_payout':      pending_payout,
+        'paid_out':            paid_out,
+        'total_orders':        total_orders,
+        'low_stock_count':     low_stock_count,
+
+        # Today
+        'orders_today':        orders_today,
+        'revenue_today':       revenue_today,
+
+        # Chart
+        'daily_sales':         list(daily_sales),
+
+        # Insights
+        'top_product':         top_product,
+        'low_stock_products':  low_stock_products,
+
+        'cart_count': 0,
     })
+
+
+# ── VENDOR SHOP SETTINGS ──────────────────────────────────
+
+@vendor_required
+def settings_update(request):
+    vendor = request.vendor
+
+    if request.method == 'POST':
+        vendor.shop_name    = request.POST.get('shop_name', vendor.shop_name).strip()
+        vendor.description  = request.POST.get('description', '').strip()
+        vendor.phone        = request.POST.get('phone', vendor.phone).strip()
+        vendor.location     = request.POST.get('location', '').strip()
+        vendor.momo_number  = request.POST.get('momo_number', vendor.momo_number).strip()
+        vendor.momo_network = request.POST.get('momo_network', vendor.momo_network)
+
+        if 'logo' in request.FILES:
+            vendor.logo = request.FILES['logo']
+        if 'banner' in request.FILES:
+            vendor.banner = request.FILES['banner']
+
+        vendor.save()
+        messages.success(request, 'Shop settings saved!')
+
+    return redirect('vendors:dashboard')
 
 
 # ── VENDOR PRODUCT MANAGEMENT ─────────────────────────────
@@ -237,8 +334,8 @@ def product_add(request):
 
         product = Product.objects.create(
             vendor=vendor, name=name, slug=slug, description=description,
-            category_id=category_id or None, cost_price=selling_price,
-            selling_price=selling_price, stock_qty=stock_qty, status=status,
+            category_id=category_id or None, selling_price=selling_price,
+            cost_price=selling_price, stock_qty=stock_qty, status=status,
         )
         for i, img in enumerate(request.FILES.getlist('images')):
             ProductImage.objects.create(
@@ -268,9 +365,13 @@ def product_edit(request, pk):
         product.stock_qty     = request.POST.get('stock_qty', product.stock_qty)
         product.status        = request.POST.get('status', product.status)
         product.save()
+
         for i, img in enumerate(request.FILES.getlist('images')):
-            ProductImage.objects.create(product=product, image=img, order=product.images.count() + i)
-        messages.success(request, f'"{product.name}" updated.')
+            ProductImage.objects.create(
+                product=product, image=img, order=product.images.count() + i
+            )
+
+        messages.success(request, f'"{product.name}" updated!')
         return redirect('vendors:dashboard')
 
     return render(request, 'vendors/product_form.html', {
@@ -303,8 +404,11 @@ def earnings(request):
     paid_out = earnings.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
 
     return render(request, 'vendors/earnings.html', {
-        'vendor': vendor, 'earnings': earnings,
-        'total': total, 'pending': pending, 'paid_out': paid_out,
+        'vendor':   vendor,
+        'earnings': earnings,
+        'total':    total,
+        'pending':  pending,
+        'paid_out': paid_out,
     })
 
 

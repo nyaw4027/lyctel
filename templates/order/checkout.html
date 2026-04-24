@@ -2,133 +2,289 @@
 {% block title %}Checkout — Lynctel{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 py-8">
+<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
 
-  <!-- Steps -->
-  <div class="flex items-center justify-center mb-10">
-    <div class="flex items-center gap-2">
-      <div class="w-8 h-8 rounded-full bg-brand text-white text-sm font-bold flex items-center justify-center">1</div>
-      <span class="text-sm font-semibold text-brand hidden sm:inline">Delivery</span>
-    </div>
-    <div class="w-16 h-0.5 bg-gray-200 mx-3"></div>
-    <div class="flex items-center gap-2 opacity-40">
-      <div class="w-8 h-8 rounded-full bg-gray-300 text-white text-sm font-bold flex items-center justify-center">2</div>
-      <span class="text-sm font-semibold text-gray-400 hidden sm:inline">Payment</span>
-    </div>
-    <div class="w-16 h-0.5 bg-gray-200 mx-3"></div>
-    <div class="flex items-center gap-2 opacity-40">
-      <div class="w-8 h-8 rounded-full bg-gray-300 text-white text-sm font-bold flex items-center justify-center">3</div>
-      <span class="text-sm font-semibold text-gray-400 hidden sm:inline">Done</span>
-    </div>
+  <!-- Progress steps -->
+  <div class="flex items-center gap-2 mb-8 text-sm overflow-x-auto pb-1">
+    <a href="{% url 'cart:detail' %}"
+       class="text-gold-dark font-semibold hover:underline whitespace-nowrap flex items-center gap-1">
+      ← Cart
+    </a>
+    <span class="text-gray-300">›</span>
+    <span class="font-semibold text-navy whitespace-nowrap flex items-center gap-1">
+      <span class="w-5 h-5 bg-navy text-white rounded-full text-xs flex items-center justify-center font-bold">1</span>
+      Delivery
+    </span>
+    <span class="text-gray-300">›</span>
+    <span class="text-gray-400 whitespace-nowrap flex items-center gap-1">
+      <span class="w-5 h-5 bg-gray-200 text-gray-500 rounded-full text-xs flex items-center justify-center font-bold">2</span>
+      Payment
+    </span>
+    <span class="text-gray-300">›</span>
+    <span class="text-gray-400 whitespace-nowrap flex items-center gap-1">
+      <span class="w-5 h-5 bg-gray-200 text-gray-500 rounded-full text-xs flex items-center justify-center font-bold">3</span>
+      Done
+    </span>
   </div>
 
-  <div class="flex flex-col lg:flex-row gap-8">
+  <div class="flex flex-col lg:flex-row gap-6">
 
-    <!-- FORM -->
+    <!-- ── DELIVERY FORM ──────────────────────────── -->
     <div class="flex-1">
-      <h2 class="text-xl font-bold text-gray-800 mb-6">Delivery Details</h2>
-      <form method="POST" class="space-y-4">
-        {% csrf_token %}
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h2 class="font-display font-700 text-xl text-navy mb-6">Delivery Details</h2>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form method="POST" class="space-y-5" id="checkout-form">
+          {% csrf_token %}
+
+          <!-- Phone -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-            <input type="text" value="{{ user.first_name }}" disabled
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-400 text-sm"/>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              Delivery Phone Number *
+            </label>
+            <input type="tel" name="delivery_phone"
+                   value="{{ form_data.delivery_phone|default:user.phone }}"
+                   placeholder="0241234567"
+                   class="w-full px-4 py-3 border rounded-xl text-sm transition-all
+                          {% if errors.delivery_phone %}border-red-400 bg-red-50
+                          {% else %}border-gray-200 focus:border-gold{% endif %}"/>
+            {% if errors.delivery_phone %}
+            <p class="text-red-500 text-xs mt-1 flex items-center gap-1">
+              ⚠ {{ errors.delivery_phone }}
+            </p>
+            {% endif %}
+            <p class="text-xs text-gray-400 mt-1">
+              📞 Rider will call this number on arrival
+            </p>
           </div>
+
+          <!-- Address -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-            <input type="text" value="{{ user.last_name }}" disabled
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-400 text-sm"/>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              Delivery Address *
+            </label>
+            <input type="text" name="delivery_address"
+                   value="{{ form_data.delivery_address|default:'' }}"
+                   placeholder="House no., street name, nearby landmark..."
+                   class="w-full px-4 py-3 border rounded-xl text-sm transition-all
+                          {% if errors.delivery_address %}border-red-400 bg-red-50
+                          {% else %}border-gray-200 focus:border-gold{% endif %}"/>
+            {% if errors.delivery_address %}
+            <p class="text-red-500 text-xs mt-1 flex items-center gap-1">
+              ⚠ {{ errors.delivery_address }}
+            </p>
+            {% endif %}
           </div>
-        </div>
 
-        <!-- Phone -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Delivery Phone *</label>
-          <input type="tel" name="delivery_phone"
-                 value="{{ form_data.delivery_phone|default:user.phone }}"
-                 placeholder="+233 XX XXX XXXX"
-                 class="w-full px-4 py-2.5 border {% if errors.delivery_phone %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-          {% if errors.delivery_phone %}<p class="text-red-500 text-xs mt-1">{{ errors.delivery_phone }}</p>{% endif %}
-        </div>
+          <!-- City -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              City *
+            </label>
+            <input type="text" name="delivery_city"
+                   value="{{ form_data.delivery_city|default:'' }}"
+                   placeholder="e.g. Accra, Kumasi, Tema, Takoradi..."
+                   class="w-full px-4 py-3 border rounded-xl text-sm transition-all
+                          {% if errors.delivery_city %}border-red-400 bg-red-50
+                          {% else %}border-gray-200 focus:border-gold{% endif %}"/>
+            {% if errors.delivery_city %}
+            <p class="text-red-500 text-xs mt-1 flex items-center gap-1">
+              ⚠ {{ errors.delivery_city }}
+            </p>
+            {% endif %}
+          </div>
 
-        <!-- Zone -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Delivery Zone *</label>
-          <select name="zone_id"
-                  class="w-full px-4 py-2.5 border {% if errors.zone_id %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %} rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
-            <option value="">Select your area...</option>
-            {% for zone in zones %}
-            <option value="{{ zone.pk }}"
-                    {% if form_data.zone_id == zone.pk|stringformat:"s" %}selected{% endif %}>
-              {{ zone.name }} — GHS {{ zone.delivery_fee }} ({{ zone.estimated_days }} day{{ zone.estimated_days|pluralize }})
-            </option>
-            {% endfor %}
-          </select>
-          {% if errors.zone_id %}<p class="text-red-500 text-xs mt-1">{{ errors.zone_id }}</p>{% endif %}
-        </div>
+          <!-- Delivery Zone -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              Delivery Zone *
+            </label>
+            <select name="zone_id" id="zone-select"
+                    class="w-full px-4 py-3 border rounded-xl text-sm bg-white transition-all
+                           cursor-pointer
+                           {% if errors.zone_id %}border-red-400 bg-red-50
+                           {% else %}border-gray-200 focus:border-gold{% endif %}">
+              <option value="">— Select your delivery area —</option>
+              {% for zone in zones %}
+              <option value="{{ zone.pk }}"
+                      data-fee="{{ zone.delivery_fee }}"
+                      {% if form_data.zone_id == zone.pk|stringformat:"s" %}selected{% endif %}>
+                {{ zone.name }} — GHS {{ zone.delivery_fee }}
+              </option>
+              {% endfor %}
+            </select>
+            {% if errors.zone_id %}
+            <p class="text-red-500 text-xs mt-1 flex items-center gap-1">
+              ⚠ {{ errors.zone_id }}
+            </p>
+            {% endif %}
 
-        <!-- City -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">City *</label>
-          <input type="text" name="delivery_city"
-                 value="{{ form_data.delivery_city|default:'' }}"
-                 placeholder="e.g. Accra, Tema, Kumasi"
-                 class="w-full px-4 py-2.5 border {% if errors.delivery_city %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-          {% if errors.delivery_city %}<p class="text-red-500 text-xs mt-1">{{ errors.delivery_city }}</p>{% endif %}
-        </div>
+            <!-- Live fee preview -->
+            <div id="fee-preview"
+                 class="hidden mt-2 bg-gold-light border border-gold/30 rounded-xl
+                        px-4 py-2.5 flex items-center justify-between text-sm">
+              <span class="text-gray-600">Delivery fee for this zone</span>
+              <span id="fee-preview-amount" class="font-display font-700 text-navy"></span>
+            </div>
+          </div>
 
-        <!-- Address -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Full Delivery Address *</label>
-          <textarea name="delivery_address" rows="3"
-                    placeholder="House number, street name, nearest landmark..."
-                    class="w-full px-4 py-2.5 border {% if errors.delivery_address %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none">{{ form_data.delivery_address|default:user.address }}</textarea>
-          {% if errors.delivery_address %}<p class="text-red-500 text-xs mt-1">{{ errors.delivery_address }}</p>{% endif %}
-        </div>
+          <!-- Special notes -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              Special Notes
+              <span class="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <textarea name="special_notes" rows="2"
+                      placeholder="Gate colour, nearest landmark, best time to deliver..."
+                      class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm
+                             resize-none focus:border-gold transition-all">{{ form_data.special_notes|default:'' }}</textarea>
+          </div>
 
-        <!-- Note -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Order Note <span class="text-gray-400 font-normal">(optional)</span></label>
-          <textarea name="customer_note" rows="2"
-                    placeholder="Special instructions for your delivery..."
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"></textarea>
-        </div>
+          <!-- Submit button -->
+          <button type="submit" id="submit-btn"
+                  class="w-full bg-navy text-white font-semibold py-4 rounded-xl
+                         transition-all btn-press flex items-center justify-center gap-2
+                         disabled:opacity-50 disabled:cursor-not-allowed hover:bg-navy-700">
+            <span id="btn-text">Continue to Payment →</span>
+            <span id="btn-loader" class="hidden">
+              <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+            </span>
+          </button>
 
-        <button type="submit"
-                class="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-3.5 rounded-xl transition-colors">
-          Continue to Payment →
-        </button>
-      </form>
+          <p class="text-center text-xs text-gray-400">
+            🔒 Your information is secure and encrypted
+          </p>
+        </form>
+      </div>
     </div>
 
-    <!-- ORDER SUMMARY -->
-    <div class="lg:w-72">
-      <h2 class="text-xl font-bold text-gray-800 mb-5">Your Items</h2>
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-        {% for item in cart.items.all %}
-        <div class="flex items-center gap-3">
-          {% with item.product.images.first as img %}
-          {% if img %}
-          <img src="{{ img.image.url }}" alt="{{ item.product.name }}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0"/>
-          {% else %}
-          <div class="w-12 h-12 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center text-xl">📦</div>
-          {% endif %}
-          {% endwith %}
-          <div class="flex-1 min-w-0">
-            <p class="text-xs font-medium text-gray-700 truncate">{{ item.product.name }}</p>
-            <p class="text-xs text-gray-400">× {{ item.quantity }}</p>
+    <!-- ── ORDER SUMMARY SIDEBAR ──────────────────── -->
+    <div class="w-full lg:w-80 flex-shrink-0">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-20">
+
+        <h2 class="font-display font-700 text-navy text-base mb-4">Order Summary</h2>
+
+        <!-- Cart items -->
+        <div class="space-y-3 mb-4 max-h-60 overflow-y-auto pr-1">
+          {% for item in cart.items.all %}
+          <div class="flex items-center gap-3">
+            {% with item.product.images.first as img %}
+            {% if img %}
+            <img src="{{ img.image.url }}" alt="{{ item.product.name }}"
+                 class="w-12 h-12 rounded-xl object-cover flex-shrink-0"/>
+            {% else %}
+            <div class="w-12 h-12 rounded-xl bg-gray-100 flex-shrink-0
+                        flex items-center justify-center text-xl">📦</div>
+            {% endif %}
+            {% endwith %}
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-semibold text-navy truncate leading-tight">
+                {{ item.product.name }}
+              </p>
+              {% if item.product.vendor %}
+              <p class="text-xs text-gray-400">🏪 {{ item.product.vendor.shop_name }}</p>
+              {% endif %}
+              <p class="text-xs text-gray-400">× {{ item.quantity }}</p>
+            </div>
+            <p class="text-sm font-display font-700 text-navy flex-shrink-0">
+              GHS {{ item.subtotal }}
+            </p>
           </div>
-          <span class="text-xs font-bold text-brand">GHS {{ item.subtotal }}</span>
+          {% endfor %}
         </div>
-        {% endfor %}
-        <div class="border-t border-gray-100 pt-3 flex justify-between text-sm font-bold text-gray-800">
-          <span>Subtotal</span>
-          <span>GHS {{ cart.total_price }}</span>
+
+        <!-- Totals -->
+        <div class="border-t border-gray-100 pt-3 space-y-2 text-sm">
+          <div class="flex justify-between text-gray-500">
+            <span>Subtotal</span>
+            <span class="font-semibold text-navy">GHS {{ cart.total_price }}</span>
+          </div>
+          <div class="flex justify-between text-gray-500">
+            <span>Delivery fee</span>
+            <span id="sidebar-fee" class="font-semibold text-navy">—</span>
+          </div>
+          <div class="flex justify-between pt-2 border-t border-gray-100">
+            <span class="font-display font-700 text-navy">Total</span>
+            <span id="sidebar-total"
+                  class="font-display font-700 text-navy text-lg">
+              GHS {{ cart.total_price }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Payment methods accepted -->
+        <div class="mt-4 border-t border-gray-100 pt-4">
+          <p class="text-xs text-gray-400 text-center mb-3">Secure payment via</p>
+          <div class="flex flex-wrap justify-center gap-2">
+            <span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">
+              MTN MoMo
+            </span>
+            <span class="text-xs font-semibold bg-red-100 text-red-600 px-2.5 py-1 rounded-full">
+              Vodafone
+            </span>
+            <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">
+              AirtelTigo
+            </span>
+            <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
+              💳 Card
+            </span>
+          </div>
+        </div>
+
+        <div class="mt-3 bg-cream rounded-xl px-3 py-2.5 text-xs text-gray-500 text-center">
+          🔒 Powered by Flutterwave — 100% secure
         </div>
       </div>
     </div>
+
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const subtotal   = parseFloat("{{ cart.total_price|floatformat:2 }}") || 0;
+  const zoneSelect = document.getElementById('zone-select');
+  const sidebarFee = document.getElementById('sidebar-fee');
+  const sidebarTot = document.getElementById('sidebar-total');
+  const feePreview = document.getElementById('fee-preview');
+  const feeAmount  = document.getElementById('fee-preview-amount');
+  const submitBtn  = document.getElementById('submit-btn');
+
+  function updateFee() {
+    const opt = zoneSelect.options[zoneSelect.selectedIndex];
+    const fee = parseFloat(opt?.dataset.fee || 0);
+
+    if (zoneSelect.value && fee >= 0) {
+      sidebarFee.textContent = 'GHS ' + fee.toFixed(2);
+      sidebarTot.textContent = 'GHS ' + (subtotal + fee).toFixed(2);
+      feePreview.classList.remove('hidden');
+      feeAmount.textContent  = 'GHS ' + fee.toFixed(2);
+      submitBtn.disabled     = false;
+      submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+      sidebarFee.textContent = '—';
+      sidebarTot.textContent = 'GHS ' + subtotal.toFixed(2);
+      feePreview.classList.add('hidden');
+      submitBtn.disabled     = true;
+      submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+  }
+
+  // Run on load (handles validation error reloads with zone pre-selected)
+  updateFee();
+
+  // Run on zone change
+  zoneSelect.addEventListener('change', updateFee);
+
+  // Show loading spinner on submit
+  document.getElementById('checkout-form').addEventListener('submit', function() {
+    document.getElementById('btn-text').textContent   = 'Processing...';
+    document.getElementById('btn-loader').classList.remove('hidden');
+    submitBtn.disabled = true;
+  });
+</script>
 {% endblock %}

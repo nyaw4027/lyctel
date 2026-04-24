@@ -1,18 +1,115 @@
-{% comment %}templates/vendors/pending.html{% endcomment %}
+
 {% extends "base.html" %}
 {% block title %}Application Pending — Lynctel{% endblock %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  @keyframes pulse-ring {
+    0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234,179,8,0.35); }
+    70%  { transform: scale(1);    box-shadow: 0 0 0 18px rgba(234,179,8,0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234,179,8,0); }
+  }
+  .pulse-icon { animation: pulse-ring 2.2s ease infinite; }
+  @keyframes fu { from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;} }
+  .fu  { animation: fu 0.45s ease both; }
+  .fu2 { animation: fu 0.45s 0.1s ease both; }
+  .fu3 { animation: fu 0.45s 0.2s ease both; }
+  .step-item { position: relative; }
+  .step-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 15px; top: 32px;
+    width: 2px; height: calc(100% - 8px);
+    background: #e5e7eb;
+  }
+  .step-item.done::after { background: #bbf7d0; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-md mx-auto px-4 py-20 text-center">
-  <div class="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-5">
-    <svg class="w-10 h-10 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-    </svg>
+<div class="min-h-screen bg-gradient-to-br from-amber-50 via-white to-blue-50 flex items-center justify-center px-4 py-16">
+  <div class="w-full max-w-md">
+
+    <!-- Icon -->
+    <div class="flex justify-center mb-6 fu">
+      <div class="pulse-icon w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center">
+        <svg class="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-white rounded-3xl shadow-sm border p-7 fu2">
+      <div class="text-center mb-6">
+        <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight mb-2">
+          Application Under Review
+        </h1>
+        <p class="text-gray-500 text-sm leading-relaxed">
+          Your shop <span class="font-bold text-blue-600">{{ vendor.shop_name }}</span> has been submitted and is currently being reviewed by our team.
+        </p>
+      </div>
+
+      <!-- Info pill -->
+      <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3 mb-6">
+        <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-xs text-amber-800 leading-relaxed">
+          We typically approve applications within <strong>24 hours</strong>. You'll be contacted at <strong>{{ vendor.phone }}</strong>.
+        </p>
+      </div>
+
+      <!-- Progress Steps -->
+      <div class="space-y-4 mb-7">
+        <div class="step-item done flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 z-10 relative">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-800">Application Submitted</p>
+            <p class="text-xs text-gray-400">Your details have been received</p>
+          </div>
+        </div>
+
+        <div class="step-item flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 z-10 relative">
+            <div class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></div>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-800">Under Review</p>
+            <p class="text-xs text-gray-400">Our team is verifying your shop</p>
+          </div>
+        </div>
+
+        <div class="step-item flex items-center gap-3 opacity-40">
+          <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 z-10 relative">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Approved & Live</p>
+            <p class="text-xs text-gray-400">Your shop will go public</p>
+          </div>
+        </div>
+      </div>
+
+      <a href="{% url 'frontend:home' %}"
+         class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition text-sm">
+        Continue Shopping
+      </a>
+
+      <p class="text-center text-xs text-gray-400 mt-4">
+        Have questions? <a href="mailto:support@lynctel.com" class="text-blue-600 hover:underline font-semibold">Contact support</a>
+      </p>
+    </div>
+
   </div>
-  <h1 class="text-2xl font-bold text-gray-800 mb-2">Application Under Review</h1>
-  <p class="text-gray-500 text-sm mb-2">
-    Your shop <span class="font-semibold text-brand">{{ vendor.shop_name }}</span> is being reviewed.
-  </p>
-  <p class="text-gray-400 text-xs mb-8">We typically approve within 24 hours. We'll contact you on {{ vendor.phone }}.</p>
-  <a href="{% url 'frontend:home' %}" class="text-brand text-sm hover:underline">Back to Shopping →</a>
 </div>
 {% endblock %}

@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.db.models import Q, Avg, Count
 from .models import Product, Category
 from cart.models import Cart
+from django.db.models import F
 
 
 def get_or_create_cart(request):
@@ -101,4 +102,14 @@ def product_detail(request, slug):
         'rating_breakdown': rating_breakdown,
         'user_review':      user_review,
         'user_can_review':  user_can_review,
+    })
+
+def deals_page(request):
+    deals = Product.objects.filter(
+        discount_price__isnull=False,
+        discount_price__lt=F("selling_price")
+    )
+
+    return render(request, "products/deals.html", {
+        "deals": deals
     })

@@ -1,0 +1,62 @@
+<h2>🚴 My Deliveries</h2>
+
+{% for d in deliveries %}
+  <div style="
+      border:1px solid #ddd;
+      padding:15px;
+      margin-bottom:15px;
+      border-radius:10px;
+      background:#fafafa;
+  ">
+
+    <!-- ORDER INFO -->
+    <p><strong>Order Ref:</strong> {{ d.order.order_ref|default:"Ride Booking" }}</p>
+
+    <!-- STATUS -->
+    <p>
+      <strong>Status:</strong>
+      <span style="
+        padding:4px 8px;
+        border-radius:5px;
+        background:#eee;
+      ">
+        {{ d.status|title }}
+      </span>
+    </p>
+
+    <!-- LOCATION INFO -->
+    {% if d.is_customer_ride %}
+      <p><strong>Pickup:</strong> {{ d.pickup_location }}</p>
+      <p><strong>Dropoff:</strong> {{ d.dropoff_location }}</p>
+    {% endif %}
+
+    <!-- DELIVERY FEES -->
+    <p><strong>Fee:</strong> GHS {{ d.delivery_fee }}</p>
+
+    <hr>
+
+    <!-- ACTIONS (SAFE POST BUTTONS) -->
+    <form method="post" action="{% url 'delivery:update_status' d.id 'picked_up' %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" style="padding:5px 10px;">
+        📦 Picked Up
+      </button>
+    </form>
+
+    <form method="post" action="{% url 'delivery:update_status' d.id 'delivered' %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" style="padding:5px 10px;">
+        ✅ Delivered
+      </button>
+    </form>
+
+    <!-- TRACK BUTTON -->
+    <a href="{% url 'delivery:track' d.id %}" style="margin-left:10px;">
+      📍 Track
+    </a>
+
+  </div>
+
+{% empty %}
+  <p>No deliveries assigned yet.</p>
+{% endfor %}

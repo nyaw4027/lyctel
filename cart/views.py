@@ -1,9 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
 from django.http import JsonResponse
-from products.models import Product
-from delivery.models import DeliveryZone
+from django.contrib import messages
 from .models import Cart, CartItem
+from products.models import Product
 
 
 def get_or_create_cart(request):
@@ -18,100 +17,85 @@ def get_or_create_cart(request):
     return cart
 
 
-def merge_guest_cart(request, user):
-    """Call this right after a user logs in."""
-    session_key = request.session.session_key
-    if not session_key:
-        return
-    try:
-        guest_cart = Cart.objects.get(session_key=session_key, user=None)
-        user_cart, _ = Cart.objects.get_or_create(user=user)
-        for item in guest_cart.items.all():
-            existing = user_cart.items.filter(product=item.product).first()
-            if existing:
-                existing.quantity += item.quantity
-                existing.save()
-            else:
-                item.cart = user_cart
-                item.save()
-        guest_cart.delete()
-    except Cart.DoesNotExist:
-        pass
-
-
 def cart_detail(request):
     cart       = get_or_create_cart(request)
-    zones      = DeliveryZone.objects.filter(is_active=True)
-    cart_items = cart.items.select_related('product').all()
+    cart_items = cart.items.select_related('product').prefetch_related('product__images').all()
     return render(request, 'cart/cart.html', {
         'cart':       cart,
         'cart_items': cart_items,
-        'zones':      zones,
         'cart_count': cart.total_items,
     })
 
 
-def add_to_cart(request, product_id):
-    if request.method != 'POST':
-        return redirect('products:list')
-
+def cart_add(request, product_id):
     product  = get_object_or_404(Product, pk=product_id, status='active')
     cart     = get_or_create_cart(request)
     quantity = int(request.POST.get('quantity', 1))
 
-    if not product.is_in_stock:
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'message': 'Out of stock.'})
-        messages.error(request, f'"{product.name}" is out of stock.')
-        return redirect('products:detail', slug=product.slug)
+    item, created = CartItem.objects.get_or_create(cart=cart, product=product)
+    item.quantity = item.quantity + quantity if not created else quantity
+    item.save()
 
-    quantity  = min(quantity, product.stock_qty)
-    item, created = CartItem.objects.get_or_create(
-        cart=cart, product=product, defaults={'quantity': quantity}
-    )
-    if not created:
-        item.quantity = min(item.quantity + quantity, product.stock_qty)
-        item.save()
-
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if is_ajax:
         return JsonResponse({
-            'success':    True,
-            'message':    f'"{product.name}" added to cart.',
-            'cart_count': cart.total_items,
-            'cart_total': str(cart.total_price),
+            'success':       True,
+            'cart_count':    cart.total_items,
+            'item_subtotal': str(item.subtotal),
+            'cart_total':    str(cart.total_price),
         })
 
     messages.success(request, f'"{product.name}" added to cart.')
     return redirect('cart:detail')
 
 
-def update_cart(request, item_id):
-    if request.method != 'POST':
-        return redirect('cart:detail')
+def cart_update(request, item_id):
+    cart     = get_or_create_cart(request)
+    item     = get_object_or_404(CartItem, pk=item_id, cart=cart)
+    quantity = int(request.POST.get('quantity', 1))
 
-    cart      = get_or_create_cart(request)
-    cart_item = get_object_or_404(CartItem, pk=item_id, cart=cart)
-    quantity  = int(request.POST.get('quantity', 1))
-
-    if quantity <= 0:
-        cart_item.delete()
+    if quantity < 1:
+        item.delete()
     else:
-        cart_item.quantity = min(quantity, cart_item.product.stock_qty)
-        cart_item.save()
+        item.quantity = quantity
+        item.save()
 
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({
-            'success':    True,
-            'cart_count': cart.total_items,
-            'cart_total': str(cart.total_price),
+    return JsonResponse({
+        'success':       True,
+        'cart_count':    cart.total_items,
+        'item_subtotal': str(item.subtotal) if quantity >= 1 else '0.00',
+        'cart_total':    str(cart.total_price),
+    })
+
+
+def cart_remove(request, item_id):
+    cart = get_or_create_cart(request)
+    item = get_object_or_404(CartItem, pk=item_id, cart=cart)
+    item.delete()
+
+    return JsonResponse({
+        'success':    True,
+        'cart_count': cart.total_items,
+        'cart_total': str(cart.total_price),
+    })
+
+
+# cart/views.py — add this function
+def cart_data(request):
+    from django.http import JsonResponse
+    cart  = get_or_create_cart(request)
+    items = []
+    for item in cart.items.select_related('product').prefetch_related('product__images','product__vendor').all():
+        img = item.product.images.first()
+        items.append({
+            'id':       item.pk,
+            'name':     item.product.name,
+            'price':    str(item.product.selling_price),
+            'quantity': item.quantity,
+            'subtotal': str(item.subtotal),
+            'image':    img.image.url if img else '',
+            'vendor':   item.product.vendor.shop_name if item.product.vendor else '',
+            'slug':     item.product.slug,
         })
-    return redirect('cart:detail')
+    return JsonResponse({'count': cart.total_items, 'total': str(cart.total_price), 'items': items})
 
-
-def remove_from_cart(request, item_id):
-    cart      = get_or_create_cart(request)
-    cart_item = get_object_or_404(CartItem, pk=item_id, cart=cart)
-    name      = cart_item.product.name
-    cart_item.delete()
-    messages.info(request, f'"{name}" removed from cart.')
-    return redirect('cart:detail')

@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}Live Delivery Map — {{ delivery.order.order_ref }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<style>
+  #map {
+    height: calc(100vh - 64px);
+    width: 100%;
+  }
+
+  .leaflet-popup-content-wrapper {
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(15,27,45,.15);
+  }
+
+  .leaflet-popup-content {
+    margin: 12px 16px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  #status-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: white;
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -4px 40px rgba(15,27,45,.15);
+    padding: 20px 20px 28px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  @keyframes gps-pulse {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(3); opacity: 0; }
+  }
+
+  .gps-dot {
+    position: relative;
+    display: inline-block;
+  }
+
+  .gps-dot::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: gps-pulse 1.5s infinite ease-out;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="relative">
+
+  <div id="map"></div>
+
+  <!-- STATUS PANEL -->
+  <div id="status-panel">
+
+    <!-- ORDER INFO -->
+    <div class="flex justify-between mb-4">
+      <div>
+        <p class="text-xs text-gray-400 uppercase">Delivering</p>
+        <p class="font-bold text-navy text-lg">{{ delivery.order.order_ref }}</p>
+        <p class="text-sm text-gray-500">{{ delivery.order.delivery_address }}</p>
+        <p class="text-sm text-gray-500">{{ delivery.order.delivery_city }}</p>
+      </div>
+
+      <div class="text-right">
+        <p class="text-xs text-gray-400">Earnings</p>
+        <p class="text-2xl font-bold text-green-600">
+          GHS {{ delivery.rider_commission }}
+        </p>
+      </div>
+    </div>
+
+    <!-- ETA -->
+    <div class="bg-blue-50 rounded-xl px-4 py-2 mb-3 text-sm flex justify-between">
+      <span class="text-gray-600">Estimated arrival</span>
+      <span id="eta-text" class="font-bold text-navy">-- min</span>
+    </div>
+
+    <!-- GPS STATUS -->
+    <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 mb-4 text-sm">
+      <span class="gps-dot w-2.5 h-2.5 bg-green-500 rounded-full"></span>
+      <span id="gps-text" class="text-gray-600 font-medium">
+        Waiting for GPS...
+      </span>
+    </div>
+
+    <!-- CONTACT -->
+    <div class="flex gap-3 mb-4">
+      <a href="tel:{{ delivery.order.delivery_phone }}"
+         class="flex-1 text-center bg-gray-100 py-3 rounded-xl text-sm font-semibold">
+        📞 Call
+      </a>
+
+      <a href="https://wa.me/233{{ delivery.order.delivery_phone|slice:'1:' }}"
+         target="_blank"
+         class="flex-1 text-center bg-green-500 text-white py-3 rounded-xl text-sm font-semibold">
+        💬 WhatsApp
+      </a>
+    </div>
+
+    <!-- ACTIONS -->
+    <div>
+      {% if delivery.status == 'assigned' %}
+      <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="picked_up">
+        <button class="w-full bg-blue-600 text-white py-3 rounded-xl">
+          📦 Picked Up
+        </button>
+      </form>
+
+      {% elif delivery.status == 'picked_up' %}
+      <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="en_route">
+        <button class="w-full bg-purple-600 text-white py-3 rounded-xl">
+          🛵 En Route
+        </button>
+      </form>
+
+      {% elif delivery.status == 'en_route' %}
+      <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="delivered">
+        <button class="w-full bg-green-600 text-white py-3 rounded-xl">
+          🎉 Delivered
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CUSTOMER_LAT = {{ customer_lat }};
+const CUSTOMER_LNG = {{ customer_lng }};
+const ORDER_REF = "{{ delivery.order.order_ref|escapejs }}";
+
+let riderMarker = null;
+let routeLine = null;
+let watchId = null;
+let lastSent = 0;
+
+// ─────────────────────────────
+// MAP INIT
+// ─────────────────────────────
+const map = L.map('map', { zoomControl: false })
+  .setView([CUSTOMER_LAT, CUSTOMER_LNG], 15);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+// CUSTOMER MARKER
+L.marker([CUSTOMER_LAT, CUSTOMER_LNG])
+  .addTo(map)
+  .bindPopup(ORDER_REF);
+
+// ─────────────────────────────
+// GPS TRACKING
+// ─────────────────────────────
+function startTracking() {
+  if (!navigator.geolocation) return;
+
+  watchId = navigator.geolocation.watchPosition(onUpdate, onError, {
+    enableHighAccuracy: true,
+    maximumAge: 5000,
+    timeout: 10000
+  });
+}
+
+// ─────────────────────────────
+// UPDATE POSITION
+// ─────────────────────────────
+function onUpdate(pos) {
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+
+  if (!riderMarker) {
+    riderMarker = L.marker([lat, lng]).addTo(map);
+    map.fitBounds([[lat, lng], [CUSTOMER_LAT, CUSTOMER_LNG]]);
+  } else {
+    riderMarker.setLatLng([lat, lng]);
+  }
+
+  if (routeLine) map.removeLayer(routeLine);
+
+  routeLine = L.polyline([[lat, lng], [CUSTOMER_LAT, CUSTOMER_LNG]], {
+    color: '#0F1B2D',
+    weight: 3,
+    dashArray: '6 6'
+  }).addTo(map);
+
+  const dist = haversine(lat, lng, CUSTOMER_LAT, CUSTOMER_LNG);
+  const eta = Math.max(1, Math.round((dist / 30) * 60));
+
+  document.getElementById("gps-text").innerText =
+    `${dist < 1 ? Math.round(dist * 1000) + "m" : dist.toFixed(1) + "km"} away`;
+
+  document.getElementById("eta-text").innerText = `${eta} min`;
+
+  sendLocation(lat, lng);
+}
+
+// ─────────────────────────────
+// SEND TO BACKEND (THROTTLED)
+// ─────────────────────────────
+function sendLocation(lat, lng) {
+  const now = Date.now();
+  if (now - lastSent < 8000) return;
+  lastSent = now;
+
+  fetch("/rider/location/update/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest"
+    },
+    body: JSON.stringify({ latitude: lat, longitude: lng })
+  }).catch(() => {});
+}
+
+// ─────────────────────────────
+// ERROR
+// ─────────────────────────────
+function onError() {
+  document.getElementById("gps-text").innerText = "GPS unavailable";
+}
+
+// ─────────────────────────────
+// DISTANCE CALC
+// ─────────────────────────────
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// START
+startTracking();
+
+window.addEventListener("beforeunload", () => {
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+});
+</script>
+{% endblock %}

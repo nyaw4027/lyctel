@@ -4,20 +4,36 @@
 {% block content %}
 <div class="max-w-md mx-auto px-4 py-16 text-center">
 
-  <!-- Spinner while Flutterwave loads -->
-  <div id="waiting" class="">
-    <div class="w-16 h-16 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-5"></div>
-    <h2 class="text-lg font-bold text-gray-800 mb-1">Opening payment window...</h2>
-    <p class="text-sm text-gray-500 mb-2">Order <span class="font-bold text-brand">{{ order.order_ref }}</span></p>
-    <p class="text-2xl font-bold text-brand mb-6">GHS {{ order.total_amount }}</p>
-    <p class="text-xs text-gray-400">A secure payment window will open shortly.<br/>Do not close or refresh this page.</p>
+  <!-- Spinner -->
+  <div id="waiting">
+    <div class="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-5"></div>
+
+    <h2 class="text-lg font-bold text-gray-800 mb-1">
+      Opening payment window...
+    </h2>
+
+    <p class="text-sm text-gray-500 mb-2">
+      Order <span class="font-bold text-gold">{{ order.order_ref }}</span>
+    </p>
+
+    <p class="text-2xl font-bold text-gold mb-6">
+      GHS {{ order.total_amount }}
+    </p>
+
+    <p class="text-xs text-gray-400">
+      A secure payment window will open shortly.<br>
+      Do not close or refresh this page.
+    </p>
   </div>
 
-  <!-- Fallback if popup blocked -->
+  <!-- Fallback -->
   <div id="fallback" class="hidden">
-    <p class="text-sm text-gray-600 mb-4">If the payment window didn't open automatically:</p>
+    <p class="text-sm text-gray-600 mb-4">
+      If the payment window didn't open automatically:
+    </p>
+
     <button id="pay-btn"
-            class="bg-brand hover:bg-brand-dark text-white font-bold px-8 py-3 rounded-xl transition-colors">
+            class="bg-navy hover:bg-navy-700 text-white font-bold px-8 py-3 rounded-xl transition">
       Open Payment Window
     </button>
   </div>
@@ -26,40 +42,50 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Flutterwave Inline JS SDK -->
 <script src="https://checkout.flutterwave.com/v3.js"></script>
+
 <script>
   const config = {{ flw_config|safe }};
 
-  // Override the redirect to ensure it goes to our callback
-  config.callback = function(response) {
-    // On successful payment in inline mode, redirect to callback
-    window.location.href = `/checkout/payment/callback/?status=${response.status}&tx_ref=${response.tx_ref}&transaction_id=${response.transaction_id}`;
+  // ✅ SAFE CALLBACK HANDLER
+  config.callback = function (response) {
+    console.log("Flutterwave response:", response);
+
+    if (response.status === "successful" || response.status === "completed") {
+      window.location.href = `/checkout/payment/callback/?status=successful&tx_ref=${response.tx_ref}&transaction_id=${response.transaction_id}`;
+    } else {
+      window.location.href = `/checkout/payment/callback/?status=failed&tx_ref=${response.tx_ref}`;
+    }
   };
 
-  config.onclose = function() {
-    // If user closes popup without paying
+  // ✅ HANDLE POPUP CLOSE
+  config.onclose = function () {
+    console.log("Payment popup closed");
+
     document.getElementById('waiting').classList.add('hidden');
     document.getElementById('fallback').classList.remove('hidden');
   };
 
-  // Auto-trigger payment popup
-  window.onload = function() {
-    setTimeout(function() {
+  // ✅ AUTO TRIGGER PAYMENT
+  window.onload = function () {
+    setTimeout(function () {
       try {
         FlutterwaveCheckout(config);
-      } catch(e) {
+      } catch (e) {
+        console.error("Flutterwave error:", e);
+
         document.getElementById('waiting').classList.add('hidden');
         document.getElementById('fallback').classList.remove('hidden');
       }
     }, 800);
   };
 
-  // Manual trigger button
-  document.addEventListener('DOMContentLoaded', function() {
+  // ✅ MANUAL FALLBACK BUTTON
+  document.addEventListener('DOMContentLoaded', function () {
     const btn = document.getElementById('pay-btn');
+
     if (btn) {
-      btn.addEventListener('click', function() {
+      btn.addEventListener('click', function () {
         FlutterwaveCheckout(config);
       });
     }

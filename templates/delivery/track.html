@@ -1,0 +1,63 @@
+<h2>Live Delivery Tracking</h2>
+
+<div id="map" style="height: 500px;"></div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
+
+<script>
+let map;
+let riderMarker;
+let pickupMarker;
+
+function initMap() {
+
+    const pickup = {
+        lat: parseFloat("{{ delivery.pickup_lat|default:5.6037 }}"),
+        lng: parseFloat("{{ delivery.pickup_lng|default:-0.1870 }}")
+    };
+
+    map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 14,
+        center: pickup
+    });
+
+    // 📍 Pickup marker (static)
+    pickupMarker = new google.maps.Marker({
+        position: pickup,
+        map: map,
+        label: "📦"
+    });
+
+    // 🚴 Rider marker (dynamic)
+    riderMarker = new google.maps.Marker({
+        map: map,
+        label: "🚴"
+    });
+
+    fetchLocation();
+    setInterval(fetchLocation, 3000);
+}
+
+function fetchLocation() {
+
+    fetch("{% url 'delivery:tracking_data' delivery.id %}")
+        .then(res => res.json())
+        .then(data => {
+
+            if (!data || !data.lat || !data.lng) return;
+
+            const position = {
+                lat: parseFloat(data.lat),
+                lng: parseFloat(data.lng)
+            };
+
+            riderMarker.setPosition(position);
+            map.panTo(position);
+        })
+        .catch(err => {
+            console.log("Tracking error:", err);
+        });
+}
+
+window.onload = initMap;
+</script>

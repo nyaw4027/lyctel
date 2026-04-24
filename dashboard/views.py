@@ -11,11 +11,12 @@ from order.models import Order, OrderStatusHistory
 from delivery.models import Delivery, DeliveryZone
 from rider.models import RiderProfile
 from ecommerce.models import User
+from vendors.models import Vendor, VendorEarning, AppCommission
 
 
-# ── Access control decorator ──────────────────────────────
+# ── ACCESS CONTROL ────────────────────────────────────────
+
 def admin_required(view_func):
-    """Only allow users with role=admin."""
     @login_required
     def wrapper(request, *args, **kwargs):
         if not request.user.is_admin():
@@ -29,46 +30,48 @@ def admin_required(view_func):
 
 @admin_required
 def dashboard_home(request):
-    today     = timezone.now().date()
     this_week = timezone.now() - timedelta(days=7)
 
-    # Key stats
-    total_orders    = Order.objects.count()
-    pending_orders  = Order.objects.filter(status='pending').count()
-    total_revenue   = Order.objects.filter(
+    total_orders     = Order.objects.count()
+    pending_orders   = Order.objects.filter(status='pending').count()
+    total_revenue    = Order.objects.filter(
         payment_status='paid'
     ).aggregate(t=Sum('total_amount'))['t'] or 0
-    week_revenue    = Order.objects.filter(
+    week_revenue     = Order.objects.filter(
         payment_status='paid', created_at__gte=this_week
     ).aggregate(t=Sum('total_amount'))['t'] or 0
-    total_products  = Product.objects.filter(status='active').count()
-    low_stock       = Product.objects.filter(
-        status='active', stock_qty__lte=5
-    ).count()
-    total_customers = User.objects.filter(role='customer').count()
-    active_riders   = RiderProfile.objects.filter(status='available').count()
+    total_products   = Product.objects.filter(status='active').count()
+    low_stock        = Product.objects.filter(status='active', stock_qty__lte=5).count()
+    total_customers  = User.objects.filter(role='customer').count()
+    active_riders    = RiderProfile.objects.filter(status='available').count()
+    total_vendors    = Vendor.objects.filter(status='active').count()
+    pending_vendors  = Vendor.objects.filter(status='pending').count()
+    total_commission = AppCommission.objects.aggregate(t=Sum('amount'))['t'] or 0
 
-    # Recent orders
-    recent_orders = Order.objects.select_related('customer').order_by('-created_at')[:8]
-
-    # Low stock products
-    low_stock_products = Product.objects.filter(
+    recent_orders       = Order.objects.select_related('customer').order_by('-created_at')[:8]
+    low_stock_products  = Product.objects.filter(
         status='active', stock_qty__lte=5
     ).order_by('stock_qty')[:5]
+    pending_vendor_list = Vendor.objects.filter(
+        status='pending'
+    ).select_related('owner').order_by('-joined_at')[:5]
 
-    context = {
-        'total_orders':       total_orders,
-        'pending_orders':     pending_orders,
-        'total_revenue':      total_revenue,
-        'week_revenue':       week_revenue,
-        'total_products':     total_products,
-        'low_stock':          low_stock,
-        'total_customers':    total_customers,
-        'active_riders':      active_riders,
-        'recent_orders':      recent_orders,
-        'low_stock_products': low_stock_products,
-    }
-    return render(request, 'dashboard/home.html', context)
+    return render(request, 'dashboard/home.html', {
+        'total_orders':        total_orders,
+        'pending_orders':      pending_orders,
+        'total_revenue':       total_revenue,
+        'week_revenue':        week_revenue,
+        'total_products':      total_products,
+        'low_stock':           low_stock,
+        'total_customers':     total_customers,
+        'active_riders':       active_riders,
+        'total_vendors':       total_vendors,
+        'pending_vendors':     pending_vendors,
+        'total_commission':    total_commission,
+        'recent_orders':       recent_orders,
+        'low_stock_products':  low_stock_products,
+        'pending_vendor_list': pending_vendor_list,
+    })
 
 
 # ── PRODUCTS ──────────────────────────────────────────────
@@ -79,7 +82,7 @@ def product_list(request):
     category = request.GET.get('category', '')
     status   = request.GET.get('status', '')
 
-    products = Product.objects.select_related('category').prefetch_related('images')
+    products = Product.objects.select_related('category', 'vendor').prefetch_related('images')
 
     if query:
         products = products.filter(
@@ -94,10 +97,10 @@ def product_list(request):
     categories = Category.objects.all()
 
     return render(request, 'dashboard/products/list.html', {
-        'products':   products,
-        'categories': categories,
-        'query':      query,
-        'filter_cat': category,
+        'products':      products,
+        'categories':    categories,
+        'query':         query,
+        'filter_cat':    category,
         'filter_status': status,
     })
 
@@ -127,34 +130,21 @@ def product_add(request):
                 'form_data': request.POST, 'action': 'Add',
             })
 
-        # Auto-generate unique slug
         base_slug = slugify(name)
-        slug      = base_slug
-        counter   = 1
+        slug, counter = base_slug, 1
         while Product.objects.filter(slug=slug).exists():
-            slug = f"{base_slug}-{counter}"
-            counter += 1
+            slug = f"{base_slug}-{counter}"; counter += 1
 
         product = Product.objects.create(
-            name          = name,
-            slug          = slug,
-            description   = description,
-            category_id   = category_id or None,
-            cost_price    = cost_price,
-            selling_price = selling_price,
-            stock_qty     = stock_qty,
-            status        = status,
-            is_featured   = is_featured,
+            name=name, slug=slug, description=description,
+            category_id=category_id or None, cost_price=cost_price,
+            selling_price=selling_price, stock_qty=stock_qty,
+            status=status, is_featured=is_featured,
         )
 
-        # Handle image uploads
-        images = request.FILES.getlist('images')
-        for i, img in enumerate(images):
+        for i, img in enumerate(request.FILES.getlist('images')):
             ProductImage.objects.create(
-                product    = product,
-                image      = img,
-                is_primary = (i == 0),
-                order      = i,
+                product=product, image=img, is_primary=(i == 0), order=i
             )
 
         messages.success(request, f'"{product.name}" added successfully.')
@@ -181,23 +171,17 @@ def product_edit(request, pk):
         product.is_featured   = request.POST.get('is_featured') == 'on'
         product.save()
 
-        # Add new images if uploaded
-        images = request.FILES.getlist('images')
         existing_count = product.images.count()
-        for i, img in enumerate(images):
+        for i, img in enumerate(request.FILES.getlist('images')):
             ProductImage.objects.create(
-                product = product,
-                image   = img,
-                order   = existing_count + i,
+                product=product, image=img, order=existing_count + i
             )
 
         messages.success(request, f'"{product.name}" updated.')
         return redirect('dashboard:product_list')
 
     return render(request, 'dashboard/products/form.html', {
-        'product':    product,
-        'categories': categories,
-        'action':     'Edit',
+        'product': product, 'categories': categories, 'action': 'Edit',
     })
 
 
@@ -224,9 +208,9 @@ def product_image_delete(request, pk):
 
 @admin_required
 def order_list(request):
-    status  = request.GET.get('status', '')
-    query   = request.GET.get('q', '').strip()
-    orders  = Order.objects.select_related('customer').order_by('-created_at')
+    status = request.GET.get('status', '')
+    query  = request.GET.get('q', '').strip()
+    orders = Order.objects.select_related('customer').order_by('-created_at')
 
     if status:
         orders = orders.filter(status=status)
@@ -238,9 +222,9 @@ def order_list(request):
         )
 
     return render(request, 'dashboard/orders/list.html', {
-        'orders':        orders,
-        'filter_status': status,
-        'query':         query,
+        'orders':         orders,
+        'filter_status':  status,
+        'query':          query,
         'status_choices': Order.Status.choices,
     })
 
@@ -256,59 +240,93 @@ def order_detail(request, pk):
 
     try:
         delivery = order.delivery
-    except Delivery.DoesNotExist:
+    except Exception:
         delivery = None
 
     if request.method == 'POST':
         action = request.POST.get('action')
 
-        # Update order status
+        # ── Update order status ──────────────────────────
         if action == 'update_status':
             new_status = request.POST.get('status')
             old_status = order.status
             if new_status and new_status != old_status:
                 OrderStatusHistory.objects.create(
-                    order      = order,
-                    old_status = old_status,
-                    new_status = new_status,
-                    changed_by = request.user,
-                    note       = request.POST.get('note', ''),
+                    order=order, old_status=old_status,
+                    new_status=new_status, changed_by=request.user,
+                    note=request.POST.get('note', ''),
                 )
                 order.status = new_status
                 if new_status == 'delivered':
                     order.delivered_at = timezone.now()
                 order.save()
-                messages.success(request, f'Order status updated to {new_status}.')
+                messages.success(request, f'Status updated to {new_status}.')
 
-        # Update payment status
+        # ── Update payment status ────────────────────────
         elif action == 'update_payment':
             order.payment_status = request.POST.get('payment_status')
             order.save()
             messages.success(request, 'Payment status updated.')
 
-        # Assign rider
+        # ── Assign rider ─────────────────────────────────
         elif action == 'assign_rider':
             rider_id = request.POST.get('rider_id')
             zone_id  = request.POST.get('zone_id')
+
             if rider_id and zone_id:
                 rider = get_object_or_404(RiderProfile, pk=rider_id)
                 zone  = get_object_or_404(DeliveryZone, pk=zone_id)
+
                 if not delivery:
-                    Delivery.objects.create(
+                    # Create delivery — rider must accept before it starts
+                    new_delivery = Delivery.objects.create(
                         order            = order,
                         rider            = rider,
                         zone             = zone,
                         delivery_fee     = zone.delivery_fee,
                         rider_commission = zone.delivery_fee * (rider.commission_rate / 100),
-                        status           = 'assigned',
+                        status           = 'pending_acceptance',
                     )
-                    rider.status = 'on_delivery'
-                    rider.save()
-                    order.status = 'dispatched'
+
+                    # Create acceptance record so rider can accept/reject
+                    try:
+                        from rider.location_models import DeliveryAcceptance
+                        DeliveryAcceptance.objects.create(
+                            delivery = new_delivery,
+                            rider    = rider,
+                            status   = 'pending',
+                        )
+                    except Exception:
+                        pass
+
+                    order.status = 'confirmed'
                     order.save()
-                    messages.success(request, f'Order assigned to {rider.rider.get_full_name()}.')
+
+                    # Notify rider immediately
+                    try:
+                        from rider.views import notify_rider
+                        notify_rider(
+                            rider_user = rider.rider,
+                            title      = '🛵 New Delivery Request!',
+                            message    = (
+                                f'Order {order.order_ref} needs delivery to '
+                                f'{order.delivery_address}, {order.delivery_city}. '
+                                f'Commission: GHS {new_delivery.rider_commission}. '
+                                f'Please accept or reject in your dashboard.'
+                            ),
+                            notif_type = 'new_delivery',
+                            link       = '/rider/',
+                        )
+                    except Exception:
+                        pass
+
+                    messages.success(
+                        request,
+                        f'Request sent to {rider.rider.get_full_name()}. '
+                        f'Waiting for rider to accept.'
+                    )
                 else:
-                    messages.warning(request, 'A rider is already assigned.')
+                    messages.warning(request, 'A rider is already assigned to this order.')
 
         return redirect('dashboard:order_detail', pk=pk)
 
@@ -325,16 +343,14 @@ def order_detail(request, pk):
 
 @admin_required
 def rider_list(request):
-    riders = RiderProfile.objects.select_related(
-        'rider', 'zone'
-    ).order_by('-joined_at')
+    riders = RiderProfile.objects.select_related('rider', 'zone').order_by('-joined_at')
     return render(request, 'dashboard/riders/list.html', {'riders': riders})
 
 
 @admin_required
 def rider_detail(request, pk):
-    profile     = get_object_or_404(RiderProfile, pk=pk)
-    deliveries  = Delivery.objects.filter(
+    profile    = get_object_or_404(RiderProfile, pk=pk)
+    deliveries = Delivery.objects.filter(
         rider=profile
     ).select_related('order').order_by('-assigned_at')[:20]
 
@@ -344,19 +360,18 @@ def rider_detail(request, pk):
         if action == 'verify':
             profile.is_verified = not profile.is_verified
             profile.save()
-            status = 'verified' if profile.is_verified else 'unverified'
-            messages.success(request, f'Rider {status}.')
+            state = 'verified' if profile.is_verified else 'unverified'
+            messages.success(request, f'Rider {state}.')
 
         elif action == 'update_commission':
             rate = request.POST.get('commission_rate')
             if rate:
                 profile.commission_rate = rate
                 profile.save()
-                messages.success(request, f'Commission rate updated to {rate}%.')
+                messages.success(request, f'Commission updated to {rate}%.')
 
         elif action == 'update_zone':
-            zone_id = request.POST.get('zone_id')
-            profile.zone_id = zone_id or None
+            profile.zone_id = request.POST.get('zone_id') or None
             profile.save()
             messages.success(request, 'Zone updated.')
 
@@ -379,12 +394,10 @@ def category_list(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         if name:
-            slug = slugify(name)
-            counter = 1
-            base_slug = slug
+            base_slug = slugify(name)
+            slug, counter = base_slug, 1
             while Category.objects.filter(slug=slug).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
+                slug = f"{base_slug}-{counter}"; counter += 1
             Category.objects.create(name=name, slug=slug)
             messages.success(request, f'Category "{name}" added.')
         return redirect('dashboard:category_list')
@@ -394,33 +407,43 @@ def category_list(request):
     })
 
 
-
-
-
-
-
-
-
-    # Add these to your existing dashboard/views.py
-# (append below the existing rider_detail view)
-
-from vendors.models import Vendor, VendorEarning, AppCommission
-from django.utils import timezone
-
+# ── VENDORS ───────────────────────────────────────────────
 
 @admin_required
 def vendor_list(request):
-    vendors = Vendor.objects.select_related('owner').order_by('-joined_at')
-    return render(request, 'dashboard/vendors/list.html', {'vendors': vendors})
+    vendors = Vendor.objects.select_related('owner').annotate(
+        product_count=Count('products'),
+        total_earnings=Sum('earnings__net_amount'),
+    ).order_by('-joined_at')
+
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        vendors = vendors.filter(status=status_filter)
+
+    return render(request, 'dashboard/vendors/list.html', {
+        'vendors':       vendors,
+        'status_filter': status_filter,
+    })
 
 
 @admin_required
 def vendor_detail(request, pk):
     vendor   = get_object_or_404(Vendor, pk=pk)
-    earnings = VendorEarning.objects.filter(vendor=vendor).order_by('-created_at')[:20]
-    pending  = VendorEarning.objects.filter(
+    earnings = VendorEarning.objects.filter(
+        vendor=vendor
+    ).select_related('order').order_by('-created_at')[:20]
+
+    pending = VendorEarning.objects.filter(
         vendor=vendor, status='pending'
-    ).aggregate(t=models.Sum('net_amount'))['t'] or 0
+    ).aggregate(t=Sum('net_amount'))['t'] or 0
+
+    total_earned = VendorEarning.objects.filter(
+        vendor=vendor
+    ).aggregate(t=Sum('net_amount'))['t'] or 0
+
+    total_commission = AppCommission.objects.filter(
+        vendor=vendor
+    ).aggregate(t=Sum('amount'))['t'] or 0
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -436,6 +459,11 @@ def vendor_detail(request, pk):
             vendor.save()
             messages.warning(request, f'"{vendor.shop_name}" suspended.')
 
+        elif action == 'reactivate':
+            vendor.status = Vendor.Status.ACTIVE
+            vendor.save()
+            messages.success(request, f'"{vendor.shop_name}" reactivated.')
+
         elif action == 'update_commission':
             rate = request.POST.get('commission_rate')
             if rate:
@@ -445,31 +473,42 @@ def vendor_detail(request, pk):
 
         elif action == 'mark_paid':
             earning_ids = request.POST.getlist('earning_ids')
-            VendorEarning.objects.filter(
-                pk__in=earning_ids, vendor=vendor
-            ).update(status='paid', paid_at=timezone.now())
-            messages.success(request, 'Earnings marked as paid.')
+            if earning_ids:
+                VendorEarning.objects.filter(
+                    pk__in=earning_ids, vendor=vendor
+                ).update(status='paid', paid_at=timezone.now())
+                messages.success(request, f'{len(earning_ids)} earning(s) marked as paid.')
+            else:
+                updated = VendorEarning.objects.filter(
+                    vendor=vendor, status='pending'
+                ).update(status='paid', paid_at=timezone.now())
+                messages.success(request, f'{updated} earning(s) marked as paid.')
 
         return redirect('dashboard:vendor_detail', pk=pk)
 
     return render(request, 'dashboard/vendors/detail.html', {
-        'vendor':   vendor,
-        'earnings': earnings,
-        'pending':  pending,
+        'vendor':           vendor,
+        'earnings':         earnings,
+        'pending':          pending,
+        'total_earned':     total_earned,
+        'total_commission': total_commission,
     })
 
 
 @admin_required
 def commission_overview(request):
-    """See all commissions Lynctel has earned."""
-    from django.db.models import Sum
     commissions = AppCommission.objects.select_related(
         'order', 'vendor'
     ).order_by('-created_at')
 
-    total = commissions.aggregate(t=Sum('amount'))['t'] or 0
+    total       = commissions.aggregate(t=Sum('amount'))['t'] or 0
+    this_month  = timezone.now().replace(day=1)
+    month_total = commissions.filter(
+        created_at__gte=this_month
+    ).aggregate(t=Sum('amount'))['t'] or 0
 
     return render(request, 'dashboard/vendors/commissions.html', {
         'commissions': commissions,
         'total':       total,
+        'month_total': month_total,
     })

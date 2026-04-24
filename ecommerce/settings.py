@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+   
 
     # Your apps
     'ecommerce',   # ← MUST be first — holds the custom User model
@@ -35,6 +36,7 @@ INSTALLED_APPS = [
     'dashboard',
     'reviews',
     'vendors',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -110,3 +112,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 FLW_PUBLIC_KEY     = 'FLWPUBK_TEST-xxxxx'   # from Flutterwave dashboard
 FLW_SECRET_KEY     = 'FLWSECK_TEST-xxxxx'   # from Flutterwave dashboard
 FLW_WEBHOOK_SECRET = 'my-secret-string'     # you choose this
+
+
+
+ASGI_APPLICATION = "ecommerce.asgi.application"
+
+
+
+GOOGLE_MAPS_API_KEY = "YOUR_API_KEY"
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-eta-cache",
+    }
+}

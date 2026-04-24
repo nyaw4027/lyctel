@@ -1,66 +1,103 @@
 {% extends "base.html" %}
 {% block title %}Track Order {{ order.order_ref }} — Lynctel{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  #tracking-map { height: 320px; border-radius: 16px; overflow: hidden; }
+  @keyframes pulse-dot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.7} }
+  .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-2xl mx-auto px-4 py-8">
+<div class="max-w-2xl mx-auto px-4 md:px-6 py-8">
 
   <!-- Header -->
   <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
     <div>
-      <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Tracking</p>
-      <h1 class="text-2xl font-bold text-brand">{{ order.order_ref }}</h1>
+      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Tracking</p>
+      <h1 class="font-display font-700 text-2xl text-navy">{{ order.order_ref }}</h1>
     </div>
     <span class="text-xs font-semibold px-4 py-2 rounded-full
                  {% if order.status == 'delivered' %}bg-green-100 text-green-700
                  {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
-                 {% elif order.status == 'cancelled' %}bg-red-100 text-red-700
                  {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
                  {% else %}bg-gray-100 text-gray-600{% endif %}">
       {{ order.get_status_display }}
     </span>
   </div>
 
+  <!-- LIVE MAP (shown when rider is dispatched) -->
+  {% if delivery and order.status == 'dispatched' %}
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+    <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+      <div class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></div>
+      <p class="font-semibold text-navy text-sm">Live Rider Location</p>
+      <span class="text-xs text-gray-400 ml-auto" id="map-updated">Updating...</span>
+    </div>
+    <div id="tracking-map"></div>
+    <div class="px-4 py-3 flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-navy rounded-xl flex items-center justify-center
+                    text-white font-display font-700 text-sm">
+          {{ delivery.rider.rider.first_name|first|upper }}
+        </div>
+        <div>
+          <p class="font-semibold text-navy text-sm">
+            {{ delivery.rider.rider.get_full_name }}
+          </p>
+          <p id="rider-distance" class="text-xs text-gray-400">Locating rider...</p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <a href="tel:{{ delivery.rider.rider.phone }}"
+           class="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-navy
+                  text-xs font-semibold px-4 py-2 rounded-xl transition-colors">
+          📞 Call
+        </a>
+        <a href="https://wa.me/233{{ delivery.rider.rider.phone|slice:'1:' }}?text=Hi, I'm tracking order {{ order.order_ref }}"
+           target="_blank"
+           class="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white
+                  text-xs font-semibold px-4 py-2 rounded-xl transition-colors">
+          💬 WhatsApp
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- TIMELINE -->
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-5">
+    <h2 class="font-display font-700 text-navy mb-5">Order Progress</h2>
     <div class="relative">
-      <!-- Vertical line -->
       <div class="absolute left-5 top-5 bottom-5 w-0.5 bg-gray-100"></div>
-
       <div class="space-y-6">
         {% for step in steps %}
         <div class="flex items-start gap-4 relative">
-          <!-- Circle -->
           <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center z-10
                       {% if step.state == 'done' %}bg-green-500
-                      {% elif step.state == 'active' %}bg-brand ring-4 ring-brand ring-opacity-20
+                      {% elif step.state == 'active' %}bg-navy ring-4 ring-navy/20
                       {% else %}bg-gray-100{% endif %}">
             {% if step.state == 'done' %}
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
             </svg>
             {% elif step.state == 'active' %}
-            <div class="w-3 h-3 bg-white rounded-full"></div>
+            <div class="w-3 h-3 bg-white rounded-full pulse-dot"></div>
             {% else %}
             <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
             {% endif %}
           </div>
-
-          <!-- Content -->
-          <div class="flex-1 pb-2 pt-1.5">
+          <div class="flex-1 pt-1.5">
             <p class="font-semibold text-sm
                       {% if step.state == 'done' %}text-green-700
-                      {% elif step.state == 'active' %}text-brand
+                      {% elif step.state == 'active' %}text-navy
                       {% else %}text-gray-400{% endif %}">
               {{ step.label }}
             </p>
             <p class="text-xs text-gray-400 mt-0.5">{{ step.desc }}</p>
-
-            <!-- Timestamps from history -->
-            {% for h in order.status_history.all %}
-              {% if h.new_status == step.status %}
-              <p class="text-xs text-gray-300 mt-1">{{ h.changed_at|date:"M d, Y · H:i" }}</p>
-              {% endif %}
-            {% endfor %}
           </div>
         </div>
         {% endfor %}
@@ -68,81 +105,30 @@
     </div>
   </div>
 
-  <!-- RIDER INFO (shown when dispatched) -->
-  {% if delivery and order.status == 'dispatched' %}
-  <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-5">
-    <h2 class="font-bold text-blue-800 mb-3 text-sm">Your Rider</h2>
-    <div class="flex items-center justify-between flex-wrap gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-12 h-12 rounded-full bg-brand flex items-center justify-center text-white font-bold text-lg">
-          {{ delivery.rider.rider.first_name|first|upper }}
-        </div>
-        <div>
-          <p class="font-semibold text-gray-800">{{ delivery.rider.rider.get_full_name }}</p>
-          <p class="text-xs text-gray-500">{{ delivery.get_status_display }}</p>
-        </div>
-      </div>
-      <div class="flex gap-2">
-        <a href="tel:{{ delivery.rider.rider.phone }}"
-           class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700
-                  font-semibold text-xs px-4 py-2 rounded-xl hover:border-brand hover:text-brand transition-colors">
-          Call Rider
-        </a>
-        <a href="https://wa.me/{{ delivery.rider.rider.phone }}?text=Hi!+I'm+waiting+for+order+{{ order.order_ref }}"
-           target="_blank"
-           class="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white
-                  font-semibold text-xs px-4 py-2 rounded-xl transition-colors">
-          WhatsApp
-        </a>
-      </div>
-    </div>
-
-    <!-- Delivery status sub-steps -->
-    <div class="mt-4 flex items-center gap-2 text-xs">
-      {% for s, label in delivery.Status.choices|slice:":4" %}
-      <div class="flex items-center gap-1">
-        <div class="w-2 h-2 rounded-full
-                    {% if delivery.status == 'delivered' %}bg-green-500
-                    {% elif delivery.status == 'en_route' and forloop.counter <= 3 %}bg-brand
-                    {% elif delivery.status == 'picked_up' and forloop.counter <= 2 %}bg-brand
-                    {% elif delivery.status == 'assigned' and forloop.counter <= 1 %}bg-brand
-                    {% else %}bg-gray-300{% endif %}"></div>
-        <span class="text-gray-500">{{ label }}</span>
-      </div>
-      {% if not forloop.last %}<div class="flex-1 h-px bg-gray-200"></div>{% endif %}
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- ORDER SUMMARY -->
+  <!-- ORDER ITEMS -->
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
     <div class="px-5 py-4 border-b border-gray-50">
-      <h2 class="font-bold text-gray-800 text-sm">Order Items</h2>
+      <h2 class="font-display font-700 text-navy text-sm">Order Items</h2>
     </div>
-    <div class="divide-y divide-gray-50">
-      {% for item in order.items.all %}
-      <div class="px-5 py-3 flex justify-between text-sm">
-        <span class="text-gray-700">{{ item.product_name }} × {{ item.quantity }}</span>
-        <span class="font-medium">GHS {{ item.subtotal }}</span>
-      </div>
-      {% endfor %}
-      <div class="px-5 py-3 flex justify-between text-sm text-gray-500">
-        <span>Delivery fee</span><span>GHS {{ order.delivery_fee }}</span>
-      </div>
-      <div class="px-5 py-3 flex justify-between font-bold text-gray-800">
-        <span>Total</span><span>GHS {{ order.total_amount }}</span>
-      </div>
+    {% for item in order.items.all %}
+    <div class="px-5 py-3 flex justify-between text-sm border-b border-gray-50 last:border-0">
+      <span class="text-gray-600">{{ item.product_name }} × {{ item.quantity }}</span>
+      <span class="font-semibold text-navy">GHS {{ item.subtotal }}</span>
+    </div>
+    {% endfor %}
+    <div class="px-5 py-3 flex justify-between font-display font-700 text-navy">
+      <span>Total</span>
+      <span>GHS {{ order.total_amount }}</span>
     </div>
   </div>
 
-  <!-- DELIVERY DETAILS -->
+  <!-- DELIVERY INFO -->
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
-    <h2 class="font-bold text-gray-800 text-sm mb-3">Delivery Details</h2>
-    <div class="space-y-2 text-sm text-gray-600">
-      <div class="flex gap-3"><span class="text-gray-400 w-20">Address</span><span class="font-medium text-gray-800">{{ order.delivery_address }}</span></div>
-      <div class="flex gap-3"><span class="text-gray-400 w-20">City</span><span class="font-medium text-gray-800">{{ order.delivery_city }}</span></div>
-      <div class="flex gap-3"><span class="text-gray-400 w-20">Phone</span><span class="font-medium text-gray-800">{{ order.delivery_phone }}</span></div>
+    <h2 class="font-display font-700 text-navy text-sm mb-3">Delivery Details</h2>
+    <div class="space-y-2 text-sm">
+      <div class="flex gap-3"><span class="text-gray-400 w-20">Address</span><span class="text-navy font-medium">{{ order.delivery_address }}</span></div>
+      <div class="flex gap-3"><span class="text-gray-400 w-20">City</span><span class="text-navy font-medium">{{ order.delivery_city }}</span></div>
+      <div class="flex gap-3"><span class="text-gray-400 w-20">Phone</span><span class="text-navy font-medium">{{ order.delivery_phone }}</span></div>
       <div class="flex gap-3"><span class="text-gray-400 w-20">Payment</span>
         <span class="font-semibold {% if order.payment_status == 'paid' %}text-green-600{% else %}text-orange-500{% endif %}">
           {{ order.get_payment_status_display }}
@@ -151,18 +137,18 @@
     </div>
   </div>
 
-  <!-- AUTO REFRESH when order is active -->
-  {% if order.status not in 'delivered,cancelled,refunded' %}
+  <!-- Auto-refresh notice -->
+  {% if order.status not in 'delivered,cancelled' %}
   <div class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-xs text-gray-400 mb-5">
-    This page refreshes automatically every 60 seconds.
+    <span id="refresh-timer">Page refreshes every 30 seconds for live updates</span>
   </div>
   {% endif %}
 
-  <!-- Actions -->
   <div class="flex gap-3 flex-wrap">
-    <a href="{% url 'order:history' %}"
-       class="text-sm text-brand hover:underline">← All Orders</a>
-    <a href="https://wa.me/{{ support_number }}?text=Hi!+I+need+help+with+order+{{ order.order_ref }}"
+    <a href="{% url 'order:history' %}" class="text-sm text-navy hover:text-gold transition-colors font-medium">
+      ← My Orders
+    </a>
+    <a href="https://wa.me/{{ support_number }}?text=Hi, I need help with order {{ order.order_ref }}"
        target="_blank"
        class="ml-auto text-sm bg-green-500 hover:bg-green-600 text-white font-semibold
               px-5 py-2 rounded-xl transition-colors">
@@ -174,20 +160,105 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if order.status not in 'delivered,cancelled,refunded' %}
+{% if delivery and order.status == 'dispatched' %}
 <script>
-  // Auto-refresh every 60 seconds for live updates
-  setTimeout(() => location.reload(), 60000);
+  const ORDER_REF    = '{{ order.order_ref }}';
+  const CUST_LAT     = 5.6037;  // Will be updated by geocoding
+  const CUST_LNG     = -0.1870;
+  const CUST_ADDR    = '{{ order.delivery_address|escapejs }}, {{ order.delivery_city|escapejs }}';
 
-  // Countdown display
-  let secs = 60;
-  const el = document.querySelector('.bg-gray-50.border-gray-200 p, .bg-gray-50 div');
-  if (el) {
-    setInterval(() => {
-      secs--;
-      if (secs > 0) el.textContent = `Refreshing in ${secs} seconds...`;
-    }, 1000);
+  // Init map centred on Accra until we get real coords
+  const map = L.map('tracking-map', { zoomControl: false })
+               .setView([5.6037, -0.1870], 14);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19
+  }).addTo(map);
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  // Customer marker
+  const custIcon = L.divIcon({
+    html: `<div style="background:#0F1B2D;color:white;padding:6px 10px;border-radius:10px;
+                       font-size:11px;font-weight:700;white-space:nowrap;
+                       box-shadow:0 2px 8px rgba(15,27,45,.3)">📍 You</div>`,
+    className: '', iconAnchor: [30, 36],
+  });
+
+  // Rider marker
+  const riderIcon = L.divIcon({
+    html: `<div style="background:#F5A623;color:#0F1B2D;padding:6px 10px;border-radius:10px;
+                       font-size:11px;font-weight:700;white-space:nowrap;
+                       box-shadow:0 2px 8px rgba(245,166,35,.4)">🛵 Rider</div>`,
+    className: '', iconAnchor: [30, 36],
+  });
+
+  let custMarker  = null;
+  let riderMarker = null;
+  let routeLine   = null;
+
+  function haversine(lat1, lng1, lat2, lng2) {
+    const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
+
+  function pollRider() {
+    fetch(`/rider/location/${ORDER_REF}/`, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.success) return;
+
+      const rLat = d.lat, rLng = d.lng;
+
+      if (!riderMarker) {
+        riderMarker = L.marker([rLat, rLng], { icon: riderIcon }).addTo(map);
+      } else {
+        riderMarker.setLatLng([rLat, rLng]);
+      }
+
+      // Try to show customer location too (use first delivery address geocode)
+      const cLat = 5.6037, cLng = -0.1870; // fallback
+      if (!custMarker) {
+        custMarker = L.marker([cLat, cLng], { icon: custIcon })
+          .addTo(map)
+          .bindPopup(`<strong>${ORDER_REF}</strong><br>${CUST_ADDR}`);
+        map.fitBounds(L.latLngBounds([[rLat, rLng], [cLat, cLng]]), { padding: [40,40] });
+      }
+
+      if (routeLine) map.removeLayer(routeLine);
+      routeLine = L.polyline(
+        [[rLat, rLng], [cLat, cLng]],
+        { color: '#0F1B2D', weight: 3, dashArray: '8 6', opacity: 0.5 }
+      ).addTo(map);
+
+      const dist = haversine(rLat, rLng, cLat, cLng);
+      document.getElementById('rider-distance').textContent =
+        `${dist < 1 ? Math.round(dist*1000) + 'm' : dist.toFixed(1) + 'km'} away`;
+      document.getElementById('map-updated').textContent =
+        `Updated ${d.updated}`;
+
+      if (d.status === 'delivered') location.reload();
+    })
+    .catch(() => {});
+  }
+
+  pollRider();
+  setInterval(pollRider, 10000); // every 10s
+</script>
+{% endif %}
+
+{% if order.status not in 'delivered,cancelled' %}
+<script>
+  let secs = 30;
+  const el = document.getElementById('refresh-timer');
+  const iv = setInterval(() => {
+    secs--;
+    if (el) el.textContent = `Refreshing in ${secs} seconds...`;
+    if (secs <= 0) { clearInterval(iv); location.reload(); }
+  }, 1000);
 </script>
 {% endif %}
 {% endblock %}

@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{% block title %}Lynctel — Quality Imports Delivered{% endblock %}</title>
 
-  <!-- Fonts: Syne (headings) + DM Sans (body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
@@ -20,8 +19,8 @@
             body:    ['DM Sans', 'sans-serif'],
           },
           colors: {
-            navy:  { DEFAULT: '#0F1B2D', 700: '#1a2d47', 500: '#243d5c' },
-            gold:  { DEFAULT: '#F5A623', light: '#FEF3D7', dark: '#c8841a' },
+            navy: { DEFAULT: '#0F1B2D', 700: '#1a2d47', 500: '#243d5c' },
+            gold: { DEFAULT: '#F5A623', light: '#FEF3D7', dark: '#c8841a' },
             cream: '#FAFAF7',
           },
         }
@@ -34,61 +33,51 @@
     h1,h2,h3,.font-display { font-family: 'Syne', sans-serif; }
     body { background-color: #FAFAF7; }
 
-    /* Smooth page entrance */
     @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
     }
-    .fade-up { animation: fadeUp 0.5s ease forwards; }
-    .fade-up-1 { animation-delay: .05s; opacity: 0; }
-    .fade-up-2 { animation-delay: .12s; opacity: 0; }
-    .fade-up-3 { animation-delay: .20s; opacity: 0; }
+    .fade-up   { animation: fadeUp .5s ease forwards; }
+    .fade-up-1 { animation-delay:.05s; opacity:0; }
+    .fade-up-2 { animation-delay:.12s; opacity:0; }
+    .fade-up-3 { animation-delay:.20s; opacity:0; }
 
-    /* Cart badge bounce */
     @keyframes pop { 0%,100%{transform:scale(1)} 50%{transform:scale(1.45)} }
     .badge-pop { animation: pop .3s ease; }
 
-    /* Product card hover lift */
     .card-hover { transition: transform .25s ease, box-shadow .25s ease; }
-    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(15,27,45,.10); }
+    .card-hover:hover { transform:translateY(-4px); box-shadow:0 16px 40px rgba(15,27,45,.10); }
 
-    /* Gold shimmer on featured badge */
     @keyframes shimmer {
-      0%   { background-position: -200% center; }
-      100% { background-position: 200% center; }
+      0%  { background-position:-200% center; }
+      100%{ background-position:200% center; }
     }
     .shimmer {
-      background: linear-gradient(90deg, #F5A623 25%, #ffe08a 50%, #F5A623 75%);
+      background: linear-gradient(90deg,#F5A623 25%,#ffe08a 50%,#F5A623 75%);
       background-size: 200% auto;
       animation: shimmer 3s linear infinite;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
-    /* Navbar scroll shadow */
     .nav-scrolled { box-shadow: 0 2px 20px rgba(15,27,45,.08); }
-
-    /* Input focus ring */
-    input:focus, select:focus, textarea:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(245,166,35,.25);
-      border-color: #F5A623 !important;
-    }
-
-    /* Button press */
     .btn-press:active { transform: scale(.97); }
-
-    /* Smooth scroll */
     html { scroll-behavior: smooth; }
+
+    /* Cart drawer */
+    #cart-drawer  { transform: translateX(100%); }
+    #cart-overlay { opacity:0; visibility:hidden; }
+    #cart-drawer.open  { transform: translateX(0); }
+    #cart-overlay.open { opacity:1; visibility:visible; }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
 
 <body class="min-h-screen flex flex-col text-navy font-body">
 
-  <!-- ── NAVBAR ─────────────────────────────────────── -->
+  <!-- ── NAVBAR ──────────────────────────────────────── -->
   <header id="navbar"
-          class="bg-white sticky top-0 z-50 border-b border-gray-100 transition-shadow duration-300">
+          class="bg-white sticky top-0 z-40 border-b border-gray-100 transition-shadow duration-300">
     <nav class="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center gap-4">
 
       <!-- Logo -->
@@ -103,7 +92,7 @@
         <span class="font-display font-700 text-lg text-navy tracking-tight">Lynctel</span>
       </a>
 
-      <!-- Search bar -->
+      <!-- Search -->
       <form method="GET" action="{% url 'products:list' %}"
             class="flex-1 max-w-lg hidden md:flex items-center">
         <div class="relative w-full">
@@ -119,70 +108,70 @@
         </div>
       </form>
 
-      <!-- Nav links -->
+      <!-- Right nav -->
       <div class="flex items-center gap-1 ml-auto">
 
         <a href="{% url 'vendors:directory' %}"
-           class="hidden md:flex items-center gap-1.5 text-sm font-medium text-gray-600
+           class="hidden md:flex text-sm font-medium text-gray-600
                   hover:text-navy px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
           Shops
         </a>
 
         <a href="{% url 'vendors:apply' %}"
-           class="hidden md:flex items-center gap-1.5 text-sm font-semibold text-gold-dark
+           class="hidden md:flex text-sm font-semibold text-gold-dark
                   bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
           Sell Here
         </a>
 
         {% if user.is_authenticated %}
+        <!-- User dropdown -->
         <div class="relative group ml-1">
           <button class="flex items-center gap-2 text-sm font-medium text-gray-700
                          hover:text-navy px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
             <div class="w-7 h-7 bg-navy rounded-full flex items-center justify-center
-                        text-white text-xs font-display">
+                        text-white text-xs font-display font-700">
               {{ user.first_name|first|upper|default:"U" }}
             </div>
-            <span class="hidden md:inline max-w-[80px] truncate">
+            <span class="hidden md:inline max-w-[80px] truncate text-sm">
               {{ user.first_name|default:user.phone }}
             </span>
           </button>
           <div class="absolute right-0 top-full mt-1 w-52 bg-white rounded-2xl shadow-xl
-                      border border-gray-100 py-2 opacity-0 invisible
+                      border border-gray-100 py-2 opacity-0 invisible z-50
                       group-hover:opacity-100 group-hover:visible
                       transition-all duration-150 translate-y-1 group-hover:translate-y-0">
             {% if user.is_admin %}
             <a href="{% url 'dashboard:home' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <span class="w-5 h-5 flex items-center justify-center text-navy">⚡</span>
-              Admin Dashboard
+              ⚡ Admin Dashboard
             </a>
             {% endif %}
             {% if user.is_rider %}
             <a href="{% url 'rider:dashboard' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <span>🛵</span> Rider Dashboard
+              🛵 Rider Dashboard
             </a>
             {% endif %}
             <a href="{% url 'vendors:apply' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <span>🏪</span> Sell on Lynctel
+              🏪 Sell on Lynctel
             </a>
             <a href="{% url 'order:history' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-              <span>📦</span> My Orders
+              📦 My Orders
             </a>
             <hr class="my-1 border-gray-100"/>
             <a href="{% url 'accounts:logout' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50">
-              <span>→</span> Sign Out
+              → Sign Out
             </a>
           </div>
         </div>
 
         {% else %}
         <a href="{% url 'accounts:login' %}"
-           class="text-sm font-medium text-gray-600 hover:text-navy px-3 py-2 rounded-lg
-                  hover:bg-gray-50 transition-colors hidden md:block">
+           class="text-sm font-medium text-gray-600 hover:text-navy px-3 py-2
+                  rounded-lg hover:bg-gray-50 transition-colors hidden md:block">
           Sign In
         </a>
         <a href="{% url 'accounts:signup' %}"
@@ -191,38 +180,24 @@
           Sign Up
         </a>
         {% endif %}
-<!-- Cart -->
-{% for product in featured %}
-    {% if product.slug %}
-        <a href="{% url 'products:detail' product.slug %}">
-            {{ product.name }}
-        </a>
-    {% endif %}
-{% endfor %}
 
-
-  <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-  </svg>
-
-  <span id="cart-count"
-        class="{% if not cart_count or cart_count == 0 %}hidden{% endif %}
-               absolute -top-0.5 -right-0.5 bg-gold text-navy text-xs font-bold
-               w-4.5 h-4.5 min-w-[18px] min-h-[18px] rounded-full
-               flex items-center justify-center leading-none px-1 text-[10px]">
-    {{ cart_count|default:0 }}
-  </span>
-
-</a>
-
-        <!-- Mobile menu -->
-        <button id="mobile-menu-btn"
-                class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-50">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        <!-- Cart button — opens drawer -->
+        <button onclick="openCart()"
+                class="relative w-10 h-10 flex items-center justify-center rounded-xl
+                       hover:bg-gray-50 transition-colors ml-1">
+          <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
           </svg>
+          <span id="cart-count"
+                class="{% if not cart_count or cart_count == 0 %}hidden{% endif %}
+                       absolute -top-0.5 -right-0.5 bg-gold text-navy text-[10px] font-bold
+                       min-w-[18px] min-h-[18px] rounded-full flex items-center
+                       justify-center leading-none px-1">
+            {{ cart_count|default:0 }}
+          </span>
         </button>
+
       </div>
     </nav>
 
@@ -244,7 +219,7 @@
     </div>
   </header>
 
-  <!-- ── FLASH MESSAGES ─────────────────────────────── -->
+  <!-- ── FLASH MESSAGES ──────────────────────────────── -->
   {% if messages %}
   <div id="flash-wrap" class="max-w-7xl mx-auto px-4 md:px-6 pt-4 w-full space-y-2">
     {% for message in messages %}
@@ -256,22 +231,21 @@
                 {% else %}bg-blue-50 text-blue-800 border border-blue-100{% endif %}">
       <span>{{ message }}</span>
       <button onclick="this.parentElement.remove()"
-              class="ml-4 w-5 h-5 flex items-center justify-center rounded-full
-                     opacity-50 hover:opacity-100 hover:bg-black/10 transition-all text-base leading-none">
-        ×
-      </button>
+              class="ml-4 opacity-50 hover:opacity-100 text-lg leading-none">×</button>
     </div>
     {% endfor %}
   </div>
   {% endif %}
 
-  <!-- ── PAGE CONTENT ───────────────────────────────── -->
+  <!-- ── PAGE CONTENT ────────────────────────────────── -->
   <main class="flex-1">{% block content %}{% endblock %}</main>
 
-  <!-- ── FOOTER ─────────────────────────────────────── -->
+  <!-- ── FOOTER ──────────────────────────────────────── -->
   <footer class="bg-navy text-white mt-20">
     <div class="max-w-7xl mx-auto px-4 md:px-6 py-14 grid grid-cols-1 md:grid-cols-4 gap-10">
-      <div class="md:col-span-1">
+
+      <!-- Brand + socials -->
+      <div>
         <div class="flex items-center gap-2.5 mb-4">
           <div class="w-8 h-8 bg-gold rounded-lg flex items-center justify-center">
             <svg class="w-4 h-4 text-navy" fill="currentColor" viewBox="0 0 24 24">
@@ -280,43 +254,317 @@
           </div>
           <span class="font-display font-700 text-lg">Lynctel</span>
         </div>
-        <p class="text-gray-400 text-sm leading-relaxed">
+        <p class="text-gray-400 text-sm leading-relaxed mb-5">
           Quality imported goods delivered to your door across Ghana. 🇬🇭
         </p>
+
+        <!-- Social icons -->
+        <p class="text-xs text-gray-500 uppercase tracking-wider mb-3">Follow Us</p>
+        <div class="flex flex-wrap gap-2">
+          <a href="#" class="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-pink-500 transition-colors">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm5.5-1a1 1 0 1 0-2 0 1 1 0 0 0 2 0z"/>
+            </svg>
+          </a>
+          <a href="#" class="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-blue-600 transition-colors">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M22 12a10 10 0 1 0-11.5 9.9v-7H8v-3h2.5V9.5A3.5 3.5 0 0 1 14 6h2v3h-2c-.6 0-1 .4-1 1V12h3l-.5 3H13v7A10 10 0 0 0 22 12z"/>
+            </svg>
+          </a>
+          <a href="#" class="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-black transition-colors">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18 2h3l-7 8 8 12h-6l-5-7-6 7H2l8-9L2 2h6l4 6 6-6z"/>
+            </svg>
+          </a>
+          <a href="https://wa.me/233558040216" class="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-green-500 transition-colors">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M17.5 14.4c-.3-.1-1.7-.8-2-1-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.6.1-1.5-.6-3-2.1-3.5-3.6-.1-.2 0-.4.2-.5l.7-.8c.1-.2.2-.4.1-.6l-.9-2c-.2-.5-.5-.5-.7-.5h-.5C9.1 7 8.5 7.6 8.3 8c-.4.9-.2 2.3 1.3 4.3 1.6 2.1 4 3.6 5.8 3.8.9.1 1.7-.2 2.3-.9.5-.6.6-1.3.5-1.8l-.7.1z"/>
+            </svg>
+          </a>
+          <a href="#" class="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-blue-700 transition-colors">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M4 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM3 8h2v13H3V8zm7 0h2v2c.5-1 2-2 4-2 3 0 5 2 5 6v7h-2v-7c0-2-1-4-3-4s-4 2-4 4v7h-2V8z"/>
+            </svg>
+          </a>
+        </div>
       </div>
+
+      <!-- Shop links -->
       <div>
         <p class="font-semibold text-sm mb-4 text-gray-300 uppercase tracking-wider">Shop</p>
         <ul class="space-y-2.5 text-sm text-gray-400">
           <li><a href="{% url 'products:list' %}" class="hover:text-gold transition-colors">All Products</a></li>
           <li><a href="{% url 'vendors:directory' %}" class="hover:text-gold transition-colors">All Shops</a></li>
-         {% for product in featured %}
-  <a href="{% url 'products:detail' product.slug %}">
-{% endfor %}
+          <li><a href="{% url 'cart:detail' %}" class="hover:text-gold transition-colors">My Cart</a></li>
+          <li><a href="{% url 'order:history' %}" class="hover:text-gold transition-colors">My Orders</a></li>
         </ul>
       </div>
+
+      <!-- Sell links -->
       <div>
         <p class="font-semibold text-sm mb-4 text-gray-300 uppercase tracking-wider">Sell</p>
         <ul class="space-y-2.5 text-sm text-gray-400">
           <li><a href="{% url 'vendors:apply' %}" class="hover:text-gold transition-colors">Open a Shop</a></li>
           <li><a href="{% url 'vendors:apply' %}" class="hover:text-gold transition-colors">Vendor Benefits</a></li>
+          <li><a href="{% url 'vendors:directory' %}" class="hover:text-gold transition-colors">Browse Vendors</a></li>
         </ul>
       </div>
+
+      <!-- Support -->
       <div>
         <p class="font-semibold text-sm mb-4 text-gray-300 uppercase tracking-wider">Support</p>
         <ul class="space-y-2.5 text-sm text-gray-400">
-          <li>📞 WhatsApp: +233 XX XXX XXXX</li>
-          <li>📍 Accra, Ghana</li>
+          <li class="flex items-center gap-2">
+            <span>📞</span> WhatsApp: +233 XX XXX XXXX
+          </li>
+          <li class="flex items-center gap-2">
+            <span>📍</span> Accra, Ghana
+          </li>
+          <li class="mt-2">
+            <a href="{% url 'accounts:login' %}" class="hover:text-gold transition-colors">My Account</a>
+          </li>
         </ul>
       </div>
+
     </div>
     <div class="border-t border-white/10 text-center py-5 text-xs text-gray-500">
       &copy; {% now "Y" %} Lynctel. All rights reserved.
     </div>
   </footer>
 
-  <script>
-    const CSRF_TOKEN = '{{ csrf_token }}';
+  <!-- ── CART DRAWER ─────────────────────────────────── -->
 
+  <!-- Overlay -->
+  <div id="cart-overlay"
+       class="fixed inset-0 bg-black/40 z-50 transition-all duration-300"
+       onclick="closeCart()"></div>
+
+  <!-- Drawer panel -->
+  <div id="cart-drawer"
+       class="fixed top-0 right-0 h-full w-full max-w-sm bg-white z-50
+              shadow-2xl flex flex-col transition-transform duration-300">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+        </svg>
+        <h2 class="font-display font-700 text-navy text-lg">Your Cart</h2>
+        <span id="drawer-count"
+              class="bg-gold text-navy text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center">
+          0
+        </span>
+      </div>
+      <button onclick="closeCart()"
+              class="w-8 h-8 flex items-center justify-center rounded-xl
+                     hover:bg-gray-100 transition-colors text-gray-400 text-xl leading-none">
+        ✕
+      </button>
+    </div>
+
+    <!-- Items list -->
+    <div id="drawer-items" class="flex-1 overflow-y-auto px-5 py-4 space-y-3"></div>
+
+    <!-- Empty state -->
+    <div id="drawer-empty"
+         class="hidden flex-1 flex flex-col items-center justify-center text-center px-5 py-10">
+      <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center text-4xl mb-4">🛒</div>
+      <p class="font-display font-700 text-navy mb-1">Your cart is empty</p>
+      <p class="text-gray-400 text-sm mb-4">Add items to get started</p>
+      <button onclick="closeCart()"
+              class="text-sm text-gold-dark font-semibold hover:underline">
+        Continue Shopping →
+      </button>
+    </div>
+
+    <!-- Footer: total + buttons -->
+    <div id="drawer-footer" class="border-t border-gray-100 px-5 py-4 space-y-3 flex-shrink-0">
+      <div class="flex items-center justify-between">
+        <span class="text-gray-500 text-sm font-medium">Subtotal</span>
+        <span id="drawer-subtotal"
+              class="font-display font-700 text-navy text-xl">GHS 0.00</span>
+      </div>
+      <p class="text-xs text-gray-400">Delivery fee calculated at checkout</p>
+      <a href="{% url 'order:checkout' %}"
+         class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold
+                text-center py-3.5 rounded-xl transition-colors btn-press text-sm">
+        Proceed to Checkout →
+      </a>
+      <a href="{% url 'cart:detail' %}"
+         class="block w-full text-center text-sm text-gray-500 hover:text-navy
+                font-medium transition-colors py-1">
+        View Full Cart
+      </a>
+    </div>
+  </div>
+
+  <!-- ── GLOBAL SCRIPTS ───────────────────────────────── -->
+  <script>
+    const CSRF_TOKEN       = '{{ csrf_token }}';
+    const IS_AUTHENTICATED = {{ user.is_authenticated|yesno:"true,false" }};
+    const LOGIN_URL        = "{% url 'accounts:login' %}";
+
+    // ── Cart drawer ─────────────────────────────────────
+    function openCart() {
+      document.getElementById('cart-drawer').classList.add('open');
+      document.getElementById('cart-overlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      refreshDrawer();
+    }
+
+    function closeCart() {
+      document.getElementById('cart-drawer').classList.remove('open');
+      document.getElementById('cart-overlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCart(); });
+
+    // ── Fetch cart data and render drawer ───────────────
+    function refreshDrawer() {
+      fetch('/cart/data/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.json())
+        .then(renderDrawer)
+        .catch(console.error);
+    }
+
+    function renderDrawer(data) {
+      const itemsEl  = document.getElementById('drawer-items');
+      const emptyEl  = document.getElementById('drawer-empty');
+      const footerEl = document.getElementById('drawer-footer');
+      const countEl  = document.getElementById('drawer-count');
+      const subEl    = document.getElementById('drawer-subtotal');
+
+      const count = data.count || 0;
+      countEl.textContent = count;
+      subEl.textContent   = 'GHS ' + parseFloat(data.total || 0).toFixed(2);
+
+      if (!data.items || data.items.length === 0) {
+        itemsEl.innerHTML = '';
+        itemsEl.classList.add('hidden');
+        emptyEl.classList.remove('hidden');
+        footerEl.classList.add('hidden');
+        return;
+      }
+
+      itemsEl.classList.remove('hidden');
+      emptyEl.classList.add('hidden');
+      footerEl.classList.remove('hidden');
+
+      itemsEl.innerHTML = data.items.map(item => `
+        <div id="ditem-${item.id}"
+             class="flex items-start gap-3 bg-gray-50 rounded-2xl p-3 transition-opacity duration-300">
+          <a href="/products/${item.slug}/" class="flex-shrink-0">
+            ${item.image
+              ? `<img src="${item.image}" alt="${item.name}"
+                      class="w-16 h-16 rounded-xl object-cover bg-gray-200"/>`
+              : `<div class="w-16 h-16 rounded-xl bg-gray-200 flex items-center justify-center text-2xl">📦</div>`
+            }
+          </a>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-navy line-clamp-2 leading-snug">${item.name}</p>
+            ${item.vendor ? `<p class="text-xs text-gray-400 mt-0.5">🏪 ${item.vendor}</p>` : ''}
+            <p class="text-sm font-display font-700 text-navy mt-1">GHS ${item.price}</p>
+          </div>
+          <div class="flex flex-col items-end gap-2 flex-shrink-0">
+            <div class="flex items-center gap-1.5">
+              <button onclick="drawerQty(${item.id}, ${item.quantity}, -1)"
+                      class="w-7 h-7 rounded-lg bg-white border border-gray-200
+                             flex items-center justify-center text-navy font-bold text-sm
+                             hover:bg-navy hover:text-white hover:border-navy transition-colors">−</button>
+              <span class="w-6 text-center text-sm font-semibold text-navy">${item.quantity}</span>
+              <button onclick="drawerQty(${item.id}, ${item.quantity}, 1)"
+                      class="w-7 h-7 rounded-lg bg-white border border-gray-200
+                             flex items-center justify-center text-navy font-bold text-sm
+                             hover:bg-navy hover:text-white hover:border-navy transition-colors">+</button>
+            </div>
+            <button onclick="drawerRemove(${item.id})"
+                    class="text-xs text-red-400 hover:text-red-600 transition-colors font-medium">
+              Remove
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ── Add to cart — used on all product pages ──────────
+    function addToCart(productId, btn) {
+      if (!IS_AUTHENTICATED) {
+        window.location.href = LOGIN_URL + '?next=' + encodeURIComponent(window.location.pathname);
+        return;
+      }
+
+      const orig = btn ? btn.innerHTML : '';
+      if (btn) { btn.innerHTML = '...'; btn.disabled = true; }
+
+      const fd = new FormData();
+      fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+      fd.append('quantity', 1);
+
+      fetch(`/cart/add/${productId}/`, {
+        method:  'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body:    fd,
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          updateCartBadge(d.cart_count);
+          if (btn) {
+            btn.innerHTML = '✓ Added';
+            btn.classList.add('bg-green-500');
+            btn.classList.remove('bg-navy');
+            setTimeout(() => {
+              btn.innerHTML = orig;
+              btn.disabled  = false;
+              btn.classList.remove('bg-green-500');
+              btn.classList.add('bg-navy');
+            }, 1200);
+          }
+          // Open cart drawer after short delay
+          setTimeout(openCart, 350);
+        }
+      })
+      .catch(() => { if (btn) { btn.innerHTML = orig; btn.disabled = false; } });
+    }
+
+    // ── Drawer qty update ───────────────────────────────
+    function drawerQty(itemId, current, delta) {
+      const newQty = Math.max(1, current + delta);
+      const fd = new FormData();
+      fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+      fd.append('quantity', newQty);
+      fetch(`/cart/update/${itemId}/`, {
+        method:  'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body:    fd,
+      })
+      .then(r => r.json())
+      .then(d => { if (d.success) { updateCartBadge(d.cart_count); refreshDrawer(); } });
+    }
+
+    // ── Drawer remove ───────────────────────────────────
+    function drawerRemove(itemId) {
+      const fd = new FormData();
+      fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+      fetch(`/cart/remove/${itemId}/`, {
+        method:  'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body:    fd,
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          updateCartBadge(d.cart_count);
+          const row = document.getElementById('ditem-' + itemId);
+          if (row) { row.style.opacity = '0'; setTimeout(refreshDrawer, 300); }
+        }
+      });
+    }
+
+    // ── Navbar cart badge ───────────────────────────────
     function updateCartBadge(count) {
       const badge = document.getElementById('cart-count');
       if (!badge) return;
@@ -330,18 +578,23 @@
       }
     }
 
-    // Auto-dismiss flash messages
+    // Auto-dismiss flash messages after 5s
     setTimeout(() => {
       const el = document.getElementById('flash-wrap');
-      if (el) { el.style.transition = 'opacity .5s'; el.style.opacity = '0'; }
-      setTimeout(() => el && el.remove(), 500);
+      if (el) {
+        el.style.transition = 'opacity .5s';
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 500);
+      }
     }, 5000);
 
     // Navbar shadow on scroll
     window.addEventListener('scroll', () => {
-      document.getElementById('navbar').classList.toggle('nav-scrolled', window.scrollY > 10);
+      document.getElementById('navbar')
+              .classList.toggle('nav-scrolled', window.scrollY > 10);
     });
   </script>
+
   {% block extra_js %}{% endblock %}
 </body>
 </html>
