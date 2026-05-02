@@ -1,3 +1,5 @@
+import json
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils.timezone import now
 from django.contrib.auth.decorators import login_required
@@ -11,7 +13,6 @@ from .utils import calculate_distance
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-
 
 
 # ─────────────────────────────
@@ -40,6 +41,7 @@ def track_delivery(request, order_ref):
         order__order_ref=order_ref
     )
 
+    # AJAX live polling (optional)
     if request.GET.get("live") == "1":
         return JsonResponse({
             "lat": delivery.current_lat,
@@ -61,7 +63,7 @@ def rider_dashboard(request):
 
     return render(request, "delivery/rider_dashboard.html", {
         "deliveries": deliveries
-    }) 
+    })
 
 
 # ─────────────────────────────
@@ -74,17 +76,17 @@ def update_delivery_status(request, delivery_id, status):
 
     delivery = get_object_or_404(Delivery, id=delivery_id)
 
-    # security check
-    if delivery.rider and delivery.rider.user != request.user:
+    # Security check
+    if delivery.rider and delivery.rider.rider != request.user:
         return redirect("delivery:rider_dashboard")
 
     delivery.status = status
 
     if status == "picked_up":
-        delivery.picked_up_at = timezone.now()
+        delivery.picked_up_at = now()
 
     elif status == "delivered":
-        delivery.delivered_at = timezone.now()
+        delivery.delivered_at = now()
 
     delivery.save()
 
@@ -92,55 +94,63 @@ def update_delivery_status(request, delivery_id, status):
 
 
 # ─────────────────────────────
-# RIDER LIVE LOCATION UPDATE (AJAX)
+# RIDER LIVE LOCATION UPDATE
 # ─────────────────────────────
 @csrf_exempt
 def update_rider_location(request, delivery_id):
-    if request.method == "POST":
-        delivery = get_object_or_404(Delivery, id=delivery_id)
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=400)
 
-        lat = request.POST.get("latitude")
-        lng = request.POST.get("longitude")
+    try:
+        data = json.loads(request.body)
 
-        if lat and lng:
-            # 1. Save to DB
-            delivery.current_lat = float(lat)
-            delivery.current_lng = float(lng)
-            delivery.save()
+        lat = float(data.get("lat"))
+        lng = float(data.get("lng"))
 
-            # 2. SEND LIVE UPDATE TO WEB SOCKET
-            channel_layer = get_channel_layer()
+        delivery = get_object_or_404(Delivery, pk=delivery_id)
 
-            async_to_sync(channel_layer.group_send)(
-                f"delivery_{delivery_id}",
-                {
-                    "type": "send_location",
-                    "lat": float(lat),
-                    "lng": float(lng),
-                }
-            )
+        # Update live position
+        delivery.current_lat = lat
+        delivery.current_lng = lng
+        delivery.save()
 
-            return JsonResponse({"status": "success"})
+        # Save tracking history
+        DeliveryTracking.objects.create(
+            delivery=delivery,
+            latitude=lat,
+            longitude=lng
+        )
 
-        return JsonResponse({"status": "missing data"})
+        # Send real-time update via WebSocket
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"delivery_{delivery_id}",
+            {
+                "type": "send_location",
+                "lat": lat,
+                "lng": lng,
+            }
+        )
 
-    return JsonResponse({"status": "invalid request"})
+        return JsonResponse({
+            "success": True,
+            "status": delivery.status
+        })
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
 
 # ─────────────────────────────
-# TRACKING API FOR GOOGLE MAPS
+# TRACKING DATA API (MAP / AJAX)
 # ─────────────────────────────
 @login_required
 def tracking_data(request, delivery_id):
-    delivery = get_object_or_404(Delivery, id=delivery_id)
-
-    latest = delivery.tracking.order_by("-timestamp").first()
-
-    if not latest:
-        return JsonResponse({"error": "No tracking data"})
+    delivery = get_object_or_404(Delivery, pk=delivery_id)
 
     return JsonResponse({
-        "lat": latest.latitude,
-        "lng": latest.longitude,
+        "lat": delivery.current_lat,
+        "lng": delivery.current_lng,
         "status": delivery.status
     })
 
@@ -161,25 +171,22 @@ def assign_nearest_rider(request, delivery_id):
     min_distance = float("inf")
 
     for rider in riders:
-        if rider.rider:  # ensure linked user exists
-            # You may extend RiderProfile with lat/lng if needed
-            if hasattr(rider, "current_lat") and hasattr(rider, "current_lng"):
-                if rider.current_lat and rider.current_lng:
-                    distance = calculate_distance(
-                        delivery.pickup_lat,
-                        delivery.pickup_lng,
-                        rider.current_lat,
-                        rider.current_lng
-                    )
+        if rider.rider and rider.current_lat and rider.current_lng:
+            distance = calculate_distance(
+                delivery.pickup_lat,
+                delivery.pickup_lng,
+                rider.current_lat,
+                rider.current_lng
+            )
 
-                    if distance < min_distance:
-                        min_distance = distance
-                        nearest_rider = rider
+            if distance < min_distance:
+                min_distance = distance
+                nearest_rider = rider
 
     if not nearest_rider:
         return JsonResponse({"error": "No available rider"})
 
-    # assign rider
+    # Assign rider
     delivery.rider = nearest_rider
     delivery.status = "assigned"
     delivery.save()
@@ -195,67 +202,15 @@ def assign_nearest_rider(request, delivery_id):
 
 
 # ─────────────────────────────
-# CREATE ORDER + AUTO DELIVERY
+# CREATE ORDER + DELIVERY
 # ─────────────────────────────
+@login_required
 def create_order(request):
     order = Order.objects.create(
         user=request.user,
-        total_price=0  # replace with your logic
+        total_price=0  # Replace with real calculation
     )
 
     create_delivery(order)
 
-    return redirect("orders:success")
-
-
-
-
-@csrf_exempt
-def update_rider_location(request, pk):
-    """
-    Rider sends live GPS location here
-    """
-
-    if request.method != "POST":
-        return JsonResponse({"error": "POST required"}, status=400)
-
-    try:
-        data = json.loads(request.body)
-
-        lat = float(data.get("lat"))
-        lng = float(data.get("lng"))
-
-        delivery = Delivery.objects.get(pk=pk)
-
-        # update current rider location
-        delivery.current_lat = lat
-        delivery.current_lng = lng
-        delivery.save()
-
-        # save tracking history
-        DeliveryTracking.objects.create(
-            delivery=delivery,
-            latitude=lat,
-            longitude=lng
-        )
-
-        return JsonResponse({
-            "success": True,
-            "status": delivery.status
-        })
-
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
-
-
-
-def tracking_data(request, pk):
-    delivery = Delivery.objects.get(pk=pk)
-
-    return JsonResponse({
-        "lat": delivery.current_lat,
-        "lng": delivery.current_lng,
-        "status": delivery.status
-    })
-
- 
+    return redirect("order:success")
