@@ -7,7 +7,7 @@ SECRET_KEY = 'django-insecure-1mdy3c-obbs2t6g*d43@p%idj3nsgzwf+@9bztmz0zy0m&%e)s
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.x.x']
 
 # ── Custom User Model ──────────────────────────────────────
 # This tells Django to use YOUR User model instead of the default one

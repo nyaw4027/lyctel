@@ -3,6 +3,7 @@ from django.db.models import Q, Avg, Count
 from .models import Product, Category
 from cart.models import Cart
 from django.db.models import F
+from rest_framework.decorators import api_view
 
 
 def get_or_create_cart(request):
@@ -113,3 +114,11 @@ def deals_page(request):
     return render(request, "products/deals.html", {
         "deals": deals
     })
+
+
+
+@api_view(['GET'])
+def product_list_api(request):
+    products = Product.objects.all()
+    serializer = ProductSerializer(products, many=True)
+    return Response(serializer.data)

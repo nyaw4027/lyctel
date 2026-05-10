@@ -1,12 +1,17 @@
 from decimal import Decimal
-
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 
+# --- Add these REST Framework imports ---
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+#from .serializers import OrderSerializer 
+# ----------------------------------------
+
 from cart.models import Cart
 from delivery.models import DeliveryZone
-
 from .models import Order
 
 
@@ -167,3 +172,30 @@ def create_delivery_for_order(order):
 
 
 
+# -------------------------
+# ORDER TRACKING (The missing function!)
+# -------------------------
+@login_required
+def order_tracking(request, order_ref):
+    order = get_object_or_404(
+        Order, 
+        order_ref=order_ref, 
+        customer=request.user
+    )
+    
+    # If you have a delivery linked to this order, get it
+    delivery = getattr(order, 'delivery', None)
+    
+    return render(request, 'order/tracking.html', {
+        'order': order,
+        'delivery': delivery,
+        'cart_count': 0, # Usually 0 since order is already placed
+    })
+
+
+#@api_view(['GET'])
+#@permission_classes([IsAuthenticated])
+#def api_order_history(request):
+    #orders = Order.objects.filter(customer=request.user).order_by('-created_at')
+   # serializer = OrderSerializer(orders, many=True)
+    #return Response(serializer.data)
