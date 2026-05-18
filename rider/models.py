@@ -6,6 +6,7 @@ from django.db.models import Sum
 # ─────────────────────────────
 # RIDER PROFILE
 # ─────────────────────────────
+
 class RiderProfile(models.Model):
 
     class Status(models.TextChoices):
@@ -107,10 +108,6 @@ class RiderEarning(models.Model):
     def __str__(self):
         return f"{self.rider} — GHS {self.amount} — {self.status}"
 
-
-
-from django.db import models
-from django.conf import settings
 
 
 class RiderLocation(models.Model):

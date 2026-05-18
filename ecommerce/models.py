@@ -1,9 +1,10 @@
 import uuid
 
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.core.validators import RegexValidator
 
 from accounts.managers import UserManager
 
@@ -143,15 +144,27 @@ class User(AbstractUser):
     # ─────────────────────────────
     # SAVE LOGIC
     # ─────────────────────────────
+    def clean(self):
+        super().clean()
+        # Enforce only one admin in the system
+        if self.role == self.Role.ADMIN:
+            qs = User.objects.filter(role=self.Role.ADMIN)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError(
+                    {"role": _("An admin user already exists. Only one admin is allowed.")}
+                )
+
     def save(self, *args, **kwargs):
+        self.full_clean()  # triggers clean() before every save
+
         if self.role == self.Role.ADMIN:
             self.is_staff = True
             self.is_superuser = True
-
         elif self.role == self.Role.STAFF:
             self.is_staff = True
             self.is_superuser = False
-
         else:
             self.is_staff = False
             self.is_superuser = False

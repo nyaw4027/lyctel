@@ -23,4 +23,7 @@ urlpatterns = [
     path('vendor/dashboard/products/add/',             views.product_add,                  name='product_add'),
     path('vendor/dashboard/products/<int:pk>/edit/',   views.product_edit,                 name='product_edit'),
     path('vendor/dashboard/products/<int:pk>/delete/', views.product_delete,               name='product_delete'),
+
+    # Vendor dispatch (manual rider assignment when none auto-accepted)
+    path('vendor/dashboard/dispatch/',                 views.dispatch_ride,                name='dispatch'),
 ]
