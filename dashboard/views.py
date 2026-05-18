@@ -389,17 +389,31 @@ def rider_detail(request, pk):
 
 @admin_required
 def category_list(request):
-    categories = Category.objects.annotate(product_count=Count('products'))
+
+    categories = Category.objects.annotate(
+        total_products=Count('products')
+    )
 
     if request.method == 'POST':
+
         name = request.POST.get('name', '').strip()
+
         if name:
             base_slug = slugify(name)
-            slug, counter = base_slug, 1
+            slug = base_slug
+            counter = 1
+
             while Category.objects.filter(slug=slug).exists():
-                slug = f"{base_slug}-{counter}"; counter += 1
-            Category.objects.create(name=name, slug=slug)
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+
+            Category.objects.create(
+                name=name,
+                slug=slug
+            )
+
             messages.success(request, f'Category "{name}" added.')
+
         return redirect('dashboard:category_list')
 
     return render(request, 'dashboard/categories/list.html', {
@@ -511,4 +525,80 @@ def commission_overview(request):
         'commissions': commissions,
         'total':       total,
         'month_total': month_total,
+    })
+
+
+
+@admin_required
+def staff_list(request):
+    staff_members = User.objects.filter(role__in=['staff', 'admin'])
+
+    return render(request, 'dashboard/staff/list.html', {
+        'staff_members': staff_members
+    })
+
+
+@admin_required
+def create_staff(request):
+
+    if request.method == 'POST':
+        first_name = request.POST.get('first_name')
+        last_name  = request.POST.get('last_name')
+        phone      = request.POST.get('phone')
+        password   = request.POST.get('password')
+        role       = request.POST.get('role')
+
+        user = User.objects.create_user(
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            password=password,
+            role=role,
+        )
+
+        messages.success(request, 'Staff account created successfully.')
+        return redirect('dashboard:staff_list')
+
+    return render(request, 'dashboard/staff/create.html')
+
+
+@admin_required
+def edit_staff(request, pk):
+    staff = get_object_or_404(User, pk=pk)
+
+    if request.method == "POST":
+        staff.first_name = request.POST.get("first_name")
+        staff.last_name = request.POST.get("last_name")
+        staff.phone = request.POST.get("phone")
+        staff.email = request.POST.get("email")
+        staff.role = request.POST.get("role")
+
+        staff.is_active = bool(request.POST.get("is_active"))
+
+        password = request.POST.get("password")
+        if password:
+            staff.set_password(password)
+
+        staff.save()
+
+        messages.success(request, "Staff updated successfully.")
+        return redirect("dashboard:staff_list")
+
+    return render(request, "dashboard/staff/edit_staff.html", {
+        "staff": staff
+    })
+
+
+@admin_required
+def delete_staff(request, pk):
+
+    staff = get_object_or_404(User, pk=pk)
+
+    if request.method == 'POST':
+        staff.delete()
+        messages.success(request, 'Staff deleted successfully.')
+        return redirect('dashboard:staff_list')
+
+    return render(request, 'dashboard/staff/delete.html', {
+        'staff': staff
     })

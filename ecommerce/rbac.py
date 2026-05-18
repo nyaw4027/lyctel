@@ -72,6 +72,7 @@ ROLES = {
             'view_riders',
             'assign_riders',
             'view_deliveries',
+            'view_staff',
         ],
     },
     'admin': {
