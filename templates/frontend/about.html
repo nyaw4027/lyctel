@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+{% if page %}{{ page.title }} — Lynctel{% else %}About Us — Lynctel{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<section class="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white">
+
+    <!-- Background Glow -->
+    <div class="absolute top-0 left-0 w-96 h-96 bg-gold/10 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl"></div>
+
+    <div class="relative max-w-7xl mx-auto px-6 py-24 lg:py-32">
+
+        <div class="grid lg:grid-cols-2 gap-16 items-center">
+
+            <!-- LEFT -->
+            <div>
+
+                <span class="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-sm px-4 py-2 rounded-full mb-6 backdrop-blur-md">
+                    ⚡ Ghana's Smart Marketplace
+                </span>
+
+                <h1 class="text-5xl lg:text-7xl font-black leading-tight mb-6">
+                    {% if page %}
+                        {{ page.title }}
+                    {% else %}
+                        About <span class="text-gold">Lynctel</span>
+                    {% endif %}
+                </h1>
+
+                <p class="text-lg text-gray-300 leading-relaxed mb-8 max-w-2xl">
+                    {% if page %}
+                        {{ page.subtitle }}
+                    {% else %}
+                        Lynctel connects customers, vendors, and riders across Ghana through a modern ecommerce ecosystem built for speed, trust, and convenience.
+                    {% endif %}
+                </p>
+
+                <div class="flex flex-wrap gap-4">
+
+                    <a href="{% url 'products:list' %}"
+                       class="bg-gold hover:bg-yellow-400 text-black font-bold px-7 py-4 rounded-2xl transition-all duration-300 hover:scale-105 shadow-2xl">
+                        🛍️ Shop Now
+                    </a>
+
+                    <a href="#our-story"
+                       class="border border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 px-7 py-4 rounded-2xl font-semibold transition-all duration-300">
+                        Learn More
+                    </a>
+
+                </div>
+
+                <!-- STATS -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
+
+                    {% if page and page.stats.all %}
+
+                        {% for stat in page.stats.all %}
+                        <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center backdrop-blur-md">
+                            <h3 class="text-3xl font-black text-gold">
+                                {{ stat.value }}
+                            </h3>
+
+                            <p class="text-sm text-gray-300 mt-2">
+                                {{ stat.label }}
+                            </p>
+                        </div>
+                        {% endfor %}
+
+                    {% else %}
+
+                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
+                        <h3 class="text-3xl font-black text-gold">10K+</h3>
+                        <p class="text-sm text-gray-300 mt-2">Customers</p>
+                    </div>
+
+                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
+                        <h3 class="text-3xl font-black text-gold">500+</h3>
+                        <p class="text-sm text-gray-300 mt-2">Vendors</p>
+                    </div>
+
+                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
+                        <h3 class="text-3xl font-black text-gold">24/7</h3>
+                        <p class="text-sm text-gray-300 mt-2">Support</p>
+                    </div>
+
+                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
+                        <h3 class="text-3xl font-black text-gold">Fast</h3>
+                        <p class="text-sm text-gray-300 mt-2">Delivery</p>
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+            <!-- RIGHT -->
+            <div class="relative">
+
+                <div class="absolute inset-0 bg-gold/20 blur-3xl rounded-full"></div>
+
+                <div class="relative bg-white/5 border border-white/10 p-5 rounded-[2rem] backdrop-blur-md shadow-2xl">
+
+                    {% if page and page.hero_image %}
+                        <img src="{{ page.hero_image.url }}"
+                             class="w-full h-[550px] object-cover rounded-[1.5rem]"
+                             alt="About Lynctel">
+                    {% else %}
+                        <img src="{% static 'images/about-hero.jpg' %}"
+                             class="w-full h-[550px] object-cover rounded-[1.5rem]"
+                             alt="About Lynctel">
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</section>
+
+
+<!-- OUR STORY -->
+<section id="our-story" class="bg-white py-24">
+
+    <div class="max-w-7xl mx-auto px-6">
+
+        <div class="grid lg:grid-cols-2 gap-16 items-center">
+
+            <!-- IMAGE -->
+            <div>
+
+                {% if page and page.story_image %}
+                    <img src="{{ page.story_image.url }}"
+                         class="rounded-[2rem] shadow-2xl w-full h-[550px] object-cover"
+                         alt="Our Story">
+                {% else %}
+                    <img src="{% static 'images/about-story.jpg' %}"
+                         class="rounded-[2rem] shadow-2xl w-full h-[550px] object-cover"
+                         alt="Our Story">
+                {% endif %}
+
+            </div>
+
+            <!-- CONTENT -->
+            <div>
+
+                <span class="text-gold font-bold uppercase tracking-widest text-sm">
+                    Our Story
+                </span>
+
+                <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6 leading-tight">
+
+                    {% if page %}
+                        {{ page.story_title }}
+                    {% else %}
+                        Building The Future Of African Commerce
+                    {% endif %}
+
+                </h2>
+
+                <p class="text-gray-600 text-lg leading-relaxed mb-6">
+
+                    {% if page %}
+                        {{ page.story_text }}
+                    {% else %}
+                        Lynctel was created to modernize ecommerce across Ghana and Africa by building a reliable platform where customers, vendors, and riders can thrive together.
+                    {% endif %}
+
+                </p>
+
+                <div class="grid sm:grid-cols-2 gap-5 mt-10">
+
+                    <div class="bg-gray-50 border border-gray-100 rounded-3xl p-6 hover:shadow-xl transition-all duration-300">
+                        <div class="w-14 h-14 rounded-2xl bg-yellow-100 flex items-center justify-center mb-4 text-2xl">
+                            🚀
+                        </div>
+
+                        <h3 class="font-bold text-gray-900 mb-2">
+                            Innovation
+                        </h3>
+
+                        <p class="text-sm text-gray-500 leading-relaxed">
+                            Smart technology powering modern ecommerce solutions.
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 border border-gray-100 rounded-3xl p-6 hover:shadow-xl transition-all duration-300">
+                        <div class="w-14 h-14 rounded-2xl bg-yellow-100 flex items-center justify-center mb-4 text-2xl">
+                            🤝
+                        </div>
+
+                        <h3 class="font-bold text-gray-900 mb-2">
+                            Trust
+                        </h3>
+
+                        <p class="text-sm text-gray-500 leading-relaxed">
+                            Safe transactions and reliable customer experience.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+
+<!-- FEATURES -->
+<section class="bg-gray-50 py-24">
+
+    <div class="max-w-7xl mx-auto px-6">
+
+        <div class="text-center max-w-3xl mx-auto mb-16">
+
+            <span class="text-gold font-bold uppercase tracking-widest text-sm">
+                Why Choose Lynctel
+            </span>
+
+            <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6">
+                Built For Modern Commerce
+            </h2>
+
+            <p class="text-lg text-gray-600 leading-relaxed">
+                Everything needed for seamless online shopping and business growth.
+            </p>
+
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+
+            {% if page and page.features.all %}
+
+                {% for feature in page.features.all %}
+                <div class="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+
+                    <div class="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center text-3xl mb-6">
+                        {{ feature.icon }}
+                    </div>
+
+                    <h3 class="font-black text-xl text-gray-900 mb-4">
+                        {{ feature.title }}
+                    </h3>
+
+                    <p class="text-gray-600 leading-relaxed text-sm">
+                        {{ feature.description }}
+                    </p>
+
+                </div>
+                {% endfor %}
+
+            {% else %}
+
+            <div class="bg-white rounded-[2rem] p-8 border border-gray-100">
+                <div class="text-4xl mb-5">🛍️</div>
+                <h3 class="font-black text-xl mb-4">Multi Vendor</h3>
+                <p class="text-gray-600 text-sm">
+                    Vendors manage stores and products easily.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-[2rem] p-8 border border-gray-100">
+                <div class="text-4xl mb-5">🚚</div>
+                <h3 class="font-black text-xl mb-4">Fast Delivery</h3>
+                <p class="text-gray-600 text-sm">
+                    Reliable rider system with fast logistics.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-[2rem] p-8 border border-gray-100">
+                <div class="text-4xl mb-5">🔒</div>
+                <h3 class="font-black text-xl mb-4">Secure Payments</h3>
+                <p class="text-gray-600 text-sm">
+                    Safe checkout with mobile money integration.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-[2rem] p-8 border border-gray-100">
+                <div class="text-4xl mb-5">📊</div>
+                <h3 class="font-black text-xl mb-4">Analytics</h3>
+                <p class="text-gray-600 text-sm">
+                    Powerful tools for business growth and reporting.
+                </p>
+            </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+</section>
+
+
+<!-- TEAM -->
+<section class="bg-white py-24">
+
+    <div class="max-w-7xl mx-auto px-6">
+
+        <div class="text-center max-w-3xl mx-auto mb-16">
+
+            <span class="text-gold font-bold uppercase tracking-widest text-sm">
+                Leadership
+            </span>
+
+            <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6">
+                Meet The Team
+            </h2>
+
+            <p class="text-lg text-gray-600 leading-relaxed">
+                Passionate innovators building the next generation of ecommerce.
+            </p>
+
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+
+            {% if page and page.team.all %}
+
+                {% for member in page.team.all %}
+                <div class="bg-gray-50 rounded-[2rem] overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+
+                    {% if member.image %}
+                    <img src="{{ member.image.url }}"
+                         class="w-full h-80 object-cover"
+                         alt="{{ member.name }}">
+                    {% endif %}
+
+                    <div class="p-6 text-center">
+
+                        <h3 class="text-xl font-black text-gray-900">
+                            {{ member.name }}
+                        </h3>
+
+                        <p class="text-gold font-semibold mt-2">
+                            {{ member.role }}
+                        </p>
+
+                        <p class="text-sm text-gray-500 leading-relaxed mt-4">
+                            {{ member.bio }}
+                        </p>
+
+                    </div>
+
+                </div>
+                {% endfor %}
+
+            {% else %}
+
+            <div class="col-span-full text-center py-16 text-gray-400">
+                No team members added yet.
+            </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+</section>
+
+
+<!-- CTA -->
+<section class="relative overflow-hidden bg-black text-white py-24">
+
+    <div class="absolute inset-0 bg-gold/10 blur-3xl"></div>
+
+    <div class="relative max-w-5xl mx-auto px-6 text-center">
+
+        <h2 class="text-4xl lg:text-6xl font-black leading-tight mb-6">
+
+            {% if page %}
+                {{ page.cta_title }}
+            {% else %}
+                Ready To Experience Lynctel?
+            {% endif %}
+
+        </h2>
+
+        <p class="text-lg text-gray-300 leading-relaxed max-w-3xl mx-auto mb-10">
+
+            {% if page %}
+                {{ page.cta_text }}
+            {% else %}
+                Join thousands of customers and vendors already growing with Lynctel.
+            {% endif %}
+
+        </p>
+
+        <div class="flex flex-wrap justify-center gap-5">
+
+            <a href="{% url 'products:list' %}"
+               class="bg-gold hover:bg-yellow-400 text-black font-bold px-8 py-4 rounded-2xl transition-all duration-300 hover:scale-105 shadow-2xl">
+                Start Shopping
+            </a>
+
+            <a href="{% url 'vendors:apply' %}"
+               class="border border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 font-bold px-8 py-4 rounded-2xl transition-all duration-300">
+                Become A Vendor
+            </a>
+
+        </div>
+
+    </div>
+
+</section>
+
+{% endblock %}
