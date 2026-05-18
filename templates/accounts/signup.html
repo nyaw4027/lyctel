@@ -2,125 +2,310 @@
 {% block title %}Create Account — Lynctel{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center px-4 py-12">
-  <div class="w-full max-w-md">
+<div class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
 
-    <!-- Logo -->
+  <div class="w-full max-w-lg">
+
+    <!-- Header -->
     <div class="text-center mb-8">
-      <a href="{% url 'frontend:home' %}" class="inline-flex items-center gap-2 font-bold text-2xl text-brand">
-        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+
+      <a href="{% url 'frontend:home' %}"
+         class="inline-flex items-center gap-2 text-3xl font-extrabold text-blue-600">
+
+        <svg class="w-9 h-9" fill="currentColor" viewBox="0 0 24 24">
           <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
         </svg>
+
         Lynctel
       </a>
-      <h1 class="text-xl font-bold text-gray-800 mt-4 mb-1">Create your account</h1>
-      <p class="text-sm text-gray-500">Start shopping quality imports today</p>
+
+      <h1 class="text-3xl font-bold text-gray-900 mt-5">
+        Create Your Account 🚀
+      </h1>
+
+      <p class="text-gray-500 mt-2">
+        Join Lynctel and start shopping quality imports today
+      </p>
     </div>
 
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-      <form method="POST">
+    <!-- Card -->
+    <div class="bg-white rounded-3xl border border-gray-200 shadow-xl p-8">
+
+      <form method="POST" class="space-y-5">
         {% csrf_token %}
+
         {% if request.GET.next %}
-        <input type="hidden" name="next" value="{{ request.GET.next }}"/>
+        <input type="hidden" name="next" value="{{ request.GET.next }}">
         {% endif %}
 
-        <div class="space-y-4">
+        <!-- Names -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-          <!-- Name row -->
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-              <input type="text" name="first_name"
+          <!-- First Name -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              First Name *
+            </label>
+
+            <div class="relative">
+              <span class="absolute left-4 top-3.5 text-gray-400">
+                👤
+              </span>
+
+              <input type="text"
+                     name="first_name"
                      value="{{ form_data.first_name|default:'' }}"
                      placeholder="Kofi"
-                     class="w-full px-4 py-2.5 border {% if errors.first_name %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %}
-                            rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-              {% if errors.first_name %}
-              <p class="text-red-500 text-xs mt-1">{{ errors.first_name }}</p>
-              {% endif %}
+                     required
+                     class="w-full pl-11 pr-4 py-3 border
+                     {% if errors.first_name %}
+                     border-red-400 bg-red-50
+                     {% else %}
+                     border-gray-300 bg-gray-50
+                     {% endif %}
+                     rounded-2xl text-sm
+                     focus:outline-none focus:ring-4 focus:ring-blue-100
+                     focus:border-blue-500 transition">
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-              <input type="text" name="last_name"
+
+            {% if errors.first_name %}
+            <p class="text-red-500 text-xs mt-1">
+              {{ errors.first_name }}
+            </p>
+            {% endif %}
+          </div>
+
+          <!-- Last Name -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Last Name
+            </label>
+
+            <div class="relative">
+              <span class="absolute left-4 top-3.5 text-gray-400">
+                👤
+              </span>
+
+              <input type="text"
+                     name="last_name"
                      value="{{ form_data.last_name|default:'' }}"
                      placeholder="Mensah"
-                     class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm
-                            focus:outline-none focus:ring-2 focus:ring-brand"/>
+                     class="w-full pl-11 pr-4 py-3 border border-gray-300 bg-gray-50
+                            rounded-2xl text-sm
+                            focus:outline-none focus:ring-4 focus:ring-blue-100
+                            focus:border-blue-500 transition">
             </div>
-          </div>
-
-          <!-- Phone -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
-            <input type="tel" name="phone"
-                   value="{{ form_data.phone|default:'' }}"
-                   placeholder="0241234567"
-                   class="w-full px-4 py-2.5 border {% if errors.phone %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %}
-                          rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-            {% if errors.phone %}
-            <p class="text-red-500 text-xs mt-1">{{ errors.phone }}</p>
-            {% else %}
-            <p class="text-xs text-gray-400 mt-1">This will be your login username</p>
-            {% endif %}
-          </div>
-
-          <!-- Email -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              Email <span class="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <input type="email" name="email"
-                   value="{{ form_data.email|default:'' }}"
-                   placeholder="kofi@example.com"
-                   class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm
-                          focus:outline-none focus:ring-2 focus:ring-brand"/>
-          </div>
-
-          <!-- Password -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-            <div class="relative">
-              <input type="password" name="password1" id="pw1"
-                     placeholder="At least 6 characters"
-                     class="w-full px-4 py-2.5 border {% if errors.password1 %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %}
-                            rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand pr-10"/>
-              <button type="button" onclick="togglePw('pw1', this)"
-                      class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 text-xs">Show</button>
-            </div>
-            {% if errors.password1 %}
-            <p class="text-red-500 text-xs mt-1">{{ errors.password1 }}</p>
-            {% endif %}
-          </div>
-
-          <!-- Confirm password -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label>
-            <div class="relative">
-              <input type="password" name="password2" id="pw2"
-                     placeholder="Repeat your password"
-                     class="w-full px-4 py-2.5 border {% if errors.password2 %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %}
-                            rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand pr-10"/>
-              <button type="button" onclick="togglePw('pw2', this)"
-                      class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 text-xs">Show</button>
-            </div>
-            {% if errors.password2 %}
-            <p class="text-red-500 text-xs mt-1">{{ errors.password2 }}</p>
-            {% endif %}
           </div>
 
         </div>
 
+        <!-- Phone -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Phone Number *
+          </label>
+
+          <div class="relative">
+            <span class="absolute left-4 top-3.5 text-gray-400">
+              📱
+            </span>
+
+            <input type="tel"
+                   name="phone"
+                   value="{{ form_data.phone|default:'' }}"
+                   placeholder="0241234567"
+                   required
+                   class="w-full pl-11 pr-4 py-3 border
+                   {% if errors.phone %}
+                   border-red-400 bg-red-50
+                   {% else %}
+                   border-gray-300 bg-gray-50
+                   {% endif %}
+                   rounded-2xl text-sm
+                   focus:outline-none focus:ring-4 focus:ring-blue-100
+                   focus:border-blue-500 transition">
+          </div>
+
+          {% if errors.phone %}
+          <p class="text-red-500 text-xs mt-1">
+            {{ errors.phone }}
+          </p>
+          {% else %}
+          <p class="text-xs text-gray-400 mt-1">
+            This will be your login username
+          </p>
+          {% endif %}
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Email Address
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+
+          <div class="relative">
+            <span class="absolute left-4 top-3.5 text-gray-400">
+              ✉️
+            </span>
+
+            <input type="email"
+                   name="email"
+                   value="{{ form_data.email|default:'' }}"
+                   placeholder="kofi@example.com"
+                   class="w-full pl-11 pr-4 py-3 border border-gray-300 bg-gray-50
+                          rounded-2xl text-sm
+                          focus:outline-none focus:ring-4 focus:ring-blue-100
+                          focus:border-blue-500 transition">
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Password *
+          </label>
+
+          <div class="relative">
+
+            <span class="absolute left-4 top-3.5 text-gray-400">
+              🔒
+            </span>
+
+            <input type="password"
+                   name="password1"
+                   id="pw1"
+                   placeholder="At least 6 characters"
+                   required
+                   class="w-full pl-11 pr-20 py-3 border
+                   {% if errors.password1 %}
+                   border-red-400 bg-red-50
+                   {% else %}
+                   border-gray-300 bg-gray-50
+                   {% endif %}
+                   rounded-2xl text-sm
+                   focus:outline-none focus:ring-4 focus:ring-blue-100
+                   focus:border-blue-500 transition">
+
+            <button type="button"
+                    onclick="togglePw('pw1', this)"
+                    class="absolute right-3 top-2 bg-gray-200 hover:bg-gray-300
+                           text-gray-700 text-xs font-semibold
+                           px-3 py-1.5 rounded-lg transition">
+
+              Show
+            </button>
+          </div>
+
+          {% if errors.password1 %}
+          <p class="text-red-500 text-xs mt-1">
+            {{ errors.password1 }}
+          </p>
+          {% endif %}
+        </div>
+
+        <!-- Confirm Password -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Confirm Password *
+          </label>
+
+          <div class="relative">
+
+            <span class="absolute left-4 top-3.5 text-gray-400">
+              🔐
+            </span>
+
+            <input type="password"
+                   name="password2"
+                   id="pw2"
+                   placeholder="Repeat your password"
+                   required
+                   class="w-full pl-11 pr-20 py-3 border
+                   {% if errors.password2 %}
+                   border-red-400 bg-red-50
+                   {% else %}
+                   border-gray-300 bg-gray-50
+                   {% endif %}
+                   rounded-2xl text-sm
+                   focus:outline-none focus:ring-4 focus:ring-blue-100
+                   focus:border-blue-500 transition">
+
+            <button type="button"
+                    onclick="togglePw('pw2', this)"
+                    class="absolute right-3 top-2 bg-gray-200 hover:bg-gray-300
+                           text-gray-700 text-xs font-semibold
+                           px-3 py-1.5 rounded-lg transition">
+
+              Show
+            </button>
+          </div>
+
+          {% if errors.password2 %}
+          <p class="text-red-500 text-xs mt-1">
+            {{ errors.password2 }}
+          </p>
+          {% endif %}
+        </div>
+
+        <!-- Terms -->
+        <div class="flex items-start gap-3 text-sm">
+          <input type="checkbox"
+                 required
+                 class="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+
+          <p class="text-gray-600">
+            I agree to the
+            <a href="#" class="text-blue-600 font-medium hover:underline">
+              Terms of Service
+            </a>
+            and
+            <a href="#" class="text-blue-600 font-medium hover:underline">
+              Privacy Policy
+            </a>
+          </p>
+        </div>
+
+        <!-- Submit -->
         <button type="submit"
-                class="w-full mt-6 bg-brand hover:bg-brand-dark text-white font-semibold
-                       py-3 rounded-xl transition-colors">
-          Create Account
+                class="w-full bg-blue-600 hover:bg-blue-700
+                       text-white font-bold text-lg
+                       py-4 rounded-2xl
+                       shadow-md hover:shadow-xl
+                       transition-all duration-300
+                       active:scale-[0.98]
+                       flex items-center justify-center gap-2">
+
+          <span>🚀</span>
+          <span>Create Account</span>
         </button>
+
       </form>
 
-      <p class="text-center text-sm text-gray-500 mt-5">
-        Already have an account?
-        <a href="{% url 'accounts:login' %}" class="text-brand font-semibold hover:underline">Sign In</a>
-      </p>
+      <!-- Divider -->
+      <div class="relative my-7">
+        <div class="absolute inset-0 flex items-center">
+          <div class="w-full border-t border-gray-200"></div>
+        </div>
+
+        <div class="relative flex justify-center text-sm">
+          <span class="bg-white px-3 text-gray-400">
+            OR
+          </span>
+        </div>
+      </div>
+
+      <!-- Login -->
+      <a href="{% url 'accounts:login' %}"
+         class="w-full flex items-center justify-center
+                border-2 border-blue-600 text-blue-600
+                hover:bg-blue-600 hover:text-white
+                font-semibold py-3 rounded-2xl
+                transition duration-200">
+
+        Already Have an Account? Sign In
+      </a>
+
     </div>
 
   </div>
@@ -129,13 +314,16 @@
 
 {% block extra_js %}
 <script>
-  function togglePw(id, btn) {
-    const input = document.getElementById(id);
-    if (input.type === 'password') {
-      input.type = 'text'; btn.textContent = 'Hide';
-    } else {
-      input.type = 'password'; btn.textContent = 'Show';
-    }
+function togglePw(id, btn) {
+  const input = document.getElementById(id);
+
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = 'Hide';
+  } else {
+    input.type = 'password';
+    btn.textContent = 'Show';
   }
+}
 </script>
 {% endblock %}

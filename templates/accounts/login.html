@@ -2,83 +2,174 @@
 {% block title %}Sign In — Lynctel{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center px-4 py-12">
-  <div class="w-full max-w-sm">
+<div class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
 
-    <!-- Logo -->
+  <div class="w-full max-w-md">
+
+    <!-- Logo / Header -->
     <div class="text-center mb-8">
-      <a href="{% url 'frontend:home' %}" class="inline-flex items-center gap-2 font-bold text-2xl text-brand">
-        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+      <a href="{% url 'frontend:home' %}"
+         class="inline-flex items-center gap-2 text-3xl font-extrabold text-brand">
+
+        <svg class="w-9 h-9" fill="currentColor" viewBox="0 0 24 24">
           <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
         </svg>
+
         Lynctel
       </a>
-      <h1 class="text-xl font-bold text-gray-800 mt-4 mb-1">Welcome back</h1>
-      <p class="text-sm text-gray-500">Sign in to your account</p>
-    </div>
 
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+      <h1 class="text-2xl font-bold text-gray-900 mt-5">
+        Welcome Back 👋
+      </h1>
 
-      {% if error %}
-      <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-5 flex items-center gap-2">
-        <span>⚠️</span> {{ error }}
-      </div>
-      {% endif %}
-
-      <form method="POST">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next }}"/>
-
-        <div class="space-y-4">
-
-          <!-- Phone -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-            <input type="tel" name="phone"
-                   value="{{ phone|default:'' }}"
-                   placeholder="0241234567"
-                   autofocus
-                   class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm
-                          focus:outline-none focus:ring-2 focus:ring-brand"/>
-          </div>
-
-          <!-- Password -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-sm font-medium text-gray-700">Password</label>
-              <a href="#" class="text-xs text-brand hover:underline">Forgot password?</a>
-            </div>
-            <div class="relative">
-              <input type="password" name="password" id="pw"
-                     placeholder="Your password"
-                     class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm
-                            focus:outline-none focus:ring-2 focus:ring-brand pr-12"/>
-              <button type="button" onclick="togglePw()"
-                      class="absolute right-3 top-2.5 text-xs text-gray-400 hover:text-gray-700">
-                Show
-              </button>
-            </div>
-          </div>
-
-        </div>
-
-        <button type="submit"
-                class="w-full mt-6 bg-brand hover:bg-brand-dark text-white font-semibold
-                       py-3 rounded-xl transition-colors">
-          Sign In
-        </button>
-      </form>
-
-      <p class="text-center text-sm text-gray-500 mt-5">
-        Don't have an account?
-        <a href="{% url 'accounts:signup' %}" class="text-brand font-semibold hover:underline">Sign Up</a>
+      <p class="text-gray-500 mt-2">
+        Sign in to continue shopping and managing your account
       </p>
     </div>
 
-    <!-- Rider / Admin note -->
-    <p class="text-center text-xs text-gray-400 mt-4">
-      Rider or admin?
-      <a href="/admin/" class="hover:text-brand">Use the admin panel →</a>
+    <!-- Card -->
+    <div class="bg-white border border-gray-200 rounded-3xl shadow-xl p-8">
+
+      <!-- Error -->
+      {% if error %}
+      <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-2xl mb-6 flex items-center gap-2">
+        <span class="text-lg">⚠️</span>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <!-- Form -->
+      <form method="POST" class="space-y-5">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}"/>
+
+        <!-- Phone -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Phone Number
+          </label>
+
+          <div class="relative">
+            <span class="absolute left-4 top-3.5 text-gray-400">
+              📱
+            </span>
+
+            <input type="tel"
+                   name="phone"
+                   value="{{ phone|default:'' }}"
+                   placeholder="0241234567"
+                   autofocus
+                   required
+                   class="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-2xl
+                          text-sm bg-gray-50 focus:bg-white
+                          focus:outline-none focus:ring-4 focus:ring-brand/20
+                          focus:border-brand transition"/>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-semibold text-gray-700">
+              Password
+            </label>
+
+            <a href="#"
+               class="text-sm text-brand font-medium hover:underline">
+              Forgot Password?
+            </a>
+          </div>
+
+          <div class="relative">
+            <span class="absolute left-4 top-3.5 text-gray-400">
+              🔒
+            </span>
+
+            <input type="password"
+                   name="password"
+                   id="pw"
+                   placeholder="Enter your password"
+                   required
+                   class="w-full pl-11 pr-20 py-3 border border-gray-300 rounded-2xl
+                          text-sm bg-gray-50 focus:bg-white
+                          focus:outline-none focus:ring-4 focus:ring-brand/20
+                          focus:border-brand transition"/>
+
+            <button type="button"
+                    onclick="togglePw()"
+                    class="absolute right-3 top-2 bg-gray-100 hover:bg-gray-200
+                           text-gray-700 text-xs font-semibold
+                           px-3 py-1.5 rounded-lg transition">
+              Show
+            </button>
+          </div>
+        </div>
+
+        <!-- Remember -->
+        <div class="flex items-center justify-between text-sm">
+          <label class="flex items-center gap-2 text-gray-600">
+            <input type="checkbox"
+                   class="rounded border-gray-300 text-brand focus:ring-brand">
+            Remember me
+          </label>
+        </div>
+
+        <!-- Sign In Button -->
+        <!-- Sign In Button -->
+<button type="submit"
+        class="w-full bg-blue-600 hover:bg-blue-700
+               text-white font-extrabold text-lg
+               py-4 rounded-2xl
+               shadow-2xl hover:shadow-blue-300/50
+               border border-blue-700
+               transition-all duration-300
+               transform hover:-translate-y-1
+               active:scale-95
+               flex items-center justify-center gap-3">
+
+  <span class="text-xl">🔐</span>
+
+  <span>
+    Sign In
+  </span>
+
+</button>
+
+      </form>
+
+      <!-- Divider -->
+      <div class="relative my-7">
+        <div class="absolute inset-0 flex items-center">
+          <div class="w-full border-t border-gray-200"></div>
+        </div>
+
+        <div class="relative flex justify-center text-sm">
+          <span class="bg-white px-3 text-gray-400">
+            OR
+          </span>
+        </div>
+      </div>
+
+      <!-- Create Account -->
+      <a href="{% url 'accounts:signup' %}"
+         class="w-full flex items-center justify-center
+                border-2 border-brand text-brand
+                hover:bg-brand hover:text-white
+                font-semibold py-3 rounded-2xl
+                transition duration-200">
+
+        Create New Account
+      </a>
+
+    </div>
+
+    <!-- Bottom -->
+    <p class="text-center text-sm text-gray-500 mt-6">
+      Rider or Admin?
+      <a href="/admin/"
+         class="font-semibold text-brand hover:underline">
+        Use the admin panel
+      </a>
     </p>
 
   </div>
@@ -87,11 +178,14 @@
 
 {% block extra_js %}
 <script>
-  function togglePw() {
-    const pw  = document.getElementById('pw');
-    const btn = pw.nextElementSibling;
-    if (pw.type === 'password') { pw.type = 'text'; btn.textContent = 'Hide'; }
-    else                        { pw.type = 'password'; btn.textContent = 'Show'; }
+function togglePw() {
+  const pw = document.getElementById('pw');
+
+  if (pw.type === 'password') {
+    pw.type = 'text';
+  } else {
+    pw.type = 'password';
   }
+}
 </script>
 {% endblock %}
