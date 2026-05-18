@@ -45,12 +45,12 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    "corsheaders.middleware.CorsMiddleware",   # must be before CommonMiddleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = 'ecommerce.urls'
@@ -112,20 +112,9 @@ LOGOUT_REDIRECT_URL = '/'
 # ── Default primary key ────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-FLW_PUBLIC_KEY     = 'FLWPUBK_TEST-xxxxx'   # from Flutterwave dashboard
-FLW_SECRET_KEY     = 'FLWSECK_TEST-xxxxx'   # from Flutterwave dashboard
-FLW_WEBHOOK_SECRET = 'my-secret-string'     # you choose this
-
-
-
 ASGI_APPLICATION = "ecommerce.asgi.application"
 
-
-
-GOOGLE_MAPS_API_KEY = "YOUR_API_KEY"
-
-
+# ── Cache ──────────────────────────────────────────────────
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -133,10 +122,10 @@ CACHES = {
     }
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+# ── CORS ───────────────────────────────────────────────────
+CORS_ALLOW_ALL_ORIGINS = True   # TODO: restrict to specific origins in production
 
-
-
+# ── Django REST Framework ──────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -145,3 +134,11 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ),
 }
+
+# ── Flutterwave (Payment) ──────────────────────────────────
+FLW_PUBLIC_KEY     = 'FLWPUBK_TEST-xxxxx'
+FLW_SECRET_KEY     = 'FLWSECK_TEST-xxxxx'
+FLW_WEBHOOK_SECRET = 'my-secret-string'
+
+# ── Google Maps ────────────────────────────────────────────
+GOOGLE_MAPS_API_KEY = "YOUR_API_KEY"

@@ -22,12 +22,13 @@ from rider.utils import get_google_eta
 def rider_required(view_func):
     @login_required
     def wrapper(request, *args, **kwargs):
-        # Safer rider check
-        if not hasattr(request.user, 'rider_profile'):
+        if request.user.role != 'rider':
             messages.error(request, 'Access denied. Rider account required.')
             return redirect('frontend:home')
 
-        request.rider_profile = request.user.rider_profile
+        # Auto-create the profile if it was never created (e.g. role assigned via admin)
+        profile, _ = RiderProfile.objects.get_or_create(rider=request.user)
+        request.rider_profile = profile
         return view_func(request, *args, **kwargs)
 
     return wrapper

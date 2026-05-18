@@ -17,6 +17,28 @@ def get_or_create_cart(request):
     return cart
 
 
+def merge_guest_cart(request, user):
+    session_key = request.session.session_key
+    if not session_key:
+        return
+    try:
+        guest_cart = Cart.objects.get(session_key=session_key, user=None)
+    except Cart.DoesNotExist:
+        return
+
+    user_cart, _ = Cart.objects.get_or_create(user=user)
+    for item in guest_cart.items.select_related('product'):
+        existing = user_cart.items.filter(product=item.product).first()
+        if existing:
+            existing.quantity += item.quantity
+            existing.save()
+        else:
+            item.cart = user_cart
+            item.save()
+
+    guest_cart.delete()
+
+
 def cart_detail(request):
     cart       = get_or_create_cart(request)
     cart_items = cart.items.select_related('product').prefetch_related('product__images').all()
@@ -80,9 +102,7 @@ def cart_remove(request, item_id):
     })
 
 
-# cart/views.py — add this function
 def cart_data(request):
-    from django.http import JsonResponse
     cart  = get_or_create_cart(request)
     items = []
     for item in cart.items.select_related('product').prefetch_related('product__images','product__vendor').all():
