@@ -421,3 +421,75 @@ def _get_cart_count(request):
         except Exception:
             return 0
     return 0
+
+
+# ── VENDOR DISPATCH (manual rider assignment) ──────────────
+
+@vendor_required
+def dispatch_ride(request):
+    """
+    Vendor sees their pending (unassigned) deliveries and available riders,
+    then manually sends a ride request to a chosen rider.
+    """
+    from delivery.models import Delivery
+    from delivery.views import _push_prompt_to_rider
+    from rider.models import RiderProfile, DeliveryAcceptance
+    from rider.views import notify_rider
+
+    vendor = request.vendor
+
+    # Deliveries linked to this vendor's orders that still need a rider
+    pending_deliveries = (
+        Delivery.objects
+        .filter(
+            order__items__product__vendor=vendor,
+            status=Delivery.Status.PENDING,
+        )
+        .select_related("order", "zone")
+        .distinct()
+    )
+
+    available_riders = (
+        RiderProfile.objects
+        .filter(status=RiderProfile.Status.AVAILABLE)
+        .select_related("rider", "zone")
+    )
+
+    if request.method == "POST":
+        delivery_id = request.POST.get("delivery_id")
+        rider_id    = request.POST.get("rider_id")
+
+        delivery = get_object_or_404(Delivery, pk=delivery_id)
+        rider    = get_object_or_404(RiderProfile, pk=rider_id)
+
+        acceptance, created = DeliveryAcceptance.objects.get_or_create(
+            delivery=delivery,
+            defaults={"rider": rider, "status": DeliveryAcceptance.Status.PENDING},
+        )
+        if not created:
+            acceptance.rider        = rider
+            acceptance.status       = DeliveryAcceptance.Status.PENDING
+            acceptance.responded_at = None
+            acceptance.save()
+
+        _push_prompt_to_rider(rider, delivery, acceptance)
+
+        notify_rider(
+            rider.rider,
+            "New Delivery Request",
+            f"Vendor dispatch — Pickup: {delivery.pickup_location or delivery.order.delivery_address}",
+            notif_type="new_delivery",
+            link="/rider/",
+        )
+
+        messages.success(
+            request,
+            f"Request sent to {rider.rider.get_full_name() or rider.rider.phone}. "
+            "They'll accept or reject shortly."
+        )
+        return redirect("vendors:dispatch")
+
+    return render(request, "vendors/dispatch.html", {
+        "pending_deliveries": pending_deliveries,
+        "available_riders":   available_riders,
+    })

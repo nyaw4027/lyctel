@@ -9,6 +9,8 @@
   .notif-item { animation: slideDown .3s ease; }
   @keyframes pulse-dot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.7} }
   .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+  @keyframes promptIn { from{opacity:0;transform:translateY(24px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+  #ride-prompt { animation: promptIn .35s cubic-bezier(.22,1,.36,1); }
 </style>
 {% endblock %}
 
@@ -278,6 +280,66 @@
   </div>
   {% endif %}
 
+  <!-- PENDING RIDE REQUESTS (from DB) -->
+  {% if pending_requests %}
+  <div class="mb-8">
+    <h2 class="font-display font-700 text-lg text-navy mb-4 flex items-center gap-2">
+      🔔 Pending Ride Requests
+      <span class="text-xs bg-orange-100 text-orange-700 font-semibold px-2 py-0.5 rounded-full">
+        {{ pending_requests|length }}
+      </span>
+    </h2>
+    <div class="space-y-4">
+      {% for acceptance in pending_requests %}
+      <div class="bg-white rounded-2xl border-2 border-orange-200 p-5">
+        <div class="flex items-start justify-between gap-3 flex-wrap mb-4">
+          <div>
+            <p class="font-display font-700 text-navy">
+              {% if acceptance.delivery.order %}{{ acceptance.delivery.order.order_ref }}
+              {% else %}Ride #{{ acceptance.delivery.pk }}{% endif %}
+            </p>
+            {% if acceptance.delivery.pickup_location %}
+            <p class="text-xs text-gray-500 mt-1">📍 {{ acceptance.delivery.pickup_location }}</p>
+            {% endif %}
+            {% if acceptance.delivery.dropoff_location or acceptance.delivery.order %}
+            <p class="text-xs text-gray-400 mt-0.5">
+              →
+              {% if acceptance.delivery.dropoff_location %}{{ acceptance.delivery.dropoff_location }}
+              {% elif acceptance.delivery.order %}{{ acceptance.delivery.order.delivery_address }}, {{ acceptance.delivery.order.delivery_city }}
+              {% endif %}
+            </p>
+            {% endif %}
+            <p class="text-xs text-orange-500 mt-1 font-semibold">
+              Requested {{ acceptance.created_at|timesince }} ago
+            </p>
+          </div>
+          <div class="text-right">
+            <p class="font-display font-700 text-green-600 text-xl">GHS {{ acceptance.delivery.rider_commission }}</p>
+            <p class="text-xs text-gray-400">Your cut</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <form method="POST" action="{% url 'rider:accept_delivery' acceptance.pk %}" class="flex-1">
+            {% csrf_token %}
+            <button class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold
+                           py-3 rounded-xl transition-colors btn-press text-sm">
+              ✓ Accept
+            </button>
+          </form>
+          <form method="POST" action="{% url 'rider:reject_delivery' acceptance.pk %}" class="flex-1">
+            {% csrf_token %}
+            <button class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold
+                           py-3 rounded-xl transition-colors text-sm">
+              ✗ Reject
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- RECENT EARNINGS -->
   <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
     <div class="px-5 py-4 border-b border-gray-50 flex justify-between items-center">
@@ -332,8 +394,98 @@
 </div>
 {% endblock %}
 
+<!-- ── REAL-TIME RIDE REQUEST PROMPT ────────────────────── -->
+<div id="ride-prompt"
+     class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+            w-[calc(100%-2rem)] max-w-md
+            bg-white rounded-3xl shadow-2xl border-2 border-gold overflow-hidden">
+
+  <div class="bg-gold px-5 py-3 flex items-center gap-3">
+    <span class="text-2xl">🛵</span>
+    <div>
+      <p class="font-display font-700 text-navy text-base leading-tight">New Ride Request!</p>
+      <p class="text-xs text-navy/70">Respond within <span id="prompt-timer" class="font-bold">60</span>s</p>
+    </div>
+    <div class="ml-auto">
+      <div class="w-3 h-3 bg-navy rounded-full pulse-dot"></div>
+    </div>
+  </div>
+
+  <div class="px-5 py-4 space-y-2">
+    <div class="flex items-start gap-2">
+      <span class="w-5 h-5 bg-green-100 text-green-600 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">A</span>
+      <p class="text-sm text-navy font-medium" id="prompt-pickup">—</p>
+    </div>
+    <div class="flex items-start gap-2">
+      <span class="w-5 h-5 bg-red-100 text-red-600 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">B</span>
+      <p class="text-sm text-navy font-medium" id="prompt-dropoff">—</p>
+    </div>
+    <div class="flex items-center gap-4 pt-1">
+      <div class="text-xs text-gray-500">Total fee: <span id="prompt-fee" class="font-semibold text-navy">—</span></div>
+      <div class="text-xs text-gray-500">Your cut: <span id="prompt-commission" class="font-bold text-green-600 text-sm">—</span></div>
+    </div>
+  </div>
+
+  <div class="flex gap-3 px-5 pb-5">
+    <form id="accept-form" method="POST" class="flex-1">
+      {% csrf_token %}
+      <button type="submit"
+              class="w-full bg-green-500 hover:bg-green-600 text-white font-display font-700
+                     py-3.5 rounded-2xl transition-colors btn-press text-sm">
+        ✓ Accept
+      </button>
+    </form>
+    <form id="reject-form" method="POST" class="flex-1">
+      {% csrf_token %}
+      <button type="submit"
+              class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold
+                     py-3.5 rounded-2xl transition-colors text-sm">
+        ✗ Reject
+      </button>
+    </form>
+  </div>
+</div>
+
 {% block extra_js %}
 <script>
+  // ── WebSocket — real-time ride request prompts ─────────
+  const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const riderWs = new WebSocket(`${wsProto}://${location.host}/ws/rider/`);
+  let promptTimer = null;
+
+  riderWs.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'ride_request') showPrompt(msg);
+  };
+
+  function showPrompt(msg) {
+    document.getElementById('prompt-pickup').textContent     = msg.pickup  || 'N/A';
+    document.getElementById('prompt-dropoff').textContent    = msg.dropoff || 'N/A';
+    document.getElementById('prompt-fee').textContent        = 'GHS ' + msg.fee;
+    document.getElementById('prompt-commission').textContent = 'GHS ' + msg.commission;
+
+    document.getElementById('accept-form').action = `/rider/accept/${msg.acceptance_id}/`;
+    document.getElementById('reject-form').action = `/rider/reject/${msg.acceptance_id}/`;
+
+    document.getElementById('ride-prompt').classList.remove('hidden');
+
+    // 60-second countdown — auto-dismiss
+    let remaining = 60;
+    if (promptTimer) clearInterval(promptTimer);
+    promptTimer = setInterval(() => {
+      remaining--;
+      document.getElementById('prompt-timer').textContent = remaining;
+      if (remaining <= 0) {
+        clearInterval(promptTimer);
+        document.getElementById('ride-prompt').classList.add('hidden');
+      }
+    }, 1000);
+
+    // Ring the bell too
+    document.getElementById('bell-icon').classList.add('bell-ring');
+    setTimeout(() => document.getElementById('bell-icon').classList.remove('bell-ring'), 700);
+  }
+
   function toggleNotifications() {
     document.getElementById('notif-dropdown').classList.toggle('hidden');
     document.getElementById('bell-icon').classList.add('bell-ring');

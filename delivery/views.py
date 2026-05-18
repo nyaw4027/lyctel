@@ -3,12 +3,13 @@ import json
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils.timezone import now
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from order.models import Order
 from .models import Delivery, DeliveryTracking, DeliveryZone
-from rider.models import RiderProfile
+from rider.models import RiderProfile, DeliveryAcceptance
 from .utils import calculate_distance
 
 from asgiref.sync import async_to_sync
@@ -121,7 +122,7 @@ def update_rider_location(request, delivery_id):
             longitude=lng
         )
 
-        # Send real-time update via WebSocket
+        # Send real-time update via WebSocket (includes current status for the tracker)
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f"delivery_{delivery_id}",
@@ -129,6 +130,7 @@ def update_rider_location(request, delivery_id):
                 "type": "send_location",
                 "lat": lat,
                 "lng": lng,
+                "status": delivery.status,
             }
         )
 
@@ -214,3 +216,168 @@ def create_order(request):
     create_delivery(order)
 
     return redirect("order:success")
+
+
+# ─────────────────────────────
+# BOOK A RIDE (CUSTOMER / VENDOR)
+# ─────────────────────────────
+@login_required
+def book_ride(request):
+    """Any authenticated user (customer or vendor) books a standalone ride."""
+    zones = DeliveryZone.objects.filter(is_active=True)
+
+    if request.method == "POST":
+        pickup  = request.POST.get("pickup_location", "").strip()
+        dropoff = request.POST.get("dropoff_location", "").strip()
+        pickup_lat  = request.POST.get("pickup_lat") or None
+        pickup_lng  = request.POST.get("pickup_lng") or None
+        dropoff_lat = request.POST.get("dropoff_lat") or None
+        dropoff_lng = request.POST.get("dropoff_lng") or None
+        zone_id = request.POST.get("zone_id")
+        note    = request.POST.get("note", "")
+
+        if not pickup or not dropoff:
+            messages.error(request, "Pickup and dropoff locations are required.")
+            return render(request, "delivery/book_ride.html", {"zones": zones})
+
+        zone = DeliveryZone.objects.filter(pk=zone_id, is_active=True).first()
+
+        delivery = Delivery.objects.create(
+            booker=request.user,
+            pickup_location=pickup,
+            dropoff_location=dropoff,
+            pickup_lat=float(pickup_lat) if pickup_lat else None,
+            pickup_lng=float(pickup_lng) if pickup_lng else None,
+            dropoff_lat=float(dropoff_lat) if dropoff_lat else None,
+            dropoff_lng=float(dropoff_lng) if dropoff_lng else None,
+            zone=zone,
+            delivery_type=Delivery.DeliveryType.EXPRESS,
+            delivery_note=note,
+            status=Delivery.Status.PENDING,
+        )
+
+        _auto_assign_and_notify(delivery)
+
+        messages.success(request, "Ride booked! We're finding you a rider...")
+        return redirect("delivery:track_ride", pk=delivery.pk)
+
+    return render(request, "delivery/book_ride.html", {"zones": zones})
+
+
+# ─────────────────────────────
+# LIVE TRACKING (STANDALONE RIDE)
+# ─────────────────────────────
+@login_required
+def track_ride(request, pk):
+    """Live WebSocket tracking page for a standalone ride booking."""
+    delivery = get_object_or_404(Delivery, pk=pk)
+
+    is_rider  = delivery.rider and delivery.rider.rider == request.user
+    is_booker = delivery.booker == request.user
+
+    if not is_booker and not is_rider and not request.user.role in ("admin", "staff"):
+        messages.error(request, "Access denied.")
+        return redirect("frontend:home")
+
+    return render(request, "delivery/track_live.html", {"delivery": delivery})
+
+
+# ─────────────────────────────
+# VENDOR ASSIGNS RIDER MANUALLY
+# ─────────────────────────────
+@login_required
+def vendor_assign_rider(request, delivery_id, rider_id):
+    """POST-only: vendor manually assigns a specific rider to a pending delivery."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    delivery = get_object_or_404(Delivery, pk=delivery_id, status=Delivery.Status.PENDING)
+    rider    = get_object_or_404(RiderProfile, pk=rider_id, status=RiderProfile.Status.AVAILABLE)
+
+    acceptance, created = DeliveryAcceptance.objects.get_or_create(
+        delivery=delivery,
+        defaults={"rider": rider, "status": DeliveryAcceptance.Status.PENDING},
+    )
+    if not created:
+        acceptance.rider  = rider
+        acceptance.status = DeliveryAcceptance.Status.PENDING
+        acceptance.responded_at = None
+        acceptance.save()
+
+    _push_prompt_to_rider(rider, delivery, acceptance)
+
+    # Persist a notification in the DB so the rider sees it even if offline
+    from rider.views import notify_rider
+    notify_rider(
+        rider.rider,
+        "New Delivery Request",
+        f"Pickup: {delivery.pickup_location or getattr(getattr(delivery, 'order', None), 'delivery_address', 'N/A')}",
+        notif_type="new_delivery",
+        link="/rider/",
+    )
+
+    return JsonResponse({
+        "success": True,
+        "rider": rider.rider.get_full_name() or rider.rider.phone,
+    })
+
+
+# ─────────────────────────────
+# INTERNAL HELPERS
+# ─────────────────────────────
+def _auto_assign_and_notify(delivery):
+    """Pick nearest available rider, create DeliveryAcceptance, push WS prompt."""
+    riders = RiderProfile.objects.filter(
+        status=RiderProfile.Status.AVAILABLE
+    ).select_related("rider")
+
+    chosen = None
+
+    if delivery.pickup_lat and delivery.pickup_lng:
+        min_dist = float("inf")
+        for rp in riders:
+            if rp.current_lat and rp.current_lng:
+                d = calculate_distance(
+                    delivery.pickup_lat, delivery.pickup_lng,
+                    rp.current_lat, rp.current_lng,
+                )
+                if d < min_dist:
+                    min_dist = d
+                    chosen = rp
+
+    if not chosen:
+        chosen = riders.first()
+
+    if chosen:
+        acceptance, _ = DeliveryAcceptance.objects.get_or_create(
+            delivery=delivery,
+            defaults={"rider": chosen, "status": DeliveryAcceptance.Status.PENDING},
+        )
+        _push_prompt_to_rider(chosen, delivery, acceptance)
+
+        from rider.views import notify_rider
+        notify_rider(
+            chosen.rider,
+            "New Ride Request",
+            f"Pickup: {delivery.pickup_location}  →  {delivery.dropoff_location}",
+            notif_type="new_delivery",
+            link="/rider/",
+        )
+
+
+def _push_prompt_to_rider(rider_profile, delivery, acceptance):
+    """Send a real-time ride_request event to the rider's WebSocket group."""
+    channel_layer = get_channel_layer()
+    commission = str(delivery.calculate_commission())
+    async_to_sync(channel_layer.group_send)(
+        f"rider_{rider_profile.rider.id}",
+        {
+            "type": "ride_request",
+            "delivery_id": delivery.pk,
+            "acceptance_id": acceptance.pk,
+            "pickup": delivery.pickup_location or "",
+            "dropoff": delivery.dropoff_location or "",
+            "fee": str(delivery.delivery_fee),
+            "commission": commission,
+        }
+    )

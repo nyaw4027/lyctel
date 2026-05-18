@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from decimal import Decimal
@@ -45,6 +46,14 @@ class Delivery(models.Model):
         related_name="delivery",
         null=True,
         blank=True
+    )
+
+    booker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="booked_rides",
     )
 
     rider = models.ForeignKey(
@@ -228,9 +237,3 @@ class DeliveryTracking(models.Model):
 
     class Meta:
         ordering = ["-timestamp"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["delivery"],
-                name="unique_delivery_per_order"
-            )
-        ]
