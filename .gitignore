@@ -2,8 +2,8 @@
 *.pyc
 *.pyo
 *.pyd
-*env
-*.pyc
-*.pyo
-*.pyd
+*Pipfile.lock
+*Pipfile
+*.env
+*.venv
 *vscode
