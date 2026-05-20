@@ -168,9 +168,9 @@ CACHES = {
 
 
 # ── Flutterwave (Payment) ──────────────────────────────────
-FLW_PUBLIC_KEY     = 'FLWPUBK_TEST-xxxxx'
-FLW_SECRET_KEY     = 'FLWSECK_TEST-xxxxx'
-FLW_WEBHOOK_SECRET = 'my-secret-string'
+#FLW_PUBLIC_KEY     = 'FLWPUBK_TEST-xxxxx'
+#FLW_SECRET_KEY     = 'FLWSECK_TEST-xxxxx'
+#FLW_WEBHOOK_SECRET = 'my-secret-string'
 
 # ── Google Maps ────────────────────────────────────────────
 GOOGLE_MAPS_API_KEY = "YOUR_API_KEY"
