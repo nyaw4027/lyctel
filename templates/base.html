@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -88,16 +89,16 @@
     <nav class="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center gap-4">
 
       <!-- Logo -->
-      <a href="{% url 'frontend:home' %}"
-         class="flex items-center gap-2.5 flex-shrink-0 group">
-        <div class="w-8 h-8 bg-navy rounded-lg flex items-center justify-center
-                    group-hover:bg-gold transition-colors duration-200">
-          <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
-        </div>
-        <span class="font-display font-700 text-lg text-navy tracking-tight">Lynctel</span>
-      </a>
+<a href="{% url 'frontend:home' %}"
+   class="flex items-center gap-2.5 flex-shrink-0 group">
+  <div class="w-8 h-8 flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+    <!-- Real Logo Image Replacement -->
+    <img src="{% static 'logo.png' %}" 
+         alt="Lynctel Logo" 
+         class="w-full h-full object-contain" />
+  </div>
+  <span class="font-display font-700 text-lg text-navy tracking-tight">Lynctel</span>
+</a>
 
       <!-- Search -->
       <form method="GET" action="{% url 'products:list' %}"
@@ -449,7 +450,7 @@
           </li>
 
           <li>
-            <a href="{% url 'accounts:register' %}"
+            <a href="{% url 'accounts:signup' %}"
                class="hover:text-gold transition-colors">
               Create Account
             </a>

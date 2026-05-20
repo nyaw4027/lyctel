@@ -3,9 +3,9 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-CHANGE_ME')
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
@@ -27,7 +27,7 @@ INSTALLED_APPS = [
    
 
     # Your apps
-       # ← MUST be first — holds the custom User model
+    'ecommerce',   # ← MUST be first — holds the custom User model
     'products',
     'cart',
     'order',
@@ -110,6 +110,7 @@ USE_TZ        = True
 # ── Static files ───────────────────────────────────────────
 STATIC_URL  = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']  # ← looks in your /static folder
 
 # ── Media files (product images, etc.) ────────────────────
 MEDIA_URL  = '/media/'
