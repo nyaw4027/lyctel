@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}How It Works — Lynctel{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<section class="bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white overflow-hidden relative">
+
+    <div class="absolute inset-0 opacity-20">
+        <div class="absolute top-0 left-0 w-96 h-96 bg-gold/20 blur-3xl rounded-full"></div>
+        <div class="absolute bottom-0 right-0 w-96 h-96 bg-gold/10 blur-3xl rounded-full"></div>
+    </div>
+
+    <div class="relative max-w-7xl mx-auto px-6 py-24 lg:py-32">
+
+        <div class="max-w-4xl mx-auto text-center">
+
+            <span class="inline-flex items-center gap-2 bg-white/10 border border-white/10 px-5 py-2 rounded-full text-sm font-medium mb-8">
+                ⚡ Smart Ecommerce Experience
+            </span>
+
+            <h1 class="text-5xl lg:text-7xl font-black leading-tight mb-8">
+                How
+                <span class="text-gold">Lynctel</span>
+                Works
+            </h1>
+
+            <p class="text-xl text-gray-300 leading-relaxed max-w-3xl mx-auto">
+                Lynctel connects customers, vendors, and riders into one seamless
+                digital marketplace built for modern commerce in Ghana.
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- HOW IT WORKS -->
+<section class="bg-white py-24">
+
+    <div class="max-w-7xl mx-auto px-6">
+
+        <div class="text-center max-w-3xl mx-auto mb-20">
+
+            <span class="text-gold font-bold uppercase tracking-widest text-sm">
+                Step By Step
+            </span>
+
+            <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6">
+                Shopping Made Easy
+            </h2>
+
+            <p class="text-lg text-gray-600 leading-relaxed">
+                Experience fast and secure online shopping from discovery to delivery.
+            </p>
+
+        </div>
+
+
+        <div class="grid lg:grid-cols-4 md:grid-cols-2 gap-8">
+
+            <!-- STEP 1 -->
+            <div class="relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+
+                <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
+                    1
+                </div>
+
+                <div class="mt-6">
+
+                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center text-4xl mb-6">
+                        🔍
+                    </div>
+
+                    <h3 class="text-2xl font-black text-gray-900 mb-4">
+                        Browse Products
+                    </h3>
+
+                    <p class="text-gray-600 leading-relaxed">
+                        Explore thousands of products from trusted vendors and shops across Ghana.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- STEP 2 -->
+            <div class="relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+
+                <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
+                    2
+                </div>
+
+                <div class="mt-6">
+
+                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center text-4xl mb-6">
+                        🛒
+                    </div>
+
+                    <h3 class="text-2xl font-black text-gray-900 mb-4">
+                        Add To Cart
+                    </h3>
+
+                    <p class="text-gray-600 leading-relaxed">
+                        Select products, choose quantities, and securely proceed to checkout.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- STEP 3 -->
+            <div class="relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+
+                <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
+                    3
+                </div>
+
+                <div class="mt-6">
+
+                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center text-4xl mb-6">
+                        💳
+                    </div>
+
+                    <h3 class="text-2xl font-black text-gray-900 mb-4">
+                        Secure Payment
+                    </h3>
+
+                    <p class="text-gray-600 leading-relaxed">
+                        Pay safely using Mobile Money, cards, or other supported payment methods.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- STEP 4 -->
+            <div class="relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+
+                <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
+                    4
+                </div>
+
+                <div class="mt-6">
+
+                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center text-4xl mb-6">
+                        🚚
+                    </div>
+
+                    <h3 class="text-2xl font-black text-gray-900 mb-4">
+                        Fast Delivery
+                    </h3>
+
+                    <p class="text-gray-600 leading-relaxed">
+                        Riders deliver your orders directly to your location quickly and safely.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- FOR VENDORS -->
+<section class="bg-gray-50 py-24">
+
+    <div class="max-w-7xl mx-auto px-6">
+
+        <div class="grid lg:grid-cols-2 gap-16 items-center">
+
+            <!-- IMAGE -->
+            <div>
+
+                <img src="{% static 'images/vendor-dashboard.jpg' %}"
+                     alt="Vendor Dashboard"
+                     class="rounded-[2rem] shadow-2xl w-full h-[550px] object-cover">
+
+            </div>
+
+
+            <!-- CONTENT -->
+            <div>
+
+                <span class="text-gold font-bold uppercase tracking-widest text-sm">
+                    For Vendors
+                </span>
+
+                <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-8 leading-tight">
+                    Grow Your Business Online
+                </h2>
+
+                <div class="space-y-6">
+
+                    <div class="flex gap-5">
+
+                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-2xl flex-shrink-0">
+                            🏪
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-black text-gray-900 mb-2">
+                                Open Your Shop
+                            </h3>
+
+                            <p class="text-gray-600 leading-relaxed">
+                                Create your vendor account and set up your online store in minutes.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <div class="flex gap-5">
+
+                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-2xl flex-shrink-0">
+                            📦
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-black text-gray-900 mb-2">
+                                Upload Products
+                            </h3>
+
+                            <p class="text-gray-600 leading-relaxed">
+                                Add products, manage inventory, prices, and categories from your dashboard.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <div class="flex gap-5">
+
+                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-2xl flex-shrink-0">
+                            📈
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-black text-gray-900 mb-2">
+                                Track Sales
+                            </h3>
+
+                            <p class="text-gray-600 leading-relaxed">
+                                Monitor orders, earnings, customers, and analytics in real-time.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <a href="{% url 'vendors:apply' %}"
+                   class="inline-flex items-center gap-3 bg-gold hover:scale-105 transition-all duration-300 text-black font-bold px-8 py-4 rounded-2xl mt-10 shadow-xl">
+
+                    Become A Vendor
+
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M9 5l7 7-7 7"/>
+                    </svg>
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- FEATURES -->
+<section class="bg-white py-24">
+
+    <div class="max-w-7xl mx-auto px-6">
+
+        <div class="text-center max-w-3xl mx-auto mb-20">
+
+            <span class="text-gold font-bold uppercase tracking-widest text-sm">
+                Why Lynctel
+            </span>
+
+            <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6">
+                Built For Modern Commerce
+            </h2>
+
+        </div>
+
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+
+            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center">
+                <div class="text-5xl mb-6">🔒</div>
+                <h3 class="text-xl font-black mb-4">Secure Payments</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                    Protected transactions and trusted payment systems.
+                </p>
+            </div>
+
+            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center">
+                <div class="text-5xl mb-6">⚡</div>
+                <h3 class="text-xl font-black mb-4">Fast Platform</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                    Optimized for smooth browsing and fast shopping experiences.
+                </p>
+            </div>
+
+            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center">
+                <div class="text-5xl mb-6">🚚</div>
+                <h3 class="text-xl font-black mb-4">Reliable Delivery</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                    Efficient rider systems and delivery tracking.
+                </p>
+            </div>
+
+            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center">
+                <div class="text-5xl mb-6">📱</div>
+                <h3 class="text-xl font-black mb-4">Mobile Friendly</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                    Shop easily from your phone, tablet, or desktop.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- CTA -->
+<section class="bg-black text-white py-24 relative overflow-hidden">
+
+    <div class="absolute inset-0 bg-gold/10 blur-3xl"></div>
+
+    <div class="relative max-w-5xl mx-auto px-6 text-center">
+
+        <h2 class="text-4xl lg:text-6xl font-black leading-tight mb-8">
+            Start Your Journey With
+            <span class="text-gold">Lynctel</span>
+        </h2>
+
+        <p class="text-lg text-gray-300 leading-relaxed max-w-3xl mx-auto mb-10">
+            Join customers and businesses already growing with Lynctel across Ghana.
+        </p>
+
+        <div class="flex flex-wrap justify-center gap-5">
+
+            <a href="{% url 'products:list' %}"
+               class="bg-gold text-black font-bold px-8 py-4 rounded-2xl hover:scale-105 transition-all duration-300 shadow-2xl">
+                Start Shopping
+            </a>
+
+            <a href="{% url 'vendors:apply' %}"
+               class="border border-white/20 hover:border-white/40 bg-white/5 px-8 py-4 rounded-2xl font-bold transition-all duration-300">
+                Become A Vendor
+            </a>
+
+        </div>
+
+    </div>
+
+</section>
+
+{% endblock %}
