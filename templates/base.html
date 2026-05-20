@@ -89,16 +89,12 @@
     <nav class="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center gap-4">
 
       <!-- Logo -->
-<a href="{% url 'frontend:home' %}"
-   class="flex items-center gap-2.5 flex-shrink-0 group">
-  <div class="w-8 h-8 flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
-    <!-- Real Logo Image Replacement -->
-    <img src="{% static 'logo.png' %}" 
-         alt="Lynctel Logo" 
-         class="w-full h-full object-contain" />
-  </div>
-  <span class="font-display font-700 text-lg text-navy tracking-tight">Lynctel</span>
-</a>
+      <a href="{% url 'frontend:home' %}"
+         class="flex items-center gap-2 flex-shrink-0 group">
+        <img src="{% static 'logo.png' %}"
+             alt="Lynctel"
+             class="h-9 w-auto object-contain group-hover:scale-105 transition-transform duration-200"/>
+      </a>
 
       <!-- Search -->
       <form method="GET" action="{% url 'products:list' %}"
@@ -138,7 +134,7 @@
                          hover:text-navy px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
             {% if user.profile_pic %}
             <img src="{{ user.profile_pic.url }}"
-                 class="w-7 h-7 rounded-full object-cover border-2 border-gold/30"/>
+                 class="w-7 h-7 rounded-full object-cover border-2 border-gold/30 flex-shrink-0"/>
             {% else %}
             <div class="w-7 h-7 bg-navy rounded-full flex items-center justify-center
                         text-white text-xs font-display font-700 flex-shrink-0">
@@ -150,13 +146,12 @@
             </span>
           </button>
 
-          <!-- Dropdown -->
+          <!-- Dropdown menu -->
           <div class="absolute right-0 top-full mt-1 w-56 bg-white rounded-2xl shadow-xl
                       border border-gray-100 py-2 opacity-0 invisible z-50
                       group-hover:opacity-100 group-hover:visible
                       transition-all duration-150 translate-y-1 group-hover:translate-y-0">
 
-            <!-- User info header -->
             <div class="px-4 py-3 border-b border-gray-50">
               <p class="font-semibold text-navy text-sm truncate">
                 {{ user.get_full_name|default:user.phone }}
@@ -164,7 +159,6 @@
               <p class="text-xs text-gray-400 truncate">{{ user.phone }}</p>
             </div>
 
-            <!-- ── PROFILE LINK ── -->
             <a href="{% url 'accounts:profile' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               👤 My Profile
@@ -274,276 +268,130 @@
 
   <!-- ── PAGE CONTENT ────────────────────────────────── -->
   <main class="flex-1">{% block content %}{% endblock %}</main>
-<!-- ───────────── FOOTER ───────────── -->
-<footer class="bg-navy text-white mt-24 border-t border-white/10">
 
-  <!-- TOP -->
-  <div class="max-w-7xl mx-auto px-4 md:px-6 py-16">
+  <!-- ── FOOTER ──────────────────────────────────────── -->
+  <footer class="bg-navy text-white mt-24 border-t border-white/10">
+    <div class="max-w-7xl mx-auto px-4 md:px-6 py-16">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
-
-      <!-- BRAND -->
-      <div class="lg:col-span-4">
-
-        <div class="flex items-center gap-3 mb-5">
-          <div class="w-10 h-10 bg-gold rounded-xl flex items-center justify-center shadow-lg">
-            <svg class="w-5 h-5 text-navy" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
+        <!-- BRAND col (spans 4 cols) -->
+        <div class="lg:col-span-4">
+          <div class="mb-5">
+            <img src="{% static 'logo.png' %}"
+                 alt="Lynctel"
+                 class="h-12 w-auto object-contain brightness-0 invert"/>
           </div>
 
-          <div>
-            <h2 class="font-display text-2xl font-black">Lynctel</h2>
-            <p class="text-xs text-gray-400 uppercase tracking-widest">
-              Smart Marketplace
-            </p>
+          <p class="text-gray-400 leading-relaxed text-sm max-w-md mb-6">
+            Lynctel connects customers, vendors, and riders across Ghana through
+            fast delivery, secure payments, and a premium ecommerce experience.
+          </p>
+
+          <div class="space-y-3 text-sm">
+            <a href="tel:+233558040216"
+               class="flex items-center gap-3 text-gray-300 hover:text-gold transition-colors">
+              <span class="text-lg">📞</span> +233 55 804 0216
+            </a>
+            <a href="https://wa.me/233558040216" target="_blank"
+               class="flex items-center gap-3 text-gray-300 hover:text-gold transition-colors">
+              <span class="text-lg">💬</span> WhatsApp Support
+            </a>
+            <a href="https://www.google.com/maps/search/?api=1&query=Accra,Ghana" target="_blank"
+               class="flex items-center gap-3 text-gray-300 hover:text-gold transition-colors">
+              <span class="text-lg">📍</span> Accra, Ghana
+            </a>
           </div>
         </div>
 
-        <p class="text-gray-400 leading-relaxed text-sm max-w-md mb-6">
-          Lynctel connects customers, vendors, and riders across Ghana through
-          fast delivery, secure payments, and a premium ecommerce experience.
+        <!-- MARKETPLACE col -->
+        <div class="lg:col-span-2">
+          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
+            Marketplace
+          </h3>
+          <ul class="space-y-3 text-sm text-gray-400">
+            <li><a href="{% url 'products:list' %}" class="hover:text-gold transition-colors">All Products</a></li>
+            <li><a href="{% url 'vendors:directory' %}" class="hover:text-gold transition-colors">Vendors & Shops</a></li>
+            <li><a href="{% url 'cart:detail' %}" class="hover:text-gold transition-colors">Shopping Cart</a></li>
+            <li><a href="{% url 'order:history' %}" class="hover:text-gold transition-colors">My Orders</a></li>
+          </ul>
+        </div>
+
+        <!-- COMPANY col -->
+        <div class="lg:col-span-2">
+          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
+            Company
+          </h3>
+          <ul class="space-y-3 text-sm text-gray-400">
+            <li><a href="{% url 'frontend:about' %}" class="hover:text-gold transition-colors">About Us</a></li>
+            <li><a href="{% url 'frontend:contact' %}" class="hover:text-gold transition-colors">Contact Us</a></li>
+            <li><a href="{% url 'frontend:how_it_works' %}" class="hover:text-gold transition-colors">How It Works</a></li>
+            <li><a href="{% url 'vendors:apply' %}" class="hover:text-gold transition-colors">Become a Vendor</a></li>
+          </ul>
+        </div>
+
+        <!-- ACCOUNT col -->
+        <div class="lg:col-span-2">
+          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
+            Account
+          </h3>
+          <ul class="space-y-3 text-sm text-gray-400">
+            {% if user.is_authenticated %}
+            <li><a href="{% url 'accounts:profile' %}" class="hover:text-gold transition-colors">My Profile</a></li>
+            <li><a href="{% url 'order:history' %}" class="hover:text-gold transition-colors">Order History</a></li>
+            {% else %}
+            <li><a href="{% url 'accounts:login' %}" class="hover:text-gold transition-colors">Sign In</a></li>
+            <li><a href="{% url 'accounts:signup' %}" class="hover:text-gold transition-colors">Create Account</a></li>
+            {% endif %}
+          </ul>
+        </div>
+
+        <!-- SOCIALS col -->
+        <div class="lg:col-span-2">
+          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
+            Follow Us
+          </h3>
+          <div class="flex flex-wrap gap-3">
+            <a href="#" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-pink-500 transition-all duration-300 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm5.5-1a1 1 0 1 0-2 0 1 1 0 0 0 2 0z"/>
+              </svg>
+            </a>
+            <a href="#" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-blue-600 transition-all duration-300 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M22 12a10 10 0 1 0-11.5 9.9v-7H8v-3h2.5V9.5A3.5 3.5 0 0 1 14 6h2v3h-2c-.6 0-1 .4-1 1V12h3l-.5 3H13v7A10 10 0 0 0 22 12z"/>
+              </svg>
+            </a>
+            <a href="#" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-[#0077b5] transition-all duration-300 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"/>
+              </svg>
+            </a>
+            <a href="#" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-black transition-all duration-300 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12.525.02c1.31 0 2.568.31 3.688.865a7.35 7.35 0 0 1-2.22 5.09v4.89c0 3.32-2.69 6.01-6.01 6.01s-6.01-2.69-6.01-6.01 2.69-6.01 6.01-6.01c.145 0 .285.005.425.02v3.135c-.14-.02-.28-.035-.425-.035-1.595 0-2.89 1.295-2.89 2.89s1.295 2.89 2.89 2.89 2.89-1.295 2.89-2.89v-11.15h3.01z"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Footer bottom bar -->
+    <div class="border-t border-white/10">
+      <div class="max-w-7xl mx-auto px-4 md:px-6 py-5 flex flex-col md:flex-row
+                  items-center justify-between gap-4">
+        <p class="text-xs text-gray-500 text-center md:text-left">
+          &copy; {% now "Y" %} Lynctel. All rights reserved.
         </p>
-
-        <!-- CONTACT -->
-        <div class="space-y-3 text-sm">
-
-          <a href="tel:+233558040216"
-             class="flex items-center gap-3 text-gray-300 hover:text-gold transition-colors">
-            <span class="text-lg">📞</span>
-            +233 55 804 0216
-          </a>
-
-          <a href="https://wa.me/233558040216"
-             target="_blank"
-             class="flex items-center gap-3 text-gray-300 hover:text-gold transition-colors">
-            <span class="text-lg">💬</span>
-            WhatsApp Support
-          </a>
-
-          <a href="https://www.google.com/maps/search/?api=1&query=Accra,Ghana"
-             target="_blank"
-             class="flex items-center gap-3 text-gray-300 hover:text-gold transition-colors">
-            <span class="text-lg">📍</span>
-            Accra, Ghana
-          </a>
-
+        <div class="flex flex-wrap items-center justify-center gap-5 text-xs text-gray-500">
+          <a href="{% url 'frontend:privacy_policy' %}" class="hover:text-gold transition-colors">Privacy Policy</a>
+          <a href="{% url 'frontend:terms' %}" class="hover:text-gold transition-colors">Terms of Service</a>
+          <a href="{% url 'frontend:cookies' %}" class="hover:text-gold transition-colors">Cookies</a>
         </div>
-
       </div>
-
-
-      <!-- QUICK LINKS -->
-      <div class="lg:col-span-2">
-
-        <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
-          Marketplace
-        </h3>
-
-        <ul class="space-y-3 text-sm text-gray-400">
-
-          <li>
-            <a href="{% url 'products:list' %}"
-               class="hover:text-gold transition-colors">
-              All Products
-            </a>
-          </li>
-
-          <li>
-            <a href="{% url 'vendors:directory' %}"
-               class="hover:text-gold transition-colors">
-              Vendors & Shops
-            </a>
-          </li>
-
-          <li>
-            <a href="{% url 'cart:detail' %}"
-               class="hover:text-gold transition-colors">
-              Shopping Cart
-            </a>
-          </li>
-
-          <li>
-            <a href="{% url 'order:history' %}"
-               class="hover:text-gold transition-colors">
-              Orders
-            </a>
-          </li>
-
-        </ul>
-      </div>
-
-
-      <!-- COMPANY -->
-      <div class="lg:col-span-2">
-
-        <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
-          Company
-        </h3>
-
-        <ul class="space-y-3 text-sm text-gray-400">
-
-          <li>
-            <a href="{% url 'frontend:about' %}"
-               class="hover:text-gold transition-colors">
-              About Us
-            </a>
-          </li>
-
-          <li>
-            <a href="{% url 'frontend:contact' %}"
-               class="hover:text-gold transition-colors">
-              Contact Us
-            </a>
-          </li>
-
-          <li>
-            <a href="{% url 'frontend:how_it_works' %}"
-   class="hover:text-gold transition-colors">
-   How It Works
-</a>
-          </li>
-
-          <li>
-            <a href="{% url 'vendors:apply' %}"
-               class="hover:text-gold transition-colors">
-              Become a Vendor
-            </a>
-          </li>
-
-        </ul>
-      </div>
-
-
-      <!-- ACCOUNT -->
-      <div class="lg:col-span-2">
-
-        <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
-          Account
-        </h3>
-
-        <ul class="space-y-3 text-sm text-gray-400">
-
-          {% if user.is_authenticated %}
-
-          <li>
-            <a href="{% url 'accounts:profile' %}"
-               class="hover:text-gold transition-colors">
-              My Profile
-            </a>
-          </li>
-
-          <li>
-            <a href="{% url 'order:history' %}"
-               class="hover:text-gold transition-colors">
-              Order History
-            </a>
-          </li>
-
-          {% else %}
-
-          <li>
-            <a href="{% url 'accounts:login' %}"
-               class="hover:text-gold transition-colors">
-              Sign In
-            </a>
-          </li>
-
-          <li>
-            <a href="{% url 'accounts:signup' %}"
-               class="hover:text-gold transition-colors">
-              Create Account
-            </a>
-          </li>
-
-          {% endif %}
-
-        </ul>
-      </div>
-
-
-      <!-- SOCIALS -->
-      <div class="lg:col-span-2">
-
-        <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
-          Follow Us
-        </h3>
-
-        <div class="flex flex-wrap gap-3">
-
-          <!-- Instagram -->
-          <a href="#"
-             class="w-10 h-10 rounded-xl bg-white/10 hover:bg-pink-500 transition-all duration-300 flex items-center justify-center">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm5.5-1a1 1 0 1 0-2 0 1 1 0 0 0 2 0z"/>
-            </svg>
-          </a>
-
-          <!-- Facebook -->
-          <a href="#"
-             class="w-10 h-10 rounded-xl bg-white/10 hover:bg-blue-600 transition-all duration-300 flex items-center justify-center">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M22 12a10 10 0 1 0-11.5 9.9v-7H8v-3h2.5V9.5A3.5 3.5 0 0 1 14 6h2v3h-2c-.6 0-1 .4-1 1V12h3l-.5 3H13v7A10 10 0 0 0 22 12z"/>
-            </svg>
-          </a>
-
-          <!-- LinkedIn -->
-          <a href="#"
-             class="w-10 h-10 rounded-xl bg-white/10 hover:bg-[#0077b5] transition-all duration-300 flex items-center justify-center">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"/>
-            </svg>
-          </a>
-
-          <!-- TikTok -->
-          <a href="#"
-             class="w-10 h-10 rounded-xl bg-white/10 hover:bg-black transition-all duration-300 flex items-center justify-center">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12.525.02c1.31 0 2.568.31 3.688.865a7.35 7.35 0 0 1-2.22 5.09v4.89c0 3.32-2.69 6.01-6.01 6.01s-6.01-2.69-6.01-6.01 2.69-6.01 6.01-6.01c.145 0 .285.005.425.02v3.135c-.14-.02-.28-.035-.425-.035-1.595 0-2.89 1.295-2.89 2.89s1.295 2.89 2.89 2.89 2.89-1.295 2.89-2.89v-11.15h3.01z"/>
-            </svg>
-          </a>
-
-        </div>
-
-      </div>
-
     </div>
-  </div>
-
-
-  <!-- BOTTOM -->
-  <div class="border-t border-white/10">
-
-    <div class="max-w-7xl mx-auto px-4 md:px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
-
-      <p class="text-xs text-gray-500 text-center md:text-left">
-        © {% now "Y" %} Lynctel. All rights reserved.
-      </p>
-
-      <div class="flex flex-wrap items-center justify-center gap-5 text-xs text-gray-500">
-
-    <a href="{% url 'frontend:privacy_policy' %}"
-       class="hover:text-gold transition-colors">
-        Privacy Policy
-    </a>
-
-    <a href="{% url 'frontend:terms' %}"
-       class="hover:text-gold transition-colors">
-        Terms of Service
-    </a>
-
-    <a href="{% url 'frontend:cookies' %}"
-       class="hover:text-gold transition-colors">
-        Cookies
-    </a>
-
-</div>
-
-    </div>
-
-  </div>
-
-</footer>
+  </footer>
 
   <!-- ── CART DRAWER ─────────────────────────────────── -->
   <div id="cart-overlay"
@@ -762,6 +610,7 @@
       }
     }
 
+    // Auto-dismiss flash messages after 5s
     setTimeout(() => {
       const el = document.getElementById('flash-wrap');
       if (el) {
@@ -771,6 +620,7 @@
       }
     }, 5000);
 
+    // Navbar shadow on scroll
     window.addEventListener('scroll', () => {
       document.getElementById('navbar').classList.toggle('nav-scrolled', window.scrollY > 10);
     });
@@ -779,9 +629,3 @@
   {% block extra_js %}{% endblock %}
 </body>
 </html>
-
-
-
-
-
-
