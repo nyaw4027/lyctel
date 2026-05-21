@@ -35,9 +35,10 @@ def vendor_required(view_func):
 # ── PUBLIC: VENDOR DIRECTORY ──────────────────────────────
 
 def directory(request):
+    # Changed annotation alias to 'total_products' to avoid potential property clashes
     vendors = Vendor.objects.filter(
         status=Vendor.Status.ACTIVE
-    ).annotate(product_count=Count('products')).order_by('-joined_at')
+    ).annotate(total_products=Count('products')).order_by('-joined_at')
 
     search = request.GET.get('q', '').strip()
     if search:
@@ -87,10 +88,11 @@ def shop_page(request, slug):
     }
     products = products.order_by(sort_map.get(sort, '-created_at'))
 
+    # FIXED: Changed alias from 'product_count' to 'total_items'
     categories = (
         Category.objects
         .filter(products__vendor=vendor, products__status='active', is_active=True)
-        .annotate(product_count=Count('products'))
+        .annotate(total_items=Count('products'))
         .distinct()
     )
 
@@ -427,10 +429,6 @@ def _get_cart_count(request):
 
 @vendor_required
 def dispatch_ride(request):
-    """
-    Vendor sees their pending (unassigned) deliveries and available riders,
-    then manually sends a ride request to a chosen rider.
-    """
     from delivery.models import Delivery
     from delivery.views import _push_prompt_to_rider
     from rider.models import RiderProfile, DeliveryAcceptance
@@ -438,7 +436,6 @@ def dispatch_ride(request):
 
     vendor = request.vendor
 
-    # Deliveries linked to this vendor's orders that still need a rider
     pending_deliveries = (
         Delivery.objects
         .filter(

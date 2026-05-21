@@ -17,8 +17,12 @@
 
         <div class="max-w-4xl mx-auto text-center">
 
-            <span class="inline-flex items-center gap-2 bg-white/10 border border-white/10 px-5 py-2 rounded-full text-sm font-medium mb-8">
-                ⚡ Smart Ecommerce Experience
+            <!-- Premium App Logo Badge -->
+            <span class="inline-flex items-center gap-2.5 bg-white/10 border border-white/10 pl-3 pr-5 py-2 rounded-full text-sm font-medium mb-8 backdrop-blur-md">
+                <img src="{% static 'logo.png' %}" 
+                     alt="Lynctel Logo" 
+                     class="w-5 h-5 object-contain rounded-md">
+                Smart Ecommerce Experience
             </span>
 
             <h1 class="text-5xl lg:text-7xl font-black leading-tight mb-8">
@@ -39,131 +43,107 @@
 </section>
 
 
-<!-- HOW IT WORKS -->
+<!-- HOW IT WORKS STEP-BY-STEP -->
 <section class="bg-white py-24">
 
     <div class="max-w-7xl mx-auto px-6">
 
         <div class="text-center max-w-3xl mx-auto mb-20">
-
             <span class="text-gold font-bold uppercase tracking-widest text-sm">
                 Step By Step
             </span>
-
             <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6">
                 Shopping Made Easy
             </h2>
-
             <p class="text-lg text-gray-600 leading-relaxed">
                 Experience fast and secure online shopping from discovery to delivery.
             </p>
-
         </div>
 
-
-        <div class="grid lg:grid-cols-4 md:grid-cols-2 gap-8">
+        <div class="grid lg:grid-cols-4 md:grid-cols-2 gap-8 relative">
 
             <!-- STEP 1 -->
-            <div class="relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-
+            <div class="group relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:bg-white hover:shadow-2xl transition-all duration-300">
                 <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
                     1
                 </div>
-
                 <div class="mt-6">
-
-                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center text-4xl mb-6">
-                        🔍
+                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center mb-6 text-gold group-hover:bg-gold group-hover:text-black transition-all duration-300">
+                        <!-- SVG Search Icon -->
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
                     </div>
-
                     <h3 class="text-2xl font-black text-gray-900 mb-4">
                         Browse Products
                     </h3>
-
                     <p class="text-gray-600 leading-relaxed">
                         Explore thousands of products from trusted vendors and shops across Ghana.
                     </p>
-
                 </div>
-
             </div>
 
-
             <!-- STEP 2 -->
-            <div class="relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-
+            <div class="group relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:bg-white hover:shadow-2xl transition-all duration-300">
                 <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
                     2
                 </div>
-
                 <div class="mt-6">
-
-                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center text-4xl mb-6">
-                        🛒
+                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center mb-6 text-gold group-hover:bg-gold group-hover:text-black transition-all duration-300">
+                        <!-- SVG Cart Icon -->
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 0a2 2 0 100 4 2 2 0 000-4z"/>
+                        </svg>
                     </div>
-
                     <h3 class="text-2xl font-black text-gray-900 mb-4">
                         Add To Cart
                     </h3>
-
                     <p class="text-gray-600 leading-relaxed">
                         Select products, choose quantities, and securely proceed to checkout.
                     </p>
-
                 </div>
-
             </div>
 
-
             <!-- STEP 3 -->
-            <div class="relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-
+            <div class="group relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:bg-white hover:shadow-2xl transition-all duration-300">
                 <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
                     3
                 </div>
-
                 <div class="mt-6">
-
-                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center text-4xl mb-6">
-                        💳
+                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center mb-6 text-gold group-hover:bg-gold group-hover:text-black transition-all duration-300">
+                        <!-- SVG Credit Card Icon -->
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                        </svg>
                     </div>
-
                     <h3 class="text-2xl font-black text-gray-900 mb-4">
                         Secure Payment
                     </h3>
-
                     <p class="text-gray-600 leading-relaxed">
                         Pay safely using Mobile Money, cards, or other supported payment methods.
                     </p>
-
                 </div>
-
             </div>
 
-
             <!-- STEP 4 -->
-            <div class="relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-
+            <div class="group relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:bg-white hover:shadow-2xl transition-all duration-300">
                 <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
                     4
                 </div>
-
                 <div class="mt-6">
-
-                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center text-4xl mb-6">
-                        🚚
+                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center mb-6 text-gold group-hover:bg-gold group-hover:text-black transition-all duration-300">
+                        <!-- SVG Delivery Truck Icon -->
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zm12 0a2 2 0 11-4 0 2 2 0 014 0zm0-2V9a2 2 0 00-2-2h-3.5l-1.1-2.2A2 2 0 0012.6 3H8a2 2 0 00-2 2v10h15zm-7-6H8"/>
+                        </svg>
                     </div>
-
                     <h3 class="text-2xl font-black text-gray-900 mb-4">
                         Fast Delivery
                     </h3>
-
                     <p class="text-gray-600 leading-relaxed">
                         Riders deliver your orders directly to your location quickly and safely.
                     </p>
-
                 </div>
-
             </div>
 
         </div>
@@ -180,15 +160,16 @@
 
         <div class="grid lg:grid-cols-2 gap-16 items-center">
 
-            <!-- IMAGE -->
-            <div>
-
-                <img src="{% static 'images/vendor-dashboard.jpg' %}"
-                     alt="Vendor Dashboard"
-                     class="rounded-[2rem] shadow-2xl w-full h-[550px] object-cover">
-
-            </div>
-
+            <!-- NEW HIGH-FIDELITY MARKETING GRAPHIC CONTAINER -->
+<div class="relative group">
+    <!-- Premium background ambient gold glow on hover -->
+    <div class="absolute inset-0 bg-gold/10 rounded-[2rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+    
+    <!-- Finalized Landscape Mockup View -->
+    <img src="https://cdn.dribbble.com/userupload/44699091/file/a5bcc6025daa55fcf9f14d2674c2ab65.jpeg"
+         alt="Lynctel Vendor Experience Platform Overview"
+         class="relative z-10 rounded-[2rem] shadow-2xl w-full h-[500px] object-cover border border-gray-100 transform group-hover:-translate-y-1.5 transition-all duration-300">
+</div>
 
             <!-- CONTENT -->
             <div>
@@ -204,76 +185,65 @@
                 <div class="space-y-6">
 
                     <div class="flex gap-5">
-
-                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-2xl flex-shrink-0">
-                            🏪
+                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-gold flex-shrink-0">
+                            <!-- Store Icon -->
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                            </svg>
                         </div>
-
                         <div>
                             <h3 class="text-xl font-black text-gray-900 mb-2">
                                 Open Your Shop
                             </h3>
-
                             <p class="text-gray-600 leading-relaxed">
                                 Create your vendor account and set up your online store in minutes.
                             </p>
                         </div>
-
                     </div>
 
-
                     <div class="flex gap-5">
-
-                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-2xl flex-shrink-0">
-                            📦
+                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-gold flex-shrink-0">
+                            <!-- Package Icon -->
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
                         </div>
-
                         <div>
                             <h3 class="text-xl font-black text-gray-900 mb-2">
                                 Upload Products
                             </h3>
-
                             <p class="text-gray-600 leading-relaxed">
                                 Add products, manage inventory, prices, and categories from your dashboard.
                             </p>
                         </div>
-
                     </div>
 
-
                     <div class="flex gap-5">
-
-                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-2xl flex-shrink-0">
-                            📈
+                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-gold flex-shrink-0">
+                            <!-- Trending/Analytics Icon -->
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
                         </div>
-
                         <div>
                             <h3 class="text-xl font-black text-gray-900 mb-2">
                                 Track Sales
                             </h3>
-
                             <p class="text-gray-600 leading-relaxed">
                                 Monitor orders, earnings, customers, and analytics in real-time.
                             </p>
                         </div>
-
                     </div>
 
                 </div>
 
-
+                <!-- Verified Global Routing Link -->
                 <a href="{% url 'vendors:apply' %}"
                    class="inline-flex items-center gap-3 bg-gold hover:scale-105 transition-all duration-300 text-black font-bold px-8 py-4 rounded-2xl mt-10 shadow-xl">
-
                     Become A Vendor
-
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M9 5l7 7-7 7"/>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                     </svg>
-
                 </a>
 
             </div>
@@ -285,53 +255,66 @@
 </section>
 
 
-<!-- FEATURES -->
+<!-- FEATURES (Why Lynctel) -->
 <section class="bg-white py-24">
 
     <div class="max-w-7xl mx-auto px-6">
 
         <div class="text-center max-w-3xl mx-auto mb-20">
-
             <span class="text-gold font-bold uppercase tracking-widest text-sm">
                 Why Lynctel
             </span>
-
             <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6">
                 Built For Modern Commerce
             </h2>
-
         </div>
-
 
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
 
-            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center">
-                <div class="text-5xl mb-6">🔒</div>
-                <h3 class="text-xl font-black mb-4">Secure Payments</h3>
+            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
+                <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-100 text-gray-900 flex items-center justify-center mb-6 group-hover:bg-gold group-hover:text-black transition-all duration-300">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-black mb-3 text-gray-900">Secure Payments</h3>
                 <p class="text-gray-600 text-sm leading-relaxed">
                     Protected transactions and trusted payment systems.
                 </p>
             </div>
 
-            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center">
-                <div class="text-5xl mb-6">⚡</div>
-                <h3 class="text-xl font-black mb-4">Fast Platform</h3>
+            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
+                <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-100 text-gray-900 flex items-center justify-center mb-6 group-hover:bg-gold group-hover:text-black transition-all duration-300">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-black mb-3 text-gray-900">Fast Platform</h3>
                 <p class="text-gray-600 text-sm leading-relaxed">
                     Optimized for smooth browsing and fast shopping experiences.
                 </p>
             </div>
 
-            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center">
-                <div class="text-5xl mb-6">🚚</div>
-                <h3 class="text-xl font-black mb-4">Reliable Delivery</h3>
+            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
+                <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-100 text-gray-900 flex items-center justify-center mb-6 group-hover:bg-gold group-hover:text-black transition-all duration-300">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-black mb-3 text-gray-900">Reliable Delivery</h3>
                 <p class="text-gray-600 text-sm leading-relaxed">
                     Efficient rider systems and delivery tracking.
                 </p>
             </div>
 
-            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center">
-                <div class="text-5xl mb-6">📱</div>
-                <h3 class="text-xl font-black mb-4">Mobile Friendly</h3>
+            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
+                <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-100 text-gray-900 flex items-center justify-center mb-6 group-hover:bg-gold group-hover:text-black transition-all duration-300">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-black mb-3 text-gray-900">Mobile Friendly</h3>
                 <p class="text-gray-600 text-sm leading-relaxed">
                     Shop easily from your phone, tablet, or desktop.
                 </p>
@@ -361,7 +344,7 @@
         </p>
 
         <div class="flex flex-wrap justify-center gap-5">
-
+            <!-- Verified Global Routing Links -->
             <a href="{% url 'products:list' %}"
                class="bg-gold text-black font-bold px-8 py-4 rounded-2xl hover:scale-105 transition-all duration-300 shadow-2xl">
                 Start Shopping
@@ -371,7 +354,6 @@
                class="border border-white/20 hover:border-white/40 bg-white/5 px-8 py-4 rounded-2xl font-bold transition-all duration-300">
                 Become A Vendor
             </a>
-
         </div>
 
     </div>

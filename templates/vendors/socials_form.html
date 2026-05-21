@@ -39,10 +39,15 @@
         <div>
           <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">WhatsApp</label>
           <div class="relative">
-            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 text-green-500 text-base">💬</div>
+            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center">
+              <!-- Official WhatsApp Brand Color Vector -->
+              <svg class="w-5 h-5 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-4.846c1.66.986 3.296 1.489 4.973 1.493 5.42-.001 9.834-4.415 9.838-9.84.002-2.628-1.022-5.1-2.885-6.964C16.712 1.982 14.243 1.056 11.993 1.056c-5.424 0-9.84 4.415-9.843 9.844-.002 1.81.474 3.578 1.377 5.143l-1.006 3.68 3.77-.989zm11.415-7.14c-.3-.149-1.774-.874-2.048-.974-.274-.1-.474-.149-.674.149-.2.3-.774.974-.949 1.173-.175.2-.35.225-.65.075-1.03-.519-1.787-.96-2.474-2.14-.17-.294.17-.273.487-.903.075-.15.038-.282-.019-.397-.057-.115-.474-1.14-.65-1.56-.172-.413-.347-.356-.474-.362-.122-.006-.262-.008-.402-.008-.14 0-.368.052-.56.262-.193.21-1.738 1.696-1.738 4.135 0 2.44 1.774 4.794 2.023 5.122.25.328 3.492 5.332 8.46 7.48 1.182.511 2.106.817 2.825 1.046 1.19.378 2.274.325 3.13.197.954-.142 2.774-1.133 3.162-2.226.387-1.093.387-2.03.272-2.226-.114-.195-.415-.3-.715-.449z"/>
+              </svg>
+            </div>
             <input type="text" name="whatsapp" value="{{ vendor.whatsapp }}"
                    placeholder="233XXXXXXXXX"
-                   class="social-field w-full border rounded-xl pl-9 pr-4 py-2.5 text-sm bg-white"/>
+                   class="social-field w-full border rounded-xl pl-11 pr-4 py-2.5 text-sm bg-white"/>
           </div>
           <p class="text-xs text-gray-400 mt-1">Enter number with country code e.g. 233244000000</p>
         </div>
@@ -51,10 +56,22 @@
         <div>
           <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Instagram</label>
           <div class="relative">
-            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 text-pink-500 text-base">📸</div>
+            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center">
+              <!-- Official Instagram Brand Gradient using SVG definitions -->
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                <defs>
+                  <linearGradient id="instagram-grad" x1="100%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#C13584" />
+                    <stop offset="50%" stop-color="#E1306C" />
+                    <stop offset="100%" stop-color="#F77737" />
+                  </linearGradient>
+                </defs>
+                <path fill="url(#instagram-grad)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+              </svg>
+            </div>
             <input type="url" name="instagram" value="{{ vendor.instagram }}"
                    placeholder="https://instagram.com/yourshop"
-                   class="social-field w-full border rounded-xl pl-9 pr-4 py-2.5 text-sm bg-white"/>
+                   class="social-field w-full border rounded-xl pl-11 pr-4 py-2.5 text-sm bg-white"/>
           </div>
         </div>
 
@@ -62,21 +79,31 @@
         <div>
           <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Facebook</label>
           <div class="relative">
-            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-600 text-base">📘</div>
+            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center">
+              <!-- Official Facebook Hex Vector -->
+              <svg class="w-5 h-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+            </div>
             <input type="url" name="facebook" value="{{ vendor.facebook }}"
                    placeholder="https://facebook.com/yourpage"
-                   class="social-field w-full border rounded-xl pl-9 pr-4 py-2.5 text-sm bg-white"/>
+                   class="social-field w-full border rounded-xl pl-11 pr-4 py-2.5 text-sm bg-white"/>
           </div>
         </div>
 
-        <!-- Twitter -->
+        <!-- Twitter / X -->
         <div>
           <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Twitter / X</label>
           <div class="relative">
-            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-500 text-base">🐦</div>
+            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center">
+              <!-- Official X Global Platform Vector -->
+              <svg class="w-4.5 h-4.5 text-black" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+            </div>
             <input type="url" name="twitter" value="{{ vendor.twitter }}"
                    placeholder="https://twitter.com/yourhandle"
-                   class="social-field w-full border rounded-xl pl-9 pr-4 py-2.5 text-sm bg-white"/>
+                   class="social-field w-full border rounded-xl pl-11 pr-4 py-2.5 text-sm bg-white"/>
           </div>
         </div>
 
@@ -84,10 +111,15 @@
         <div>
           <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">TikTok</label>
           <div class="relative">
-            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-800 text-base">🎵</div>
+            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center">
+              <!-- Official TikTok Logomark Vector -->
+              <svg class="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.05 1.62 4.2 1.21 1.4 2.93 2.37 4.78 2.64v3.87c-1.8-.12-3.57-.75-5.06-1.78-.17-.12-.34-.25-.5-.39v6.7c-.03 2.1-.6 4.23-1.87 5.86-1.55 2.05-4.05 3.32-6.62 3.31-2.92.03-5.75-1.42-7.24-3.95-1.58-2.61-1.56-6.04.06-8.64 1.43-2.37 4.02-3.86 6.82-3.88.03 1.42-.01 2.84-.01 4.26-1.57.03-3.17.78-3.94 2.16-.88 1.5-.72 3.56.44 4.88 1.11 1.31 3.03 1.8 4.63 1.15 1.25-.48 2.08-1.64 2.14-2.97.04-2.73.02-5.46.03-8.19V.02z"/>
+              </svg>
+            </div>
             <input type="url" name="tiktok" value="{{ vendor.tiktok }}"
                    placeholder="https://tiktok.com/@yourshop"
-                   class="social-field w-full border rounded-xl pl-9 pr-4 py-2.5 text-sm bg-white"/>
+                   class="social-field w-full border rounded-xl pl-11 pr-4 py-2.5 text-sm bg-white"/>
           </div>
         </div>
 
@@ -95,10 +127,15 @@
         <div>
           <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">YouTube</label>
           <div class="relative">
-            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 text-red-600 text-base">▶</div>
+            <div class="icon-wrap absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center">
+              <!-- Official YouTube Brand Hex Vector -->
+              <svg class="w-5 h-5 text-[#FF0000]" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+            </div>
             <input type="url" name="youtube" value="{{ vendor.youtube }}"
                    placeholder="https://youtube.com/@yourchannel"
-                   class="social-field w-full border rounded-xl pl-9 pr-4 py-2.5 text-sm bg-white"/>
+                   class="social-field w-full border rounded-xl pl-11 pr-4 py-2.5 text-sm bg-white"/>
           </div>
         </div>
 

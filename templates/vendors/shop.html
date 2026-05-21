@@ -8,147 +8,205 @@
 <meta property="og:type" content="website"/>
 {% if vendor.logo %}<meta property="og:image" content="{{ vendor.logo.url }}"/>{% endif %}
 <meta name="twitter:card" content="summary_large_image"/>
+
 <style>
-  .product-card { transition: transform .22s ease, box-shadow .22s ease; }
-  .product-card:hover { transform: translateY(-5px); box-shadow: 0 20px 48px rgba(15,27,45,.10); }
-  .product-card:hover .card-img { transform: scale(1.06); }
-  .card-img { transition: transform .4s ease; }
-  #toast { transition: opacity .3s, transform .3s; transform: translateY(12px); }
-  #toast.show { opacity: 1 !important; transform: translateY(0); }
+  /* Base transitions & layout enhancements */
+  .product-card { 
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s; 
+  }
+  .product-card:hover { 
+    transform: translateY(-6px); 
+    box-shadow: 0 22px 40px -12px rgba(15, 23, 42, 0.12);
+    border-color: rgba(212, 163, 89, 0.3); /* Subtle gold tint on hover */
+  }
+  .product-card:hover .card-img { 
+    transform: scale(1.04); 
+  }
+  .card-img { 
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); 
+  }
+  
+  /* Toast animation */
+  #toast { 
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+    transform: translate(-50%, 12px); 
+  }
+  #toast.show { 
+    opacity: 1 !important; 
+    transform: translate(-50%, 0); 
+  }
+
+  /* Custom subtle scrollbar for category pills */
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scroll-bar-width: none; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- ── BANNER ──────────────────────────────────────────── -->
-<div class="relative h-52 md:h-64 overflow-hidden">
+<!-- ── HERO BANNER AREA ────────────────────────────────── -->
+<div class="relative h-60 md:h-72 overflow-hidden bg-slate-900">
   {% if vendor.banner %}
-  <img src="{{ vendor.banner.url }}" class="w-full h-full object-cover"/>
-  <div class="absolute inset-0 bg-gradient-to-t from-navy/80 via-navy/40 to-transparent"></div>
+    <img src="{{ vendor.banner.url }}" class="w-full h-full object-cover select-none animate-fade-in" alt="{{ vendor.shop_name }} Banner"/>
+    <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent"></div>
   {% else %}
-  <div class="absolute inset-0 bg-navy">
-    <div class="absolute inset-0 opacity-5"
-         style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);
-                background-size:28px 28px"></div>
-    <div class="absolute top-0 right-0 w-80 h-80 bg-gold opacity-10 rounded-full
-                translate-x-1/3 -translate-y-1/3 blur-3xl pointer-events-none"></div>
-  </div>
+    <!-- Modern Dynamic Geometric Fallback Background -->
+    <div class="absolute inset-0 bg-gradient-to-br from-navy via-navy-900 to-slate-950">
+      <div class="absolute inset-0 opacity-10"
+           style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 24px 24px;"></div>
+      <div class="absolute -top-12 -right-12 w-96 h-96 bg-gold opacity-10 rounded-full blur-3xl pointer-events-none animate-pulse" style="animation-duration: 8s;"></div>
+      <div class="absolute -bottom-20 -left-20 w-80 h-80 bg-navy-400 opacity-20 rounded-full blur-3xl pointer-events-none"></div>
+    </div>
   {% endif %}
 
-  <!-- Shop info overlay -->
-  <div class="absolute bottom-0 left-0 right-0 px-4 pb-5">
-    <div class="max-w-7xl mx-auto flex items-end gap-4">
-      {% if vendor.logo %}
-      <img src="{{ vendor.logo.url }}"
-           class="w-18 h-18 md:w-20 md:h-20 rounded-2xl object-cover
-                  border-4 border-white shadow-xl flex-shrink-0"
-           style="width:72px;height:72px"/>
-      {% else %}
-      <div class="w-18 h-18 rounded-2xl bg-gold flex items-center justify-center
-                  text-navy font-display font-700 text-3xl border-4 border-white
-                  shadow-xl flex-shrink-0" style="width:72px;height:72px;min-width:72px">
-        {{ vendor.shop_name|first|upper }}
-      </div>
-      {% endif %}
-
-      <div class="flex-1 min-w-0 pb-1">
-        <div class="flex items-center gap-2 flex-wrap mb-0.5">
-          <h1 class="font-display font-700 text-xl md:text-2xl text-white truncate">
-            {{ vendor.shop_name }}
-          </h1>
-          <span class="flex-shrink-0 text-xs bg-green-400 text-white font-semibold
-                       px-2.5 py-0.5 rounded-full">
-            ✓ Verified
-          </span>
-        </div>
-        {% if vendor.location %}
-        <p class="text-white/70 text-xs md:text-sm">📍 {{ vendor.location }}</p>
+  <!-- Shop Branding Overlay Alignments -->
+  <div class="absolute bottom-0 left-0 right-0 px-4 pb-6 md:pb-8">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div class="flex items-center gap-4 md:gap-5">
+        {% if vendor.logo %}
+          <div class="relative group flex-shrink-0">
+            <div class="absolute inset-0 bg-gold/20 rounded-2xl blur-md opacity-50 group-hover:opacity-100 transition-opacity"></div>
+            <img src="{{ vendor.logo.url }}"
+                 class="relative w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border-4 border-white shadow-xl flex-shrink-0"
+                 alt="{{ vendor.shop_name }} Logo"/>
+          </div>
+        {% else %}
+          <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-gold to-amber-500 flex items-center justify-center
+                      text-navy font-display font-bold text-4xl border-4 border-white shadow-xl flex-shrink-0 select-none">
+            {{ vendor.shop_name|first|upper }}
+          </div>
         {% endif %}
+
+        <div class="text-left">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <h1 class="font-display font-bold text-2xl md:text-3xl text-white tracking-tight drop-shadow-sm">
+              {{ vendor.shop_name }}
+            </h1>
+            <span class="inline-flex items-center gap-1 text-[11px] bg-emerald-500/90 text-white font-semibold px-2.5 py-0.5 rounded-full backdrop-blur-sm shadow-sm select-none">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+              </svg>
+              Verified Store
+            </span>
+          </div>
+          {% if vendor.location %}
+            <p class="text-white/80 text-xs md:text-sm font-medium inline-flex items-center gap-1.5 drop-shadow-sm">
+              <span class="text-gold">📍</span> {{ vendor.location }}
+            </p>
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
 </div>
 
+<!-- ── MAIN WRAPPER ───────────────────────────────────── -->
 <div class="max-w-7xl mx-auto px-4 md:px-6">
 
-  <!-- ── INFO BAR ────────────────────────────────────────── -->
-  <div class="bg-white border border-gray-100 rounded-2xl shadow-sm
-              -mt-4 relative z-10 px-5 py-4 mb-6
-              flex flex-col sm:flex-row sm:items-center gap-4">
-
-    <!-- Stats -->
-    <div class="flex gap-6 flex-1">
-      <div class="text-center">
-        <p class="font-display font-700 text-lg text-navy">{{ total_products }}</p>
-        <p class="text-xs text-gray-400">Products</p>
+  <!-- ── FLOATING METRICS & ENGAGEMENT HUB ──────────────── -->
+  <div class="bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-200/50
+              -mt-5 relative z-20 px-6 py-4 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all">
+    
+    <!-- Deepened Analytics Blocks -->
+    <div class="flex items-center gap-8 md:gap-10 overflow-x-auto py-1">
+      <div class="text-left flex-shrink-0">
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Catalog</p>
+        <p class="font-display font-bold text-2xl text-navy">{{ total_products }} <span class="text-xs font-normal text-slate-400">Items</span></p>
       </div>
-      <div class="w-px bg-gray-100"></div>
-      <div class="text-center">
-        <p class="font-display font-700 text-lg text-navy">{{ vendor.total_sales }}</p>
-        <p class="text-xs text-gray-400">Sales</p>
+      <div class="h-8 w-px bg-slate-100"></div>
+      <div class="text-left flex-shrink-0">
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Vibe</p>
+        <p class="font-display font-bold text-2xl text-navy">{{ vendor.total_sales }} <span class="text-xs font-normal text-slate-400">Sales</span></p>
       </div>
-      <div class="w-px bg-gray-100"></div>
-      <div class="text-center">
-        <p class="font-display font-700 text-lg text-navy">{{ vendor.joined_at|date:"Y" }}</p>
-        <p class="text-xs text-gray-400">Since</p>
+      <div class="h-8 w-px bg-slate-100"></div>
+      <div class="text-left flex-shrink-0">
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Established</p>
+        <p class="font-display font-bold text-2xl text-navy tracking-tight">{{ vendor.joined_at|date:"Y" }}</p>
       </div>
     </div>
 
-    <!-- Share buttons -->
-    <div class="flex items-center gap-2 flex-wrap">
-      <span class="text-xs text-gray-400 hidden sm:block">Share:</span>
-      <a href="https://wa.me/?text={{ share_text|urlencode }}"
-         target="_blank" title="Share on WhatsApp"
-         class="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-xl
-                flex items-center justify-center transition-colors text-sm">
-        💬
-      </a>
-      <a href="https://www.facebook.com/sharer/sharer.php?u={{ shop_url|urlencode }}"
-         target="_blank" title="Share on Facebook"
-         class="w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl
-                flex items-center justify-center transition-colors text-sm">
-        📘
-      </a>
-      <a href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}"
-         target="_blank" title="Share on Twitter"
-         class="w-8 h-8 bg-black hover:bg-gray-800 text-white rounded-xl
-                flex items-center justify-center transition-colors text-sm">
-        🐦
-      </a>
-      <button onclick="copyLink('{{ shop_url }}')" title="Copy link"
-              class="w-8 h-8 bg-gray-100 hover:bg-gray-200 text-navy rounded-xl
-                     flex items-center justify-center transition-colors text-sm">
-        🔗
-      </button>
+    <!-- Softened Native Share Actions -->
+    <div class="flex items-center gap-2 flex-wrap border-t border-slate-50 pt-4 md:pt-0 md:border-0">
+      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2 hidden sm:block">Share Store:</span>
+      <div class="flex gap-1.5">
+        <a href="https://wa.me/?text={{ share_text|urlencode }}"
+           target="_blank" rel="noopener" title="Share via WhatsApp"
+           class="w-9 h-9 bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-xl
+                  flex items-center justify-center transition-all duration-200 text-base shadow-sm hover:shadow-emerald-100">
+          💬
+        </a>
+        <a href="https://www.facebook.com/sharer/sharer.php?u={{ shop_url|urlencode }}"
+           target="_blank" rel="noopener" title="Share via Facebook"
+           class="w-9 h-9 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-xl
+                  flex items-center justify-center transition-all duration-200 text-base shadow-sm hover:shadow-blue-100">
+          📘
+        </a>
+        <a href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}"
+           target="_blank" rel="noopener" title="Share via X"
+           class="w-9 h-9 bg-slate-50 hover:bg-black text-slate-700 hover:text-white rounded-xl
+                  flex items-center justify-center transition-all duration-200 text-sm shadow-sm hover:shadow-slate-200">
+          ✕
+        </a>
+        <button onclick="copyLink('{{ shop_url }}')" title="Copy Store Link"
+                class="w-9 h-9 bg-slate-100 hover:bg-navy hover:text-white text-slate-600 rounded-xl
+                       flex items-center justify-center transition-all duration-200 text-base shadow-sm">
+          🔗
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- Description -->
+  <!-- Store Editorial Description -->
   {% if vendor.description %}
-  <p class="text-gray-500 text-sm leading-relaxed mb-6 max-w-2xl">
-    {{ vendor.description }}
-  </p>
+  <div class="bg-slate-50/60 rounded-2xl p-5 border border-slate-100/80 mb-8 max-w-3xl text-left">
+    <h2 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">About Our Shop</h2>
+    <p class="text-slate-600 text-sm leading-relaxed font-normal">
+      {{ vendor.description }}
+    </p>
+  </div>
   {% endif %}
 
-  <!-- ── SEARCH + SORT ──────────────────────────────────── -->
-  <div class="flex flex-col sm:flex-row gap-3 mb-4">
+  <!-- ── CONTEXTUAL NAVIGATION (PILLS) ──────────────────── -->
+  {% if categories %}
+  <div class="mb-6">
+    <div class="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
+      <a href="{% url 'vendors:shop' vendor.slug %}"
+         class="flex-shrink-0 px-5 py-2 rounded-xl text-xs font-semibold
+                border transition-all duration-200 whitespace-nowrap shadow-sm
+                {% if not filter_cat %} bg-navy text-white border-navy shadow-navy-100
+                {% else %} bg-white border-slate-200 text-slate-600 hover:border-navy hover:text-navy {% endif %}">
+        All Items <span class="ml-1 opacity-60 font-normal">({{ total_products }})</span>
+      </a>
+      {% for cat in categories %}
+      <a href="?category={{ cat.slug }}{% if search %}&q={{ search }}{% endif %}"
+         class="flex-shrink-0 px-5 py-2 rounded-xl text-xs font-semibold
+                border transition-all duration-200 whitespace-nowrap shadow-sm
+                {% if filter_cat == cat.slug %} bg-navy text-white border-navy shadow-navy-100
+                {% else %} bg-white border-slate-200 text-slate-600 hover:border-navy hover:text-navy {% endif %}">
+        {{ cat.name }}
+        {% if cat.product_count %}
+          <span class="ml-0.5 opacity-60 font-normal">({{ cat.product_count }})</span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── SEARCH + SYSTEM QUICK FILTER BAR ────────────────── -->
+  <div class="flex flex-col sm:flex-row gap-3 mb-6">
     <form method="GET" class="flex-1 flex gap-2">
       {% if filter_cat %}<input type="hidden" name="category" value="{{ filter_cat }}">{% endif %}
       <div class="relative flex-1">
-        <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4
-                    text-gray-400 pointer-events-none"
-             fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
         </svg>
         <input type="text" name="q" value="{{ search }}"
-               placeholder="Search {{ vendor.shop_name }}..."
-               class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl
-                      text-sm bg-white"/>
+               placeholder="Search something in this store..."
+               class="w-full pl-11 pr-4 py-3 border border-slate-200 focus:border-navy focus:ring-1 focus:ring-navy rounded-xl text-sm bg-white shadow-sm transition-all outline-none text-slate-800 placeholder-slate-400"/>
       </div>
       <button type="submit"
-              class="bg-navy hover:bg-navy-700 text-white text-sm font-semibold
-                     px-5 rounded-xl transition-colors flex-shrink-0">
+              class="bg-navy hover:bg-navy-700 text-white text-sm font-bold px-6 rounded-xl transition-all duration-200 flex-shrink-0 shadow-md shadow-navy-100/50">
         Search
       </button>
     </form>
@@ -157,155 +215,131 @@
       {% if search %}<input type="hidden" name="q" value="{{ search }}">{% endif %}
       {% if filter_cat %}<input type="hidden" name="category" value="{{ filter_cat }}">{% endif %}
       <select name="sort" onchange="document.getElementById('sort-form').submit()"
-              class="h-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm
-                     bg-white cursor-pointer">
-        <option value="newest"     {% if sort == 'newest'     %}selected{% endif %}>Newest</option>
-        <option value="price_low"  {% if sort == 'price_low'  %}selected{% endif %}>Price: Low → High</option>
+              class="w-full sm:w-auto h-full px-4 py-3 border border-slate-200 focus:border-navy focus:ring-1 focus:ring-navy rounded-xl text-sm bg-white shadow-sm cursor-pointer transition-all outline-none text-slate-700 font-medium">
+        <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Sort: Newest</option>
+        <option value="price_low" {% if sort == 'price_low' %}selected{% endif %}>Price: Low → High</option>
         <option value="price_high" {% if sort == 'price_high' %}selected{% endif %}>Price: High → Low</option>
-        <option value="name"       {% if sort == 'name'       %}selected{% endif %}>Name A–Z</option>
+        <option value="name" {% if sort == 'name' %}selected{% endif %}>Name A–Z</option>
       </select>
     </form>
   </div>
 
-  <!-- ── CATEGORY PILLS ──────────────────────────────────── -->
-  {% if categories %}
-  <div class="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
-    <a href="{% url 'vendors:shop' vendor.slug %}"
-       class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold
-              border transition-colors whitespace-nowrap
-              {% if not filter_cat %}bg-navy text-white border-navy
-              {% else %}bg-white border-gray-200 text-gray-600 hover:border-navy hover:text-navy{% endif %}">
-      All ({{ total_products }})
-    </a>
-    {% for cat in categories %}
-    <a href="?category={{ cat.slug }}{% if search %}&q={{ search }}{% endif %}"
-       class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold
-              border transition-colors whitespace-nowrap
-              {% if filter_cat == cat.slug %}bg-navy text-white border-navy
-              {% else %}bg-white border-gray-200 text-gray-600 hover:border-navy hover:text-navy{% endif %}">
-      {{ cat.name }}
-      {% if cat.product_count %}
-      <span class="opacity-60">({{ cat.product_count }})</span>
-      {% endif %}
-    </a>
-    {% endfor %}
+  <!-- Metric Meta Context Line -->
+  <div class="flex items-center justify-between mb-5 px-1">
+    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+      Found {{ products|length }} item{{ products|length|pluralize }}
+      {% if search %} for "<span class="text-navy normal-case font-bold">{{ search }}</span>"{% endif %}
+      {% if filter_cat %} inside <span class="text-navy normal-case font-bold">{{ filter_cat }}</span>{% endif %}
+    </p>
   </div>
-  {% endif %}
 
-  <!-- Results count -->
-  <p class="text-xs text-gray-400 mb-4">
-    {{ products|length }} product{{ products|length|pluralize }}
-    {% if search %}for "<strong class="text-navy">{{ search }}</strong>"{% endif %}
-    {% if filter_cat %}in <strong class="text-navy">{{ filter_cat }}</strong>{% endif %}
-  </p>
-
-  <!-- ── PRODUCTS GRID ───────────────────────────────────── -->
+  <!-- ── UPGRADED PRODUCTS GRID ────────────────────────── -->
   {% if products %}
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-12">
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5 pb-16">
     {% for product in products %}
-    <div class="product-card group bg-white rounded-2xl border border-gray-100
-                overflow-hidden flex flex-col">
+    <div class="product-card group bg-white rounded-2xl border border-slate-100/80 overflow-hidden flex flex-col shadow-sm">
 
-      <!-- Image -->
+      <!-- Product Media Frame -->
       <a href="{% url 'products:detail' product.slug %}"
-         class="relative block overflow-hidden bg-cream aspect-square">
+         class="relative block overflow-hidden bg-slate-50 aspect-square border-b border-slate-50">
         {% with product.images.first as img %}
         {% if img %}
-        <img src="{{ img.image.url }}" alt="{{ product.name }}"
-             class="card-img w-full h-full object-cover"/>
+          <img src="{{ img.image.url }}" alt="{{ product.name }}"
+               class="card-img w-full h-full object-cover select-none" loading="lazy"/>
         {% else %}
-        <div class="w-full h-full flex items-center justify-center bg-gray-50">
-          <span class="text-5xl opacity-20">📦</span>
-        </div>
+          <div class="w-full h-full flex flex-col items-center justify-center bg-slate-50/50 text-slate-300">
+            <span class="text-4xl mb-1 select-none">📦</span>
+            <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">No Image</span>
+          </div>
         {% endif %}
         {% endwith %}
 
-        <!-- Stock badge -->
+        <!-- Stock Context Badges -->
         {% if product.stock_qty == 0 %}
-        <span class="absolute top-2 left-2 bg-gray-900/75 backdrop-blur-sm text-white
-                     text-[10px] font-bold px-2 py-0.5 rounded-full">
-          Out of stock
-        </span>
+          <span class="absolute top-2.5 left-2.5 bg-slate-900/90 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-sm">
+            Sold Out
+          </span>
         {% elif product.stock_qty <= product.low_stock_alert %}
-        <span class="absolute top-2 left-2 bg-orange-500 text-white
-                     text-[10px] font-bold px-2 py-0.5 rounded-full">
-          {{ product.stock_qty }} left
-        </span>
+          <span class="absolute top-2.5 left-2.5 bg-amber-500 text-navy text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-sm animate-pulse" style="animation-duration:2s;">
+            Only {{ product.stock_qty }} Left
+          </span>
         {% endif %}
 
-        <!-- Quick view overlay -->
-        <div class="absolute inset-0 bg-navy/0 group-hover:bg-navy/10
-                    transition-colors duration-200 flex items-center justify-center">
-          <span class="opacity-0 group-hover:opacity-100 bg-white text-navy text-xs
-                       font-semibold px-3 py-1.5 rounded-xl transition-all duration-200
-                       translate-y-2 group-hover:translate-y-0 shadow-sm">
-            View Details
+        <!-- Smooth Micro-action Hover Reveal Box -->
+        <div class="absolute inset-0 bg-navy/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
+          <span class="bg-white text-navy text-xs font-bold px-4 py-2 rounded-xl shadow-md transform translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
+            View Product
           </span>
         </div>
       </a>
 
-      <!-- Info -->
-      <div class="p-3 flex flex-col flex-1">
+      <!-- Content Core -->
+      <div class="p-3.5 flex flex-col flex-1 text-left">
         {% if product.category %}
-        <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-1">
+        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1 block">
           {{ product.category.name }}
         </span>
         {% endif %}
 
         <a href="{% url 'products:detail' product.slug %}"
-           class="text-sm font-semibold text-navy hover:text-gold transition-colors
-                  line-clamp-2 leading-snug mb-3 flex-1">
+           class="text-sm font-semibold text-slate-800 hover:text-gold transition-colors line-clamp-2 leading-snug mb-3 flex-1 tracking-tight">
           {{ product.name }}
         </a>
 
-        <div class="flex items-center justify-between gap-2 mt-auto">
-          <span class="font-display font-700 text-navy text-base">
-            GHS {{ product.selling_price }}
-          </span>
+        <!-- Price and Actions footer combo -->
+        <div class="mt-auto pt-2 border-t border-slate-50 flex items-center justify-between gap-2">
+          <div class="flex flex-col">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Price</span>
+            <span class="font-display font-bold text-navy text-base leading-none">
+              ₵{{ product.selling_price }}
+            </span>
+          </div>
+          
           {% if product.stock_qty > 0 %}
           <button onclick="addToCart({{ product.pk }}, this)"
-                  class="flex-shrink-0 text-xs bg-navy hover:bg-gold hover:text-navy
-                         text-white font-semibold px-3 py-2 rounded-xl
-                         transition-all duration-200">
+                  class="flex-shrink-0 text-xs bg-navy hover:bg-gold hover:text-navy text-white font-bold px-3.5 py-2 rounded-xl transition-all duration-200 shadow-sm active:scale-95">
             + Add
           </button>
           {% else %}
-          <span class="text-xs text-gray-300 font-medium">Unavailable</span>
+          <span class="text-xs text-slate-300 font-semibold select-none bg-slate-50 px-2 py-1 rounded-lg">Empty</span>
           {% endif %}
         </div>
 
-        <!-- WhatsApp share -->
-        <a href="https://wa.me/?text={{ product.name|urlencode }} — GHS {{ product.selling_price }}%0Ahttps://lynctel.com{% url 'products:detail' product.slug %}"
-           target="_blank"
-           class="mt-2 flex items-center gap-1 text-[10px] text-green-600
-                  hover:text-green-700 transition-colors font-medium">
-          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1l-.9 1c-.1.2-.3.2-.5.1-1.5-.6-3-2.1-3.5-3.6-.1-.2 0-.4.2-.5l.7-.8c.1-.2.2-.4.1-.6l-.9-2c-.2-.5-.5-.5-.7-.5h-.5C9 7 8.4 7.6 8.2 8c-.4.9-.2 2.3 1.3 4.3 1.6 2.1 4 3.6 5.8 3.8.9.1 1.7-.2 2.3-.9.5-.6.6-1.3.5-1.8l-.6.1z"/>
-          </svg>
-          Share
-        </a>
+        <!-- Share Actions Row -->
+        <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center justify-between">
+          <a href="https://wa.me/?text={{ product.name|urlencode }} — GHS {{ product.selling_price }}%0Ahttps://lynctel.com{% url 'products:detail' product.slug %}"
+             target="_blank" rel="noopener"
+             class="inline-flex items-center gap-1 text-[11px] text-emerald-600 hover:text-emerald-700 font-semibold transition-colors">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.13-1.347a9.94 9.94 0 0 0 4.88 1.274h.005c5.505 0 9.99-4.478 9.99-9.986 0-2.67-1.037-5.178-2.923-7.062A9.925 9.925 0 0 0 12.012 2zm5.835 14.164c-.244.688-1.42 1.354-1.947 1.41-.53.054-1.057.275-3.398-.65-2.996-1.183-4.912-4.225-5.061-4.424-.15-.199-1.2-1.595-1.2-3.043 0-1.448.749-2.16.1014-2.467-.266-.307-.583-.385-.795-.385h-.57c-.213 0-.557.08-1.848.37-.29.066-.66.61-.66 1.42 0 .81.53 1.595.637 1.74.108.145 1.042 1.59 2.525 2.23.353.152.628.243.843.312.355.112.678.096.934.058.285-.042.875-.358 1.002-.7.127-.343.127-.638.089-.7-.038-.063-.14-.1-.293-.177-.152-.077-.901-.445-1.04-.495-.138-.05-.24-.075-.34.076-.102.152-.394.495-.483.596-.089.101-.178.114-.33.038-.153-.076-.647-.238-1.233-.76-.456-.406-.764-.908-.853-1.06-.089-.153-.01-.235.067-.312.069-.068.152-.177.228-.266.076-.09.102-.152.152-.253.05-.102.025-.19-.012-.266-.039-.076-.34-.82-.467-1.127-.123-.3-.27-.26-.37-.265h-.316c-.102 0-.266.038-.406.19-.14.152-.533.52-.533 1.266z"/>
+            </svg>
+            Share Fat
+          </a>
+          <span class="text-[10px] font-medium text-slate-300">ID: #{{ product.pk }}</span>
+        </div>
+
       </div>
     </div>
     {% endfor %}
   </div>
 
   {% else %}
-  <!-- Empty state -->
-  <div class="flex flex-col items-center justify-center py-24 text-center pb-12">
-    <div class="w-20 h-20 bg-gray-100 rounded-3xl flex items-center
-                justify-center text-4xl mb-5">🔍</div>
-    <h3 class="font-display font-700 text-xl text-navy mb-2">
-      {% if search or filter_cat %}No products found{% else %}No products yet{% endif %}
+  <!-- Premium Minimal Empty Workspace State -->
+  <div class="flex flex-col items-center justify-center py-20 text-center">
+    <div class="w-20 h-20 bg-slate-50 text-slate-400 rounded-3xl flex items-center justify-center text-3xl mb-4 border border-slate-100 shadow-sm select-none">
+      🔍
+    </div>
+    <h3 class="font-display font-bold text-lg text-navy mb-1">
+      {% if search or filter_cat %}No listings match layout{% else %}No collection setup yet{% endif %}
     </h3>
-    <p class="text-gray-400 text-sm mb-5">
-      {% if search or filter_cat %}Try a different search or filter.
-      {% else %}Check back soon — products are being added.{% endif %}
+    <p class="text-slate-400 text-sm max-w-xs mb-5">
+      {% if search or filter_cat %}Try adjustments to terms or review your structural tag configuration.
+      {% else %}Check back shortly! New inventory pipelines are being mapped.{% endif %}
     </p>
     {% if search or filter_cat %}
     <a href="{% url 'vendors:shop' vendor.slug %}"
-       class="bg-navy text-white text-sm font-semibold px-6 py-2.5
-              rounded-xl hover:bg-navy-700 transition-colors">
-      Clear filters
+       class="bg-navy hover:bg-navy-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md transition-all">
+      Reset Layout View
     </a>
     {% endif %}
   </div>
@@ -313,12 +347,9 @@
 
 </div>
 
-<!-- Toast -->
+<!-- ── COMPONENT TOAST BLOCK ──────────────────────────── -->
 <div id="toast"
-     class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-navy text-white
-            text-sm font-semibold px-5 py-3 rounded-2xl shadow-2xl
-            opacity-0 pointer-events-none z-50 flex items-center gap-2
-            whitespace-nowrap">
+     class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-navy/95 backdrop-blur-md text-white text-xs font-bold px-5 py-3.5 rounded-xl shadow-2xl opacity-0 pointer-events-none z-50 flex items-center gap-2 select-none border border-white/10 tracking-wide">
 </div>
 
 {% endblock %}
@@ -330,59 +361,80 @@
       window.location.href = LOGIN_URL + '?next=' + encodeURIComponent(window.location.pathname);
       return;
     }
-    const orig = btn.innerHTML;
-    btn.innerHTML = '...'; btn.disabled = true;
-    const fd = new FormData();
-    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
-    fd.append('quantity', 1);
+    
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = `
+      <svg class="animate-spin h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    `;
+    btn.disabled = true;
+    
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', CSRF_TOKEN);
+    formData.append('quantity', 1);
+    
     fetch(`/cart/add/${productId}/`, {
       method: 'POST',
       headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      body: fd
+      body: formData
     })
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) {
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
         btn.innerHTML = '✓';
-        btn.classList.replace('bg-navy', 'bg-green-500');
-        updateCartBadge(d.cart_count);
-        showToast('✓ Added to cart!');
+        btn.classList.replace('bg-navy', 'bg-emerald-500');
+        btn.classList.replace('hover:bg-gold', 'hover:bg-emerald-600');
+        btn.classList.replace('hover:text-navy', 'hover:text-white');
+        
+        updateCartBadge(data.cart_count);
+        showToast('📦 Item appended to basket!');
+        
         setTimeout(() => {
-          btn.innerHTML = orig;
+          btn.innerHTML = originalContent;
           btn.disabled = false;
-          btn.classList.replace('bg-green-500', 'bg-navy');
+          btn.classList.replace('bg-emerald-500', 'bg-navy');
+          btn.classList.replace('hover:bg-emerald-600', 'hover:bg-gold');
+          btn.classList.replace('hover:text-white', 'hover:text-navy');
         }, 1500);
-        // Open cart drawer after short delay
-        setTimeout(openCart, 500);
+        
+        if (typeof openCart === 'function') {
+          setTimeout(openCart, 500);
+        }
       }
     })
-    .catch(() => { btn.innerHTML = orig; btn.disabled = false; });
+    .catch(() => { 
+      btn.innerHTML = originalContent; 
+      btn.disabled = false; 
+    });
   }
 
   function copyLink(url) {
     navigator.clipboard.writeText(url)
-      .then(() => showToast('🔗 Link copied!'))
+      .then(() => showToast('🔗 Store link copied to clipboard!'))
       .catch(() => {
-        // Fallback for older browsers
-        const el = document.createElement('textarea');
-        el.value = url;
-        document.body.appendChild(el);
-        el.select(); document.execCommand('copy');
-        document.body.removeChild(el);
-        showToast('🔗 Link copied!');
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        document.body.appendChild(textarea);
+        textarea.select(); 
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('🔗 Store link copied!');
       });
   }
 
   function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    t.style.opacity = '1';
-    clearTimeout(t._timer);
-    t._timer = setTimeout(() => {
-      t.style.opacity = '0';
-      t.classList.remove('show');
-    }, 2500);
+    const toastNode = document.getElementById('toast');
+    toastNode.textContent = msg;
+    toastNode.classList.add('show');
+    toastNode.style.opacity = '1';
+    
+    clearTimeout(toastNode._timer);
+    toastNode._timer = setTimeout(() => {
+      toastNode.style.opacity = '0';
+      toastNode.classList.remove('show');
+    }, 3000);
   }
 </script>
 {% endblock %}

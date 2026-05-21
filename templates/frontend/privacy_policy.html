@@ -3,95 +3,162 @@
 {% block title %}Privacy Policy — Lynctel{% endblock %}
 
 {% block content %}
+<!-- Premium Hero Banner -->
+<section class="bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white py-24 border-b border-slate-800/40 relative overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.08),transparent_50%)]"></div>
+    <div class="max-w-5xl mx-auto px-6 text-center relative z-10">
 
-<section class="bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white py-24">
-    <div class="max-w-5xl mx-auto px-6 text-center">
-
-        <span class="inline-flex items-center gap-2 bg-white/10 border border-white/10 px-5 py-2 rounded-full text-sm mb-8">
-            🔒 Your Privacy Matters
+        <span class="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-sm font-medium text-blue-400 mb-6 backdrop-blur-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+            Your Security is Our Priority
         </span>
 
-        <h1 class="text-5xl lg:text-6xl font-black mb-8">
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight text-white">
             Privacy Policy
         </h1>
 
-        <p class="text-lg text-gray-300 leading-relaxed max-w-3xl mx-auto">
-            Learn how Lynctel collects, uses, and protects your information while using our platform.
+        <p class="text-base sm:text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto">
+            This policy outlines how Lynctel collects, manages, uses, and safeguards your transactional and personal information across our platforms.
+        </p>
+        
+        <p class="text-xs text-slate-500 mt-6 font-mono">
+            Last Updated: May 2026
         </p>
 
     </div>
 </section>
 
+<!-- Main Documentation Layout -->
+<section class="bg-slate-50/50 py-20 min-h-screen">
+    <div class="max-w-6xl mx-auto px-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+            
+            <!-- Sticky Section Navigation (Desktop Only) -->
+            <aside class="hidden lg:block lg:col-span-4 sticky top-8 bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 px-3">On This Page</h3>
+                <nav class="space-y-1">
+                    <a href="#info-collection" class="block text-sm font-medium text-slate-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-slate-50 transition">1. Information Collection</a>
+                    <a href="#data-utilization" class="block text-sm font-medium text-slate-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-slate-50 transition">2. How Data is Utilized</a>
+                    <a href="#security-protocols" class="block text-sm font-medium text-slate-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-slate-50 transition">3. Security Infrastructure</a>
+                    <a href="#third-parties" class="block text-sm font-medium text-slate-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-slate-50 transition">4. Third-Party Disclosures</a>
+                    <a href="#user-rights" class="block text-sm font-medium text-slate-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-slate-50 transition">5. Your Controls & Rights</a>
+                    <a href="#contact-channels" class="block text-sm font-medium text-slate-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-slate-50 transition">6. Contact Information</a>
+                </nav>
+            </aside>
 
-<section class="bg-white py-24">
+            <!-- Legal Content Block -->
+            <div class="col-span-1 lg:col-span-8 space-y-16 bg-white p-6 sm:p-10 md:p-12 rounded-3xl border border-slate-200/60 shadow-sm">
+                
+                <!-- Section 1 -->
+                <div id="info-collection" class="scroll-mt-8">
+                    <div class="border-l-4 border-blue-600 pl-4 mb-4">
+                        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
+                            1. Information We Collect
+                        </h2>
+                    </div>
+                    <p class="text-slate-600 leading-relaxed mb-4">
+                        To offer a streamlined, responsive marketplace experience, Lynctel processes distinct details when you sign up, build storefront spaces, or finalize transactional flows:
+                    </p>
+                    <ul class="space-y-2.5 text-slate-600 list-inside list-none pl-1">
+                        <li class="flex items-start gap-2 text-sm sm:text-base">
+                            <span class="text-blue-500 mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                            <span><strong>Identity Profiles:</strong> Legal name, brand/merchant tags, and business identifiers.</span>
+                        </li>
+                        <li class="flex items-start gap-2 text-sm sm:text-base">
+                            <span class="text-blue-500 mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                            <span><strong>Contact Routes:</strong> Valid email profiles, active phone numbers, and physical fulfillment/billing destinations.</span>
+                        </li>
+                        <li class="flex items-start gap-2 text-sm sm:text-base">
+                            <span class="text-blue-500 mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                            <span><strong>System Telemetry:</strong> Log points, standard IP parameters, browser variants, and processing identifiers recorded natively via secure session cookies.</span>
+                        </li>
+                    </ul>
+                </div>
 
-    <div class="max-w-5xl mx-auto px-6">
+                <!-- Section 2 -->
+                <div id="data-utilization" class="scroll-mt-8">
+                    <div class="border-l-4 border-blue-600 pl-4 mb-4">
+                        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
+                            2. How We Use Your Information
+                        </h2>
+                    </div>
+                    <p class="text-slate-600 leading-relaxed mb-4">
+                        The acquired datasets serve targeted operational functions to ensure optimal platform maintenance:
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <h4 class="font-bold text-slate-800 text-sm mb-1">Fulfillment & Operations</h4>
+                            <p class="text-xs text-slate-500 leading-relaxed">Processing live orders, initializing custom merchant dashboard workflows, and enabling storefront layouts.</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <h4 class="font-bold text-slate-800 text-sm mb-1">Communication Management</h4>
+                            <p class="text-xs text-slate-500 leading-relaxed">Issuing order alerts, safety verifications, system adjustments, and platform resolution assistance.</p>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="space-y-14">
+                <!-- Section 3 -->
+                <div id="security-protocols" class="scroll-mt-8">
+                    <div class="border-l-4 border-blue-600 pl-4 mb-4">
+                        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
+                            3. Security Infrastructure
+                        </h2>
+                    </div>
+                    <p class="text-slate-600 leading-relaxed">
+                        Data storage pipelines execute inside restricted, authenticated environments. We utilize enterprise-grade Secure Socket Layer (SSL/TLS) encryptions across transmissions to mitigate unauthorized breaches, keeping local records siloed from direct public access layers.
+                    </p>
+                </div>
 
-            <div>
-                <h2 class="text-3xl font-black text-gray-900 mb-5">
-                    Information We Collect
-                </h2>
+                <!-- Section 4 -->
+                <div id="third-parties" class="scroll-mt-8">
+                    <div class="border-l-4 border-blue-600 pl-4 mb-4">
+                        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
+                            4. Third-Party Services
+                        </h2>
+                    </div>
+                    <p class="text-slate-600 leading-relaxed">
+                        Lynctel explicitly isolates data loops from third-party advertising clusters. Information sharing occurs solely with specialized partners executing direct logistical tasks—such as integrated financial clearers, processing gateways, and domestic courier delivery networks. These external nodes handle your information under strict data processing agreements.
+                    </p>
+                </div>
 
-                <p class="text-gray-600 leading-relaxed text-lg">
-                    We may collect personal information such as your name, email,
-                    phone number, shipping address, and payment details when you
-                    use Lynctel.
-                </p>
+                <!-- Section 5 -->
+                <div id="user-rights" class="scroll-mt-8">
+                    <div class="border-l-4 border-blue-600 pl-4 mb-4">
+                        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
+                            5. Your Controls & Rights
+                        </h2>
+                    </div>
+                    <p class="text-slate-600 leading-relaxed mb-4">
+                        You retain total sovereignty over your personal data footprint on Lynctel:
+                    </p>
+                    <div class="bg-slate-50 border rounded-2xl p-5 space-y-3">
+                        <p class="text-sm text-slate-600"><strong class="text-slate-800">Modification & Review:</strong> Direct profile values can be reviewed and amended inside your user settings anytime.</p>
+                        <p class="text-sm text-slate-600"><strong class="text-slate-800">Erasure Rights:</strong> You can request permanent database purges of active personal information records by filing a request with support.</p>
+                    </div>
+                </div>
+
+                <!-- Section 6 / Action Card -->
+                <div id="contact-channels" class="scroll-mt-8 pt-4">
+                    <div class="bg-gradient-to-br from-slate-900 to-slate-950 text-white rounded-2xl p-6 sm:p-8 shadow-md">
+                        <h3 class="text-xl font-bold mb-2">6. Have Questions?</h3>
+                        <p class="text-slate-400 text-sm mb-6 leading-relaxed">
+                            For technical transparency details, general security inquiries, or requests regarding data erasure, get in touch with our security compliance team.
+                        </p>
+                        <div class="flex flex-wrap gap-4">
+                            <a href="mailto:support@lynctel.com" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl shadow transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                </svg>
+                                Email Support
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-
-
-            <div>
-                <h2 class="text-3xl font-black text-gray-900 mb-5">
-                    How We Use Your Information
-                </h2>
-
-                <p class="text-gray-600 leading-relaxed text-lg">
-                    Your information is used to process orders, improve our services,
-                    provide support, enhance security, and personalize your shopping experience.
-                </p>
-            </div>
-
-
-            <div>
-                <h2 class="text-3xl font-black text-gray-900 mb-5">
-                    Security
-                </h2>
-
-                <p class="text-gray-600 leading-relaxed text-lg">
-                    Lynctel uses secure systems and technologies to protect your personal data
-                    from unauthorized access and misuse.
-                </p>
-            </div>
-
-
-            <div>
-                <h2 class="text-3xl font-black text-gray-900 mb-5">
-                    Third-Party Services
-                </h2>
-
-                <p class="text-gray-600 leading-relaxed text-lg">
-                    Some services such as payment providers and delivery partners may have
-                    their own privacy policies and practices.
-                </p>
-            </div>
-
-
-            <div>
-                <h2 class="text-3xl font-black text-gray-900 mb-5">
-                    Contact Us
-                </h2>
-
-                <p class="text-gray-600 leading-relaxed text-lg">
-                    If you have questions about this policy, contact Lynctel support anytime.
-                </p>
-            </div>
-
         </div>
-
     </div>
-
 </section>
-
 {% endblock %}
