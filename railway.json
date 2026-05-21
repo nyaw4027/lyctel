@@ -1,19 +1,6 @@
 {
     "build": {
-        "builder": "NIXPACKS",
-        "nixpacksPlan": {
-            "phases": {
-                "setup": {
-                    "nixPkgs": [
-                        "cairo",
-                        "pango",
-                        "glib",
-                        "libffi",
-                        "pkg-config"
-                    ]
-                }
-            }
-        }
+        "builder": "NIXPACKS"
     },
     "deploy": {
         "startCommand": "gunicorn ecommerce.wsgi",
