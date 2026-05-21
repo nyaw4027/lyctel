@@ -60,8 +60,11 @@ def directory(request):
 # ── PUBLIC: VENDOR SHOP PAGE ──────────────────────────────
 
 def shop_page(request, slug):
+    # Using select_related to optimize fetching profile data
     vendor = get_object_or_404(
-        Vendor, slug=slug, status=Vendor.Status.ACTIVE
+        Vendor.objects.select_related('profile'), 
+        slug=slug, 
+        status=Vendor.Status.ACTIVE
     )
 
     products = (
@@ -71,9 +74,9 @@ def shop_page(request, slug):
         .prefetch_related('images')
     )
 
-    search     = request.GET.get('q', '').strip()
+    search = request.GET.get('q', '').strip()
     filter_cat = request.GET.get('category', '').strip()
-    sort       = request.GET.get('sort', 'newest')
+    sort = request.GET.get('sort', 'newest')
 
     if search:
         products = products.filter(
@@ -83,14 +86,13 @@ def shop_page(request, slug):
         products = products.filter(category__slug=filter_cat)
 
     sort_map = {
-        'newest':     '-created_at',
-        'price_low':  'selling_price',
+        'newest': '-created_at',
+        'price_low': 'selling_price',
         'price_high': '-selling_price',
-        'name':       'name',
+        'name': 'name',
     }
     products = products.order_by(sort_map.get(sort, '-created_at'))
 
-    # FIXED: Changed alias from 'product_count' to 'total_items'
     categories = (
         Category.objects
         .filter(products__vendor=vendor, products__status='active', is_active=True)
@@ -99,14 +101,14 @@ def shop_page(request, slug):
     )
 
     return render(request, 'vendors/shop.html', {
-        'vendor':         vendor,
-        'products':       products,
-        'categories':     categories,
+        'vendor': vendor,
+        'products': products,
+        'categories': categories,
         'total_products': vendor.products.filter(status='active').count(),
-        'search':         search,
-        'filter_cat':     filter_cat,
-        'sort':           sort,
-        'cart_count':     _get_cart_count(request),
+        'search': search,
+        'filter_cat': filter_cat,
+        'sort': sort,
+        'cart_count': _get_cart_count(request),
     })
 
 
@@ -184,7 +186,7 @@ def pending(request):
     except Vendor.DoesNotExist:
         return redirect('vendors:apply')
     return render(request, 'vendors/pending.html', {'vendor': vendor})
-
+    
 #DASHBOARD VIEWS
 @vendor_required
 def dashboard(request):
