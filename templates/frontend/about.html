@@ -10,22 +10,20 @@
 <!-- HERO -->
 <section class="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white">
 
-    <!-- Background Glow -->
-    <div class="absolute top-0 left-0 w-96 h-96 bg-gold/10 rounded-full blur-3xl"></div>
-    <div class="absolute bottom-0 right-0 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl"></div>
+    <!-- Background Glow Rings -->
+    <div class="absolute top-0 left-0 w-96 h-96 bg-gold/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
     <div class="relative max-w-7xl mx-auto px-6 py-24 lg:py-32">
-
         <div class="grid lg:grid-cols-2 gap-16 items-center">
 
-            <!-- LEFT -->
+            <!-- LEFT CONTENT -->
             <div>
-
-                <span class="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-sm px-4 py-2 rounded-full mb-6 backdrop-blur-md">
+                <span class="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-sm px-4 py-2 rounded-full mb-6 backdrop-blur-md text-gold/90 font-medium">
                     ⚡ Ghana's Smart Marketplace
                 </span>
 
-                <h1 class="text-5xl lg:text-7xl font-black leading-tight mb-6">
+                <h1 class="text-5xl lg:text-7xl font-black leading-tight mb-6 tracking-tight">
                     {% if page %}
                         {{ page.title }}
                     {% else %}
@@ -33,7 +31,7 @@
                     {% endif %}
                 </h1>
 
-                <p class="text-lg text-gray-300 leading-relaxed mb-8 max-w-2xl">
+                <p class="text-lg text-gray-400 leading-relaxed mb-8 max-w-2xl">
                     {% if page %}
                         {{ page.subtitle }}
                     {% else %}
@@ -42,83 +40,65 @@
                 </p>
 
                 <div class="flex flex-wrap gap-4">
-
                     <a href="{% url 'products:list' %}"
-                       class="bg-gold hover:bg-yellow-400 text-black font-bold px-7 py-4 rounded-2xl transition-all duration-300 hover:scale-105 shadow-2xl">
+                       class="bg-gold hover:bg-yellow-400 text-black font-bold px-7 py-4 rounded-2xl transition-all duration-300 hover:scale-105 shadow-xl shadow-gold/10 flex items-center gap-2">
                         🛍️ Shop Now
                     </a>
 
                     <a href="#our-story"
-                       class="border border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 px-7 py-4 rounded-2xl font-semibold transition-all duration-300">
+                       class="border border-white/10 hover:border-white/30 bg-white/5 hover:bg-white/10 px-7 py-4 rounded-2xl font-semibold transition-all duration-300">
                         Learn More
                     </a>
-
                 </div>
 
-                <!-- STATS -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
-
+                <!-- METRICS GRID -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16">
                     {% if page and page.stats.all %}
-
                         {% for stat in page.stats.all %}
-                        <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center backdrop-blur-md">
-                            <h3 class="text-3xl font-black text-gold">
+                        <div class="bg-white/5 border border-white/5 rounded-2xl p-5 text-center backdrop-blur-sm hover:border-white/20 transition-colors duration-300">
+                            <h3 class="text-3xl font-black text-gold tracking-tight">
                                 {{ stat.value }}
                             </h3>
-
-                            <p class="text-sm text-gray-300 mt-2">
+                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mt-2">
                                 {{ stat.label }}
                             </p>
                         </div>
                         {% endfor %}
-
                     {% else %}
-
-                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
-                        <h3 class="text-3xl font-black text-gold">10K+</h3>
-                        <p class="text-sm text-gray-300 mt-2">Customers</p>
-                    </div>
-
-                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
-                        <h3 class="text-3xl font-black text-gold">500+</h3>
-                        <p class="text-sm text-gray-300 mt-2">Vendors</p>
-                    </div>
-
-                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
-                        <h3 class="text-3xl font-black text-gold">24/7</h3>
-                        <p class="text-sm text-gray-300 mt-2">Support</p>
-                    </div>
-
-                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
-                        <h3 class="text-3xl font-black text-gold">Fast</h3>
-                        <p class="text-sm text-gray-300 mt-2">Delivery</p>
-                    </div>
-
+                        <div class="bg-white/5 border border-white/5 rounded-2xl p-5 text-center backdrop-blur-sm">
+                            <h3 class="text-3xl font-black text-gold tracking-tight">10K+</h3>
+                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mt-2">Customers</p>
+                        </div>
+                        <div class="bg-white/5 border border-white/5 rounded-2xl p-5 text-center backdrop-blur-sm">
+                            <h3 class="text-3xl font-black text-gold tracking-tight">500+</h3>
+                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mt-2">Vendors</p>
+                        </div>
+                        <div class="bg-white/5 border border-white/5 rounded-2xl p-5 text-center backdrop-blur-sm">
+                            <h3 class="text-3xl font-black text-gold tracking-tight">24/7</h3>
+                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mt-2">Support</p>
+                        </div>
+                        <div class="bg-white/5 border border-white/5 rounded-2xl p-5 text-center backdrop-blur-sm">
+                            <h3 class="text-3xl font-black text-gold tracking-tight">Fast</h3>
+                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mt-2">Delivery</p>
+                        </div>
                     {% endif %}
-
                 </div>
-
             </div>
 
-            <!-- RIGHT -->
-            <div class="relative">
-
-                <div class="absolute inset-0 bg-gold/20 blur-3xl rounded-full"></div>
-
-                <div class="relative bg-white/5 border border-white/10 p-5 rounded-[2rem] backdrop-blur-md shadow-2xl">
-
+            <!-- RIGHT MEDIA CONTAINER -->
+            <div class="relative group">
+                <div class="absolute inset-0 bg-gold/10 blur-3xl rounded-full transition-opacity duration-500 group-hover:opacity-70 pointer-events-none"></div>
+                <div class="relative bg-slate-950/40 border border-white/10 p-4 rounded-[2.5rem] backdrop-blur-md shadow-2xl h-[550px] flex items-center justify-center overflow-hidden">
                     {% if page and page.hero_image %}
                         <img src="{{ page.hero_image.url }}"
-                             class="w-full h-[550px] object-cover rounded-[1.5rem]"
+                             class="max-w-full max-h-full w-auto h-auto object-contain rounded-[1.5rem] transition-transform duration-700 group-hover:scale-102"
                              alt="About Lynctel">
                     {% else %}
                         <img src="{% static 'images/about-hero.jpg' %}"
-                             class="w-full h-[550px] object-cover rounded-[1.5rem]"
+                             class="max-w-full max-h-full w-auto h-auto object-contain rounded-[1.5rem] transition-transform duration-700 group-hover:scale-102"
                              alt="About Lynctel">
                     {% endif %}
-
                 </div>
-
             </div>
 
         </div>
@@ -127,173 +107,139 @@
 
 
 <!-- OUR STORY -->
-<section id="our-story" class="bg-white py-24">
-
+<section id="our-story" class="bg-slate-50 py-24 border-b border-gray-200/50">
     <div class="max-w-7xl mx-auto px-6">
-
         <div class="grid lg:grid-cols-2 gap-16 items-center">
 
-            <!-- IMAGE -->
-            <div>
-
-                {% if page and page.story_image %}
-                    <img src="{{ page.story_image.url }}"
-                         class="rounded-[2rem] shadow-2xl w-full h-[550px] object-cover"
-                         alt="Our Story">
-                {% else %}
-                    <img src="{% static 'images/about-story.jpg' %}"
-                         class="rounded-[2rem] shadow-2xl w-full h-[550px] object-cover"
-                         alt="Our Story">
-                {% endif %}
-
+            <!-- LEFT MEDIA CONTAINER -->
+            <div class="relative order-2 lg:order-1 group">
+                <div class="bg-white border border-gray-200/80 p-4 rounded-[2.5rem] shadow-xl h-[550px] flex items-center justify-center overflow-hidden">
+                    {% if page and page.story_image %}
+                        <img src="{{ page.story_image.url }}"
+                             class="max-w-full max-h-full w-auto h-auto object-contain rounded-[1.5rem] transition-transform duration-700 group-hover:scale-102"
+                             alt="Our Story">
+                    {% else %}
+                        <img src="{% static 'images/about-story.jpg' %}"
+                             class="max-w-full max-h-full w-auto h-auto object-contain rounded-[1.5rem] transition-transform duration-700 group-hover:scale-102"
+                             alt="Our Story">
+                    {% endif %}
+                </div>
             </div>
 
-            <!-- CONTENT -->
-            <div>
-
+            <!-- RIGHT CONTENT -->
+            <div class="order-1 lg:order-2">
                 <span class="text-gold font-bold uppercase tracking-widest text-sm">
                     Our Story
                 </span>
 
-                <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6 leading-tight">
-
+                <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6 leading-tight tracking-tight">
                     {% if page %}
                         {{ page.story_title }}
                     {% else %}
                         Building The Future Of African Commerce
                     {% endif %}
-
                 </h2>
 
                 <p class="text-gray-600 text-lg leading-relaxed mb-6">
-
                     {% if page %}
                         {{ page.story_text }}
                     {% else %}
                         Lynctel was created to modernize ecommerce across Ghana and Africa by building a reliable platform where customers, vendors, and riders can thrive together.
                     {% endif %}
-
                 </p>
 
                 <div class="grid sm:grid-cols-2 gap-5 mt-10">
-
-                    <div class="bg-gray-50 border border-gray-100 rounded-3xl p-6 hover:shadow-xl transition-all duration-300">
-                        <div class="w-14 h-14 rounded-2xl bg-yellow-100 flex items-center justify-center mb-4 text-2xl">
+                    <div class="bg-white border border-gray-200/60 rounded-3xl p-6 hover:shadow-xl hover:border-gold/30 transition-all duration-300 group">
+                        <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center mb-4 text-xl font-bold transition-transform duration-300 group-hover:scale-110">
                             🚀
                         </div>
-
-                        <h3 class="font-bold text-gray-900 mb-2">
-                            Innovation
-                        </h3>
-
+                        <h3 class="font-bold text-gray-900 mb-2">Innovation</h3>
                         <p class="text-sm text-gray-500 leading-relaxed">
                             Smart technology powering modern ecommerce solutions.
                         </p>
                     </div>
 
-                    <div class="bg-gray-50 border border-gray-100 rounded-3xl p-6 hover:shadow-xl transition-all duration-300">
-                        <div class="w-14 h-14 rounded-2xl bg-yellow-100 flex items-center justify-center mb-4 text-2xl">
+                    <div class="bg-white border border-gray-200/60 rounded-3xl p-6 hover:shadow-xl hover:border-gold/30 transition-all duration-300 group">
+                        <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center mb-4 text-xl font-bold transition-transform duration-300 group-hover:scale-110">
                             🤝
                         </div>
-
-                        <h3 class="font-bold text-gray-900 mb-2">
-                            Trust
-                        </h3>
-
+                        <h3 class="font-bold text-gray-900 mb-2">Trust</h3>
                         <p class="text-sm text-gray-500 leading-relaxed">
                             Safe transactions and reliable customer experience.
                         </p>
                     </div>
-
                 </div>
-
             </div>
 
         </div>
-
     </div>
 </section>
 
 
 <!-- FEATURES -->
-<section class="bg-gray-50 py-24">
-
+<section class="bg-white py-24">
     <div class="max-w-7xl mx-auto px-6">
 
         <div class="text-center max-w-3xl mx-auto mb-16">
-
             <span class="text-gold font-bold uppercase tracking-widest text-sm">
                 Why Choose Lynctel
             </span>
-
-            <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6">
+            <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6 tracking-tight">
                 Built For Modern Commerce
             </h2>
-
-            <p class="text-lg text-gray-600 leading-relaxed">
+            <p class="text-lg text-gray-500 leading-relaxed">
                 Everything needed for seamless online shopping and business growth.
             </p>
-
         </div>
 
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-
             {% if page and page.features.all %}
-
                 {% for feature in page.features.all %}
-                <div class="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
-
-                    <div class="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center text-3xl mb-6">
+                <div class="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:bg-white hover:border-gold/30 transition-all duration-300 hover:-translate-y-1 group">
+                    <div class="w-14 h-14 bg-amber-500/5 text-amber-600 rounded-2xl flex items-center justify-center text-2xl mb-6 transition-transform duration-300 group-hover:scale-110">
                         {{ feature.icon }}
                     </div>
-
-                    <h3 class="font-black text-xl text-gray-900 mb-4">
+                    <h3 class="font-black text-xl text-gray-900 mb-3">
                         {{ feature.title }}
                     </h3>
-
-                    <p class="text-gray-600 leading-relaxed text-sm">
+                    <p class="text-gray-500 leading-relaxed text-sm">
                         {{ feature.description }}
                     </p>
-
                 </div>
                 {% endfor %}
-
             {% else %}
+                <div class="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 hover:border-gold/30 hover:bg-white transition-all duration-300 group">
+                    <div class="text-3xl mb-5 transition-transform duration-300 group-hover:scale-110">🛍️</div>
+                    <h3 class="font-black text-xl mb-3 text-gray-900">Multi Vendor</h3>
+                    <p class="text-gray-500 text-sm leading-relaxed">
+                        Vendors manage stores and products easily.
+                    </p>
+                </div>
 
-            <div class="bg-white rounded-[2rem] p-8 border border-gray-100">
-                <div class="text-4xl mb-5">🛍️</div>
-                <h3 class="font-black text-xl mb-4">Multi Vendor</h3>
-                <p class="text-gray-600 text-sm">
-                    Vendors manage stores and products easily.
-                </p>
-            </div>
+                <div class="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 hover:border-gold/30 hover:bg-white transition-all duration-300 group">
+                    <div class="text-3xl mb-5 transition-transform duration-300 group-hover:scale-110">🚚</div>
+                    <h3 class="font-black text-xl mb-3 text-gray-900">Fast Delivery</h3>
+                    <p class="text-gray-500 text-sm leading-relaxed">
+                        Reliable rider system with fast logistics.
+                    </p>
+                </div>
 
-            <div class="bg-white rounded-[2rem] p-8 border border-gray-100">
-                <div class="text-4xl mb-5">🚚</div>
-                <h3 class="font-black text-xl mb-4">Fast Delivery</h3>
-                <p class="text-gray-600 text-sm">
-                    Reliable rider system with fast logistics.
-                </p>
-            </div>
+                <div class="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 hover:border-gold/30 hover:bg-white transition-all duration-300 group">
+                    <div class="text-3xl mb-5 transition-transform duration-300 group-hover:scale-110">🔒</div>
+                    <h3 class="font-black text-xl mb-3 text-gray-900">Secure Payments</h3>
+                    <p class="text-gray-500 text-sm leading-relaxed">
+                        Safe checkout with mobile money integration.
+                    </p>
+                </div>
 
-            <div class="bg-white rounded-[2rem] p-8 border border-gray-100">
-                <div class="text-4xl mb-5">🔒</div>
-                <h3 class="font-black text-xl mb-4">Secure Payments</h3>
-                <p class="text-gray-600 text-sm">
-                    Safe checkout with mobile money integration.
-                </p>
-            </div>
-
-            <div class="bg-white rounded-[2rem] p-8 border border-gray-100">
-                <div class="text-4xl mb-5">📊</div>
-                <h3 class="font-black text-xl mb-4">Analytics</h3>
-                <p class="text-gray-600 text-sm">
-                    Powerful tools for business growth and reporting.
-                </p>
-            </div>
-
+                <div class="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 hover:border-gold/30 hover:bg-white transition-all duration-300 group">
+                    <div class="text-3xl mb-5 transition-transform duration-300 group-hover:scale-110">📊</div>
+                    <h3 class="font-black text-xl mb-3 text-gray-900">Analytics</h3>
+                    <p class="text-gray-500 text-sm leading-relaxed">
+                        Powerful tools for business growth and reporting.
+                    </p>
+                </div>
             {% endif %}
-
         </div>
 
     </div>
@@ -301,115 +247,104 @@
 
 
 <!-- TEAM -->
-<section class="bg-white py-24">
+<section class="bg-slate-950 py-24 border-t border-white/5 relative overflow-hidden">
+    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 h-96 bg-gold/5 rounded-full blur-3xl pointer-events-none"></div>
 
-    <div class="max-w-7xl mx-auto px-6">
-
+    <div class="relative max-w-7xl mx-auto px-6">
         <div class="text-center max-w-3xl mx-auto mb-16">
-
             <span class="text-gold font-bold uppercase tracking-widest text-sm">
                 Leadership
             </span>
-
-            <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6">
+            <h2 class="text-4xl lg:text-5xl font-black text-white mt-4 mb-6 tracking-tight">
                 Meet The Team
             </h2>
-
-            <p class="text-lg text-gray-600 leading-relaxed">
+            <p class="text-lg text-gray-400 leading-relaxed">
                 Passionate innovators building the next generation of ecommerce.
             </p>
-
         </div>
 
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-
             {% if page and page.team.all %}
-
                 {% for member in page.team.all %}
-                <div class="bg-gray-50 rounded-[2rem] overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+                <div class="bg-white/5 rounded-[2rem] overflow-hidden border border-white/10 hover:border-gold/40 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+                    
+                    <!-- IMAGE CONTAINER (SAFE BOUNDARIES) -->
+                    <div class="w-full h-80 overflow-hidden relative bg-slate-900/50 flex items-center justify-center p-4">
+                        {% if member.image %}
+                            <img src="{{ member.image.url }}"
+                                 class="max-w-full max-h-full w-auto h-auto object-contain rounded-xl transition-transform duration-500 group-hover:scale-102"
+                                 alt="{{ member.name }}"
+                                 loading="lazy">
+                        {% else %}
+                            <div class="flex flex-col items-center justify-center text-center p-6">
+                                <div class="w-20 h-20 rounded-full bg-gold/10 text-gold flex items-center justify-center text-2xl font-bold mb-3">
+                                    {{ member.name|slice:":1" }}
+                                </div>
+                                <span class="text-xs text-gray-500">No Image Uploaded</span>
+                            </div>
+                        {% endif %}
+                    </div>
 
-                    {% if member.image %}
-                    <img src="{{ member.image.url }}"
-                         class="w-full h-80 object-cover"
-                         alt="{{ member.name }}">
-                    {% endif %}
-
-                    <div class="p-6 text-center">
-
-                        <h3 class="text-xl font-black text-gray-900">
+                    <!-- MEMBER DETAILS -->
+                    <div class="p-6 text-center border-t border-white/5 bg-slate-950/20">
+                        <h3 class="text-xl font-black text-white transition-colors group-hover:text-gold">
                             {{ member.name }}
                         </h3>
-
-                        <p class="text-gold font-semibold mt-2">
+                        <p class="text-gold/90 font-semibold text-sm mt-1">
                             {{ member.role }}
                         </p>
-
-                        <p class="text-sm text-gray-500 leading-relaxed mt-4">
-                            {{ member.bio }}
-                        </p>
-
+                        {% if member.bio %}
+                            <p class="text-sm text-gray-400 leading-relaxed mt-4">
+                                {{ member.bio }}
+                            </p>
+                        {% endif %}
                     </div>
 
                 </div>
                 {% endfor %}
-
             {% else %}
-
-            <div class="col-span-full text-center py-16 text-gray-400">
-                No team members added yet.
-            </div>
-
+                <div class="col-span-full text-center py-16 text-gray-500 border border-dashed border-white/10 rounded-[2rem]">
+                    ✨ Executive leadership profiles currently being synchronized.
+                </div>
             {% endif %}
-
         </div>
-
     </div>
 </section>
 
 
 <!-- CTA -->
-<section class="relative overflow-hidden bg-black text-white py-24">
-
-    <div class="absolute inset-0 bg-gold/10 blur-3xl"></div>
+<section class="relative overflow-hidden bg-black text-white py-24 border-t border-white/5">
+    <div class="absolute inset-0 bg-gold/5 blur-3xl pointer-events-none"></div>
 
     <div class="relative max-w-5xl mx-auto px-6 text-center">
-
-        <h2 class="text-4xl lg:text-6xl font-black leading-tight mb-6">
-
+        <h2 class="text-4xl lg:text-6xl font-black leading-tight mb-6 tracking-tight">
             {% if page %}
                 {{ page.cta_title }}
             {% else %}
                 Ready To Experience Lynctel?
             {% endif %}
-
         </h2>
 
-        <p class="text-lg text-gray-300 leading-relaxed max-w-3xl mx-auto mb-10">
-
+        <p class="text-lg text-gray-400 leading-relaxed max-w-3xl mx-auto mb-10">
             {% if page %}
                 {{ page.cta_text }}
             {% else %}
                 Join thousands of customers and vendors already growing with Lynctel.
             {% endif %}
-
         </p>
 
         <div class="flex flex-wrap justify-center gap-5">
-
             <a href="{% url 'products:list' %}"
-               class="bg-gold hover:bg-yellow-400 text-black font-bold px-8 py-4 rounded-2xl transition-all duration-300 hover:scale-105 shadow-2xl">
+               class="bg-gold hover:bg-yellow-400 text-black font-bold px-8 py-4 rounded-2xl transition-all duration-300 hover:scale-105 shadow-xl shadow-gold/10">
                 Start Shopping
             </a>
 
             <a href="{% url 'vendors:apply' %}"
-               class="border border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 font-bold px-8 py-4 rounded-2xl transition-all duration-300">
+               class="border border-white/10 hover:border-white/30 bg-white/5 hover:bg-white/10 font-semibold px-8 py-4 rounded-2xl transition-all duration-300">
                 Become A Vendor
             </a>
-
         </div>
-
     </div>
-
 </section>
 
 {% endblock %}
