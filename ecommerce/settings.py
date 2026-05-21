@@ -1,17 +1,17 @@
 from pathlib import Path
 import os
+from decouple import config
+import dj_database_url
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-CHANGE_ME')
-
+# ── Security & Debug ───────────────────────────────────────
+# These values are now fetched from your .env file or environment variables
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-CHANGE_ME-IN-PRODUCTION')
 DEBUG = False
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost','lynctel.up.railway.app']
-
-# ── Custom User Model ──────────────────────────────────────
-# This tells Django to use YOUR User model instead of the default one
-AUTH_USER_MODEL = 'ecommerce.User'
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost,lynctel.up.railway.app').split(',')
 
 # ── Apps ───────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -21,7 +21,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'ecommerce',   # ← MUST be first — holds the custom User model
+    'ecommerce',   # MUST be first — holds the custom User model
     'products',
     'cart',
     'order',
@@ -33,13 +33,12 @@ INSTALLED_APPS = [
     'dashboard',
     'reviews',
     'vendors',
-    
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # Added for production static serving
     'django.contrib.sessions.middleware.SessionMiddleware',
-       
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -53,7 +52,7 @@ ROOT_URLCONF = 'ecommerce.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],   # ← looks in your /templates folder
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -68,26 +67,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ecommerce.wsgi.application'
 
-if DEBUG:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('NAME'),
-            'USER': os.environ.get('USER'),
-            'PASSWORD': os.environ.get('PASSWORD'),
-            'HOST': os.environ.get('HOST'),
-            'PORT': os.environ.get('PORT'),
-        }
-    }
+# ── Database ───────────────────────────────────────────────
+# Uses DATABASE_URL from .env/env vars, defaults to SQLite locally
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600
+    )
+}
 
-# ── Password validation ────────────────────────────────────
+# ── Password & Auth ────────────────────────────────────────
+AUTH_USER_MODEL = 'ecommerce.User'
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -97,80 +87,34 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # ── Internationalisation ───────────────────────────────────
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE     = 'Africa/Accra'   # ← correct timezone for Ghana 🇬🇭
-USE_I18N      = True
-USE_TZ        = True
+TIME_ZONE = 'Africa/Accra'
+USE_I18N = True
+USE_TZ = True
 
-# ── Static files ───────────────────────────────────────────
-STATIC_URL  = '/static/'
+# ── Static & Media Files ───────────────────────────────────
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']  # ← looks in your /static folder
+STATICFILES_DIRS = [BASE_DIR / 'static']
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
-# ── Media files (product images, etc.) ────────────────────
-MEDIA_URL  = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
+# S3 Configuration via Environment Variables
 if not DEBUG:
-    # DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    # STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
-    AWS_QUERYSTRING_AUTH = False
-    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_FILE_OVERWRITE = False
-    AWS_DEFAULT_ACL = None
-    
+    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
     AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-
-    # Static and Media Files Configuration
+    
     STORAGES = {
-        'staticfiles': {
-            'BACKEND': 'storages.backends.s3boto3.S3StaticStorage',
-        },
-        'default': {
-            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
-        },
+        'staticfiles': {'BACKEND': 'storages.backends.s3boto3.S3StaticStorage'},
+        'default': {'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage'},
     }
-     # Static and Media URLs
     STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
-     # S3 Object Parameters (optional, for caching)
-    AWS_S3_OBJECT_PARAMETERS = {
-        'CacheControl': 'max-age=86400',  # Cache static files for 1 day
-    }
-
-
-# ── Auth redirects ─────────────────────────────────────────
-LOGIN_URL          = '/accounts/login/'
+# ── Other settings ─────────────────────────────────────────
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
-
-# ── Default primary key ────────────────────────────────────
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-ASGI_APPLICATION = "ecommerce.asgi.application"
-
-# ── Cache ──────────────────────────────────────────────────
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "unique-eta-cache",
-    }
-}
-
-# ── CORS ───────────────────────────────────────────────────
-
-
-# ── Flutterwave (Payment) ──────────────────────────────────
-#FLW_PUBLIC_KEY     = 'FLWPUBK_TEST-xxxxx'
-#FLW_SECRET_KEY     = 'FLWSECK_TEST-xxxxx'
-#FLW_WEBHOOK_SECRET = 'my-secret-string'
-
-# ── Google Maps ────────────────────────────────────────────
-GOOGLE_MAPS_API_KEY = "YOUR_API_KEY"
-
-
-CSRF_TRUSTED_ORIGINS = [
-    'https://lynctel.up.railway.app'
-]
+CSRF_TRUSTED_ORIGINS = ['https://lynctel.up.railway.app']
