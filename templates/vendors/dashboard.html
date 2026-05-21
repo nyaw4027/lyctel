@@ -1,359 +1,554 @@
 {% extends "base.html" %}
-{% load static %}
+{% block title %}{{ vendor.shop_name }} — Vendor Dashboard{% endblock %}
 
-{% block title %}How It Works — Lynctel{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  .tab-btn { transition: all .2s; }
+  .tab-btn.active { background:#0F1B2D; color:#fff; }
+  .stat-card { transition: transform .2s, box-shadow .2s; }
+  .stat-card:hover { transform:translateY(-3px); box-shadow:0 12px 32px rgba(15,27,45,.10); }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .fade-in { animation: fadeUp .4s ease both; }
+</style>
+{% endblock %}
 
 {% block content %}
+<div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
 
-<!-- HERO -->
-<section class="bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white overflow-hidden relative">
+  <!-- ── HEADER ──────────────────────────────────────── -->
+  <div class="flex items-center justify-between flex-wrap gap-4 mb-8 fade-in">
+    <div class="flex items-center gap-4">
+      {% if vendor.logo %}
+      <img src="{{ vendor.logo.url }}"
+           class="w-14 h-14 rounded-2xl object-cover border border-gray-100 shadow-sm"/>
+      {% else %}
+      <div class="w-14 h-14 rounded-2xl bg-navy flex items-center justify-center
+                  text-white font-display font-700 text-xl">
+        {{ vendor.shop_name|first|upper }}
+      </div>
+      {% endif %}
+      <div>
+        <h1 class="font-display font-700 text-xl text-navy">{{ vendor.shop_name }}</h1>
+        <div class="flex items-center gap-2 mt-0.5">
+          <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+          <span class="text-xs text-green-600 font-semibold">Active Shop</span>
+          <span class="text-gray-300">·</span>
+          <a href="{% url 'vendors:shop' vendor.slug %}"
+             class="text-xs text-gold-dark hover:underline" target="_blank">
+            View Shop →
+          </a>
+        </div>
+      </div>
+    </div>
+    <a href="{% url 'vendors:product_add' %}"
+       class="flex items-center gap-2 bg-navy hover:bg-navy-700 text-white
+              font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors btn-press">
+      + Add Product
+    </a>
+  </div>
 
-    <div class="absolute inset-0 opacity-20">
-        <div class="absolute top-0 left-0 w-96 h-96 bg-gold/20 blur-3xl rounded-full"></div>
-        <div class="absolute bottom-0 right-0 w-96 h-96 bg-gold/10 blur-3xl rounded-full"></div>
+  <!-- ── STATS GRID ──────────────────────────────────── -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+
+    <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Revenue</p>
+      <p class="font-display font-700 text-2xl text-navy">GHS {{ total_revenue|floatformat:2 }}</p>
+      <p class="text-xs text-green-600 mt-1 font-medium">
+        Today: GHS {{ revenue_today|floatformat:2 }}
+      </p>
     </div>
 
-    <div class="relative max-w-7xl mx-auto px-6 py-24 lg:py-32">
-
-        <div class="max-w-4xl mx-auto text-center">
-
-            <!-- Premium App Logo Badge -->
-            <span class="inline-flex items-center gap-2.5 bg-white/10 border border-white/10 pl-3 pr-5 py-2 rounded-full text-sm font-medium mb-8 backdrop-blur-md">
-                <img src="{% static 'logo.png' %}" 
-                     alt="Lynctel Logo" 
-                     class="w-5 h-5 object-contain rounded-md">
-                Smart Ecommerce Experience
-            </span>
-
-            <h1 class="text-5xl lg:text-7xl font-black leading-tight mb-8">
-                How
-                <span class="text-gold">Lynctel</span>
-                Works
-            </h1>
-
-            <p class="text-xl text-gray-300 leading-relaxed max-w-3xl mx-auto">
-                Lynctel connects customers, vendors, and riders into one seamless
-                digital marketplace built for modern commerce in Ghana.
-            </p>
-
-        </div>
-
+    <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Pending Payout</p>
+      <p class="font-display font-700 text-2xl text-orange-500">GHS {{ pending_payout|floatformat:2 }}</p>
+      <p class="text-xs text-gray-400 mt-1">Awaiting transfer</p>
     </div>
 
-</section>
-
-
-<!-- HOW IT WORKS STEP-BY-STEP -->
-<section class="bg-white py-24">
-
-    <div class="max-w-7xl mx-auto px-6">
-
-        <div class="text-center max-w-3xl mx-auto mb-20">
-            <span class="text-gold font-bold uppercase tracking-widest text-sm">
-                Step By Step
-            </span>
-            <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6">
-                Shopping Made Easy
-            </h2>
-            <p class="text-lg text-gray-600 leading-relaxed">
-                Experience fast and secure online shopping from discovery to delivery.
-            </p>
-        </div>
-
-        <div class="grid lg:grid-cols-4 md:grid-cols-2 gap-8 relative">
-
-            <!-- STEP 1 -->
-            <div class="group relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:bg-white hover:shadow-2xl transition-all duration-300">
-                <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
-                    1
-                </div>
-                <div class="mt-6">
-                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center mb-6 text-gold group-hover:bg-gold group-hover:text-black transition-all duration-300">
-                        <!-- SVG Search Icon -->
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-black text-gray-900 mb-4">
-                        Browse Products
-                    </h3>
-                    <p class="text-gray-600 leading-relaxed">
-                        Explore thousands of products from trusted vendors and shops across Ghana.
-                    </p>
-                </div>
-            </div>
-
-            <!-- STEP 2 -->
-            <div class="group relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:bg-white hover:shadow-2xl transition-all duration-300">
-                <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
-                    2
-                </div>
-                <div class="mt-6">
-                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center mb-6 text-gold group-hover:bg-gold group-hover:text-black transition-all duration-300">
-                        <!-- SVG Cart Icon -->
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 0a2 2 0 100 4 2 2 0 000-4z"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-black text-gray-900 mb-4">
-                        Add To Cart
-                    </h3>
-                    <p class="text-gray-600 leading-relaxed">
-                        Select products, choose quantities, and securely proceed to checkout.
-                    </p>
-                </div>
-            </div>
-
-            <!-- STEP 3 -->
-            <div class="group relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:bg-white hover:shadow-2xl transition-all duration-300">
-                <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
-                    3
-                </div>
-                <div class="mt-6">
-                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center mb-6 text-gold group-hover:bg-gold group-hover:text-black transition-all duration-300">
-                        <!-- SVG Credit Card Icon -->
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-black text-gray-900 mb-4">
-                        Secure Payment
-                    </h3>
-                    <p class="text-gray-600 leading-relaxed">
-                        Pay safely using Mobile Money, cards, or other supported payment methods.
-                    </p>
-                </div>
-            </div>
-
-            <!-- STEP 4 -->
-            <div class="group relative bg-gray-50 rounded-[2rem] p-8 border border-gray-100 hover:bg-white hover:shadow-2xl transition-all duration-300">
-                <div class="absolute -top-5 left-8 w-12 h-12 bg-gold text-black rounded-2xl flex items-center justify-center font-black text-lg shadow-xl">
-                    4
-                </div>
-                <div class="mt-6">
-                    <div class="w-20 h-20 rounded-3xl bg-gold/10 flex items-center justify-center mb-6 text-gold group-hover:bg-gold group-hover:text-black transition-all duration-300">
-                        <!-- SVG Delivery Truck Icon -->
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zm12 0a2 2 0 11-4 0 2 2 0 014 0zm0-2V9a2 2 0 00-2-2h-3.5l-1.1-2.2A2 2 0 0012.6 3H8a2 2 0 00-2 2v10h15zm-7-6H8"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-black text-gray-900 mb-4">
-                        Fast Delivery
-                    </h3>
-                    <p class="text-gray-600 leading-relaxed">
-                        Riders deliver your orders directly to your location quickly and safely.
-                    </p>
-                </div>
-            </div>
-
-        </div>
-
+    <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Orders</p>
+      <p class="font-display font-700 text-2xl text-navy">{{ total_orders }}</p>
+      <p class="text-xs text-blue-600 mt-1 font-medium">Today: {{ orders_today }}</p>
     </div>
 
-</section>
+    <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Paid Out</p>
+      <p class="font-display font-700 text-2xl text-green-600">GHS {{ paid_out|floatformat:2 }}</p>
+      {% if low_stock_count > 0 %}
+      <p class="text-xs text-red-500 mt-1 font-medium">⚠ {{ low_stock_count }} low stock</p>
+      {% else %}
+      <p class="text-xs text-gray-400 mt-1">All confirmed</p>
+      {% endif %}
+    </div>
 
+  </div>
 
-<!-- FOR VENDORS -->
-<section class="bg-gray-50 py-24">
+  <!-- ── SALES CHART ─────────────────────────────────── -->
+  <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-8 fade-in">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-display font-700 text-navy">Sales — Last 7 Days</h2>
+      {% if top_product %}
+      <span class="text-xs text-gray-400">
+        Top product: <strong class="text-navy">{{ top_product.name }}</strong>
+      </span>
+      {% endif %}
+    </div>
+    <canvas id="salesChart" height="90"></canvas>
+  </div>
 
-    <div class="max-w-7xl mx-auto px-6">
+  <!-- ── TABS ────────────────────────────────────────── -->
+  <div class="flex gap-2 flex-wrap mb-6">
+    {% for tab_id, tab_label in tabs %}
+    <a href="?tab={{ tab_id }}"
+       class="tab-btn px-5 py-2 rounded-xl text-sm font-semibold border border-gray-200
+              {% if current_tab == tab_id %}active{% else %}bg-white text-gray-600 hover:border-navy hover:text-navy{% endif %}">
+      {% if tab_id == 'products' %}📦{% elif tab_id == 'orders' %}🧾{% elif tab_id == 'earnings' %}💰{% elif tab_id == 'settings' %}⚙️{% endif %}
+      {{ tab_label }}
+    </a>
+    {% endfor %}
+  </div>
 
-        <div class="grid lg:grid-cols-2 gap-16 items-center">
+  <!-- ═══════════════════════════════════════════════════
+        TAB: PRODUCTS
+  ═══════════════════════════════════════════════════ -->
+  {% if current_tab == 'products' %}
+  <div class="fade-in">
 
-            <!-- GENERATED PORTAL UI GRAPHIC IMAGE -->
-            <div>
-                <img src="https://cdn.dribbble.com/userupload/44699091/file/a5bcc6025daa55fcf9f14d2674c2ab65.jpeg"
-                     alt="Lynctel Vendor Portal Dashboard UI"
-                     class="rounded-[2rem] shadow-2xl w-full h-[480px] object-cover border border-gray-200">
-            </div>
+    {% if low_stock_products %}
+    <div class="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-5
+                flex items-center gap-3 text-sm text-orange-700">
+      ⚠️ <span><strong>{{ low_stock_count }} product{{ low_stock_count|pluralize }}</strong> running low on stock.</span>
+    </div>
+    {% endif %}
 
-            <!-- CONTENT -->
-            <div>
-
-                <span class="text-gold font-bold uppercase tracking-widest text-sm">
-                    For Vendors
-                </span>
-
-                <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-8 leading-tight">
-                    Grow Your Business Online
-                </h2>
-
-                <div class="space-y-6">
-
-                    <div class="flex gap-5">
-                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-gold flex-shrink-0">
-                            <!-- Store Icon -->
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-black text-gray-900 mb-2">
-                                Open Your Shop
-                            </h3>
-                            <p class="text-gray-600 leading-relaxed">
-                                Create your vendor account and set up your online store in minutes.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-5">
-                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-gold flex-shrink-0">
-                            <!-- Package Icon -->
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-black text-gray-900 mb-2">
-                                Upload Products
-                            </h3>
-                            <p class="text-gray-600 leading-relaxed">
-                                Add products, manage inventory, prices, and categories from your dashboard.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-5">
-                        <div class="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center text-gold flex-shrink-0">
-                            <!-- Trending/Analytics Icon -->
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-black text-gray-900 mb-2">
-                                Track Sales
-                            </h3>
-                            <p class="text-gray-600 leading-relaxed">
-                                Monitor orders, earnings, customers, and analytics in real-time.
-                            </p>
-                        </div>
-                    </div>
-
+    {% if products %}
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+            <th class="px-5 py-3 text-left font-semibold">Product</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Category</th>
+            <th class="px-5 py-3 text-right font-semibold">Price</th>
+            <th class="px-5 py-3 text-right font-semibold">Stock</th>
+            <th class="px-5 py-3 text-center font-semibold">Status</th>
+            <th class="px-5 py-3 text-right font-semibold">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for product in products %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                {% with product.images.first as img %}
+                {% if img %}
+                <img src="{{ img.image.url }}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0"/>
+                {% else %}
+                <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-lg flex-shrink-0">📦</div>
+                {% endif %}
+                {% endwith %}
+                <div>
+                  <p class="font-semibold text-navy leading-tight">{{ product.name }}</p>
+                  <p class="text-xs text-gray-400">{{ product.created_at|date:"M d, Y" }}</p>
                 </div>
-
-                <!-- Verified Global Routing Link -->
-                <a href="{% url 'apply' %}"
-                   class="inline-flex items-center gap-3 bg-gold hover:scale-105 transition-all duration-300 text-black font-bold px-8 py-4 rounded-2xl mt-10 shadow-xl">
-                    Become A Vendor
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                    </svg>
+              </div>
+            </td>
+            <td class="px-5 py-3.5 text-gray-500 hidden md:table-cell">
+              {{ product.category.name|default:"—" }}
+            </td>
+            <td class="px-5 py-3.5 text-right font-display font-700 text-navy">
+              GHS {{ product.selling_price }}
+            </td>
+            <td class="px-5 py-3.5 text-right">
+              <span class="font-semibold
+                {% if product.stock_qty == 0 %}text-red-500
+                {% elif product.stock_qty <= 5 %}text-orange-500
+                {% else %}text-navy{% endif %}">
+                {{ product.stock_qty }}
+              </span>
+            </td>
+            <td class="px-5 py-3.5 text-center">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                {% if product.status == 'active' %}bg-green-100 text-green-700
+                {% else %}bg-gray-100 text-gray-500{% endif %}">
+                {{ product.get_status_display }}
+              </span>
+            </td>
+            <td class="px-5 py-3.5 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <a href="{% url 'vendors:product_edit' product.pk %}"
+                   class="text-xs border border-gray-200 hover:border-navy text-gray-600 hover:text-navy font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                  Edit
                 </a>
+                <form method="POST" action="{% url 'vendors:product_delete' product.pk %}"
+                      onsubmit="return confirm('Delete {{ product.name }}?')">
+                  {% csrf_token %}
+                  <button type="submit"
+                          class="text-xs border border-red-200 hover:bg-red-500 hover:border-red-500 text-red-500 hover:text-white font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                    Delete
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
+      <p class="text-5xl mb-4">📦</p>
+      <p class="font-display font-700 text-navy mb-2">No products yet</p>
+      <p class="text-gray-400 text-sm mb-5">Start adding products to your shop.</p>
+      <a href="{% url 'vendors:product_add' %}"
+         class="inline-block bg-navy text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-navy-700 transition-colors">
+        + Add First Product
+      </a>
+    </div>
+    {% endif %}
+  </div>
 
-            </div>
-
+  <!-- ═══════════════════════════════════════════════════
+        TAB: ORDERS
+  ═══════════════════════════════════════════════════ -->
+  {% elif current_tab == 'orders' %}
+  <div class="fade-in">
+    
+    <!-- ── SOCIAL LINKS BANNER INTEGRATION (Fixed placement out of the table element) ── -->
+    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 rounded-2xl p-6 mb-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-700">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-xl backdrop-blur-sm">
+          🌐
         </div>
-
+        <div>
+          <h3 class="font-display font-700 text-white text-base">Storefront Social Networks</h3>
+          <p class="text-xs text-gray-300 mt-0.5">Connect WhatsApp, Instagram, Facebook, and TikTok directly to your profile.</p>
+        </div>
+      </div>
+      <a href="{% url 'vendors:settings' %}?tab=settings&pane=social" 
+         class="inline-flex items-center justify-center bg-white hover:bg-gray-100 text-slate-900 font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-sm whitespace-nowrap">
+        Configure Links →
+      </a>
     </div>
 
-</section>
+    {% if recent_orders %}
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+            <th class="px-5 py-3 text-left font-semibold">Order</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Product</th>
+            <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Qty</th>
+            <th class="px-5 py-3 text-right font-semibold">Amount</th>
+            <th class="px-5 py-3 text-center font-semibold">Status</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for item in recent_orders %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-5 py-3.5 font-bold text-gold-dark">
+              {{ item.order.order_ref }}
+            </td>
+            <td class="px-5 py-3.5 text-navy hidden md:table-cell">
+              {{ item.product_name }}
+            </td>
+            <td class="px-5 py-3.5 text-right text-gray-600 hidden md:table-cell">
+              × {{ item.quantity }}
+            </td>
+            <td class="px-5 py-3.5 text-right font-display font-700 text-navy">
+              GHS {{ item.subtotal }}
+            </td>
+            <td class="px-5 py-3.5 text-center">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                {% if item.order.status == 'delivered' %}bg-green-100 text-green-700
+                {% elif item.order.status == 'dispatched' %}bg-blue-100 text-blue-700
+                {% elif item.order.status == 'pending' %}bg-yellow-100 text-yellow-700
+                {% else %}bg-gray-100 text-gray-500{% endif %}">
+                {{ item.order.get_status_display }}
+              </span>
+            </td>
+            <td class="px-5 py-3.5 text-gray-400 text-xs hidden md:table-cell">
+              {{ item.order.created_at|date:"M d, Y" }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
+      <p class="text-5xl mb-4">🧾</p>
+      <p class="font-display font-700 text-navy mb-1">No orders yet</p>
+      <p class="text-gray-400 text-sm">Orders will appear here once customers start buying.</p>
+    </div>
+    {% endif %}
+  </div>
 
+  <!-- ═══════════════════════════════════════════════════
+        TAB: EARNINGS
+  ═══════════════════════════════════════════════════ -->
+  {% elif current_tab == 'earnings' %}
+  <div class="fade-in">
 
-<!-- FEATURES (Why Lynctel) -->
-<section class="bg-white py-24">
-
-    <div class="max-w-7xl mx-auto px-6">
-
-        <div class="text-center max-w-3xl mx-auto mb-20">
-            <span class="text-gold font-bold uppercase tracking-widest text-sm">
-                Why Lynctel
-            </span>
-            <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mt-4 mb-6">
-                Built For Modern Commerce
-            </h2>
-        </div>
-
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-
-            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
-                <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-100 text-gray-900 flex items-center justify-center mb-6 group-hover:bg-gold group-hover:text-black transition-all duration-300">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                    </svg>
-                </div>
-                <h3 class="text-xl font-black mb-3 text-gray-900">Secure Payments</h3>
-                <p class="text-gray-600 text-sm leading-relaxed">
-                    Protected transactions and trusted payment systems.
-                </p>
-            </div>
-
-            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
-                <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-100 text-gray-900 flex items-center justify-center mb-6 group-hover:bg-gold group-hover:text-black transition-all duration-300">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                    </svg>
-                </div>
-                <h3 class="text-xl font-black mb-3 text-gray-900">Fast Platform</h3>
-                <p class="text-gray-600 text-sm leading-relaxed">
-                    Optimized for smooth browsing and fast shopping experiences.
-                </p>
-            </div>
-
-            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
-                <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-100 text-gray-900 flex items-center justify-center mb-6 group-hover:bg-gold group-hover:text-black transition-all duration-300">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                </div>
-                <h3 class="text-xl font-black mb-3 text-gray-900">Reliable Delivery</h3>
-                <p class="text-gray-600 text-sm leading-relaxed">
-                    Efficient rider systems and delivery tracking.
-                </p>
-            </div>
-
-            <div class="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
-                <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-100 text-gray-900 flex items-center justify-center mb-6 group-hover:bg-gold group-hover:text-black transition-all duration-300">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                    </svg>
-                </div>
-                <h3 class="text-xl font-black mb-3 text-gray-900">Mobile Friendly</h3>
-                <p class="text-gray-600 text-sm leading-relaxed">
-                    Shop easily from your phone, tablet, or desktop.
-                </p>
-            </div>
-
-        </div>
-
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+        <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Total Earned</p>
+        <p class="font-display font-700 text-2xl text-navy">GHS {{ total_revenue|floatformat:2 }}</p>
+      </div>
+      <div class="bg-orange-50 border border-orange-100 rounded-2xl p-5 text-center">
+        <p class="text-xs text-orange-500 uppercase tracking-wider mb-1">Pending</p>
+        <p class="font-display font-700 text-2xl text-orange-600">GHS {{ pending_payout|floatformat:2 }}</p>
+      </div>
+      <div class="bg-green-50 border border-green-100 rounded-2xl p-5 text-center">
+        <p class="text-xs text-green-600 uppercase tracking-wider mb-1">Paid Out</p>
+        <p class="font-display font-700 text-2xl text-green-700">GHS {{ paid_out|floatformat:2 }}</p>
+      </div>
     </div>
 
-</section>
+    {% if earnings %}
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+            <th class="px-5 py-3 text-left font-semibold">Order</th>
+            <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Gross</th>
+            <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Commission</th>
+            <th class="px-5 py-3 text-right font-semibold">Net Earned</th>
+            <th class="px-5 py-3 text-center font-semibold">Status</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for earning in earnings %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-5 py-3.5 font-bold text-gold-dark">
+              {{ earning.order.order_ref }}
+            </td>
+            <td class="px-5 py-3.5 text-right text-gray-500 hidden md:table-cell">
+              GHS {{ earning.gross_amount }}
+            </td>
+            <td class="px-5 py-3.5 text-right text-red-400 hidden md:table-cell">
+              -GHS {{ earning.commission_amount }}
+            </td>
+            <td class="px-5 py-3.5 text-right font-display font-700 text-navy">
+              GHS {{ earning.net_amount }}
+            </td>
+            <td class="px-5 py-3.5 text-center">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                {% if earning.status == 'paid' %}bg-green-100 text-green-700
+                {% else %}bg-orange-100 text-orange-700{% endif %}">
+                {{ earning.get_status_display }}
+              </span>
+            </td>
+            <td class="px-5 py-3.5 text-gray-400 text-xs hidden md:table-cell">
+              {{ earning.created_at|date:"M d, Y" }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
+      <p class="text-5xl mb-4">💰</p>
+      <p class="font-display font-700 text-navy mb-1">No earnings yet</p>
+      <p class="text-gray-400 text-sm">Earnings will appear here once you start getting paid orders.</p>
+    </div>
+    {% endif %}
 
+    <div class="mt-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-600">
+      💡 Payouts are processed to your MoMo number <strong>{{ vendor.momo_number }}</strong> ({{ vendor.get_momo_network_display }}) within 3 working days.
+    </div>
+  </div>
 
-<!-- CTA -->
-<section class="bg-black text-white py-24 relative overflow-hidden">
-
-    <div class="absolute inset-0 bg-gold/10 blur-3xl"></div>
-
-    <div class="relative max-w-5xl mx-auto px-6 text-center">
-
-        <h2 class="text-4xl lg:text-6xl font-black leading-tight mb-8">
-            Start Your Journey With
-            <span class="text-gold">Lynctel</span>
-        </h2>
-
-        <p class="text-lg text-gray-300 leading-relaxed max-w-3xl mx-auto mb-10">
-            Join customers and businesses already growing with Lynctel across Ghana.
-        </p>
-
-        <div class="flex flex-wrap justify-center gap-5">
-            <!-- Verified Global Routing Links -->
-            <a href="{% url 'list' %}"
-               class="bg-gold text-black font-bold px-8 py-4 rounded-2xl hover:scale-105 transition-all duration-300 shadow-2xl">
-                Start Shopping
-            </a>
-
-            <a href="{% url 'apply' %}"
-               class="border border-white/20 hover:border-white/40 bg-white/5 px-8 py-4 rounded-2xl font-bold transition-all duration-300">
-                Become A Vendor
-            </a>
+  <!-- ═══════════════════════════════════════════════════
+        TAB: SETTINGS
+  ═══════════════════════════════════════════════════ -->
+  {% elif current_tab == 'settings' %}
+  <div class="fade-in">
+    
+    <!-- ── SOCIAL LINKS BANNER INTEGRATION ── -->
+    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 rounded-2xl p-6 mb-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-700">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-xl backdrop-blur-sm">
+          🌐
         </div>
-
+        <div>
+          <h3 class="font-display font-700 text-white text-base">Storefront Social Networks</h3>
+          <p class="text-xs text-gray-300 mt-0.5">Connect WhatsApp, Instagram, Facebook, and TikTok directly to your profile.</p>
+        </div>
+      </div>
+      <a href="{% url 'vendors:settings' %}?tab=settings&pane=social" 
+         class="inline-flex items-center justify-center bg-white hover:bg-gray-100 text-slate-900 font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-sm whitespace-nowrap">
+        Configure Links →
+      </a>
     </div>
 
-</section>
+    <!-- Fixed Form Target to prevent URL query stripping -->
+    <form method="POST" action="?tab=settings" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
+        <!-- Shop info -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-6">
+          <h2 class="font-display font-700 text-navy mb-5">Shop Information</h2>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Shop Name *
+              </label>
+              <input type="text" name="shop_name" value="{{ vendor.shop_name }}"
+                     class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Description
+              </label>
+              <textarea name="description" rows="3"
+                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm resize-none">{{ vendor.description }}</textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Phone
+              </label>
+              <input type="tel" name="phone" value="{{ vendor.phone }}"
+                     class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Location
+              </label>
+              <input type="text" name="location" value="{{ vendor.location }}"
+                     placeholder="e.g. Accra, Kumasi"
+                     class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payout + Images -->
+        <div class="space-y-6">
+          <div class="bg-white rounded-2xl border border-gray-100 p-6">
+            <h2 class="font-display font-700 text-navy mb-5">MoMo Payout</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                  MoMo Number *
+                </label>
+                <input type="tel" name="momo_number" value="{{ vendor.momo_number }}"
+                       class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                  Network
+                </label>
+                <select name="momo_network"
+                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="mtn"       {% if vendor.momo_network == 'mtn' %}selected{% endif %}>MTN Mobile Money</option>
+                  <option value="vodafone"   {% if vendor.momo_network == 'vodafone' %}selected{% endif %}>Vodafone Cash</option>
+                  <option value="airteltigo" {% if vendor.momo_network == 'airteltigo' %}selected{% endif %}>AirtelTigo Money</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-gray-100 p-6">
+            <h2 class="font-display font-700 text-navy mb-5">Shop Images</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                  Logo
+                </label>
+                {% if vendor.logo %}
+                <img src="{{ vendor.logo.url }}" class="w-16 h-16 rounded-xl object-cover mb-2"/>
+                {% endif %}
+                <input type="file" name="logo" accept="image/*"
+                       class="w-full text-sm text-gray-600"/>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                  Banner
+                </label>
+                {% if vendor.banner %}
+                <img src="{{ vendor.banner.url }}" class="w-full h-20 rounded-xl object-cover mb-2"/>
+                {% endif %}
+                <input type="file" name="banner" accept="image/*"
+                       class="w-full text-sm text-gray-600"/>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="mt-6">
+        <button type="submit"
+                class="bg-navy hover:bg-navy-700 text-white font-semibold
+                       px-8 py-3 rounded-xl transition-colors btn-press">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── SALES CHART ──────────────────────────────────────────
+const rawData = {{ daily_sales|safe }};
+
+const labels = rawData.map(d => {
+  const dt = new Date(d.day);
+  return dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+});
+const values = rawData.map(d => d.total);
+
+if (document.getElementById('salesChart')) {
+  new Chart(document.getElementById('salesChart'), {
+    type: 'line',
+    data: {
+      labels: labels.length ? labels : ['No data'],
+      datasets: [{
+        label: 'Revenue (GHS)',
+        data:  values.length ? values : [0],
+        borderColor:     '#0F1B2D',
+        backgroundColor: 'rgba(15,27,45,.06)',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#F5A623',
+        pointBorderColor:    '#F5A623',
+        pointRadius: 4,
+        fill: true,
+        tension: 0.4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `GHS ${ctx.parsed.y.toFixed(2)}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,.04)' },
+          ticks: {
+            callback: v => 'GHS ' + v,
+            font: { size: 11 }
+          }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+</script>
 {% endblock %}

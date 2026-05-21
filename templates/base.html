@@ -111,21 +111,42 @@
                         rounded-xl text-sm transition-all duration-200"/>
         </div>
       </form>
+<!-- Right nav -->
+<div class="flex items-center gap-1 ml-auto">
 
-      <!-- Right nav -->
-      <div class="flex items-center gap-1 ml-auto">
+  <a href="{% url 'vendors:directory' %}"
+     class="hidden md:flex text-sm font-medium text-gray-600
+            hover:text-navy px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+    Shops
+  </a>
 
-        <a href="{% url 'vendors:directory' %}"
-           class="hidden md:flex text-sm font-medium text-gray-600
-                  hover:text-navy px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-          Shops
-        </a>
+  <!-- DYNAMIC VENDOR ROUTING BLOCK -->
+  {% if request.user.is_authenticated and request.user.vendor %}
+    {% if request.user.vendor.status == 'active' %}
+      <!-- Approved Vendor -> Straight to the Dashboard -->
+      <a href="{% url 'vendors:dashboard' %}"
+         class="hidden md:flex text-sm font-semibold text-gold-dark
+                bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
+        Sell Here
+      </a>
+    {% else %}
+      <!-- Pending Vendor -> Message/Pending Notice Page -->
+      <a href="{% url 'vendors:pending' %}"
+         class="hidden md:flex text-sm font-semibold text-gold-dark
+                bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
+        Sell Here
+      </a>
+    {% endif %}
+  {% else %}
+    <!-- Guest or Regular Customer -> Application Form -->
+    <a href="{% url 'vendors:apply' %}"
+       class="hidden md:flex text-sm font-semibold text-gold-dark
+              bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
+      Sell Here
+    </a>
+  {% endif %}
 
-        <a href="{% url 'vendors:apply' %}"
-           class="hidden md:flex text-sm font-semibold text-gold-dark
-                  bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
-          Sell Here
-        </a>
+</div>
 
         {% if user.is_authenticated %}
         <!-- User dropdown -->

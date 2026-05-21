@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  {% load static %}
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{% block title %}Dashboard — Lynctel{% endblock %}</title>
@@ -15,19 +16,21 @@
 
 <div class="flex min-h-screen">
 
-  <!-- SIDEBAR -->
   <aside id="sidebar"
          class="fixed inset-y-0 left-0 z-50 w-60 bg-gray-900 text-white flex flex-col
                 transition-transform duration-200 -translate-x-full lg:translate-x-0">
 
     <div class="px-5 py-5 border-b border-gray-800">
-      <a href="{% url 'dashboard:home' %}" class="flex items-center gap-2 font-bold text-lg">
-        <svg class="w-6 h-6 text-brand" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
-        </svg>
-        Lynctel Admin
+      <a href="{% url 'dashboard:home' %}" class="flex items-center gap-2.5 font-bold text-lg group">
+        <img src="{% static 'logo.png' %}" 
+             alt="Lynctel Logo" 
+             class="w-6 h-6 object-contain rounded-md bg-white/5 border border-white/10 p-0.5 shadow-sm group-hover:scale-105 transition-transform duration-200">
+        
+        <span class="tracking-tight text-white group-hover:text-gray-200 transition-colors">
+          Lynctel Admin
+        </span>
       </a>
-      <p class="text-xs text-gray-500 mt-1">{{ request.user.get_full_name }}</p>
+      <p class="text-xs text-gray-500 mt-1.5 font-medium pl-8">{{ request.user.get_full_name }}</p>
     </div>
 
     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -82,7 +85,6 @@
         Riders
       </a>
 
-      <!-- VENDORS (new) -->
       <a href="{% url 'dashboard:vendor_list' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 {% if 'vendor' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
@@ -93,20 +95,17 @@
         Vendors
       </a>
 
-      <!-- STAFF -->
-<a href="{% url 'dashboard:staff_list' %}"
-   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-          {% if 'staff' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
-  
-  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-8 0v2m8 0H7m4-10a4 4 0 110-8 4 4 0 010 8z"/>
-  </svg>
-
-  Staff
-</a>
+      <a href="{% url 'dashboard:staff_list' %}"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                {% if 'staff' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-8 0v2m8 0H7m4-10a4 4 0 110-8 4 4 0 010 8z"/>
+        </svg>
+        Staff
+      </a>
 
       <hr class="border-gray-800 my-2"/>
 
@@ -132,7 +131,6 @@
     </div>
   </aside>
 
-  <!-- MAIN -->
   <div class="flex-1 lg:ml-60 flex flex-col min-h-screen">
     <header class="bg-white border-b border-gray-200 px-4 lg:px-6 h-14 flex items-center justify-between sticky top-0 z-40">
       <button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')"

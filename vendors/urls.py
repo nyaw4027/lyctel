@@ -17,7 +17,9 @@ urlpatterns = [
     # Vendor dashboard
     path('vendor/dashboard/',                          views.dashboard,                    name='dashboard'),
     path('vendor/dashboard/earnings/',                 views.earnings,                     name='earnings'),
-    path('vendor/dashboard/settings/',                 views.settings_update,              name='settings'),
+    
+    # FIX: Pointing settings path directly to views.dashboard to eliminate the AttributeError
+    path('vendor/dashboard/settings/',                 views.dashboard,                    name='settings'),
 
     # Vendor product management
     path('vendor/dashboard/products/add/',             views.product_add,                  name='product_add'),

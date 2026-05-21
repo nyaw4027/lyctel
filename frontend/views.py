@@ -23,12 +23,19 @@ def home(request):
         'categories': categories,
         'cart_count': 0,
     })
+
 def about(request):
     page = AboutPage.objects.prefetch_related("stats", "features", "team").first()
+    
+    # If the database table is completely empty, pass empty lists so the template doesn't crash
+    context = {
+        "page": page,
+        "stats": page.stats.all() if page else [],
+        "features": page.features.all() if page else [],
+        "team": page.team.all() if page else [],
+    }
 
-    return render(request, "frontend/about.html", {
-        "page": page
-    })
+    return render(request, "frontend/about.html", context)
 
 
 def contact(request):

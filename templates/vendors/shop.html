@@ -125,44 +125,98 @@
       </div>
     </div>
 
-    <!-- Softened Native Share Actions -->
-    <div class="flex items-center gap-2 flex-wrap border-t border-slate-50 pt-4 md:pt-0 md:border-0">
-      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2 hidden sm:block">Share Store:</span>
-      <div class="flex gap-1.5">
-        <a href="https://wa.me/?text={{ share_text|urlencode }}"
-           target="_blank" rel="noopener" title="Share via WhatsApp"
-           class="w-9 h-9 bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-xl
-                  flex items-center justify-center transition-all duration-200 text-base shadow-sm hover:shadow-emerald-100">
-          💬
-        </a>
-        <a href="https://www.facebook.com/sharer/sharer.php?u={{ shop_url|urlencode }}"
-           target="_blank" rel="noopener" title="Share via Facebook"
-           class="w-9 h-9 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-xl
-                  flex items-center justify-center transition-all duration-200 text-base shadow-sm hover:shadow-blue-100">
-          📘
-        </a>
-        <a href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}"
-           target="_blank" rel="noopener" title="Share via X"
-           class="w-9 h-9 bg-slate-50 hover:bg-black text-slate-700 hover:text-white rounded-xl
-                  flex items-center justify-center transition-all duration-200 text-sm shadow-sm hover:shadow-slate-200">
-          ✕
-        </a>
-        <button onclick="copyLink('{{ shop_url }}')" title="Copy Store Link"
-                class="w-9 h-9 bg-slate-100 hover:bg-navy hover:text-white text-slate-600 rounded-xl
-                       flex items-center justify-center transition-all duration-200 text-base shadow-sm">
-          🔗
-        </button>
-      </div>
+    <!-- Quick Action Tool Block -->
+    <div class="flex items-center gap-2 self-end md:self-auto">
+      <button onclick="copyLink('{{ shop_url }}')" 
+              class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-navy bg-slate-50 hover:bg-slate-100 border border-slate-200/60 px-4 py-2.5 rounded-xl transition-all shadow-sm">
+        Share Link
+      </button>
     </div>
   </div>
 
-  <!-- Store Editorial Description -->
-  {% if vendor.description %}
-  <div class="bg-slate-50/60 rounded-2xl p-5 border border-slate-100/80 mb-8 max-w-3xl text-left">
-    <h2 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">About Our Shop</h2>
-    <p class="text-slate-600 text-sm leading-relaxed font-normal">
-      {{ vendor.description }}
-    </p>
+  <!-- ── VENDOR DETAILS & SOCIAL LINKS CONTAINER ────────── -->
+  {% if vendor.description or vendor.whatsapp_number or vendor.instagram_username or vendor.facebook_url or vendor.tiktok_username %}
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 items-start">
+    
+    <!-- Store Editorial Description -->
+    {% if vendor.description %}
+    <div class="bg-slate-50/60 rounded-2xl p-5 border border-slate-100/80 text-left md:col-span-2">
+      <h2 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">About Our Shop</h2>
+      <p class="text-slate-600 text-sm leading-relaxed font-normal">
+        {{ vendor.description }}
+      </p>
+    </div>
+    {% endif %}
+
+    <!-- Connect & Follow Panel -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-100 text-left h-full flex flex-col justify-center {% if not vendor.description %}md:col-span-3{% endif %}">
+      <h2 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Connect With Us</h2>
+      <div class="flex flex-wrap gap-2">
+        
+        {% if vendor.whatsapp_number %}
+        <a href="https://wa.me/{{ vendor.whatsapp_number }}" 
+           target="_blank" rel="noopener" title="Chat on WhatsApp"
+           class="inline-flex items-center gap-2 bg-slate-50 hover:bg-[#25D366] text-slate-700 hover:text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all duration-200 border border-slate-100 shadow-sm group">
+          <svg class="w-4 h-4 fill-[#25D366] group-hover:fill-white transition-colors" viewBox="0 0 24 24">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.83.001-2.624-1.023-5.092-2.884-6.956C16.584 1.965 14.114.945 11.49.945c-5.443 0-9.866 4.414-9.87 9.831-.001 1.748.463 3.454 1.343 4.966l-.993 3.626 3.714-.974zm12.315-4.493c-.302-.15-1.783-.88-2.059-.98-.276-.1-.477-.15-.677.15-.2.3-.775.98-.95 1.18-.175.2-.35.225-.651.075-1.03-.519-1.766-.856-2.47-2.062-.188-.323.188-.3.539-1 .1-.2.05-.375-.025-.525-.075-.15-.677-1.635-.927-2.235-.243-.587-.492-.507-.677-.516-.174-.008-.375-.01-.576-.01-.2 0-.527.075-.802.375-.276.3-.1.525-.1 1.275 0 .75.55 1.475.626 1.575.075.1 1.084 1.656 2.625 2.32.366.158.653.253.88.325.367.117.701.1 1.033.05.337-.05 1.084-.443 1.234-.87.15-.426.15-.79.101-.87-.046-.07-.174-.11-.476-.26z"/>
+          </svg>
+          WhatsApp
+        </a>
+        {% endif %}
+
+        {% if vendor.instagram_username %}
+        <a href="https://instagram.com/{{ vendor.instagram_username }}" 
+           target="_blank" rel="noopener" title="Follow on Instagram"
+           class="inline-flex items-center gap-2 bg-slate-50 hover:bg-gradient-to-tr hover:from-[#f9ce34] hover:via-[#ee2a7b] hover:to-[#6228d7] text-slate-700 hover:text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all duration-200 border border-slate-100 shadow-sm group">
+          <svg class="w-4 h-4 transition-colors group-hover:hidden" viewBox="0 0 24 24">
+            <defs>
+              <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#f9ce34" />
+                <stop offset="50%" stop-color="#ee2a7b" />
+                <stop offset="100%" stop-color="#6228d7" />
+              </linearGradient>
+            </defs>
+            <path fill="url(#ig-grad)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+          </svg>
+          <svg class="w-4 h-4 fill-white hidden group-hover:block" viewBox="0 0 24 24">
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+          </svg>
+          Instagram
+        </a>
+        {% endif %}
+
+        {% if vendor.facebook_url %}
+        <a href="{{ vendor.facebook_url }}" 
+           target="_blank" rel="noopener" title="Visit Facebook Page"
+           class="inline-flex items-center gap-2 bg-slate-50 hover:bg-[#1877F2] text-slate-700 hover:text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all duration-200 border border-slate-100 shadow-sm group">
+          <svg class="w-4 h-4 fill-[#1877F2] group-hover:fill-white transition-colors" viewBox="0 0 24 24">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+          </svg>
+          Facebook
+        </a>
+        {% endif %}
+
+        {% if vendor.tiktok_username %}
+        <a href="https://www.tiktok.com/@{{ vendor.tiktok_username }}" 
+           target="_blank" rel="noopener" title="Watch on TikTok"
+           class="inline-flex items-center gap-2 bg-slate-50 hover:bg-black text-slate-700 hover:text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all duration-200 border border-slate-100 shadow-sm group">
+          <svg class="w-4 h-4 transition-colors group-hover:hidden" viewBox="0 0 24 24" fill="none">
+            <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.01.08 1.53.63 3.02 1.63 4.17 1.12 1.25 2.7 2.02 4.37 2.18v3.62c-1.63-.04-3.23-.55-4.59-1.47-.53-.36-1-.8-1.4-1.3-.01 3.51.01 7.02-.01 10.53-.11 2.22-1.12 4.38-2.88 5.76-2.12 1.74-5.12 2.25-7.7 1.35-2.85-.93-5.02-3.64-5.26-6.66-.36-3.83 2.17-7.56 5.92-8.41 1.2-.28 2.46-.17 3.6.3v3.7c-.89-.47-1.96-.61-2.92-.35-1.53.38-2.68 1.81-2.67 3.41 0 2.22 2.12 3.93 4.3 3.54 1.48-.23 2.6-1.56 2.61-3.07V0z" fill="#000000"/>
+          </svg>
+          <svg class="w-4 h-4 fill-white hidden group-hover:block" viewBox="0 0 24 24">
+            <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.01.08 1.53.63 3.02 1.63 4.17 1.12 1.25 2.7 2.02 4.37 2.18v3.62c-1.63-.04-3.23-.55-4.59-1.47-.53-.36-1-.8-1.4-1.3-.01 3.51.01 7.02-.01 10.53-.11 2.22-1.12 4.38-2.88 5.76-2.12 1.74-5.12 2.25-7.7 1.35-2.85-.93-5.02-3.64-5.26-6.66-.36-3.83 2.17-7.56 5.92-8.41 1.2-.28 2.46-.17 3.6.3v3.7c-.89-.47-1.96-.61-2.92-.35-1.53.38-2.68 1.81-2.67 3.41 0 2.22 2.12 3.93 4.3 3.54 1.48-.23 2.6-1.56 2.61-3.07V0z"/>
+          </svg>
+          TikTok
+        </a>
+        {% endif %}
+
+        {% if not vendor.whatsapp_number and not vendor.instagram_username and not vendor.facebook_url and not vendor.tiktok_username %}
+        <span class="text-xs italic text-slate-400">No social platforms attached yet.</span>
+        {% endif %}
+
+      </div>
+    </div>
+
   </div>
   {% endif %}
 
@@ -233,7 +287,7 @@
     </p>
   </div>
 
-  <!-- ── UPGRADED PRODUCTS GRID ────────────────────────── -->
+  <!-- ── PRODUCTS GRID ────────────────────────── -->
   {% if products %}
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5 pb-16">
     {% for product in products %}
@@ -291,7 +345,7 @@
           <div class="flex flex-col">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Price</span>
             <span class="font-display font-bold text-navy text-base leading-none">
-              ₵{{ product.selling_price }}
+              GHS {{ product.selling_price }}
             </span>
           </div>
           
@@ -313,7 +367,7 @@
             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.13-1.347a9.94 9.94 0 0 0 4.88 1.274h.005c5.505 0 9.99-4.478 9.99-9.986 0-2.67-1.037-5.178-2.923-7.062A9.925 9.925 0 0 0 12.012 2zm5.835 14.164c-.244.688-1.42 1.354-1.947 1.41-.53.054-1.057.275-3.398-.65-2.996-1.183-4.912-4.225-5.061-4.424-.15-.199-1.2-1.595-1.2-3.043 0-1.448.749-2.16.1014-2.467-.266-.307-.583-.385-.795-.385h-.57c-.213 0-.557.08-1.848.37-.29.066-.66.61-.66 1.42 0 .81.53 1.595.637 1.74.108.145 1.042 1.59 2.525 2.23.353.152.628.243.843.312.355.112.678.096.934.058.285-.042.875-.358 1.002-.7.127-.343.127-.638.089-.7-.038-.063-.14-.1-.293-.177-.152-.077-.901-.445-1.04-.495-.138-.05-.24-.075-.34.076-.102.152-.394.495-.483.596-.089.101-.178.114-.33.038-.153-.076-.647-.238-1.233-.76-.456-.406-.764-.908-.853-1.06-.089-.153-.01-.235.067-.312.069-.068.152-.177.228-.266.076-.09.102-.152.152-.253.05-.102.025-.19-.012-.266-.039-.076-.34-.82-.467-1.127-.123-.3-.27-.26-.37-.265h-.316c-.102 0-.266.038-.406.19-.14.152-.533.52-.533 1.266z"/>
             </svg>
-            Share Fat
+            Share Item
           </a>
           <span class="text-[10px] font-medium text-slate-300">ID: #{{ product.pk }}</span>
         </div>
@@ -324,7 +378,7 @@
   </div>
 
   {% else %}
-  <!-- Premium Minimal Empty Workspace State -->
+  <!-- Premium Minimal Empty State -->
   <div class="flex flex-col items-center justify-center py-20 text-center">
     <div class="w-20 h-20 bg-slate-50 text-slate-400 rounded-3xl flex items-center justify-center text-3xl mb-4 border border-slate-100 shadow-sm select-none">
       🔍

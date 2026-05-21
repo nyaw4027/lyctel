@@ -11,6 +11,8 @@ from django.utils.text import slugify
 from products.models import Product, Category, ProductImage
 from order.models import Order, OrderItem
 from .models import Vendor, VendorEarning
+# ... your existing imports and decorators remain unchanged ...
+from django.urls import reverse
 
 
 # ── GUARD DECORATOR ───────────────────────────────────────
@@ -183,13 +185,62 @@ def pending(request):
         return redirect('vendors:apply')
     return render(request, 'vendors/pending.html', {'vendor': vendor})
 
-
-# ── VENDOR DASHBOARD ──────────────────────────────────────
-
+#DASHBOARD VIEWS
 @vendor_required
 def dashboard(request):
     vendor = request.vendor
+    
+    # 1. Determine which tab or sub-pane the user wants to look at
+    current_tab = request.GET.get('tab', 'products')  # defaults to products list
+    pane = request.GET.get('pane', '')               # detects sub-panels like social configuration
 
+    # ═══════════════════════════════════════════════════
+    #  SUB-PANE: RENDER & SAVE STANDALONE SOCIALS FORM
+    # ═══════════════════════════════════════════════════
+    if current_tab == 'settings' and pane == 'social':
+        if request.method == 'POST':
+            # Extract and update ALL 6 input values matching socials_form.html exactly
+            vendor.whatsapp  = request.POST.get('whatsapp', '').strip()
+            vendor.instagram = request.POST.get('instagram', '').strip()
+            vendor.facebook  = request.POST.get('facebook', '').strip()
+            vendor.tiktok    = request.POST.get('tiktok', '').strip()
+            vendor.twitter   = request.POST.get('twitter', '').strip()   # Fixed: Was missing
+            vendor.youtube   = request.POST.get('youtube', '').strip()   # Fixed: Was missing
+            
+            vendor.save()
+            messages.success(request, "Social configurations updated successfully.")
+            # Bounces them clean back onto the core settings panel view context
+            return redirect(f"{reverse('vendors:dashboard')}?tab=settings")
+            
+        # If GET request, render your dedicated standalone form file with clear vendor context
+        return render(request, 'vendors/socials_form.html', {
+            'vendor': vendor,
+            'cart_count': 0,
+            'current_tab': current_tab,
+            'pane': pane
+        })
+
+    # ═══════════════════════════════════════════════════
+    #  STANDARD SETTINGS TAB SUBMISSION (Shop Profile)
+    # ═══════════════════════════════════════════════════
+    if current_tab == 'settings' and request.method == 'POST':
+        vendor.shop_name    = request.POST.get('shop_name', vendor.shop_name).strip()
+        vendor.description  = request.POST.get('description', '').strip()
+        vendor.phone        = request.POST.get('phone', vendor.phone).strip()
+        vendor.location     = request.POST.get('location', '').strip()
+        vendor.momo_number  = request.POST.get('momo_number', vendor.momo_number).strip()
+        vendor.momo_network = request.POST.get('momo_network', vendor.momo_network)
+
+        if 'logo' in request.FILES:
+            vendor.logo = request.FILES['logo']
+        if 'banner' in request.FILES:
+            vendor.banner = request.FILES['banner']
+
+        vendor.save()
+        messages.success(request, 'Shop settings saved!')
+        return redirect(f"{reverse('vendors:dashboard')}?tab=settings")
+
+    # 3. Base Dashboard Querysets
     products = (
         vendor.products
         .prefetch_related('images')
@@ -198,25 +249,30 @@ def dashboard(request):
     )
     earnings = VendorEarning.objects.filter(vendor=vendor).select_related('order')
 
-    # Core stats
+    # Core statistical aggregates
     total_revenue   = earnings.aggregate(t=Sum('net_amount'))['t'] or 0
     pending_payout  = earnings.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
     paid_out        = earnings.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
     total_orders    = earnings.count()
     low_stock_count = products.filter(status='active', stock_qty__lte=5).count()
 
-    # Today's stats
-    today         = timezone.now().date()
-    orders_today  = OrderItem.objects.filter(
+    # Timezone-Aware range extraction for "Today" analytics
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+
+    orders_today = OrderItem.objects.filter(
         product__vendor=vendor,
-        order__created_at__date=today,
+        order__created_at__range=(today_start, today_end),
         order__payment_status='paid',
     ).count()
-    revenue_today = earnings.filter(created_at__date=today).aggregate(t=Sum('net_amount'))['t'] or 0
+    
+    revenue_today = earnings.filter(
+        created_at__range=(today_start, today_end)
+    ).aggregate(t=Sum('net_amount'))['t'] or 0
 
-    # Last 7 days chart data
+    # Weekly timeline charting data serialization
     seven_days_ago = timezone.now() - timedelta(days=7)
-    daily_sales = (
+    daily_sales_qs = (
         earnings.filter(created_at__gte=seven_days_ago)
         .annotate(day=TruncDay('created_at'))
         .values('day')
@@ -224,18 +280,17 @@ def dashboard(request):
         .order_by('day')
     )
 
-    # Top selling product
-    top_product = (
-        vendor.products
-        .annotate(total_sold=Sum('orderitem__quantity'))
-        .order_by('-total_sold')
-        .first()
-    )
+    daily_sales_list = [
+        {
+            'day': item['day'].strftime('%Y-%m-%d') if item['day'] else '',
+            'total': float(item['total'] or 0)
+        }
+        for item in daily_sales_qs
+    ]
 
-    # Low stock products
+    # Product insights
+    top_product = vendor.products.annotate(total_sold=Sum('orderitem__quantity')).order_by('-total_sold').first()
     low_stock_products = vendor.products.filter(status='active', stock_qty__lte=5)[:5]
-
-    # Recent orders
     recent_orders = (
         OrderItem.objects
         .filter(product__vendor=vendor, order__payment_status='paid')
@@ -256,54 +311,25 @@ def dashboard(request):
         'earnings':            earnings.order_by('-created_at'),
         'recent_orders':       recent_orders,
         'tabs':                tabs,
+        'current_tab':         current_tab,
 
-        # Stats
+        # Numeric Stats
         'total_revenue':       total_revenue,
         'pending_payout':      pending_payout,
         'paid_out':            paid_out,
         'total_orders':        total_orders,
         'low_stock_count':     low_stock_count,
 
-        # Today
+        # Periodic Metrics
         'orders_today':        orders_today,
         'revenue_today':       revenue_today,
+        'daily_sales':         daily_sales_list,
 
-        # Chart
-        'daily_sales':         list(daily_sales),
-
-        # Insights
+        # Product insights
         'top_product':         top_product,
         'low_stock_products':  low_stock_products,
-
-        'cart_count': 0,
+        'cart_count':          0,
     })
-
-
-# ── VENDOR SHOP SETTINGS ──────────────────────────────────
-
-@vendor_required
-def settings_update(request):
-    vendor = request.vendor
-
-    if request.method == 'POST':
-        vendor.shop_name    = request.POST.get('shop_name', vendor.shop_name).strip()
-        vendor.description  = request.POST.get('description', '').strip()
-        vendor.phone        = request.POST.get('phone', vendor.phone).strip()
-        vendor.location     = request.POST.get('location', '').strip()
-        vendor.momo_number  = request.POST.get('momo_number', vendor.momo_number).strip()
-        vendor.momo_network = request.POST.get('momo_network', vendor.momo_network)
-
-        if 'logo' in request.FILES:
-            vendor.logo = request.FILES['logo']
-        if 'banner' in request.FILES:
-            vendor.banner = request.FILES['banner']
-
-        vendor.save()
-        messages.success(request, 'Shop settings saved!')
-
-    return redirect('vendors:dashboard')
-
-
 # ── VENDOR PRODUCT MANAGEMENT ─────────────────────────────
 
 @vendor_required
