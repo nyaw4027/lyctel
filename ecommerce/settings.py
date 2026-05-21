@@ -7,7 +7,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-CHANGE_ME')
 
 DEBUG = False
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost','lynctel.up.railway.app']
 
 # ── Custom User Model ──────────────────────────────────────
 # This tells Django to use YOUR User model instead of the default one
@@ -169,3 +169,8 @@ CACHES = {
 
 # ── Google Maps ────────────────────────────────────────────
 GOOGLE_MAPS_API_KEY = "YOUR_API_KEY"
+
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://lynctel.up.railway.app'
+]
