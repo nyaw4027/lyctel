@@ -1,141 +1,396 @@
 {% extends "base.html" %}
 {% block title %}Become a Vendor — Lynctel{% endblock %}
 
+{% block extra_head %}
+<style>
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  .float-1 { animation: float 3s ease-in-out infinite; }
+  .float-2 { animation: float 3.4s ease-in-out infinite .3s; }
+  .float-3 { animation: float 2.8s ease-in-out infinite .6s; }
+  .float-4 { animation: float 3.2s ease-in-out infinite .9s; }
+  .step-line::before {
+    content:''; position:absolute; top:22px; left:50%; width:100%; height:2px;
+    background: linear-gradient(to right,#F5A623,#e5e7eb); z-index:0;
+  }
+  .step-line:last-child::before { display:none; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-2xl mx-auto px-4 py-10">
 
-  <div class="text-center mb-8">
-    <h1 class="text-2xl font-bold text-gray-800 mb-2">Open Your Shop on Lynctel</h1>
-    <p class="text-gray-500 text-sm">Reach customers across Ghana. Keep 90% of every sale.</p>
-  </div>
+<!-- ── HERO ──────────────────────────────────────────────── -->
+<section class="bg-navy relative overflow-hidden">
+  <div class="absolute inset-0 opacity-5"
+       style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);
+              background-size:28px 28px"></div>
+  <div class="absolute top-0 right-0 w-96 h-96 bg-gold opacity-10 rounded-full
+              translate-x-1/3 -translate-y-1/3 blur-3xl pointer-events-none"></div>
 
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-    <div class="bg-brand-light rounded-xl p-4 text-center">
-      <p class="text-2xl mb-1">🛍️</p><p class="text-xs font-semibold text-brand">Your shop page</p>
-    </div>
-    <div class="bg-green-50 rounded-xl p-4 text-center">
-      <p class="text-2xl mb-1">💰</p><p class="text-xs font-semibold text-green-700">Keep 90% of sales</p>
-    </div>
-    <div class="bg-purple-50 rounded-xl p-4 text-center">
-      <p class="text-2xl mb-1">🚚</p><p class="text-xs font-semibold text-purple-700">We deliver for you</p>
-    </div>
-    <div class="bg-yellow-50 rounded-xl p-4 text-center">
-      <p class="text-2xl mb-1">📱</p><p class="text-xs font-semibold text-yellow-700">Weekly MoMo payouts</p>
+  <div class="relative max-w-4xl mx-auto px-4 md:px-6 py-16 text-center">
+    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-3">
+      Start Selling Today
+    </p>
+    <h1 class="font-display font-700 text-3xl md:text-4xl text-white mb-4 leading-tight">
+      Open Your Shop on Lynctel
+    </h1>
+    <p class="text-gray-400 text-sm max-w-md mx-auto mb-10">
+      Join hundreds of vendors across Ghana. Keep 90% of every sale.
+      We handle delivery, payments, and customer support.
+    </p>
+
+    <!-- Floating benefit cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl mx-auto">
+      <div class="float-1 bg-white/10 backdrop-blur-sm border border-white/10
+                  rounded-2xl p-4 text-center">
+        <p class="text-3xl mb-2">🛍️</p>
+        <p class="text-xs font-semibold text-white">Your own shop page</p>
+      </div>
+      <div class="float-2 bg-white/10 backdrop-blur-sm border border-white/10
+                  rounded-2xl p-4 text-center">
+        <p class="text-3xl mb-2">💰</p>
+        <p class="text-xs font-semibold text-white">Keep 90% of sales</p>
+      </div>
+      <div class="float-3 bg-white/10 backdrop-blur-sm border border-white/10
+                  rounded-2xl p-4 text-center">
+        <p class="text-3xl mb-2">🛵</p>
+        <p class="text-xs font-semibold text-white">We deliver for you</p>
+      </div>
+      <div class="float-4 bg-white/10 backdrop-blur-sm border border-white/10
+                  rounded-2xl p-4 text-center">
+        <p class="text-3xl mb-2">📱</p>
+        <p class="text-xs font-semibold text-white">Weekly MoMo payouts</p>
+      </div>
     </div>
   </div>
+</section>
+
+<!-- ── HOW IT WORKS ──────────────────────────────────────── -->
+<section class="bg-white border-b border-gray-100 py-10">
+  <div class="max-w-3xl mx-auto px-4">
+    <p class="text-center text-xs font-semibold text-gray-400 uppercase tracking-widest mb-8">
+      3 Simple Steps
+    </p>
+    <div class="grid grid-cols-3 gap-4 relative">
+      {% for step_num, step_icon, step_title, step_desc in steps|default:"" %}
+      {% empty %}
+      <!-- Step 1 -->
+      <div class="step-line relative text-center">
+        <div class="w-11 h-11 bg-gold-light border-2 border-gold rounded-full flex items-center
+                    justify-center mx-auto mb-3 relative z-10 font-display font-700 text-navy">1</div>
+        <p class="font-semibold text-navy text-sm mb-1">Fill the Form</p>
+        <p class="text-xs text-gray-400">Enter your shop info and payout details</p>
+      </div>
+      <!-- Step 2 -->
+      <div class="step-line relative text-center">
+        <div class="w-11 h-11 bg-gold-light border-2 border-gold rounded-full flex items-center
+                    justify-center mx-auto mb-3 relative z-10 font-display font-700 text-navy">2</div>
+        <p class="font-semibold text-navy text-sm mb-1">Pay GHS 100</p>
+        <p class="text-xs text-gray-400">One-time fee via MoMo or card</p>
+      </div>
+      <!-- Step 3 -->
+      <div class="relative text-center">
+        <div class="w-11 h-11 bg-gold rounded-full flex items-center justify-center mx-auto mb-3
+                    relative z-10 font-display font-700 text-navy shadow-lg">3</div>
+        <p class="font-semibold text-navy text-sm mb-1">Start Selling</p>
+        <p class="text-xs text-gray-400">Approved within 24 hours</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ── MAIN FORM ──────────────────────────────────────────── -->
+<div class="max-w-3xl mx-auto px-4 md:px-6 py-12">
 
   <!-- Registration fee notice -->
-  <div class="bg-yellow-50 border border-yellow-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
-    <span class="text-xl flex-shrink-0">ℹ️</span>
+  <div class="bg-gold-light border border-gold/30 rounded-2xl px-5 py-4 mb-8 flex items-start gap-3">
+    <span class="text-2xl flex-shrink-0">💳</span>
     <div>
-      <p class="font-semibold text-yellow-800 text-sm">One-time Registration Fee: GHS 100</p>
-      <p class="text-yellow-700 text-xs mt-1">
-        After submitting this form, you'll pay GHS 100 via MoMo or card.
-        Your shop will be reviewed and approved within 24 hours.
+      <p class="font-display font-700 text-navy text-sm">One-time Registration: GHS 100</p>
+      <p class="text-gray-600 text-xs mt-0.5 leading-relaxed">
+        Pay via MTN MoMo, Vodafone Cash, AirtelTigo or card. Your shop will be
+        reviewed and approved within 24 hours.
       </p>
     </div>
   </div>
 
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-    <form method="POST" enctype="multipart/form-data">
-      {% csrf_token %}
+  <form method="POST" enctype="multipart/form-data" class="space-y-6">
+    {% csrf_token %}
 
-      <h2 class="font-bold text-gray-800 mb-4">Shop Information</h2>
-      <div class="space-y-4 mb-6">
+    <!-- ── SECTION 1: SHOP INFO ───────────────────────── -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+        <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center
+                    text-white text-sm font-display font-700">1</div>
+        <h2 class="font-display font-700 text-navy">Shop Information</h2>
+      </div>
+      <div class="px-6 py-6 space-y-5">
+
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Shop Name *</label>
-          <input type="text" name="shop_name" value="{{ form_data.shop_name|default:'' }}"
-                 placeholder="e.g. Kofi Electronics"
-                 class="w-full px-4 py-2.5 border {% if errors.shop_name %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-          {% if errors.shop_name %}<p class="text-red-500 text-xs mt-1">{{ errors.shop_name }}</p>{% endif %}
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+            Shop Name *
+          </label>
+          <input type="text" name="shop_name"
+                 value="{{ form_data.shop_name|default:'' }}"
+                 placeholder="e.g. Kofi Electronics, Ama Fabrics..."
+                 class="w-full px-4 py-3 border rounded-xl text-sm
+                        {% if errors.shop_name %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+          {% if errors.shop_name %}
+          <p class="text-red-500 text-xs mt-1 flex items-center gap-1">⚠ {{ errors.shop_name }}</p>
+          {% endif %}
         </div>
+
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <textarea name="description" rows="3" placeholder="What do you sell?"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none">{{ form_data.description|default:'' }}</textarea>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+            Description
+          </label>
+          <textarea name="description" rows="3"
+                    placeholder="What products do you sell? What makes your shop special?"
+                    class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.description|default:'' }}</textarea>
+          <p class="text-xs text-gray-400 mt-1">This appears on your public shop page.</p>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-            <input type="tel" name="phone" value="{{ form_data.phone|default:'' }}"
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Shop Phone *
+            </label>
+            <input type="tel" name="phone"
+                   value="{{ form_data.phone|default:'' }}"
                    placeholder="0241234567"
-                   class="w-full px-4 py-2.5 border {% if errors.phone %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-            {% if errors.phone %}<p class="text-red-500 text-xs mt-1">{{ errors.phone }}</p>{% endif %}
+                   class="w-full px-4 py-3 border rounded-xl text-sm
+                          {% if errors.phone %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+            {% if errors.phone %}
+            <p class="text-red-500 text-xs mt-1 flex items-center gap-1">⚠ {{ errors.phone }}</p>
+            {% endif %}
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
-            <input type="text" name="location" value="{{ form_data.location|default:'' }}"
-                   placeholder="e.g. Accra"
-                   class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Location
+            </label>
+            <input type="text" name="location"
+                   value="{{ form_data.location|default:'' }}"
+                   placeholder="e.g. Accra, Kumasi, Takoradi..."
+                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+            Shop Logo
+          </label>
+          <div class="border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center
+                      hover:border-gold transition-colors cursor-pointer"
+               onclick="document.getElementById('logo-input').click()">
+            <p class="text-3xl mb-2">🖼️</p>
+            <p class="text-sm font-medium text-navy">Click to upload logo</p>
+            <p class="text-xs text-gray-400 mt-0.5">PNG, JPG up to 5MB — square recommended</p>
+            <input type="file" id="logo-input" name="logo" accept="image/*"
+                   class="hidden" onchange="previewLogo(this)"/>
+          </div>
+          <img id="logo-preview" class="hidden mt-3 w-20 h-20 rounded-2xl object-cover
+                                        border-2 border-gold/30 mx-auto"/>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── SECTION 2: PAYOUT DETAILS ─────────────────── -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+        <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center
+                    text-white text-sm font-display font-700">2</div>
+        <h2 class="font-display font-700 text-navy">Payout Details</h2>
+      </div>
+      <div class="px-6 py-6 space-y-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              MoMo Number *
+            </label>
+            <input type="tel" name="momo_number"
+                   value="{{ form_data.momo_number|default:'' }}"
+                   placeholder="0241234567"
+                   class="w-full px-4 py-3 border rounded-xl text-sm
+                          {% if errors.momo_number %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+            {% if errors.momo_number %}
+            <p class="text-red-500 text-xs mt-1 flex items-center gap-1">⚠ {{ errors.momo_number }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Network
+            </label>
+            <select name="momo_network"
+                    class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white">
+              <option value="mtn">MTN Mobile Money</option>
+              <option value="vodafone">Vodafone Cash</option>
+              <option value="airteltigo">AirtelTigo Money</option>
+            </select>
+          </div>
+        </div>
+        <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-600 flex gap-2">
+          <span class="flex-shrink-0">💡</span>
+          <span>Payouts are processed weekly to this number. Make sure it's correct.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3: ACCOUNT (unauthenticated only) ── -->
+    {% if not user.is_authenticated %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center
+                      text-white text-sm font-display font-700">3</div>
+          <h2 class="font-display font-700 text-navy">Create Your Account</h2>
+        </div>
+        <a href="{% url 'accounts:login' %}?next={% url 'vendors:apply' %}"
+           class="text-xs text-gold-dark font-semibold hover:underline">
+          Already have an account? Sign in →
+        </a>
+      </div>
+      <div class="px-6 py-6 space-y-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              First Name *
+            </label>
+            <input type="text" name="first_name"
+                   value="{{ form_data.first_name|default:'' }}"
+                   class="w-full px-4 py-3 border rounded-xl text-sm
+                          {% if errors.first_name %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+            {% if errors.first_name %}
+            <p class="text-red-500 text-xs mt-1">⚠ {{ errors.first_name }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Last Name
+            </label>
+            <input type="text" name="last_name"
+                   value="{{ form_data.last_name|default:'' }}"
+                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
           </div>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Shop Logo</label>
-          <input type="file" name="logo" accept="image/*"
-                 class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand-light file:text-brand cursor-pointer"/>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+            Password *
+          </label>
+          <div class="relative">
+            <input type="password" name="password" id="pass-input"
+                   placeholder="At least 6 characters"
+                   class="w-full px-4 py-3 border rounded-xl text-sm pr-12
+                          {% if errors.password %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"
+                   oninput="strengthCheck(this.value)"/>
+            <button type="button" onclick="togglePass()"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
+                           hover:text-navy text-sm">👁</button>
+          </div>
+          {% if errors.password %}
+          <p class="text-red-500 text-xs mt-1">⚠ {{ errors.password }}</p>
+          {% endif %}
+          <!-- Strength bar -->
+          <div class="flex gap-1 mt-2">
+            <div id="s1" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
+            <div id="s2" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
+            <div id="s3" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
+            <div id="s4" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
+          </div>
         </div>
       </div>
-
-      <h2 class="font-bold text-gray-800 mb-4 border-t border-gray-100 pt-4">Payout Details</h2>
-      <div class="grid grid-cols-2 gap-3 mb-6">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">MoMo Number *</label>
-          <input type="tel" name="momo_number" value="{{ form_data.momo_number|default:'' }}"
-                 placeholder="0241234567"
-                 class="w-full px-4 py-2.5 border {% if errors.momo_number %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-          {% if errors.momo_number %}<p class="text-red-500 text-xs mt-1">{{ errors.momo_number }}</p>{% endif %}
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Network</label>
-          <select name="momo_network" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
-            <option value="mtn">MTN Mobile Money</option>
-            <option value="vodafone">Vodafone Cash</option>
-            <option value="airteltigo">AirtelTigo Money</option>
-          </select>
-        </div>
+    </div>
+    {% else %}
+    <div class="bg-green-50 border border-green-200 rounded-2xl px-5 py-4
+                flex items-center gap-3 text-green-700">
+      <span class="text-xl">✅</span>
+      <div>
+        <p class="font-semibold text-sm">Applying as {{ user.get_full_name|default:user.phone }}</p>
+        <p class="text-xs opacity-70">You're signed in — no account needed</p>
       </div>
+    </div>
+    {% endif %}
 
-      {% if not user.is_authenticated %}
-      <h2 class="font-bold text-gray-800 mb-1 border-t border-gray-100 pt-4">Create Your Account</h2>
-      <p class="text-xs text-gray-400 mb-4">
-        Already have an account?
-        <a href="{% url 'accounts:login' %}?next={% url 'vendors:apply' %}" class="text-brand font-medium hover:underline">Sign in first</a>
+    <!-- ── SUBMIT ──────────────────────────────────────── -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <!-- Summary -->
+      <div class="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
+        <div>
+          <p class="font-display font-700 text-navy">Registration Fee</p>
+          <p class="text-xs text-gray-400 mt-0.5">One-time · Non-refundable</p>
+        </div>
+        <p class="font-display font-700 text-2xl text-navy">GHS 100</p>
+      </div>
+      <p class="text-xs text-gray-400 text-center mb-4">
+        By submitting you agree to Lynctel's
+        <a href="{% url 'frontend:terms' %}" class="text-gold-dark hover:underline">Terms of Service</a>
+        and
+        <a href="{% url 'frontend:privacy_policy' %}" class="text-gold-dark hover:underline">Privacy Policy</a>.
       </p>
-      <div class="space-y-4 mb-6">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-            <input type="text" name="first_name" value="{{ form_data.first_name|default:'' }}"
-                   class="w-full px-4 py-2.5 border {% if errors.first_name %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-            {% if errors.first_name %}<p class="text-red-500 text-xs mt-1">{{ errors.first_name }}</p>{% endif %}
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-            <input type="text" name="last_name" value="{{ form_data.last_name|default:'' }}"
-                   class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-          </div>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-          <input type="password" name="password" placeholder="At least 6 characters"
-                 class="w-full px-4 py-2.5 border {% if errors.password %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-          {% if errors.password %}<p class="text-red-500 text-xs mt-1">{{ errors.password }}</p>{% endif %}
-        </div>
-      </div>
-      {% else %}
-      <div class="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-6 text-sm text-green-700">
-        ✓ Applying as <strong>{{ user.get_full_name|default:user.phone }}</strong>
-      </div>
-      {% endif %}
-
       <button type="submit"
-              class="w-full bg-brand hover:bg-brand-dark text-white font-bold py-3.5 rounded-xl transition-colors">
-        Continue to Payment (GHS 100) →
+              class="w-full bg-navy hover:bg-navy-700 text-white font-semibold
+                     py-4 rounded-2xl transition-colors btn-press flex items-center
+                     justify-center gap-2 text-sm">
+        Continue to Payment
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
       </button>
-      <p class="text-center text-xs text-gray-400 mt-3">
-        You'll pay GHS 100 via MoMo or card to complete registration.
-      </p>
-    </form>
+    </div>
+  </form>
+
+  <!-- ── TRUST BADGES ───────────────────────────────────── -->
+  <div class="mt-8 grid grid-cols-3 gap-4 text-center">
+    <div class="bg-white rounded-2xl border border-gray-100 p-4">
+      <p class="text-2xl mb-1.5">🔒</p>
+      <p class="text-xs font-semibold text-navy">Secure Payment</p>
+      <p class="text-xs text-gray-400">Powered by Flutterwave</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-4">
+      <p class="text-2xl mb-1.5">⚡</p>
+      <p class="text-xs font-semibold text-navy">Fast Approval</p>
+      <p class="text-xs text-gray-400">Within 24 hours</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-4">
+      <p class="text-2xl mb-1.5">🇬🇭</p>
+      <p class="text-xs font-semibold text-navy">Ghana-Built</p>
+      <p class="text-xs text-gray-400">For Ghanaian sellers</p>
+    </div>
   </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Logo preview
+  function previewLogo(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById('logo-preview');
+      img.src = e.target.result;
+      img.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Password toggle
+  function togglePass() {
+    const input = document.getElementById('pass-input');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  // Password strength
+  function strengthCheck(val) {
+    const bars   = [1,2,3,4].map(i => document.getElementById('s' + i));
+    const checks = [val.length >= 6, /[A-Z]/.test(val), /[0-9]/.test(val), /[^A-Za-z0-9]/.test(val)];
+    const score  = checks.filter(Boolean).length;
+    const colors = { 1:'bg-red-400', 2:'bg-orange-400', 3:'bg-yellow-400', 4:'bg-green-500' };
+    bars.forEach((b,i) => {
+      b.className = `h-1 flex-1 rounded-full transition-colors ${i < score ? colors[score] : 'bg-gray-200'}`;
+    });
+  }
+</script>
 {% endblock %}
