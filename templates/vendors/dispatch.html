@@ -1,165 +1,285 @@
 {% extends "base.html" %}
-{% block title %}Dispatch Riders — Vendor Dashboard{% endblock %}
+{% block title %}Dispatch Riders — {{ vendor.shop_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @keyframes pulse-dot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.7} }
+  .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+  .delivery-card { transition: all .2s; }
+  .delivery-card.selected { border-color:#F5A623; background:#FFFBF2; }
+  .rider-card { transition: all .2s; }
+  .rider-card.selected { border-color:#0F1B2D; background:#F5F7FA; }
+  @keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .slide-up { animation: slideUp .3s ease both; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+<div class="max-w-6xl mx-auto px-4 md:px-6 py-8">
 
-  <!-- Header -->
+  <!-- ── HEADER ──────────────────────────────────────── -->
   <div class="mb-8">
     <a href="{% url 'vendors:dashboard' %}"
-       class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-navy mb-4 transition-colors">
+       class="inline-flex items-center gap-1.5 text-sm text-gray-400
+              hover:text-navy mb-5 transition-colors">
       ← Back to Dashboard
     </a>
-    <h1 class="font-display font-700 text-2xl text-navy">Dispatch Riders</h1>
-    <p class="text-gray-400 text-sm mt-1">
-      No rider auto-accepted yet? Manually send a request to an available rider below.
-    </p>
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="font-display font-700 text-2xl text-navy">Dispatch a Rider</h1>
+        <p class="text-gray-400 text-sm mt-1">
+          Select a pending delivery, then choose an available rider to send a request.
+        </p>
+      </div>
+      <!-- Live counts -->
+      <div class="flex items-center gap-3">
+        <div class="bg-white border border-gray-100 rounded-2xl px-4 py-2.5 text-center shadow-sm">
+          <p class="font-display font-700 text-xl text-navy">{{ pending_deliveries|length }}</p>
+          <p class="text-xs text-gray-400">Pending</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-2xl px-4 py-2.5 text-center shadow-sm">
+          <p class="font-display font-700 text-xl text-green-600">{{ available_riders|length }}</p>
+          <p class="text-xs text-gray-400">Riders Available</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HOW TO USE ───────────────────────────────────── -->
+  <div class="flex items-center gap-4 bg-gold-light border border-gold/30 rounded-2xl
+              px-5 py-3.5 mb-8 text-sm text-navy">
+    <span class="text-xl flex-shrink-0">💡</span>
+    <span>
+      <strong>Step 1:</strong> Click a delivery below to select it.
+      <strong class="mx-1">→</strong>
+      <strong>Step 2:</strong> Click a rider to assign.
+      <strong class="mx-1">→</strong>
+      <strong>Step 3:</strong> Hit <em>Send Request</em>.
+    </span>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-    <!-- LEFT: Pending Deliveries -->
+    <!-- ── LEFT: PENDING DELIVERIES ──────────────────── -->
     <div>
-      <h2 class="font-display font-700 text-lg text-navy mb-4 flex items-center gap-2">
-        📦 Unassigned Deliveries
-        <span class="text-xs bg-red-100 text-red-700 font-semibold px-2 py-0.5 rounded-full">
+      <div class="flex items-center gap-2 mb-4">
+        <h2 class="font-display font-700 text-lg text-navy">📦 Unassigned Deliveries</h2>
+        {% if pending_deliveries %}
+        <span class="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-0.5 rounded-full">
           {{ pending_deliveries|length }}
         </span>
-      </h2>
+        {% endif %}
+      </div>
 
       {% if pending_deliveries %}
-      <div class="space-y-4" id="deliveries-list">
+      <div class="space-y-3" id="deliveries-list">
         {% for delivery in pending_deliveries %}
-        <div class="delivery-card bg-white rounded-2xl border-2 border-gray-100 p-5 cursor-pointer
-                    transition-all duration-150 hover:border-gold"
+        <div class="delivery-card bg-white rounded-2xl border-2 border-gray-100
+                    p-5 cursor-pointer select-none"
              data-id="{{ delivery.pk }}"
+             data-ref="{% if delivery.order %}{{ delivery.order.order_ref }}{% else %}Ride #{{ delivery.pk }}{% endif %}"
              onclick="selectDelivery({{ delivery.pk }}, this)">
+
           <div class="flex items-start justify-between gap-3">
-            <div class="flex-1">
-              <p class="font-display font-700 text-navy">
-                {% if delivery.order %}{{ delivery.order.order_ref }}{% else %}Ride #{{ delivery.pk }}{% endif %}
-              </p>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <p class="font-display font-700 text-navy">
+                  {% if delivery.order %}{{ delivery.order.order_ref }}
+                  {% else %}Ride #{{ delivery.pk }}{% endif %}
+                </p>
+                <span class="text-[10px] bg-yellow-100 text-yellow-700 font-bold
+                             px-2 py-0.5 rounded-full flex-shrink-0">
+                  ⏳ Pending
+                </span>
+              </div>
+
               {% if delivery.pickup_location %}
-              <p class="text-xs text-gray-500 mt-1">📍 {{ delivery.pickup_location|truncatechars:60 }}</p>
-              {% endif %}
-              {% if delivery.dropoff_location or delivery.order %}
-              <p class="text-xs text-gray-400 mt-0.5">
-                → {% if delivery.dropoff_location %}{{ delivery.dropoff_location|truncatechars:60 }}
-                  {% elif delivery.order %}{{ delivery.order.delivery_address }}, {{ delivery.order.delivery_city }}
-                  {% endif %}
+              <p class="text-xs text-gray-600 flex items-center gap-1 mb-0.5">
+                <span class="text-green-600">●</span>
+                Pickup: {{ delivery.pickup_location|truncatechars:55 }}
               </p>
               {% endif %}
-              <p class="text-xs text-gray-300 mt-1">{{ delivery.created_at|timesince }} ago</p>
+
+              <p class="text-xs text-gray-500 flex items-center gap-1">
+                <span class="text-red-400">●</span>
+                Deliver to:
+                {% if delivery.order %}
+                  {{ delivery.order.delivery_address }}, {{ delivery.order.delivery_city }}
+                {% elif delivery.dropoff_location %}
+                  {{ delivery.dropoff_location|truncatechars:55 }}
+                {% else %}—{% endif %}
+              </p>
             </div>
-            <span class="text-xs bg-yellow-100 text-yellow-700 font-semibold px-2 py-1 rounded-full flex-shrink-0">
-              ⏳ Pending
-            </span>
           </div>
-          <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-50">
-            <div class="text-xs text-gray-400">
-              Fee: <span class="font-semibold text-navy">GHS {{ delivery.delivery_fee }}</span>
-            </div>
+
+          <!-- Meta row -->
+          <div class="flex items-center gap-4 mt-3 pt-3 border-t border-gray-50 text-xs text-gray-400">
+            <span>
+              💵 Fee: <strong class="text-navy">GHS {{ delivery.delivery_fee }}</strong>
+            </span>
             {% if delivery.zone %}
-            <div class="text-xs text-gray-400">Zone: <span class="font-semibold text-navy">{{ delivery.zone.name }}</span></div>
+            <span>
+              📍 Zone: <strong class="text-navy">{{ delivery.zone.name }}</strong>
+            </span>
             {% endif %}
+            <span class="ml-auto">{{ delivery.created_at|timesince }} ago</span>
+          </div>
+
+          <!-- Selection indicator -->
+          <div class="hidden mt-3 text-xs font-semibold text-gold-dark
+                      flex items-center gap-1 selected-indicator">
+            ✓ Selected — now choose a rider →
           </div>
         </div>
         {% endfor %}
       </div>
+
       {% else %}
-      <div class="bg-green-50 border border-green-100 rounded-2xl p-10 text-center">
+      <div class="bg-green-50 border border-green-100 rounded-2xl p-12 text-center">
         <p class="text-4xl mb-3">✅</p>
-        <p class="font-display font-700 text-green-800">All deliveries are assigned!</p>
-        <p class="text-sm text-green-600 mt-1">No pending deliveries at the moment.</p>
+        <p class="font-display font-700 text-green-800 mb-1">All deliveries assigned!</p>
+        <p class="text-sm text-green-600">No pending deliveries right now. Check back soon.</p>
       </div>
       {% endif %}
     </div>
 
-    <!-- RIGHT: Available Riders + Dispatch Form -->
+    <!-- ── RIGHT: RIDERS + DISPATCH FORM ─────────────── -->
     <div>
-      <h2 class="font-display font-700 text-lg text-navy mb-4 flex items-center gap-2">
-        🛵 Available Riders
-        <span class="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">
+      <div class="flex items-center gap-2 mb-4">
+        <h2 class="font-display font-700 text-lg text-navy">🛵 Available Riders</h2>
+        {% if available_riders %}
+        <span class="bg-green-100 text-green-700 text-xs font-bold px-2.5 py-0.5 rounded-full">
           {{ available_riders|length }}
         </span>
-      </h2>
+        {% endif %}
+      </div>
 
-      <!-- Hidden dispatch form -->
-      <form method="POST" id="dispatch-form" class="hidden mb-6">
+      <!-- Dispatch summary + button (hidden until both selected) -->
+      <form method="POST" id="dispatch-form" class="hidden slide-up mb-5">
         {% csrf_token %}
         <input type="hidden" name="delivery_id" id="selected-delivery-id"/>
         <input type="hidden" name="rider_id"    id="selected-rider-id"/>
 
-        <div id="dispatch-summary"
-             class="bg-navy text-white rounded-2xl p-4 mb-4 text-sm space-y-1">
-          <p class="font-semibold text-gold">Sending request:</p>
-          <p>Delivery: <span id="sum-delivery" class="font-semibold"></span></p>
-          <p>To rider: <span id="sum-rider"    class="font-semibold"></span></p>
+        <div class="bg-navy rounded-2xl p-5 text-white mb-4">
+          <p class="text-xs text-gold font-semibold uppercase tracking-wider mb-3">
+            Request Summary
+          </p>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-gray-400">Delivery</span>
+              <span id="sum-delivery" class="font-semibold text-right max-w-[180px] truncate"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Rider</span>
+              <span id="sum-rider" class="font-semibold"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Status</span>
+              <span class="text-gold font-semibold">Awaiting acceptance</span>
+            </div>
+          </div>
         </div>
 
         <button type="submit"
                 class="w-full bg-gold hover:bg-gold-dark text-navy font-display font-700
-                       py-3.5 rounded-xl transition-colors btn-press text-sm">
-          Send Ride Request →
+                       py-3.5 rounded-xl transition-colors btn-press text-sm flex
+                       items-center justify-center gap-2">
+          🛵 Send Ride Request
         </button>
         <button type="button" onclick="clearSelection()"
-                class="w-full text-center text-xs text-gray-400 hover:text-navy mt-2 py-1 transition-colors">
-          Clear selection
+                class="w-full text-center text-xs text-gray-400 hover:text-navy
+                       mt-2 py-1 transition-colors">
+          ✕ Clear selection
         </button>
       </form>
 
-      <!-- No selection hint -->
-      <div id="select-hint" class="bg-gray-50 rounded-2xl p-4 mb-4 text-center text-sm text-gray-400">
-        ← Select a delivery first, then choose a rider below
+      <!-- Hint when nothing selected -->
+      <div id="select-hint"
+           class="bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-5
+                  text-center text-sm text-gray-400">
+        ← Select a delivery first, then choose a rider
       </div>
 
       {% if available_riders %}
       <div class="space-y-3">
         {% for rider in available_riders %}
-        <div class="rider-card bg-white rounded-2xl border border-gray-100 p-4 cursor-pointer
-                    transition-all duration-150 hover:border-navy"
+        <div class="rider-card bg-white rounded-2xl border-2 border-gray-100
+                    p-4 cursor-pointer select-none"
              data-id="{{ rider.pk }}"
-             data-name="{{ rider.rider.get_full_name|default:rider.rider.phone }}"
+             data-name="{{ rider.rider.get_full_name|default:rider.rider.phone|escapejs }}"
              onclick="selectRider({{ rider.pk }}, '{{ rider.rider.get_full_name|default:rider.rider.phone|escapejs }}', this)">
+
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-navy rounded-xl flex items-center justify-center
-                        text-white font-display font-700 flex-shrink-0">
+            <!-- Avatar -->
+            <div class="w-11 h-11 bg-navy rounded-2xl flex items-center justify-center
+                        text-white font-display font-700 text-base flex-shrink-0">
               {{ rider.rider.first_name|first|upper|default:"R" }}
             </div>
-            <div class="flex-1">
-              <p class="font-semibold text-navy text-sm">
-                {{ rider.rider.get_full_name|default:rider.rider.phone }}
-              </p>
-              <p class="text-xs text-gray-400">
-                {{ rider.vehicle_type|default:"—" }}
-                {% if rider.zone %} · {{ rider.zone.name }}{% endif %}
-                · {{ rider.commission_rate }}% commission
+
+            <!-- Info -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <p class="font-semibold text-navy text-sm">
+                  {{ rider.rider.get_full_name|default:rider.rider.phone }}
+                </p>
+                {% if rider.is_verified %}
+                <span class="text-[10px] bg-blue-100 text-blue-700 font-bold
+                             px-2 py-0.5 rounded-full">✓ Verified</span>
+                {% endif %}
+              </div>
+              <p class="text-xs text-gray-400 mt-0.5">
+                {% if rider.vehicle_type %}{{ rider.vehicle_type }} · {% endif %}
+                {% if rider.zone %}{{ rider.zone.name }} · {% endif %}
+                {{ rider.commission_rate }}% commission
               </p>
             </div>
-            <div class="flex-shrink-0">
-              <span class="text-xs bg-green-100 text-green-700 font-semibold px-2 py-1 rounded-full">
-                ● Available
-              </span>
+
+            <!-- Status -->
+            <div class="flex-shrink-0 flex items-center gap-1.5">
+              <span class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></span>
+              <span class="text-xs text-green-600 font-semibold">Available</span>
             </div>
           </div>
-          {% if rider.is_verified %}
-          <div class="mt-2 flex items-center gap-1 text-xs text-blue-600">
-            ✓ Verified rider
+
+          <!-- Phone -->
+          <div class="mt-3 pt-3 border-t border-gray-50 flex items-center
+                      justify-between text-xs text-gray-400">
+            <a href="tel:{{ rider.rider.phone }}"
+               class="hover:text-navy transition-colors"
+               onclick="event.stopPropagation()">
+              📞 {{ rider.rider.phone }}
+            </a>
+            <a href="https://wa.me/233{{ rider.rider.phone|slice:'1:' }}"
+               target="_blank"
+               class="text-green-600 hover:text-green-700 font-semibold transition-colors"
+               onclick="event.stopPropagation()">
+              💬 WhatsApp
+            </a>
           </div>
-          {% endif %}
+
+          <!-- Selected indicator -->
+          <div class="hidden mt-2 text-xs font-semibold text-navy
+                      flex items-center gap-1 selected-indicator">
+            ✓ Rider selected
+          </div>
         </div>
         {% endfor %}
       </div>
+
       {% else %}
-      <div class="bg-amber-50 border border-amber-100 rounded-2xl p-10 text-center">
+      <div class="bg-amber-50 border border-amber-100 rounded-2xl p-12 text-center">
         <p class="text-4xl mb-3">🛵</p>
-        <p class="font-display font-700 text-amber-800">No riders available right now</p>
-        <p class="text-sm text-amber-600 mt-1">
-          All riders are busy or offline. Check back in a few minutes.
-        </p>
+        <p class="font-display font-700 text-amber-800 mb-1">No riders available</p>
+        <p class="text-sm text-amber-600">All riders are busy or offline. Check back shortly.</p>
+        <button onclick="location.reload()"
+                class="mt-4 text-xs bg-amber-100 hover:bg-amber-200 text-amber-800
+                       font-semibold px-4 py-2 rounded-xl transition-colors">
+          🔄 Refresh
+        </button>
       </div>
       {% endif %}
     </div>
+
   </div>
 </div>
 {% endblock %}
@@ -172,21 +292,31 @@
   let selectedRiderName    = null;
 
   function selectDelivery(id, el) {
+    // Clear previous
     document.querySelectorAll('.delivery-card').forEach(c => {
-      c.classList.remove('border-gold', 'bg-gold-light');
+      c.classList.remove('selected');
+      c.querySelector('.selected-indicator')?.classList.add('hidden');
     });
-    el.classList.add('border-gold', 'bg-gold-light');
+    // Select new
+    el.classList.add('selected');
+    el.querySelector('.selected-indicator')?.classList.remove('hidden');
+
     selectedDeliveryId   = id;
-    selectedDeliveryName = el.querySelector('p.font-display').textContent.trim();
+    selectedDeliveryName = el.dataset.ref;
     document.getElementById('selected-delivery-id').value = id;
     updateSummary();
   }
 
   function selectRider(id, name, el) {
+    // Clear previous
     document.querySelectorAll('.rider-card').forEach(c => {
-      c.classList.remove('border-navy', 'bg-navy/5');
+      c.classList.remove('selected');
+      c.querySelector('.selected-indicator')?.classList.add('hidden');
     });
-    el.classList.add('border-navy', 'bg-navy/5');
+    // Select new
+    el.classList.add('selected');
+    el.querySelector('.selected-indicator')?.classList.remove('hidden');
+
     selectedRiderId   = id;
     selectedRiderName = name;
     document.getElementById('selected-rider-id').value = id;
@@ -201,17 +331,21 @@
       document.getElementById('sum-delivery').textContent = selectedDeliveryName;
       document.getElementById('sum-rider').textContent    = selectedRiderName;
       form.classList.remove('hidden');
+      form.classList.add('slide-up');
       hint.classList.add('hidden');
     } else {
       form.classList.add('hidden');
+      form.classList.remove('slide-up');
       hint.classList.remove('hidden');
     }
   }
 
   function clearSelection() {
     selectedDeliveryId = selectedRiderId = null;
+    selectedDeliveryName = selectedRiderName = null;
     document.querySelectorAll('.delivery-card, .rider-card').forEach(c => {
-      c.classList.remove('border-gold', 'bg-gold-light', 'border-navy', 'bg-navy/5');
+      c.classList.remove('selected');
+      c.querySelector('.selected-indicator')?.classList.add('hidden');
     });
     updateSummary();
   }
