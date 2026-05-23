@@ -10,12 +10,19 @@ from django.utils import timezone
 from datetime import timedelta
 from functools import wraps
 
+from requests import request
+
+import delivery
+import delivery
+import order
 from ecommerce.models import User
 from products.models import Product, Category
 from order.models import Order, OrderStatusHistory
 from delivery.models import Delivery, DeliveryZone
-from rider.models import RiderProfile
+from rider.models import RiderProfile, DeliveryAcceptance
 from vendors.models import Vendor
+from rider.views import notify_rider
+
 
 
 # ── GUARD ─────────────────────────────────────────────────
@@ -150,10 +157,10 @@ def order_detail(request, pk):
                     order.delivered_at = timezone.now()
                 order.save()
                 messages.success(request, f'Order status updated to {new_status}.')
-
-        elif action == 'assign_rider':
+    elif action == 'assign_rider':
             rider_id = request.POST.get('rider_id')
             zone_id  = request.POST.get('zone_id')
+            
             if rider_id and zone_id and not delivery:
                 rider = get_object_or_404(RiderProfile, pk=rider_id)
                 zone  = get_object_or_404(DeliveryZone, pk=zone_id)
@@ -165,50 +172,30 @@ def order_detail(request, pk):
                     status='pending_acceptance',
                 )
 
-                # Create acceptance record
-                try:
-                    from rider.location_models import DeliveryAcceptance
-                    DeliveryAcceptance.objects.create(
-                        delivery=new_delivery, rider=rider, status='pending'
-                    )
-                except Exception:
-                    pass
+                # Create acceptance record cleanly
+                DeliveryAcceptance.objects.create(
+                    delivery=new_delivery, rider=rider, status='pending'
+                )
 
                 order.status = 'confirmed'
                 order.save()
 
-                # Notify rider
-                try:
-                    from rider.views import notify_rider
-                    notify_rider(
-                        rider_user=rider.rider,
-                        title='🛵 New Delivery Request!',
-                        message=(
-                            f'Order {order.order_ref} — deliver to '
-                            f'{order.delivery_address}, {order.delivery_city}. '
-                            f'Commission: GHS {new_delivery.rider_commission}.'
-                        ),
-                        notif_type='new_delivery',
-                        link='/rider/',
-                    )
-                except Exception:
-                    pass
+                # Notify rider cleanly
+                notify_rider(
+                    rider_user=rider.rider,
+                    title='🛵 New Delivery Request!',
+                    message=(
+                        f'Order {order.order_ref} — deliver to '
+                        f'{order.delivery_address}, {order.delivery_city}. '
+                        f'Commission: GHS {new_delivery.rider_commission}.'
+                    ),
+                    notif_type='new_delivery',
+                    link='/rider/',
+                )
 
                 messages.success(request, f'Rider {rider.rider.get_full_name()} notified.')
             elif delivery:
                 messages.warning(request, 'A rider is already assigned.')
-
-        return redirect('staff:order_detail', pk=pk)
-
-    return render(request, 'staff/orders/detail.html', {
-        'order':    order,
-        'riders':   riders,
-        'zones':    zones,
-        'history':  history,
-        'delivery': delivery,
-        'cart_count': 0,
-    })
-
 
 # ── PRODUCTS ──────────────────────────────────────────────
 
