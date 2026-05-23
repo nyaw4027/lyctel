@@ -1,0 +1,207 @@
+{% extends "staff/base.html" %}
+{% block title %}Staff Dashboard — Lynctel{% endblock %}
+
+{% block staff_content %}
+
+<div class="mb-8">
+  <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Staff Panel</p>
+  <h1 class="font-display font-700 text-2xl text-navy">
+    Good {% now "H" as hour %}{% if hour < "12" %}morning{% elif hour < "17" %}afternoon{% else %}evening{% endif %},
+    {{ user.first_name|default:"Staff" }} 👋
+  </h1>
+  <p class="text-gray-400 text-sm mt-1">
+    Here's what's happening today — {{ request.user.get_role_label }} view.
+  </p>
+</div>
+
+<!-- ── STATS GRID ──────────────────────────────────────── -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+
+  <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Orders Today</p>
+    <p class="font-display font-700 text-2xl text-navy">{{ orders_today }}</p>
+    <p class="text-xs text-gray-400 mt-1">Total: {{ total_orders }}</p>
+  </div>
+
+  <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Pending</p>
+    <p class="font-display font-700 text-2xl text-orange-500">{{ pending_orders }}</p>
+    <p class="text-xs text-blue-500 mt-1">{{ dispatched }} dispatched</p>
+  </div>
+
+  <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Delivered Today</p>
+    <p class="font-display font-700 text-2xl text-green-600">{{ delivered_today }}</p>
+    <p class="text-xs text-gray-400 mt-1">Active riders: {{ online_riders }}</p>
+  </div>
+
+  <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Low Stock</p>
+    <p class="font-display font-700 text-2xl {% if low_stock > 0 %}text-red-500{% else %}text-navy{% endif %}">
+      {{ low_stock }}
+    </p>
+    <p class="text-xs text-gray-400 mt-1">Active products: {{ total_products }}</p>
+  </div>
+
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+  <!-- ── PENDING VENDORS ──────────────────────────────── -->
+  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+      <h2 class="font-display font-700 text-navy">Vendors Awaiting Approval</h2>
+      {% if pending_vendors %}
+      <span class="bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-0.5 rounded-full">
+        {{ pending_vendors }}
+      </span>
+      {% endif %}
+    </div>
+    {% if pending_vendor_list %}
+    <div class="divide-y divide-gray-50">
+      {% for vendor in pending_vendor_list %}
+      <div class="flex items-center gap-3 px-5 py-3">
+        {% if vendor.logo %}
+        <img src="{{ vendor.logo.url }}" class="w-9 h-9 rounded-xl object-cover flex-shrink-0"/>
+        {% else %}
+        <div class="w-9 h-9 rounded-xl bg-navy flex items-center justify-center
+                    text-white text-xs font-display font-700 flex-shrink-0">
+          {{ vendor.shop_name|first|upper }}
+        </div>
+        {% endif %}
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-navy text-sm truncate">{{ vendor.shop_name }}</p>
+          <p class="text-xs text-gray-400">{{ vendor.owner.phone }} · {{ vendor.joined_at|timesince }} ago</p>
+        </div>
+        <a href="{% url 'staff:vendor_detail' vendor.pk %}"
+           class="text-xs bg-navy text-white font-semibold px-3 py-1.5 rounded-xl
+                  hover:bg-navy-700 transition-colors flex-shrink-0">
+          Review
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="px-5 py-3 border-t border-gray-50">
+      <a href="{% url 'staff:vendor_list' %}?status=pending"
+         class="text-xs text-gold-dark font-semibold hover:underline">
+        View all pending vendors →
+      </a>
+    </div>
+    {% else %}
+    <div class="px-5 py-10 text-center text-gray-400">
+      <p class="text-3xl mb-2">✅</p>
+      <p class="text-sm">No pending vendor applications</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── LOW STOCK PRODUCTS ───────────────────────────── -->
+  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+      <h2 class="font-display font-700 text-navy">Low Stock Alert</h2>
+      {% if low_stock > 0 %}
+      <span class="bg-red-100 text-red-600 text-xs font-bold px-2.5 py-0.5 rounded-full">
+        {{ low_stock }} items
+      </span>
+      {% endif %}
+    </div>
+    {% if low_stock_products %}
+    <div class="divide-y divide-gray-50">
+      {% for product in low_stock_products %}
+      <div class="flex items-center gap-3 px-5 py-3">
+        {% with product.images.first as img %}
+        {% if img %}
+        <img src="{{ img.image.url }}" class="w-9 h-9 rounded-xl object-cover flex-shrink-0"/>
+        {% else %}
+        <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center
+                    text-base flex-shrink-0">📦</div>
+        {% endif %}
+        {% endwith %}
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-navy text-sm truncate">{{ product.name }}</p>
+          <p class="text-xs text-gray-400">{{ product.vendor.shop_name|default:"—" }}</p>
+        </div>
+        <span class="text-xs font-bold {% if product.stock_qty == 0 %}text-red-600 bg-red-50{% else %}text-orange-600 bg-orange-50{% endif %} px-2.5 py-1 rounded-full flex-shrink-0">
+          {% if product.stock_qty == 0 %}Out of stock{% else %}{{ product.stock_qty }} left{% endif %}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="px-5 py-3 border-t border-gray-50">
+      <a href="{% url 'staff:product_list' %}?status=active"
+         class="text-xs text-gold-dark font-semibold hover:underline">
+        View all products →
+      </a>
+    </div>
+    {% else %}
+    <div class="px-5 py-10 text-center text-gray-400">
+      <p class="text-3xl mb-2">✅</p>
+      <p class="text-sm">All products are well stocked</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- ── RECENT ORDERS ──────────────────────────────────── -->
+<div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+    <h2 class="font-display font-700 text-navy">Recent Orders</h2>
+    <a href="{% url 'staff:order_list' %}"
+       class="text-xs text-gold-dark font-semibold hover:underline">
+      View all →
+    </a>
+  </div>
+  {% if recent_orders %}
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
+        <th class="px-5 py-3 text-left font-semibold">Order</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Customer</th>
+        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">City</th>
+        <th class="px-5 py-3 text-right font-semibold">Amount</th>
+        <th class="px-5 py-3 text-center font-semibold">Status</th>
+        <th class="px-5 py-3 text-right font-semibold">Action</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      {% for order in recent_orders %}
+      <tr class="hover:bg-gray-50 transition-colors">
+        <td class="px-5 py-3 font-bold text-gold-dark">{{ order.order_ref }}</td>
+        <td class="px-5 py-3 text-gray-600 hidden md:table-cell">
+          {{ order.customer.get_full_name|default:order.customer.phone }}
+        </td>
+        <td class="px-5 py-3 text-gray-400 hidden md:table-cell">{{ order.delivery_city }}</td>
+        <td class="px-5 py-3 text-right font-display font-700 text-navy">
+          GHS {{ order.total_amount }}
+        </td>
+        <td class="px-5 py-3 text-center">
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+            {% if order.status == 'delivered' %}bg-green-100 text-green-700
+            {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
+            {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
+            {% elif order.status == 'cancelled' %}bg-red-100 text-red-500
+            {% else %}bg-gray-100 text-gray-600{% endif %}">
+            {{ order.get_status_display }}
+          </span>
+        </td>
+        <td class="px-5 py-3 text-right">
+          <a href="{% url 'staff:order_detail' order.pk %}"
+             class="text-xs border border-gray-200 hover:border-navy text-gray-600
+                    hover:text-navy font-semibold px-3 py-1.5 rounded-lg transition-colors">
+            View
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="text-center py-12 text-gray-400">
+    <p class="text-4xl mb-2">🧾</p>
+    <p class="text-sm">No orders yet</p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .staff-sidebar { min-height: calc(100vh - 64px); }
+  .nav-item { transition: all .15s; }
+  .nav-item.active { background:#0F1B2D; color:#fff; }
+  .nav-item:not(.active):hover { background:#F5F7FA; color:#0F1B2D; }
+  .stat-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,27,45,.08); }
+  .stat-card { transition: all .2s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen">
+
+  <!-- ── SIDEBAR ─────────────────────────────────────── -->
+  <aside class="staff-sidebar w-60 bg-white border-r border-gray-100 flex-shrink-0
+                hidden md:flex flex-col sticky top-16">
+
+    <!-- Staff badge -->
+    <div class="px-5 py-4 border-b border-gray-100">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-navy rounded-xl flex items-center justify-center
+                    text-white font-display font-700">
+          {{ user.first_name|first|upper|default:"S" }}
+        </div>
+        <div class="min-w-0">
+          <p class="font-semibold text-navy text-sm truncate">
+            {{ user.get_full_name|default:user.phone }}
+          </p>
+          <p class="text-xs text-gold-dark font-semibold capitalize">{{ user.role }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav links -->
+    <nav class="flex-1 px-3 py-4 space-y-1">
+
+      <a href="{% url 'staff:home' %}"
+         class="nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}
+                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+        <span class="text-base">⚡</span> Overview
+      </a>
+
+      <div class="pt-2 pb-1">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 mb-1">
+          Operations
+        </p>
+      </div>
+
+      <a href="{% url 'staff:order_list' %}"
+         class="nav-item {% if 'order' in request.resolver_match.url_name %}active{% endif %}
+                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+        <span class="text-base">🧾</span> Orders
+        {% if pending_orders %}
+        <span class="ml-auto bg-red-500 text-white text-[10px] font-bold
+                     min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
+          {{ pending_orders }}
+        </span>
+        {% endif %}
+      </a>
+
+      <a href="{% url 'staff:product_list' %}"
+         class="nav-item {% if 'product' in request.resolver_match.url_name %}active{% endif %}
+                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+        <span class="text-base">📦</span> Products
+      </a>
+
+      <div class="pt-2 pb-1">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 mb-1">
+          People
+        </p>
+      </div>
+
+      <a href="{% url 'staff:vendor_list' %}"
+         class="nav-item {% if 'vendor' in request.resolver_match.url_name %}active{% endif %}
+                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+        <span class="text-base">🏪</span> Vendors
+        {% if pending_vendors %}
+        <span class="ml-auto bg-orange-500 text-white text-[10px] font-bold
+                     min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
+          {{ pending_vendors }}
+        </span>
+        {% endif %}
+      </a>
+
+      <a href="{% url 'staff:rider_list' %}"
+         class="nav-item {% if 'rider' in request.resolver_match.url_name %}active{% endif %}
+                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+        <span class="text-base">🛵</span> Riders
+      </a>
+
+      <a href="{% url 'staff:customer_list' %}"
+         class="nav-item {% if 'customer' in request.resolver_match.url_name %}active{% endif %}
+                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+        <span class="text-base">👥</span> Customers
+      </a>
+
+      <!-- Admin-only link -->
+      {% if user.is_admin %}
+      <div class="pt-2 pb-1">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 mb-1">
+          Admin Only
+        </p>
+      </div>
+      <a href="{% url 'dashboard:home' %}"
+         class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl
+                text-sm font-medium text-gray-600">
+        <span class="text-base">🔧</span> Full Admin Panel
+      </a>
+      {% endif %}
+    </nav>
+
+    <!-- Bottom: role info -->
+    <div class="px-5 py-4 border-t border-gray-100">
+      <div class="bg-navy/5 rounded-xl px-3 py-2.5 text-xs text-gray-500">
+        <p class="font-semibold text-navy mb-0.5">Staff Access</p>
+        <p>Manage orders, products, vendors & riders. Financial data restricted to Admin.</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN CONTENT ────────────────────────────────── -->
+  <div class="flex-1 min-w-0 px-4 md:px-6 py-8">
+    {% block staff_content %}{% endblock %}
+  </div>
+
+</div>
+{% endblock %}
