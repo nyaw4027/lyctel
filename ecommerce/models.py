@@ -45,12 +45,12 @@ class User(AbstractUser):
     # GHANA PHONE VALIDATOR
     # ═══════════════════════════════
     phone_validator = RegexValidator(
-        regex=r'^(?:\+233|233|0)[0-9]{9}$',
+        regex=r'^(?:\+233\d{9}|233\d{9}|0\d{9})$',
         message=_(
-            "Enter a valid Ghana phone number. "
-            "Example: 0541234567 or +233541234567"
-        )
+        "Enter a valid Ghana phone number. "
+        "Example: 0558040216 or +233558040216"
     )
+)
 
     # ═══════════════════════════════
     # PHONE

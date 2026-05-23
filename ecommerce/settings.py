@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'dashboard',
     'reviews',
     'vendors',
+    'staff',
     
 ]
 
