@@ -11,9 +11,9 @@ from accounts.managers import UserManager
 
 class User(AbstractUser):
 
-    # ─────────────────────────────
+    # ═══════════════════════════════
     # ROLE SYSTEM
-    # ─────────────────────────────
+    # ═══════════════════════════════
     class Role(models.TextChoices):
         CUSTOMER = 'customer', _('Customer')
         ADMIN = 'admin', _('Admin')
@@ -21,9 +21,9 @@ class User(AbstractUser):
         RIDER = 'rider', _('Rider')
         VENDOR = 'vendor', _('Vendor')
 
-    # ─────────────────────────────
-    # SAFE UUID (NOT PRIMARY KEY)
-    # ─────────────────────────────
+    # ═══════════════════════════════
+    # UUID
+    # ═══════════════════════════════
     uuid = models.UUIDField(
         default=uuid.uuid4,
         unique=True,
@@ -31,9 +31,9 @@ class User(AbstractUser):
         db_index=True
     )
 
-    # ─────────────────────────────
+    # ═══════════════════════════════
     # ROLE
-    # ─────────────────────────────
+    # ═══════════════════════════════
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
@@ -41,30 +41,41 @@ class User(AbstractUser):
         db_index=True
     )
 
-    # ─────────────────────────────
-    # PHONE VALIDATION
-    # ─────────────────────────────
+    # ═══════════════════════════════
+    # GHANA PHONE VALIDATOR
+    # ═══════════════════════════════
     phone_validator = RegexValidator(
-        regex=r'^\+?[0-9]{9,15}$',
-        message=_("Enter a valid phone number.")
+        regex=r'^(?:\+233|233|0)[0-9]{9}$',
+        message=_(
+            "Enter a valid Ghana phone number. "
+            "Example: 0541234567 or +233541234567"
+        )
     )
 
+    # ═══════════════════════════════
+    # PHONE
+    # ═══════════════════════════════
     phone = models.CharField(
-        max_length=20,
-        unique=True,
-        validators=[phone_validator],
-        db_index=True
-    )
+    max_length=15,
+    unique=True,
+    validators=[phone_validator],
+    db_index=True,
+    blank=True,
+    null=True
+)
 
+    # ═══════════════════════════════
+    # EMAIL
+    # ═══════════════════════════════
     email = models.EmailField(
         unique=True,
         blank=True,
         null=True
     )
 
-    # ─────────────────────────────
+    # ═══════════════════════════════
     # PROFILE
-    # ─────────────────────────────
+    # ═══════════════════════════════
     profile_pic = models.ImageField(
         upload_to='profiles/',
         blank=True,
@@ -72,42 +83,71 @@ class User(AbstractUser):
     )
 
     address = models.TextField(blank=True, null=True)
-    city = models.CharField(max_length=100, blank=True, null=True)
-    region = models.CharField(max_length=100, blank=True, null=True)
-    country = models.CharField(max_length=100, default='Ghana')
 
-    date_of_birth = models.DateField(blank=True, null=True)
-    bio = models.TextField(blank=True, null=True)
+    city = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
 
-    # ─────────────────────────────
+    region = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    country = models.CharField(
+        max_length=100,
+        default='Ghana'
+    )
+
+    date_of_birth = models.DateField(
+        blank=True,
+        null=True
+    )
+
+    bio = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    # ═══════════════════════════════
     # STATUS
-    # ─────────────────────────────
+    # ═══════════════════════════════
     is_verified = models.BooleanField(default=False)
+
     is_phone_verified = models.BooleanField(default=False)
+
     is_email_verified = models.BooleanField(default=False)
 
-    # ─────────────────────────────
+    # ═══════════════════════════════
     # TIMESTAMPS
-    # ─────────────────────────────
+    # ═══════════════════════════════
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    last_seen = models.DateTimeField(blank=True, null=True)
 
-    # ─────────────────────────────
+    updated_at = models.DateTimeField(auto_now=True)
+
+    last_seen = models.DateTimeField(
+        blank=True,
+        null=True
+    )
+
+    # ═══════════════════════════════
     # AUTH CONFIG
-    # ─────────────────────────────
+    # ═══════════════════════════════
     USERNAME_FIELD = 'phone'
-    REQUIRED_FIELDS = ['username', 'email']
+
+    REQUIRED_FIELDS = ['username']
 
     objects = UserManager()
 
-    # ─────────────────────────────
+    # ═══════════════════════════════
     # ROLE HELPERS
-    # ─────────────────────────────
+    # ═══════════════════════════════
     def is_customer(self):
         return self.role == self.Role.CUSTOMER
 
-    def is_admin(self):
+    def is_admin_role(self):
         return self.role == self.Role.ADMIN
 
     def is_staff_role(self):
@@ -119,16 +159,21 @@ class User(AbstractUser):
     def is_rider(self):
         return self.role == self.Role.RIDER
 
-    # ─────────────────────────────
+    # ═══════════════════════════════
     # DISPLAY HELPERS
-    # ─────────────────────────────
+    # ═══════════════════════════════
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
 
     @property
     def display_name(self):
-        return self.full_name or self.username or self.phone
+        return (
+            self.full_name
+            or self.username
+            or self.phone
+            or "User"
+        )
 
     @property
     def initials(self):
@@ -139,48 +184,75 @@ class User(AbstractUser):
 
     @property
     def profile_picture_url(self):
-        return self.profile_pic.url if self.profile_pic else '/static/images/default-avatar.png'
+        if self.profile_pic:
+            return self.profile_pic.url
 
-    # ─────────────────────────────
-    # SAVE LOGIC
-    # ─────────────────────────────
+        return '/static/images/default-avatar.png'
+
+    # ═══════════════════════════════
+    # CLEAN VALIDATION
+    # ═══════════════════════════════
     def clean(self):
         super().clean()
-        # Enforce only one admin in the system
+
+        # Ensure only one ADMIN role exists
         if self.role == self.Role.ADMIN:
-            qs = User.objects.filter(role=self.Role.ADMIN)
+
+            qs = User.objects.filter(
+                role=self.Role.ADMIN
+            )
+
             if self.pk:
                 qs = qs.exclude(pk=self.pk)
+
             if qs.exists():
-                raise ValidationError(
-                    {"role": _("An admin user already exists. Only one admin is allowed.")}
-                )
+                raise ValidationError({
+                    "role": _(
+                        "Only one admin user is allowed."
+                    )
+                })
 
+    # ═══════════════════════════════
+    # SAVE LOGIC
+    # ═══════════════════════════════
     def save(self, *args, **kwargs):
-        self.full_clean()  # triggers clean() before every save
 
+        # Auto-generate username if empty
+        if not self.username and self.phone:
+            self.username = self.phone
+
+        # Permission mapping
         if self.role == self.Role.ADMIN:
             self.is_staff = True
             self.is_superuser = True
+
         elif self.role == self.Role.STAFF:
             self.is_staff = True
             self.is_superuser = False
+
         else:
             self.is_staff = False
             self.is_superuser = False
 
+        # Full validation
+        self.full_clean()
+
         super().save(*args, **kwargs)
 
-    # ─────────────────────────────
+    # ═══════════════════════════════
     # META
-    # ─────────────────────────────
+    # ═══════════════════════════════
     class Meta:
         ordering = ['-created_at']
+
         indexes = [
             models.Index(fields=['role']),
             models.Index(fields=['phone']),
             models.Index(fields=['created_at']),
         ]
 
+    # ═══════════════════════════════
+    # STRING REPRESENTATION
+    # ═══════════════════════════════
     def __str__(self):
         return f"{self.display_name} ({self.role})"

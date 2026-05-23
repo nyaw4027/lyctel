@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY')
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost','lynctel.up.railway.app']
 
@@ -164,9 +164,9 @@ CACHES = {
 
 
 # ── Flutterwave (Payment) ──────────────────────────────────
-#FLW_PUBLIC_KEY     = 'FLWPUBK_TEST-xxxxx'
-#FLW_SECRET_KEY     = 'FLWSECK_TEST-xxxxx'
-#FLW_WEBHOOK_SECRET = 'my-secret-string'
+FLW_PUBLIC_KEY     = 'FLWPUBK_TEST-xxxxx'
+FLW_SECRET_KEY     = 'FLWSECK_TEST-xxxxx'
+FLW_WEBHOOK_SECRET = 'my-secret-string'
 
 # ── Google Maps ────────────────────────────────────────────
 GOOGLE_MAPS_API_KEY = "YOUR_API_KEY"

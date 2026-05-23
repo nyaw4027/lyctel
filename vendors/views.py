@@ -62,10 +62,10 @@ def directory(request):
 def shop_page(request, slug):
     # Using select_related to optimize fetching profile data
     vendor = get_object_or_404(
-        Vendor.objects.select_related('profile'), 
-        slug=slug, 
-        status=Vendor.Status.ACTIVE
-    )
+    Vendor.objects.select_related('owner'),
+    slug=slug,
+    status=Vendor.Status.ACTIVE
+)
 
     products = (
         vendor.products
