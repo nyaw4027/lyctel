@@ -56,7 +56,7 @@ class Vendor(models.Model):
         default=Status.PENDING
     )
 
-    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=10.00)
+    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=4.00)
 
     joined_at = models.DateTimeField(auto_now_add=True)
     approved_at = models.DateTimeField(null=True, blank=True)

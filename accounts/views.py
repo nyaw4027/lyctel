@@ -85,46 +85,83 @@ def logout_view(request):
 
 
 # ── PROFILE ───────────────────────────────────────────────
-
 @login_required
 def profile(request):
     user = request.user
 
+    # Admin check
+    is_admin = user.is_superuser or user.is_staff
+
     # Order stats
-    orders          = Order.objects.filter(customer=user).order_by('-created_at')
-    total_orders    = orders.count()
-    delivered_orders = orders.filter(status='delivered').count()
-    total_spent     = orders.filter(
+    orders = Order.objects.filter(
+        customer=user
+    ).order_by('-created_at')
+
+    total_orders = orders.count()
+
+    delivered_orders = orders.filter(
+        status='delivered'
+    ).count()
+
+    total_spent = orders.filter(
         payment_status='paid'
-    ).aggregate(t=Sum('total_amount'))['t'] or 0
+    ).aggregate(
+        t=Sum('total_amount')
+    )['t'] or 0
 
     recent_orders = orders[:5]
-    all_orders    = orders
 
-    # Tab nav
+    all_orders = orders
+
+    # Tabs
     tabs = [
         ('overview', '🏠', 'Overview'),
-        ('orders',   '📦', 'My Orders'),
-        ('profile',  '👤', 'Edit Profile'),
+        ('orders', '📦', 'My Orders'),
+        ('profile', '👤', 'Edit Profile'),
         ('security', '🔒', 'Security'),
     ]
 
-    context = {
-        'user':             user,
-        'tabs':             tabs,
-        'total_orders':     total_orders,
-        'delivered_orders': delivered_orders,
-        'total_spent':      total_spent,
-        'recent_orders':    recent_orders,
-        'all_orders':       all_orders,
-        'addresses':        [],
-        'profile_success':  request.GET.get('profile_saved'),
-        'password_success': request.GET.get('password_saved'),
-        'password_error':   request.session.pop('password_error', None),
-        'cart_count':       0,
-    }
-    return render(request, 'accounts/profile.html', context)
+    # Add admin tab
+    if is_admin:
+        tabs.append(
+            ('admin', '⚙️', 'Admin Dashboard')
+        )
 
+    context = {
+        'user': user,
+        'tabs': tabs,
+        'is_admin': is_admin,
+
+        'total_orders': total_orders,
+        'delivered_orders': delivered_orders,
+        'total_spent': total_spent,
+
+        'recent_orders': recent_orders,
+        'all_orders': all_orders,
+
+        'addresses': [],
+
+        'profile_success': request.GET.get(
+            'profile_saved'
+        ),
+
+        'password_success': request.GET.get(
+            'password_saved'
+        ),
+
+        'password_error': request.session.pop(
+            'password_error',
+            None
+        ),
+
+        'cart_count': 0,
+    }
+
+    return render(
+        request,
+        'accounts/profile.html',
+        context
+    )
 
 # ── UPDATE PROFILE ────────────────────────────────────────
 

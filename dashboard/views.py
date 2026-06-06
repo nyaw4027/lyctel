@@ -1,3 +1,5 @@
+
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -15,14 +17,17 @@ from vendors.models import Vendor, VendorEarning, AppCommission
 
 
 # ── ACCESS CONTROL ────────────────────────────────────────
-
 def admin_required(view_func):
+
     @login_required
     def wrapper(request, *args, **kwargs):
-        if not request.user.is_admin():
+
+        if not request.user.is_admin_role():
             messages.error(request, 'Access denied.')
             return redirect('frontend:home')
+
         return view_func(request, *args, **kwargs)
+
     return wrapper
 
 

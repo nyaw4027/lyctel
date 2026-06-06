@@ -1,182 +1,589 @@
 {% extends "base.html" %}
 {% block title %}{{ product.name }} — Lynctel{% endblock %}
 
-{% block content %}
-<div class="max-w-6xl mx-auto px-4 py-8">
+{% block extra_head %}
+<style>
+  /* Thumbnail strip */
+  .thumb { transition: all .2s; border: 2px solid transparent; cursor: pointer; }
+  .thumb:hover, .thumb.active { border-color: #F5A623; }
 
-  <!-- Breadcrumb -->
-  <nav class="text-sm text-gray-400 mb-6 flex items-center gap-2 flex-wrap">
-    <a href="{% url 'products:list' %}" class="hover:text-brand">Shop</a>
+  /* Main image zoom */
+  #main-image-wrap { position: relative; overflow: hidden; }
+  #main-image-wrap img { transition: transform .4s ease; }
+  #main-image-wrap:hover img { transform: scale(1.06); }
+
+  /* Zoom lens */
+  .zoom-badge {
+    position: absolute; bottom: 12px; right: 12px;
+    background: rgba(15,27,45,.7); color: white;
+    font-size: 11px; padding: 4px 10px; border-radius: 99px;
+    backdrop-filter: blur(4px); pointer-events: none;
+  }
+
+  /* Quantity input */
+  .qty-btn { transition: all .15s; }
+  .qty-btn:hover { background: #0F1B2D; color: white; }
+  .qty-btn:active { transform: scale(.93); }
+
+  /* Stock pulse */
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .stock-blink { animation: blink 1.8s ease-in-out infinite; }
+
+  /* Sticky add-to-cart bar */
+  #sticky-bar {
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+  }
+  #sticky-bar.visible { transform: translateY(0); }
+
+  /* Tab underline */
+  .tab-link { border-bottom: 2px solid transparent; transition: all .2s; }
+  .tab-link.active { border-color: #0F1B2D; color: #0F1B2D; }
+
+  /* Rating stars */
+  .star { color: #F5A623; }
+  .star.empty { color: #E5E7EB; }
+
+  /* Share btn hover */
+  .share-btn { transition: all .15s; }
+  .share-btn:hover { transform: translateY(-2px); }
+
+  /* Breadcrumb */
+  .bc-link { transition: color .15s; }
+  .bc-link:hover { color: #F5A623; }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .fade-in { animation: fadeIn .4s ease both; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 md:px-6 py-6">
+
+  <!-- ── BREADCRUMB ──────────────────────────────────── -->
+  <nav class="flex items-center gap-1.5 text-xs text-gray-400 mb-6 flex-wrap">
+    <a href="{% url 'frontend:home' %}" class="bc-link hover:text-gold">Home</a>
     <span>›</span>
+    <a href="{% url 'products:list' %}" class="bc-link hover:text-gold">Shop</a>
     {% if product.category %}
-    <a href="{% url 'products:list' %}?category={{ product.category.slug }}" class="hover:text-brand">
-      {{ product.category.name }}
-    </a>
     <span>›</span>
+    <a href="{% url 'products:list' %}?category={{ product.category.slug }}"
+       class="bc-link hover:text-gold">{{ product.category.name }}</a>
     {% endif %}
-    <span class="text-gray-600 truncate max-w-xs">{{ product.name }}</span>
+    <span>›</span>
+    <span class="text-navy font-medium truncate max-w-[200px]">{{ product.name }}</span>
   </nav>
 
-  <div class="flex flex-col md:flex-row gap-10 mb-12">
+  <div class="flex flex-col lg:flex-row gap-8 mb-10">
 
-    <!-- IMAGES -->
-    <div class="md:w-1/2">
-      <div class="bg-white rounded-2xl border overflow-hidden mb-3">
-        {% with images.first as main_img %}
-        {% if main_img %}
-        <img id="main-image" src="{{ main_img.image.url }}" class="w-full h-96 object-cover"/>
+    <!-- ── LEFT: IMAGES ───────────────────────────────── -->
+    <div class="lg:w-5/12 flex-shrink-0 fade-in">
+
+      <!-- Main image -->
+      <div id="main-image-wrap"
+           class="bg-white rounded-2xl border border-gray-100 overflow-hidden
+                  mb-3 shadow-sm cursor-zoom-in relative">
+        {% if product.images.first %}
+        <img id="main-image" src="{{ product.images.first.image.url }}"
+             alt="{{ product.name }}"
+             class="w-full h-80 md:h-96 object-contain p-4"/>
         {% else %}
-        <div class="h-96 flex items-center justify-center text-7xl">📦</div>
+        <div class="w-full h-80 flex items-center justify-center text-7xl opacity-20">📦</div>
         {% endif %}
-        {% endwith %}
+        <div class="zoom-badge">🔍 Hover to zoom</div>
+
+        <!-- Stock badge on image -->
+        {% if product.stock_qty == 0 %}
+        <div class="absolute inset-0 bg-white/70 flex items-center justify-center">
+          <span class="bg-red-600 text-white font-bold px-6 py-3 rounded-2xl text-lg rotate-[-12deg]">
+            OUT OF STOCK
+          </span>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Thumbnail strip -->
+      {% if product.images.count > 1 %}
+      <div class="flex gap-2 overflow-x-auto pb-1">
+        {% for img in product.images.all %}
+        <div class="thumb flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-white border"
+             onclick="switchImage('{{ img.image.url }}', this)">
+          <img src="{{ img.image.url }}" class="w-full h-full object-cover"/>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- QR code -->
+      <div class="mt-4 bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4">
+        <img id="qr-img"
+             src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ request.build_absolute_uri|urlencode }}"
+             alt="QR Code" class="w-20 h-20 rounded-xl flex-shrink-0"/>
+        <div>
+          <p class="font-semibold text-navy text-sm mb-0.5">Scan to Share</p>
+          <p class="text-xs text-gray-400 leading-relaxed">
+            Scan this QR code to open this product page on any device or share with a friend.
+          </p>
+        </div>
       </div>
     </div>
 
-    <!-- INFO -->
-    <div class="md:w-1/2">
+    <!-- ── RIGHT: INFO ─────────────────────────────────── -->
+    <div class="flex-1 min-w-0 fade-in" style="animation-delay:.1s">
 
-      <!-- PRODUCT NAME -->
-      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-3">
+      <!-- Vendor + Category tags -->
+      <div class="flex items-center gap-2 flex-wrap mb-3">
+        {% if product.category %}
+        <span class="text-xs bg-gold-light text-gold-dark font-semibold
+                     px-2.5 py-0.5 rounded-full">
+          {{ product.category.name }}
+        </span>
+        {% endif %}
+        {% if product.is_featured %}
+        <span class="text-xs bg-navy text-white font-semibold px-2.5 py-0.5 rounded-full">
+          ⭐ Featured
+        </span>
+        {% endif %}
+        {% if product.is_in_stock and product.stock_qty <= product.low_stock_alert %}
+        <span class="text-xs bg-orange-100 text-orange-600 font-semibold
+                     px-2.5 py-0.5 rounded-full stock-blink">
+          🔥 Only {{ product.stock_qty }} left!
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- Product name -->
+      <h1 class="font-display font-700 text-2xl md:text-3xl text-navy leading-tight mb-3">
         {{ product.name }}
       </h1>
 
-      <!-- 🔥 VENDOR LINK -->
+      <!-- Vendor link -->
       {% if product.vendor %}
       <a href="{% url 'vendors:shop' product.vendor.slug %}"
-         class="inline-flex items-center gap-2 bg-gray-50 border rounded-xl px-3 py-2 mb-4 hover:border-brand">
-        <strong>{{ product.vendor.shop_name }}</strong>
+         class="inline-flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity">
+        {% if product.vendor.logo %}
+        <img src="{{ product.vendor.logo.url }}"
+             class="w-6 h-6 rounded-lg object-cover"/>
+        {% else %}
+        <div class="w-6 h-6 rounded-lg bg-navy flex items-center justify-center
+                    text-white text-xs font-bold">
+          {{ product.vendor.shop_name|first|upper }}
+        </div>
+        {% endif %}
+        <span class="text-sm text-navy font-semibold hover:text-gold transition-colors">
+          {{ product.vendor.shop_name }}
+        </span>
+        <span class="text-xs text-gray-400">→ Visit Shop</span>
       </a>
       {% endif %}
 
-      <!-- PRICE -->
-      <div class="text-3xl font-bold text-brand mb-4">
-        GHS {{ product.selling_price }}
+      <!-- Price block -->
+      <div class="bg-cream rounded-2xl px-5 py-4 mb-5">
+        <div class="flex items-end gap-3 flex-wrap">
+          <span class="font-display font-700 text-3xl text-navy">
+            GHS {{ product.selling_price }}
+          </span>
+        </div>
+        <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+          <span>🔒 Secure checkout</span>
+          <span>🛵 Fast delivery</span>
+          <span>💰 MoMo accepted</span>
+        </div>
       </div>
 
-      <!-- STOCK -->
-      {% if product.is_in_stock %}
-        <p class="text-green-600 text-sm mb-4">✓ In Stock</p>
-      {% else %}
-        <p class="text-red-500 text-sm mb-4">Out of Stock</p>
-      {% endif %}
-
-      <!-- DESCRIPTION -->
-      <p class="text-gray-600 text-sm mb-6">
-        {{ product.description|linebreaksbr }}
-      </p>
-
-      <!-- ADD TO CART -->
-      {% if product.is_in_stock %}
-      <div class="flex gap-3 mb-4">
-        <input id="qty-input" type="number" value="1" min="1"
-               class="w-20 border rounded-lg text-center">
-
-        <button id="add-btn"
-                onclick="addToCartDetail({{ product.pk }})"
-                class="flex-1 bg-brand text-white py-3 rounded-xl">
-          Add to Cart
-        </button>
+      <!-- Stock status -->
+      <div class="flex items-center gap-2 mb-5">
+        {% if product.is_in_stock %}
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
+          <span class="text-sm font-semibold text-green-600">In Stock</span>
+          {% if product.stock_qty > product.low_stock_alert %}
+          <span class="text-xs text-gray-400">({{ product.stock_qty }} available)</span>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+          <span class="text-sm font-semibold text-red-500">Out of Stock</span>
+        </div>
+        {% endif %}
       </div>
-      {% endif %}
 
-      <!-- 🔥 SHARE SECTION -->
-      <div class="mt-6 border-t pt-5">
-        <p class="text-sm font-semibold mb-3">Share this product</p>
-
-        <div class="flex flex-wrap gap-2">
-
-          <button onclick="shareWhatsApp()" class="bg-green-500 text-white px-3 py-2 rounded-lg text-xs">WhatsApp</button>
-
-          <button onclick="shareFacebook()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs">Facebook</button>
-
-          <button onclick="shareTwitter()" class="bg-black text-white px-3 py-2 rounded-lg text-xs">Twitter</button>
-
-          <button onclick="copyLink()" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-xs">Copy Link</button>
-
+      <!-- Quantity + Add to cart -->
+      {% if product.is_in_stock %}
+      <div class="flex flex-col sm:flex-row gap-3 mb-5">
+        <!-- Qty selector -->
+        <div class="flex items-center border border-gray-200 rounded-xl bg-white overflow-hidden flex-shrink-0">
+          <button class="qty-btn w-11 h-12 flex items-center justify-center
+                         text-navy font-bold text-lg border-r border-gray-200"
+                  onclick="changeQty(-1)">−</button>
+          <input id="qty-input" type="number" value="1" min="1" max="{{ product.stock_qty }}"
+                 class="w-14 h-12 text-center text-sm font-bold text-navy border-none
+                        outline-none bg-white"/>
+          <button class="qty-btn w-11 h-12 flex items-center justify-center
+                         text-navy font-bold text-lg border-l border-gray-200"
+                  onclick="changeQty(1)">+</button>
         </div>
 
-        <!-- 🔥 QR CODE -->
-        <div class="mt-4">
-          <img id="qr-code" class="w-32 h-32 border rounded-lg"/>
-          <p class="text-xs text-gray-400 mt-1">Scan to view product</p>
+        <!-- Add to cart -->
+        <button id="add-btn"
+                onclick="addToCartDetail({{ product.pk }})"
+                class="flex-1 bg-navy hover:bg-navy-700 text-white font-display
+                       font-700 py-3 px-6 rounded-xl transition-colors btn-press
+                       flex items-center justify-center gap-2 text-sm">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+          </svg>
+          Add to Cart
+        </button>
+
+        <!-- Wishlist placeholder -->
+        <button class="w-12 h-12 flex items-center justify-center border border-gray-200
+                       rounded-xl hover:border-red-300 hover:bg-red-50 transition-colors text-gray-400
+                       hover:text-red-500 text-xl"
+                title="Save for later">
+          ♡
+        </button>
+      </div>
+
+      <!-- Buy now -->
+      <a href="{% url 'order:checkout' %}"
+         onclick="return handleBuyNow({{ product.pk }})"
+         class="block w-full bg-gold hover:bg-gold-dark text-navy font-display font-700
+                py-3.5 rounded-xl transition-colors btn-press text-center text-sm mb-5">
+        ⚡ Buy Now
+      </a>
+      {% else %}
+      <div class="bg-gray-50 border border-gray-200 rounded-xl px-5 py-4 mb-5 text-center">
+        <p class="text-gray-500 font-semibold mb-2">This product is currently unavailable</p>
+        <p class="text-xs text-gray-400">Check back later or explore similar items below.</p>
+      </div>
+      {% endif %}
+
+      <!-- Delivery info -->
+      <div class="border border-gray-100 rounded-2xl divide-y divide-gray-100 mb-5">
+        <div class="flex items-center gap-3 px-4 py-3 text-sm">
+          <span class="text-xl">🛵</span>
+          <div>
+            <p class="font-semibold text-navy">Fast Delivery Available</p>
+            <p class="text-xs text-gray-400">Delivered to your door across Ghana</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 px-4 py-3 text-sm">
+          <span class="text-xl">💳</span>
+          <div>
+            <p class="font-semibold text-navy">Pay via MoMo or Card</p>
+            <p class="text-xs text-gray-400">MTN · Vodafone · AirtelTigo · Visa · Mastercard</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 px-4 py-3 text-sm">
+          <span class="text-xl">🔒</span>
+          <div>
+            <p class="font-semibold text-navy">Secure & Protected</p>
+            <p class="text-xs text-gray-400">Powered by Flutterwave payment processing</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Share buttons -->
+      <div>
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          Share this product
+        </p>
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="shareWA()"
+                  class="share-btn flex items-center gap-1.5 bg-green-500 hover:bg-green-600
+                         text-white text-xs font-semibold px-3 py-2 rounded-xl transition-colors">
+            💬 WhatsApp
+          </button>
+          <button onclick="shareFB()"
+                  class="share-btn flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700
+                         text-white text-xs font-semibold px-3 py-2 rounded-xl transition-colors">
+            📘 Facebook
+          </button>
+          <button onclick="shareTW()"
+                  class="share-btn flex items-center gap-1.5 bg-black hover:bg-gray-800
+                         text-white text-xs font-semibold px-3 py-2 rounded-xl transition-colors">
+            🐦 Twitter
+          </button>
+          <button onclick="copyLink()"
+                  id="copy-btn"
+                  class="share-btn flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200
+                         text-navy text-xs font-semibold px-3 py-2 rounded-xl transition-colors">
+            🔗 Copy Link
+          </button>
         </div>
       </div>
 
     </div>
   </div>
 
+  <!-- ── PRODUCT TABS ─────────────────────────────────── -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-10">
+
+    <!-- Tab header -->
+    <div class="flex border-b border-gray-100 overflow-x-auto">
+      <button onclick="switchTab('description')"
+              id="tab-description"
+              class="tab-link active px-6 py-4 text-sm font-semibold text-gray-500
+                     whitespace-nowrap flex-shrink-0">
+        Description
+      </button>
+      <button onclick="switchTab('details')"
+              id="tab-details"
+              class="tab-link px-6 py-4 text-sm font-semibold text-gray-500
+                     whitespace-nowrap flex-shrink-0">
+        Product Details
+      </button>
+      <button onclick="switchTab('delivery')"
+              id="tab-delivery"
+              class="tab-link px-6 py-4 text-sm font-semibold text-gray-500
+                     whitespace-nowrap flex-shrink-0">
+        Delivery & Returns
+      </button>
+    </div>
+
+    <!-- Tab content -->
+    <div id="content-description" class="tab-content px-6 py-6">
+      {% if product.description %}
+      <div class="prose prose-sm max-w-none text-gray-600 leading-relaxed">
+        {{ product.description|linebreaksbr }}
+      </div>
+      {% else %}
+      <p class="text-gray-400 text-sm">No description provided for this product.</p>
+      {% endif %}
+    </div>
+
+    <div id="content-details" class="tab-content hidden px-6 py-6">
+      <table class="w-full text-sm">
+        <tbody class="divide-y divide-gray-50">
+          <tr>
+            <td class="py-2.5 font-semibold text-gray-500 w-1/3">Product Name</td>
+            <td class="py-2.5 text-navy">{{ product.name }}</td>
+          </tr>
+          {% if product.category %}
+          <tr>
+            <td class="py-2.5 font-semibold text-gray-500">Category</td>
+            <td class="py-2.5 text-navy">{{ product.category.name }}</td>
+          </tr>
+          {% endif %}
+          {% if product.vendor %}
+          <tr>
+            <td class="py-2.5 font-semibold text-gray-500">Sold by</td>
+            <td class="py-2.5 text-navy">{{ product.vendor.shop_name }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td class="py-2.5 font-semibold text-gray-500">Stock</td>
+            <td class="py-2.5">
+              {% if product.is_in_stock %}
+              <span class="text-green-600 font-semibold">In Stock</span>
+              {% else %}
+              <span class="text-red-500 font-semibold">Out of Stock</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="py-2.5 font-semibold text-gray-500">SKU</td>
+            <td class="py-2.5 text-gray-400 font-mono text-xs">LYN-{{ product.pk }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="content-delivery" class="tab-content hidden px-6 py-6">
+      <div class="space-y-4 text-sm text-gray-600">
+        <div class="flex gap-3">
+          <span class="text-2xl flex-shrink-0">🛵</span>
+          <div>
+            <p class="font-semibold text-navy mb-1">Fast Delivery Across Ghana</p>
+            <p>We deliver to Accra, Kumasi, Takoradi, Tema, and surrounding areas.
+               Delivery fees are calculated at checkout based on your zone.</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <span class="text-2xl flex-shrink-0">📞</span>
+          <div>
+            <p class="font-semibold text-navy mb-1">Rider Will Call You</p>
+            <p>Your assigned rider will call the delivery phone number
+               you provide at checkout when they are close to your location.</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <span class="text-2xl flex-shrink-0">🔄</span>
+          <div>
+            <p class="font-semibold text-navy mb-1">Issues & Complaints</p>
+            <p>If there's an issue with your order, contact us via WhatsApp on
+               <a href="https://wa.me/233558040216" class="text-gold-dark font-semibold hover:underline">
+                 +233 55 804 0216
+               </a> within 24 hours of delivery.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
-<!-- 🔥 MOBILE STICKY BAR -->
-<div class="fixed bottom-0 left-0 right-0 bg-white border-t p-3 flex gap-3 md:hidden z-50">
-  <button onclick="shareWhatsApp()" class="flex-1 bg-green-500 text-white py-3 rounded-xl text-sm">
-    Share
+<!-- ── MOBILE STICKY BAR ─────────────────────────────── -->
+<div id="sticky-bar"
+     class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200
+            px-4 py-3 flex gap-3 md:hidden z-50 shadow-2xl">
+  <button onclick="shareWA()"
+          class="w-12 h-12 flex items-center justify-center bg-green-500 text-white
+                 rounded-xl flex-shrink-0 text-xl">
+    💬
   </button>
+  {% if product.is_in_stock %}
   <button onclick="addToCartDetail({{ product.pk }})"
-          class="flex-1 bg-brand text-white py-3 rounded-xl text-sm">
-    Add to Cart
+          class="flex-1 bg-navy text-white font-semibold py-3 rounded-xl text-sm
+                 flex items-center justify-center gap-2">
+    🛒 Add to Cart
   </button>
+  <a href="{% url 'order:checkout' %}"
+     class="flex-1 bg-gold text-navy font-semibold py-3 rounded-xl text-sm
+            flex items-center justify-center gap-2">
+    ⚡ Buy Now
+  </a>
+  {% else %}
+  <div class="flex-1 bg-gray-100 text-gray-400 font-semibold py-3 rounded-xl
+              text-sm text-center">
+    Out of Stock
+  </div>
+  {% endif %}
+</div>
+
+<!-- Bottom padding for mobile sticky bar -->
+<div class="h-20 md:hidden"></div>
+
+<!-- Toast -->
+<div id="toast"
+     class="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 bg-navy text-white
+            text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl opacity-0
+            transition-all duration-300 pointer-events-none z-50 whitespace-nowrap">
 </div>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
+  const PRODUCT_URL  = "{{ request.build_absolute_uri }}";
+  const PRODUCT_NAME = "{{ product.name|escapejs }}";
+  const MAX_QTY      = {{ product.stock_qty }};
 
-const productUrl = window.location.href + "?ref={{ product.vendor.slug }}";
-const productName = "{{ product.name|escapejs }}";
+  // ── IMAGE GALLERY ──────────────────────────────────────
+  function switchImage(url, thumb) {
+    document.getElementById('main-image').src = url;
+    document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
+    thumb.classList.add('active');
+  }
 
-/* 🔥 SHARE FUNCTIONS */
-function shareWhatsApp() {
-  window.open(`https://wa.me/?text=${encodeURIComponent(productName + " " + productUrl)}`);
-}
+  // ── QTY CONTROLS ───────────────────────────────────────
+  function changeQty(delta) {
+    const input = document.getElementById('qty-input');
+    const val   = Math.max(1, Math.min(MAX_QTY, parseInt(input.value || 1) + delta));
+    input.value = val;
+  }
 
-function shareFacebook() {
-  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(productUrl)}`);
-}
-
-function shareTwitter() {
-  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(productName)}&url=${encodeURIComponent(productUrl)}`);
-}
-
-function copyLink() {
-  navigator.clipboard.writeText(productUrl);
-  alert("Link copied!");
-}
-
-/* 🔥 QR CODE */
-document.getElementById("qr-code").src =
-  "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(productUrl);
-
-/* ADD TO CART */
-function addToCartDetail(productId) {
-  const btn = document.getElementById('add-btn');
-  const qty = document.getElementById('qty-input').value;
-
-  btn.innerHTML = 'Adding...';
-  btn.disabled = true;
-
-  const fd = new FormData();
-  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-  fd.append('quantity', qty);
-
-  fetch(`/cart/add/${productId}/`, {
-    method: 'POST',
-    body: fd
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      btn.innerHTML = '✓ Added';
-      btn.classList.replace('bg-brand','bg-green-600');
-      setTimeout(() => {
-        btn.innerHTML = 'Add to Cart';
-        btn.disabled = false;
-        btn.classList.replace('bg-green-600','bg-brand');
-      }, 2000);
+  // ── ADD TO CART ────────────────────────────────────────
+  function addToCartDetail(productId) {
+    if (!IS_AUTHENTICATED) {
+      window.location.href = LOGIN_URL + '?next=' + encodeURIComponent(window.location.pathname);
+      return;
     }
-  });
-}
+    const btn = document.getElementById('add-btn');
+    const qty = document.getElementById('qty-input')?.value || 1;
 
+    btn.innerHTML = '<svg class="animate-spin w-4 h-4 mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>';
+    btn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+    fd.append('quantity', qty);
+
+    fetch(`/cart/add/${productId}/`, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        btn.innerHTML = '✓ Added to Cart';
+        btn.classList.remove('bg-navy'); btn.classList.add('bg-green-600');
+        updateCartBadge(d.cart_count);
+        showToast('✓ Added to cart!');
+        setTimeout(() => {
+          btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg> Add to Cart';
+          btn.disabled = false;
+          btn.classList.add('bg-navy'); btn.classList.remove('bg-green-600');
+        }, 2000);
+        setTimeout(openCart, 500);
+      }
+    })
+    .catch(() => { btn.innerHTML = 'Add to Cart'; btn.disabled = false; });
+  }
+
+  // ── BUY NOW ────────────────────────────────────────────
+  function handleBuyNow(productId) {
+    if (!IS_AUTHENTICATED) {
+      window.location.href = LOGIN_URL + '?next=' + encodeURIComponent(window.location.pathname);
+      return false;
+    }
+    const qty = document.getElementById('qty-input')?.value || 1;
+    const fd  = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+    fd.append('quantity', qty);
+    fetch(`/cart/add/${productId}/`, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    }).then(() => window.location.href = "{% url 'order:checkout' %}");
+    return false;
+  }
+
+  // ── SHARE ──────────────────────────────────────────────
+  function shareWA() {
+    window.open(`https://wa.me/?text=${encodeURIComponent(PRODUCT_NAME + '\n' + PRODUCT_URL)}`,'_blank');
+  }
+  function shareFB() {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(PRODUCT_URL)}`,'_blank');
+  }
+  function shareTW() {
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(PRODUCT_NAME)}&url=${encodeURIComponent(PRODUCT_URL)}`,'_blank');
+  }
+  function copyLink() {
+    navigator.clipboard.writeText(PRODUCT_URL).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = '✓ Copied!';
+      showToast('🔗 Link copied to clipboard!');
+      setTimeout(() => btn.textContent = '🔗 Copy Link', 2000);
+    });
+  }
+
+  // ── TABS ───────────────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+    document.getElementById('content-' + tab).classList.remove('hidden');
+    document.getElementById('tab-' + tab).classList.add('active');
+  }
+
+  // ── TOAST ──────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.opacity = '1';
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.style.opacity = '0', 2500);
+  }
+
+  // ── STICKY BAR ─────────────────────────────────────────
+  const stickyBar   = document.getElementById('sticky-bar');
+  const addToCartEl = document.getElementById('add-btn');
+  const observer    = new IntersectionObserver(entries => {
+    stickyBar.classList.toggle('visible', !entries[0].isIntersecting);
+  }, { threshold: 0 });
+  if (addToCartEl) observer.observe(addToCartEl);
 </script>
 {% endblock %}
