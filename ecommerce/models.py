@@ -16,10 +16,10 @@ class User(AbstractUser):
     # ═══════════════════════════════
     class Role(models.TextChoices):
         CUSTOMER = 'customer', _('Customer')
-        ADMIN = 'admin', _('Admin')
-        STAFF = 'staff', _('Staff')
-        RIDER = 'rider', _('Rider')
-        VENDOR = 'vendor', _('Vendor')
+        ADMIN    = 'admin',    _('Admin')
+        STAFF    = 'staff',    _('Staff')
+        RIDER    = 'rider',    _('Rider')
+        VENDOR   = 'vendor',   _('Vendor')
 
     # ═══════════════════════════════
     # UUID
@@ -47,30 +47,33 @@ class User(AbstractUser):
     phone_validator = RegexValidator(
         regex=r'^(?:\+233\d{9}|233\d{9}|0\d{9})$',
         message=_(
-        "Enter a valid Ghana phone number. "
-        "Example: 0558040216 or +233558040216"
+            "Enter a valid Ghana phone number. "
+            "Example: 0558040216 or +233558040216"
+        )
     )
-)
 
     # ═══════════════════════════════
     # PHONE
     # ═══════════════════════════════
     phone = models.CharField(
-    max_length=15,
-    unique=True,
-    validators=[phone_validator],
-    db_index=True,
-    blank=True,
-    null=True
-)
+        max_length=15,
+        unique=True,
+        validators=[phone_validator],
+        db_index=True,
+        blank=True,
+        null=True
+    )
 
     # ═══════════════════════════════
-    # EMAIL
+    # EMAIL  — NULL so multiple users
+    # can have no email without
+    # hitting the unique constraint
     # ═══════════════════════════════
     email = models.EmailField(
         unique=True,
         blank=True,
-        null=True
+        null=True,
+        default=None,     # ← store NULL, never empty string ""
     )
 
     # ═══════════════════════════════
@@ -82,82 +85,42 @@ class User(AbstractUser):
         null=True
     )
 
-    address = models.TextField(blank=True, null=True)
-
-    city = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True
-    )
-
-    region = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True
-    )
-
-    country = models.CharField(
-        max_length=100,
-        default='Ghana'
-    )
-
-    date_of_birth = models.DateField(
-        blank=True,
-        null=True
-    )
-
-    bio = models.TextField(
-        blank=True,
-        null=True
-    )
+    address        = models.TextField(blank=True, null=True)
+    city           = models.CharField(max_length=100, blank=True, null=True)
+    region         = models.CharField(max_length=100, blank=True, null=True)
+    country        = models.CharField(max_length=100, default='Ghana')
+    date_of_birth  = models.DateField(blank=True, null=True)
+    bio            = models.TextField(blank=True, null=True)
 
     # ═══════════════════════════════
     # STATUS
     # ═══════════════════════════════
-    is_verified = models.BooleanField(default=False)
-
+    is_verified       = models.BooleanField(default=False)
     is_phone_verified = models.BooleanField(default=False)
-
     is_email_verified = models.BooleanField(default=False)
 
     # ═══════════════════════════════
     # TIMESTAMPS
     # ═══════════════════════════════
     created_at = models.DateTimeField(auto_now_add=True)
-
     updated_at = models.DateTimeField(auto_now=True)
-
-    last_seen = models.DateTimeField(
-        blank=True,
-        null=True
-    )
+    last_seen  = models.DateTimeField(blank=True, null=True)
 
     # ═══════════════════════════════
     # AUTH CONFIG
     # ═══════════════════════════════
-    USERNAME_FIELD = 'phone'
-
+    USERNAME_FIELD  = 'phone'
     REQUIRED_FIELDS = ['username']
-
-    objects = UserManager()
+    objects         = UserManager()
 
     # ═══════════════════════════════
     # ROLE HELPERS
     # ═══════════════════════════════
-    def is_customer(self):
-        return self.role == self.Role.CUSTOMER
-
-    def is_admin_role(self):
-        return self.role == self.Role.ADMIN
-
-    def is_staff_role(self):
-        return self.role == self.Role.STAFF
-
-    def is_vendor(self):
-        return self.role == self.Role.VENDOR
-
-    def is_rider(self):
-        return self.role == self.Role.RIDER
+    def is_customer(self):    return self.role == self.Role.CUSTOMER
+    def is_admin_role(self):  return self.role == self.Role.ADMIN
+    def is_staff_role(self):  return self.role == self.Role.STAFF
+    def is_vendor(self):      return self.role == self.Role.VENDOR
+    def is_rider(self):       return self.role == self.Role.RIDER
 
     # ═══════════════════════════════
     # DISPLAY HELPERS
@@ -168,25 +131,19 @@ class User(AbstractUser):
 
     @property
     def display_name(self):
-        return (
-            self.full_name
-            or self.username
-            or self.phone
-            or "User"
-        )
+        return self.full_name or self.username or self.phone or "User"
 
     @property
     def initials(self):
         return (
             f"{self.first_name[:1] if self.first_name else ''}"
-            f"{self.last_name[:1] if self.last_name else ''}"
+            f"{self.last_name[:1]  if self.last_name  else ''}"
         ).upper()
 
     @property
     def profile_picture_url(self):
         if self.profile_pic:
             return self.profile_pic.url
-
         return '/static/images/default-avatar.png'
 
     # ═══════════════════════════════
@@ -195,21 +152,20 @@ class User(AbstractUser):
     def clean(self):
         super().clean()
 
-        # Ensure only one ADMIN role exists
+        # Normalise: convert empty string email → None
+        # so the unique constraint only fires on real emails,
+        # not on multiple users with email=""
+        if self.email == '':
+            self.email = None
+
+        # Enforce single-admin rule
         if self.role == self.Role.ADMIN:
-
-            qs = User.objects.filter(
-                role=self.Role.ADMIN
-            )
-
+            qs = User.objects.filter(role=self.Role.ADMIN)
             if self.pk:
                 qs = qs.exclude(pk=self.pk)
-
             if qs.exists():
                 raise ValidationError({
-                    "role": _(
-                        "Only one admin user is allowed."
-                    )
+                    "role": _("Only one admin user is allowed.")
                 })
 
     # ═══════════════════════════════
@@ -221,21 +177,27 @@ class User(AbstractUser):
         if not self.username and self.phone:
             self.username = self.phone
 
-        # Permission mapping
+        # Normalise empty email → None BEFORE full_clean
+        if self.email == '':
+            self.email = None
+
+        # Permission mapping by role
         if self.role == self.Role.ADMIN:
-            self.is_staff = True
-            self.is_superuser = True
-
+            self.is_staff      = True
+            self.is_superuser  = True
         elif self.role == self.Role.STAFF:
-            self.is_staff = True
-            self.is_superuser = False
-
+            self.is_staff      = True
+            self.is_superuser  = False
         else:
-            self.is_staff = False
-            self.is_superuser = False
+            self.is_staff      = False
+            self.is_superuser  = False
 
-        # Full validation
-        self.full_clean()
+        # Run validation — but EXCLUDE email from uniqueness check
+        # when email is None (multiple null values are allowed in postgres/sqlite)
+        exclude = []
+        if not self.email:
+            exclude.append('email')
+        self.full_clean(exclude=exclude)
 
         super().save(*args, **kwargs)
 
@@ -244,15 +206,11 @@ class User(AbstractUser):
     # ═══════════════════════════════
     class Meta:
         ordering = ['-created_at']
-
-        indexes = [
+        indexes  = [
             models.Index(fields=['role']),
             models.Index(fields=['phone']),
             models.Index(fields=['created_at']),
         ]
 
-    # ═══════════════════════════════
-    # STRING REPRESENTATION
-    # ═══════════════════════════════
     def __str__(self):
         return f"{self.display_name} ({self.role})"
