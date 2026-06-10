@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY')
 
-DEBUG = config('DEBUG', default=False, cast=bool)  # ← reads from Railway env var
+DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'lynctel.up.railway.app']
 
@@ -38,7 +38,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',   # ← serves static in prod
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -49,6 +49,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'ecommerce.urls'
 
+# ── Templates ──────────────────────────────────────────────
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -78,12 +79,12 @@ if DEBUG:
 else:
     DATABASES = {
         'default': {
-            'ENGINE':   'django.db.backends.postgresql',
-            'NAME':     config('NAME'),
-            'USER':     config('USER'),
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('NAME'),
+            'USER': config('USER'),
             'PASSWORD': config('PASSWORD'),
-            'HOST':     config('HOST'),
-            'PORT':     config('PORT'),
+            'HOST': config('HOST'),
+            'PORT': config('PORT'),
         }
     }
 
@@ -102,23 +103,37 @@ USE_I18N      = True
 USE_TZ        = True
 
 # ── Static files ───────────────────────────────────────────
-STATIC_URL       = '/static/'
-STATIC_ROOT      = BASE_DIR / 'staticfiles'
+STATIC_URL  = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # ── Media files ────────────────────────────────────────────
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# ── Firebase / Google Cloud Storage (production only) ─────
-if not DEBUG:
-    FIREBASE_STORAGE_BUCKET = config(
-        'FIREBASE_STORAGE_BUCKET', default='lynctel-dd634.appspot.com'
-    )
+# ── Firebase / Google Cloud Storage ───────────────────────
+# Firebase Storage IS Google Cloud Storage.
+# The bucket name is shown in Firebase Console → Storage → gs://lynctel-dd634.appspot.com
+# (or gs://lynctel-dd634.firebasestorage.app for newer projects)
+#
+# Set these environment variables on Railway:
+#   FIREBASE_STORAGE_BUCKET   → lynctel-dd634.appspot.com
+#   GS_CREDENTIALS            → path to your service-account JSON  (see SETUP.md)
 
+if not DEBUG:
+    # ── Firebase Storage bucket name ──────────────────────
+    FIREBASE_STORAGE_BUCKET = config('FIREBASE_STORAGE_BUCKET',
+                                     default='lynctel-dd634.appspot.com')
+
+    # ── Google Cloud credentials ───────────────────────────
+    # Option A (Railway): paste the full JSON into a Railway env var called
+    #   GOOGLE_APPLICATION_CREDENTIALS_JSON
+    # Option B: mount a .json file and point GS_CREDENTIALS at it.
     import json, tempfile
+
     _gac_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')
     if _gac_json:
+        # Write the JSON string to a temp file so the GCS library can read it
         _tmp = tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False, prefix='gcp_creds_'
         )
@@ -126,22 +141,33 @@ if not DEBUG:
         _tmp.close()
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = _tmp.name
 
-    GS_BUCKET_NAME      = FIREBASE_STORAGE_BUCKET
-    GS_DEFAULT_ACL      = 'publicRead'
-    GS_FILE_OVERWRITE   = False
-    GS_QUERYSTRING_AUTH = False
-    GS_CUSTOM_ENDPOINT  = f'https://storage.googleapis.com/{FIREBASE_STORAGE_BUCKET}'
+    # ── django-storages Google Cloud backend ───────────────
+    GS_BUCKET_NAME       = FIREBASE_STORAGE_BUCKET
+    GS_DEFAULT_ACL       = 'publicRead'
+    GS_FILE_OVERWRITE    = False
+    GS_QUERYSTRING_AUTH  = False
+
+    # Public URL base for media files served from Firebase Storage
+    # Firebase Storage public URL pattern:
+    #   https://storage.googleapis.com/<bucket>/media/<filename>
+    GS_CUSTOM_ENDPOINT = (
+        f'https://storage.googleapis.com/{FIREBASE_STORAGE_BUCKET}'
+    )
 
     STORAGES = {
         'staticfiles': {
+            # Use WhiteNoise for static — it's simpler and free.
+            # Switch to 'ecommerce.firebase_storage_backend.FirebaseStaticStorage'
+            # if you want static on Firebase too.
             'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
         },
         'default': {
+            # Media (uploaded images) → Firebase Storage
             'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseMediaStorage',
         },
     }
 
-    STATIC_URL = '/static/'
+    STATIC_URL = '/static/'   # WhiteNoise serves from Railway directly
     MEDIA_URL  = f'https://storage.googleapis.com/{FIREBASE_STORAGE_BUCKET}/media/'
 
     GS_OBJECT_PARAMETERS = {
@@ -166,19 +192,14 @@ CACHES = {
     }
 }
 
-# ── Flutterwave ────────────────────────────────────────────
-FLW_PUBLIC_KEY     = config('FLW_PUBLIC_KEY',     default='FLWPUBK_TEST-xxxxx')
-FLW_SECRET_KEY     = config('FLW_SECRET_KEY',     default='FLWSECK_TEST-xxxxx')
+# ── Flutterwave (Payment) ──────────────────────────────────
+FLW_PUBLIC_KEY     = config('FLW_PUBLIC_KEY',  default='FLWPUBK_TEST-xxxxx')
+FLW_SECRET_KEY     = config('FLW_SECRET_KEY',  default='FLWSECK_TEST-xxxxx')
 FLW_WEBHOOK_SECRET = config('FLW_WEBHOOK_SECRET', default='my-secret-string')
-
-# ── Paystack ───────────────────────────────────────────────
-PAYSTACK_PUBLIC_KEY = config('PAYSTACK_PUBLIC_KEY', default='')
-PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
 
 # ── Google Maps ────────────────────────────────────────────
 GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
 
-# ── CSRF ───────────────────────────────────────────────────
 CSRF_TRUSTED_ORIGINS = [
     'https://lynctel.up.railway.app',
 ]
