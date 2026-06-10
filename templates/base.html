@@ -3,8 +3,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>{% block title %}Lynctel — Quality Imports Delivered{% endblock %}</title>
+
+  <!-- ── PWA: Manifest + Theme ──────────────────────── -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0F1B2D">
+
+  <!-- ── PWA: iOS / Safari ──────────────────────────── -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Lynctel">
+  <link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.png' %}">
+
+  <!-- ── PWA: General SEO / Share ───────────────────── -->
+  <meta name="description" content="Lynctel — Quality imports delivered fast across Ghana. Shop electronics, gadgets and more.">
+  <meta name="mobile-web-app-capable" content="yes">
 
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -77,6 +91,27 @@
       box-shadow: 0 0 0 3px rgba(245,166,35,.2);
       border-color: #F5A623 !important;
     }
+
+    /* PWA install banner */
+    #pwa-banner {
+      display: none;
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      background: #0F1B2D;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(15,27,45,.3);
+      align-items: center;
+      gap: 12px;
+      max-width: calc(100vw - 32px);
+      width: max-content;
+      animation: fadeUp .4s ease forwards;
+    }
+    #pwa-banner.show { display: flex; }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
@@ -111,42 +146,38 @@
                         rounded-xl text-sm transition-all duration-200"/>
         </div>
       </form>
-<!-- Right nav -->
-<div class="flex items-center gap-1 ml-auto">
 
-  <a href="{% url 'vendors:directory' %}"
-     class="hidden md:flex text-sm font-medium text-gray-600
-            hover:text-navy px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-    Shops
-  </a>
+      <!-- Right nav -->
+      <div class="flex items-center gap-1 ml-auto">
 
-  <!-- DYNAMIC VENDOR ROUTING BLOCK -->
-  {% if request.user.is_authenticated and request.user.vendor %}
-    {% if request.user.vendor.status == 'active' %}
-      <!-- Approved Vendor -> Straight to the Dashboard -->
-      <a href="{% url 'vendors:dashboard' %}"
-         class="hidden md:flex text-sm font-semibold text-gold-dark
-                bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
-        Sell Here
-      </a>
-    {% else %}
-      <!-- Pending Vendor -> Message/Pending Notice Page -->
-      <a href="{% url 'vendors:pending' %}"
-         class="hidden md:flex text-sm font-semibold text-gold-dark
-                bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
-        Sell Here
-      </a>
-    {% endif %}
-  {% else %}
-    <!-- Guest or Regular Customer -> Application Form -->
-    <a href="{% url 'vendors:apply' %}"
-       class="hidden md:flex text-sm font-semibold text-gold-dark
-              bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
-      Sell Here
-    </a>
-  {% endif %}
+        <a href="{% url 'vendors:directory' %}"
+           class="hidden md:flex text-sm font-medium text-gray-600
+                  hover:text-navy px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+          Shops
+        </a>
 
-</div>
+        <!-- DYNAMIC VENDOR ROUTING BLOCK -->
+        {% if request.user.is_authenticated and request.user.vendor %}
+          {% if request.user.vendor.status == 'active' %}
+            <a href="{% url 'vendors:dashboard' %}"
+               class="hidden md:flex text-sm font-semibold text-gold-dark
+                      bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
+              Sell Here
+            </a>
+          {% else %}
+            <a href="{% url 'vendors:pending' %}"
+               class="hidden md:flex text-sm font-semibold text-gold-dark
+                      bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
+              Sell Here
+            </a>
+          {% endif %}
+        {% else %}
+          <a href="{% url 'vendors:apply' %}"
+             class="hidden md:flex text-sm font-semibold text-gold-dark
+                    bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
+            Sell Here
+          </a>
+        {% endif %}
 
         {% if user.is_authenticated %}
         <!-- User dropdown -->
@@ -474,12 +505,31 @@
     </div>
   </div>
 
+  <!-- ── PWA INSTALL BANNER ──────────────────────────── -->
+  <div id="pwa-banner">
+    <img src="{% static 'icons/icon-72x72.png' %}" alt="" class="w-8 h-8 rounded-xl flex-shrink-0"/>
+    <div class="min-w-0">
+      <p class="font-semibold text-sm leading-tight">Install Lynctel</p>
+      <p class="text-gray-400 text-xs">Add to home screen for faster access</p>
+    </div>
+    <button id="pwa-install-btn"
+            class="bg-gold text-navy text-xs font-bold px-4 py-2 rounded-lg
+                   hover:bg-yellow-400 transition-colors flex-shrink-0">
+      Install
+    </button>
+    <button onclick="dismissPWA()"
+            class="text-gray-400 hover:text-white text-lg leading-none flex-shrink-0 ml-1">
+      ✕
+    </button>
+  </div>
+
   <!-- ── GLOBAL SCRIPTS ───────────────────────────────── -->
   <script>
     const CSRF_TOKEN       = '{{ csrf_token }}';
     const IS_AUTHENTICATED = {{ user.is_authenticated|yesno:"true,false" }};
     const LOGIN_URL        = "{% url 'accounts:login' %}";
 
+    // ── Cart drawer ──────────────────────────────────────
     function openCart() {
       document.getElementById('cart-drawer').classList.add('open');
       document.getElementById('cart-overlay').classList.add('open');
@@ -631,7 +681,49 @@
       }
     }
 
-    // Auto-dismiss flash messages after 5s
+    // ── PWA Install prompt ───────────────────────────────
+    let _deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      _deferredPrompt = e;
+      // Only show banner if not already dismissed
+      if (!localStorage.getItem('pwa-dismissed')) {
+        setTimeout(() => {
+          document.getElementById('pwa-banner').classList.add('show');
+        }, 3000); // show after 3s on page
+      }
+    });
+
+    document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+      if (!_deferredPrompt) return;
+      _deferredPrompt.prompt();
+      const { outcome } = await _deferredPrompt.userChoice;
+      _deferredPrompt = null;
+      document.getElementById('pwa-banner').classList.remove('show');
+      if (outcome === 'accepted') localStorage.setItem('pwa-installed', '1');
+    });
+
+    function dismissPWA() {
+      document.getElementById('pwa-banner').classList.remove('show');
+      localStorage.setItem('pwa-dismissed', '1');
+    }
+
+    // Hide banner if already running as installed PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      document.getElementById('pwa-banner').style.display = 'none';
+    }
+
+    // ── Service Worker registration ──────────────────────
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then(reg => console.log('[SW] Registered:', reg.scope))
+          .catch(err => console.error('[SW] Failed:', err));
+      });
+    }
+
+    // ── Auto-dismiss flash messages after 5s ─────────────
     setTimeout(() => {
       const el = document.getElementById('flash-wrap');
       if (el) {
@@ -641,7 +733,7 @@
       }
     }, 5000);
 
-    // Navbar shadow on scroll
+    // ── Navbar shadow on scroll ───────────────────────────
     window.addEventListener('scroll', () => {
       document.getElementById('navbar').classList.toggle('nav-scrolled', window.scrollY > 10);
     });
