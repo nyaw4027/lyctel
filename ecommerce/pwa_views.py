@@ -1,6 +1,3 @@
-
-# ecommerce/pwa_views.py
-
 from pathlib import Path
 import json
 
@@ -13,59 +10,49 @@ from django.views.decorators.http import require_GET
 @require_GET
 @cache_control(max_age=0, no_cache=True, no_store=True, must_revalidate=True)
 def service_worker(request):
-    """
-    Serve the service worker from /sw.js
-    """
+    """Serve sw.js from static files"""
 
-    sw_file = Path(settings.BASE_DIR) / "static" / "sw.js"
+    sw_path = Path(settings.STATIC_ROOT) / "sw.js"
 
-    if not sw_file.exists():
-        return HttpResponse(
-            "Service worker not found",
-            status=404,
-            content_type="text/plain"
-        )
+    if not sw_path.exists():
+        for d in settings.STATICFILES_DIRS:
+            candidate = Path(d) / "sw.js"
+            if candidate.exists():
+                sw_path = candidate
+                break
 
-    response = FileResponse(
-        open(sw_file, "rb"),
-        content_type="application/javascript"
+    if not sw_path.exists():
+        return HttpResponse("sw.js not found", status=404)
+
+    return FileResponse(
+        open(sw_path, "rb"),
+        content_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/"},
     )
-
-    response["Service-Worker-Allowed"] = "/"
-
-    return response
 
 
 @require_GET
 @cache_control(max_age=86400)
 def web_manifest(request):
-    """
-    Serve manifest.json from the project root.
-    """
+    """Serve manifest.json from BASE_DIR"""
 
     manifest_file = Path(settings.BASE_DIR) / "manifest.json"
 
     if not manifest_file.exists():
-        return HttpResponse(
-            "manifest.json not found",
-            status=404,
-            content_type="text/plain"
-        )
+        return HttpResponse("manifest.json not found", status=404)
 
     with open(manifest_file, "r", encoding="utf-8") as f:
-        manifest_data = json.load(f)
+        data = json.load(f)
 
     return HttpResponse(
-        json.dumps(manifest_data),
+        json.dumps(data),
         content_type="application/manifest+json"
     )
 
 
 @require_GET
 def offline_page(request):
-    """
-    Offline fallback page.
-    """
+    """Simple offline fallback page"""
 
     html = """
     <!DOCTYPE html>
@@ -73,89 +60,56 @@ def offline_page(request):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-
         <title>Lynctel — You're Offline</title>
-
         <style>
-            * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-            }
-
+            * { box-sizing: border-box; margin: 0; padding: 0; }
             body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                 background: #f8f9fa;
                 color: #333;
                 display: flex;
-                justify-content: center;
                 align-items: center;
+                justify-content: center;
                 min-height: 100vh;
                 padding: 20px;
             }
-
             .card {
-                background: #fff;
+                background: white;
                 border-radius: 16px;
                 padding: 40px 32px;
-                max-width: 400px;
-                width: 100%;
                 text-align: center;
+                max-width: 380px;
+                width: 100%;
                 box-shadow: 0 4px 24px rgba(0,0,0,.08);
             }
-
-            .icon {
-                font-size: 64px;
-                margin-bottom: 16px;
-            }
-
-            h1 {
-                color: #1a1a2e;
-                margin-bottom: 12px;
-            }
-
-            p {
-                color: #666;
-                line-height: 1.6;
-                margin-bottom: 24px;
-            }
-
+            .icon { font-size: 64px; margin-bottom: 16px; }
+            h1 { font-size: 24px; color: #1a1a2e; margin-bottom: 8px; }
+            p { color: #666; line-height: 1.6; margin-bottom: 24px; }
             button {
                 background: #1a1a2e;
                 color: white;
                 border: none;
+                padding: 12px 28px;
                 border-radius: 8px;
-                padding: 12px 24px;
-                cursor: pointer;
                 font-size: 16px;
+                cursor: pointer;
                 width: 100%;
             }
-
-            button:hover {
-                opacity: 0.95;
-            }
+            button:hover { background: #2d2d5e; }
         </style>
     </head>
-
     <body>
         <div class="card">
             <div class="icon">📶</div>
-
-            <h1>You're Offline</h1>
-
+            <h1>You're offline</h1>
             <p>
                 Check your internet connection and try again.
-                Your cart and browsing history will be available
-                when you reconnect.
+                Your cart and browsing history are saved for when you reconnect.
             </p>
-
-            <button onclick="window.location.reload()">
-                Try Again
-            </button>
+            <button onclick="location.reload()">Try again</button>
         </div>
     </body>
     </html>
     """
 
     return HttpResponse(html)
-

@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "Lynctel Store",
   "short_name": "Lynctel",
   "description": "Shop electronics, gadgets and more on Lynctel",
@@ -75,14 +76,24 @@
       "short_name": "Cart",
       "description": "View your cart",
       "url": "/cart/",
-      "icons": [{ "src": "/static/icons/icon-96x96.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/static/icons/icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Orders",
       "short_name": "Orders",
       "description": "Track your orders",
-      "url": "/order/",
-      "icons": [{ "src": "/static/icons/icon-96x96.png", "sizes": "96x96" }]
+      "url": "/orders/",
+      "icons": [
+        {
+          "src": "/static/icons/icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
     }
   ],
   "prefer_related_applications": false
