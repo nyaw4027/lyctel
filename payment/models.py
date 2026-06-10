@@ -19,6 +19,10 @@ class Payment(models.Model):
         CANCELLED = 'cancelled', 'Cancelled'
         REFUNDED  = 'refunded',  'Refunded'
 
+    class Provider(models.TextChoices):
+        FLUTTERWAVE = 'flutterwave', 'Flutterwave'
+        PAYSTACK    = 'paystack',    'Paystack'
+
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
@@ -28,6 +32,13 @@ class Payment(models.Model):
     method = models.CharField(
         max_length=20,
         choices=Method.choices
+    )
+
+    # ── NEW: which gateway processed this payment ──────────
+    provider = models.CharField(
+        max_length=20,
+        choices=Provider.choices,
+        default=Provider.FLUTTERWAVE,
     )
 
     amount = models.DecimalField(
@@ -46,7 +57,7 @@ class Payment(models.Model):
         default=Status.PENDING
     )
 
-    # Flutterwave / gateway identifiers
+    # Gateway identifiers
     transaction_id = models.CharField(
         max_length=100,
         unique=True
@@ -74,13 +85,8 @@ class Payment(models.Model):
         blank=True
     )
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -88,27 +94,39 @@ class Payment(models.Model):
             models.Index(fields=['transaction_id']),
             models.Index(fields=['status']),
             models.Index(fields=['method']),
+            models.Index(fields=['provider']),   # ← new index
         ]
 
+    # ── Helpers ────────────────────────────────────────────
     def mark_success(self, gateway_ref=None, response=None):
-        """Mark payment as successful"""
-        self.status = self.Status.SUCCESS
-        self.gateway_ref = gateway_ref
+        self.status          = self.Status.SUCCESS
+        self.gateway_ref     = gateway_ref
         self.gateway_response = response or {}
-        self.paid_at = timezone.now()
+        self.paid_at         = timezone.now()
         self.save()
 
     def mark_failed(self, response=None):
-        """Mark payment as failed"""
-        self.status = self.Status.FAILED
+        self.status           = self.Status.FAILED
         self.gateway_response = response or {}
         self.save()
 
+    @property
+    def is_paid(self):
+        return self.status == self.Status.SUCCESS
+
+    @property
+    def channel_display(self):
+        """Human-readable channel shown on receipts/dashboard."""
+        if self.provider == self.Provider.PAYSTACK:
+            channel = (self.gateway_response or {}).get('channel', '')
+            return f"Paystack · {channel.replace('_', ' ').title()}" if channel else 'Paystack'
+        return self.get_method_display()
+
     def __str__(self):
-        return f"{self.order.order_ref} | {self.method} | GHS {self.amount} | {self.status}"
+        return f"{self.order.order_ref} | {self.provider} | {self.method} | GHS {self.amount} | {self.status}"
 
-# 🔥 OPTIONAL BUT POWERFUL (PAYMENT LOGGING)
 
+# ── PAYMENT LOG ────────────────────────────────────────────
 class PaymentLog(models.Model):
     payment = models.ForeignKey(
         Payment,
@@ -116,9 +134,8 @@ class PaymentLog(models.Model):
         related_name='logs'
     )
 
-    event = models.CharField(max_length=100)
-    data = models.JSONField(default=dict, blank=True)
-
+    event      = models.CharField(max_length=100)
+    data       = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

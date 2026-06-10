@@ -1,8 +1,10 @@
 import json
 import uuid
+import hashlib
+import hmac
 import requests
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
@@ -36,6 +38,7 @@ def get_or_create_cart(request):
     return cart
 
 
+# ── PAYMENT PAGE (Flutterwave + Paystack) ─────────────────────────────────────
 @login_required
 def payment_page(request):
     cart          = get_or_create_cart(request)
@@ -46,8 +49,9 @@ def payment_page(request):
         return redirect('order:checkout')
 
     if request.method == 'POST':
-        payment_method = request.POST.get('payment_method')
-        momo_number    = request.POST.get('momo_number', '').strip()
+        payment_method   = request.POST.get('payment_method')
+        momo_number      = request.POST.get('momo_number', '').strip()
+        payment_provider = request.POST.get('payment_provider', 'flutterwave')  # 'flutterwave' or 'paystack'
 
         with transaction.atomic():
             order = Order.objects.create(
@@ -80,48 +84,17 @@ def payment_page(request):
             transaction_id = tx_ref,
             momo_number    = momo_number,
             status         = Payment.Status.PENDING,
+            provider       = payment_provider,
         )
 
         cart.items.all().delete()
         del request.session['pending_order']
 
-        network_map = {
-            'mtn_momo':      'MTN',
-            'vodafone_cash': 'VDF',
-            'airteltigo':    'ATL',
-        }
-        is_momo = payment_method in network_map
-
-        flw_config = {
-            'public_key':      settings.FLW_PUBLIC_KEY,
-            'tx_ref':          tx_ref,
-            'amount':          str(order.total_amount),
-            'currency':        'GHS',
-            'payment_options': 'mobilemoney' if is_momo else 'mobilemoney,card',
-            'redirect_url':    request.build_absolute_uri('/checkout/payment/callback/'),
-            'customer': {
-                'email':        order.customer.email or f"{order.customer.phone}@lynctel.com",
-                'phone_number': order.delivery_phone,
-                'name':         order.customer.get_full_name() or order.customer.phone,
-            },
-            'customizations': {
-                'title':       'Lynctel',
-                'description': f'Order {order.order_ref}',
-            },
-            'meta': {'order_ref': order.order_ref},
-        }
-        if is_momo and momo_number:
-            flw_config['mobile_money'] = {
-                'phone':   momo_number,
-                'network': network_map[payment_method],
-            }
-
-        return render(request, 'payment/pay.html', {
-            'order':          order,
-            'flw_config':     json.dumps(flw_config),
-            'FLW_PUBLIC_KEY': settings.FLW_PUBLIC_KEY,
-            'cart_count':     0,
-        })
+        # ── Route to chosen provider ──────────────────────────────────────────
+        if payment_provider == 'paystack':
+            return _initiate_paystack(request, order, tx_ref)
+        else:
+            return _initiate_flutterwave(request, order, tx_ref, payment_method, momo_number)
 
     # GET — show payment method selection
     return render(request, 'payment/payment.html', {
@@ -132,6 +105,94 @@ def payment_page(request):
     })
 
 
+# ── FLUTTERWAVE INITIATION ─────────────────────────────────────────────────────
+def _initiate_flutterwave(request, order, tx_ref, payment_method, momo_number):
+    network_map = {
+        'mtn_momo':      'MTN',
+        'vodafone_cash': 'VDF',
+        'airteltigo':    'ATL',
+    }
+    is_momo = payment_method in network_map
+
+    flw_config = {
+        'public_key':      settings.FLW_PUBLIC_KEY,
+        'tx_ref':          tx_ref,
+        'amount':          str(order.total_amount),
+        'currency':        'GHS',
+        'payment_options': 'mobilemoney' if is_momo else 'mobilemoney,card',
+        'redirect_url':    request.build_absolute_uri('/checkout/payment/callback/'),
+        'customer': {
+            'email':        order.customer.email or f"{order.customer.phone}@lynctel.com",
+            'phone_number': order.delivery_phone,
+            'name':         order.customer.get_full_name() or order.customer.phone,
+        },
+        'customizations': {
+            'title':       'Lynctel',
+            'description': f'Order {order.order_ref}',
+        },
+        'meta': {'order_ref': order.order_ref},
+    }
+    if is_momo and momo_number:
+        flw_config['mobile_money'] = {
+            'phone':   momo_number,
+            'network': network_map[payment_method],
+        }
+
+    return render(request, 'payment/pay.html', {
+        'order':          order,
+        'flw_config':     json.dumps(flw_config),
+        'FLW_PUBLIC_KEY': settings.FLW_PUBLIC_KEY,
+        'cart_count':     0,
+    })
+
+
+# ── PAYSTACK INITIATION ────────────────────────────────────────────────────────
+def _initiate_paystack(request, order, tx_ref):
+    email = (
+        order.customer.email
+        or f"{order.customer.phone}@lynctel.app"
+    )
+    callback_url = request.build_absolute_uri(f'/checkout/payment/paystack/callback/{tx_ref}/')
+
+    payload = {
+        'email':        email,
+        'amount':       int(float(order.total_amount) * 100),  # pesewas
+        'currency':     'GHS',
+        'reference':    tx_ref,
+        'callback_url': callback_url,
+        'channels':     ['mobile_money', 'card', 'bank'],
+        'metadata': {
+            'order_ref':  order.order_ref,
+            'order_id':   order.id,
+            'customer':   order.customer.get_full_name() or order.customer.phone,
+            'phone':      order.delivery_phone,
+        },
+    }
+
+    try:
+        resp = requests.post(
+            'https://api.paystack.co/transaction/initialize',
+            headers={
+                'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
+                'Content-Type':  'application/json',
+            },
+            json=payload,
+            timeout=15,
+        )
+        data = resp.json()
+    except Exception as e:
+        messages.error(request, 'Could not connect to payment gateway. Please try again.')
+        return redirect('order:checkout')
+
+    if data.get('status'):
+        # Redirect to Paystack hosted payment page
+        return redirect(data['data']['authorization_url'])
+    else:
+        messages.error(request, f"Payment error: {data.get('message', 'Please try again.')}")
+        return redirect('order:checkout')
+
+
+# ── FLUTTERWAVE CALLBACK ───────────────────────────────────────────────────────
 @login_required
 def payment_callback(request):
     status   = request.GET.get('status')
@@ -169,6 +230,59 @@ def payment_callback(request):
     return render(request, 'payment/failed.html', {'order': order, 'cart_count': 0})
 
 
+# ── PAYSTACK CALLBACK ──────────────────────────────────────────────────────────
+@login_required
+def paystack_callback(request, tx_ref):
+    """
+    Paystack redirects the user here after payment.
+    We verify server-side before trusting the result.
+    """
+    try:
+        payment = Payment.objects.get(transaction_id=tx_ref)
+        order   = payment.order
+    except Payment.DoesNotExist:
+        messages.error(request, 'Payment record not found.')
+        return redirect('frontend:home')
+
+    # Already processed (e.g. webhook beat the callback)
+    if payment.status == Payment.Status.SUCCESS:
+        messages.success(request, f'✅ Order {order.order_ref} is confirmed!')
+        return redirect('order:confirmation', order_ref=order.order_ref)
+
+    # Verify with Paystack
+    try:
+        resp = requests.get(
+            f'https://api.paystack.co/transaction/verify/{tx_ref}',
+            headers={'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}'},
+            timeout=15,
+        )
+        data = resp.json()
+    except Exception:
+        messages.error(request, 'Could not verify payment. Please contact support.')
+        return render(request, 'payment/failed.html', {'order': order, 'cart_count': 0})
+
+    if (data.get('status')
+            and data['data']['status'] == 'success'
+            and data['data']['currency'] == 'GHS'
+            and float(data['data']['amount']) >= float(order.total_amount) * 100):
+
+        gateway_data = {
+            'verified_via': 'paystack_callback',
+            'channel':      data['data'].get('channel', ''),
+            'gateway_response': data['data'].get('gateway_response', ''),
+        }
+        _mark_paid(order, payment, str(data['data']['id']), gateway_data)
+        messages.success(request, f'🎉 Payment confirmed! Order {order.order_ref} is being processed.')
+        return redirect('order:confirmation', order_ref=order.order_ref)
+
+    else:
+        payment.status = Payment.Status.FAILED
+        payment.save()
+        messages.error(request, '❌ Payment was not completed. Please try again.')
+        return render(request, 'payment/failed.html', {'order': order, 'cart_count': 0})
+
+
+# ── FLUTTERWAVE WEBHOOK ────────────────────────────────────────────────────────
 @csrf_exempt
 @require_POST
 def flutterwave_webhook(request):
@@ -193,6 +307,49 @@ def flutterwave_webhook(request):
     return HttpResponse(status=200)
 
 
+# ── PAYSTACK WEBHOOK ───────────────────────────────────────────────────────────
+@csrf_exempt
+@require_POST
+def paystack_webhook(request):
+    """
+    Backup: fires even if user closes browser before callback redirect.
+    """
+    signature = request.headers.get('X-Paystack-Signature', '')
+    payload   = request.body
+
+    # Verify signature
+    secret   = settings.PAYSTACK_SECRET_KEY.encode('utf-8')
+    computed = hmac.new(secret, payload, hashlib.sha512).hexdigest()
+    if not hmac.compare_digest(computed, signature):
+        return HttpResponse(status=400)
+
+    try:
+        event = json.loads(payload)
+    except json.JSONDecodeError:
+        return HttpResponse(status=400)
+
+    if event.get('event') == 'charge.success':
+        data      = event.get('data', {})
+        reference = data.get('reference', '')
+        try:
+            payment = Payment.objects.get(transaction_id=reference)
+            order   = payment.order
+            if payment.status != Payment.Status.SUCCESS:
+                amount_paid_ghs = float(data.get('amount', 0)) / 100
+                if amount_paid_ghs >= float(order.total_amount):
+                    gateway_data = {
+                        'verified_via':     'paystack_webhook',
+                        'channel':          data.get('channel', ''),
+                        'gateway_response': data.get('gateway_response', ''),
+                    }
+                    _mark_paid(order, payment, str(data.get('id', '')), gateway_data)
+        except Payment.DoesNotExist:
+            pass
+
+    return HttpResponse(status=200)
+
+
+# ── SHARED HELPERS ─────────────────────────────────────────────────────────────
 def _verify_flw_transaction(transaction_id, expected_amount):
     try:
         resp = requests.get(
