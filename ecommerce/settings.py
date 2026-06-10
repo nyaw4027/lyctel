@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY')
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'lynctel.up.railway.app']
 
@@ -199,7 +199,6 @@ FLW_WEBHOOK_SECRET = config('FLW_WEBHOOK_SECRET', default='my-secret-string')
 
 # ── Google Maps ────────────────────────────────────────────
 GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 CSRF_TRUSTED_ORIGINS = [
     'https://lynctel.up.railway.app',
