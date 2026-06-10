@@ -1,101 +1,88 @@
-from pathlib import Path
-import json
-
-from django.conf import settings
+# ─────────────────────────────────────────────────────────────────────────────
+# pwa_views.py  — add to your ecommerce (or frontend) app, or create new file
+# ─────────────────────────────────────────────────────────────────────────────
 from django.http import FileResponse, HttpResponse
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_GET
+import os, json
+from django.conf import settings
 
 
-# ─────────────────────────────────────────────
-# SAFE FILE RESOLVER
-# ─────────────────────────────────────────────
-def find_static_file(filename: str):
-    """
-    Searches in:
-    1. STATIC_ROOT (production)
-    2. STATICFILES_DIRS (dev)
-    3. BASE_DIR/static (fallback)
-    """
-
-    search_paths = []
-
-    if getattr(settings, "STATIC_ROOT", None):
-        search_paths.append(Path(settings.STATIC_ROOT) / filename)
-
-    for d in getattr(settings, "STATICFILES_DIRS", []):
-        search_paths.append(Path(d) / filename)
-
-    search_paths.append(Path(settings.BASE_DIR) / "static" / filename)
-
-    for path in search_paths:
-        if path.exists():
-            return path
-
-    return None
-
-
-# ─────────────────────────────────────────────
-# SERVICE WORKER
-# ─────────────────────────────────────────────
 @require_GET
 @cache_control(max_age=0, no_cache=True, no_store=True, must_revalidate=True)
 def service_worker(request):
-    sw_path = find_static_file("sw.js")
-
-    if not sw_path:
-        return HttpResponse("sw.js not found", status=404)
-
-    response = FileResponse(open(sw_path, "rb"), content_type="application/javascript")
-    response["Service-Worker-Allowed"] = "/"
-    return response
-
-
-# ─────────────────────────────────────────────
-# MANIFEST
-# ─────────────────────────────────────────────
-@require_GET
-@cache_control(max_age=86400)
-def web_manifest(request):
-    manifest_path = Path(settings.BASE_DIR) / "manifest.json"
-
-    if not manifest_path.exists():
-        return HttpResponse("manifest.json not found", status=404)
-
-    with open(manifest_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    return HttpResponse(
-        json.dumps(data),
-        content_type="application/manifest+json"
+    """Serve the service worker from the root scope /sw.js"""
+    sw_path = os.path.join(settings.STATIC_ROOT, 'sw.js')
+    # Fallback: look in STATICFILES_DIRS
+    if not os.path.exists(sw_path):
+        for d in settings.STATICFILES_DIRS:
+            candidate = os.path.join(d, 'sw.js')
+            if os.path.exists(candidate):
+                sw_path = candidate
+                break
+    return FileResponse(
+        open(sw_path, 'rb'),
+        content_type='application/javascript',
+        headers={'Service-Worker-Allowed': '/'},
     )
 
 
-# ─────────────────────────────────────────────
-# OFFLINE PAGE
-# ─────────────────────────────────────────────
+@require_GET
+@cache_control(max_age=86400)
+def web_manifest(request):
+    """Serve manifest.json from root /manifest.json"""
+    manifest_path = os.path.join(settings.STATIC_ROOT, 'manifest.json')
+    if not os.path.exists(manifest_path):
+        for d in settings.STATICFILES_DIRS:
+            candidate = os.path.join(d, 'manifest.json')
+            if os.path.exists(candidate):
+                manifest_path = candidate
+                break
+    with open(manifest_path) as f:
+        data = json.load(f)
+    return HttpResponse(json.dumps(data), content_type='application/manifest+json')
+
+
 @require_GET
 def offline_page(request):
+    """Simple offline fallback page"""
     html = """<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lynctel — Offline</title>
-<style>
-body{font-family:sans-serif;background:#f8f9fa;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
-.card{background:#fff;padding:30px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1);text-align:center;max-width:360px}
-button{background:#1a1a2e;color:#fff;border:0;padding:12px 20px;border-radius:8px;width:100%}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lynctel — You're Offline</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8f9fa; color: #333;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px;
+    }
+    .card {
+      background: white; border-radius: 16px; padding: 40px 32px;
+      text-align: center; max-width: 380px; width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+    }
+    .icon { font-size: 64px; margin-bottom: 16px; }
+    h1 { font-size: 24px; color: #1a1a2e; margin-bottom: 8px; }
+    p  { color: #666; line-height: 1.6; margin-bottom: 24px; }
+    button {
+      background: #1a1a2e; color: white; border: none;
+      padding: 12px 28px; border-radius: 8px; font-size: 16px;
+      cursor: pointer; width: 100%;
+    }
+    button:hover { background: #2d2d5e; }
+  </style>
 </head>
 <body>
-<div class="card">
-<div style="font-size:50px">📶</div>
-<h2>You are offline</h2>
-<p>Check your internet connection.</p>
-<button onclick="location.reload()">Retry</button>
-</div>
+  <div class="card">
+    <div class="icon">📶</div>
+    <h1>You're offline</h1>
+    <p>Check your internet connection and try again. Your cart and browsing history are saved for when you reconnect.</p>
+    <button onclick="location.reload()">Try again</button>
+  </div>
 </body>
 </html>"""
-
     return HttpResponse(html)

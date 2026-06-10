@@ -199,6 +199,7 @@ FLW_WEBHOOK_SECRET = config('FLW_WEBHOOK_SECRET', default='my-secret-string')
 
 # ── Google Maps ────────────────────────────────────────────
 GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 CSRF_TRUSTED_ORIGINS = [
     'https://lynctel.up.railway.app',
