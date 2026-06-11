@@ -7,6 +7,7 @@ from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from django.utils.text import slugify
 from datetime import timedelta
+from django.apps import apps
 
 from products.models import Product, Category, ProductImage
 from order.models import Order, OrderStatusHistory
@@ -295,12 +296,13 @@ def order_detail(request, pk):
 
                     # Create acceptance record so rider can accept/reject
                     try:
-                        from rider.location_models import DeliveryAcceptance
-                        DeliveryAcceptance.objects.create(
-                            delivery = new_delivery,
-                            rider    = rider,
-                            status   = 'pending',
-                        )
+                        DeliveryAcceptance = apps.get_model('rider', 'DeliveryAcceptance')
+                        if DeliveryAcceptance is not None:
+                            DeliveryAcceptance.objects.create(
+                                delivery = new_delivery,
+                                rider    = rider,
+                                status   = 'pending',
+                            )
                     except Exception:
                         pass
 
@@ -606,4 +608,97 @@ def delete_staff(request, pk):
 
     return render(request, 'dashboard/staff/delete.html', {
         'staff': staff
+    })
+
+# ── ADD THESE VIEWS to the bottom of your dashboard/views.py ─────────────────
+# (everything above this stays exactly as it is)
+
+from django.db.models import Q
+
+
+# ── USERS ─────────────────────────────────────────────────────────────────────
+
+@admin_required
+def user_list(request):
+    role  = request.GET.get('role', '')
+    query = request.GET.get('q', '').strip()
+
+    users = User.objects.order_by('-created_at')
+
+    if role:
+        users = users.filter(role=role)
+    if query:
+        users = users.filter(
+            Q(phone__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(email__icontains=query)
+        )
+
+    role_counts = {
+        'all':      User.objects.count(),
+        'customer': User.objects.filter(role='customer').count(),
+        'vendor':   User.objects.filter(role='vendor').count(),
+        'rider':    User.objects.filter(role='rider').count(),
+        'staff':    User.objects.filter(role='staff').count(),
+        'admin':    User.objects.filter(role='admin').count(),
+    }
+
+    return render(request, 'dashboard/users/list.html', {
+        'users':       users,
+        'role_filter': role,
+        'query':       query,
+        'role_counts': role_counts,
+    })
+
+
+@admin_required
+def user_detail(request, pk):
+    u      = get_object_or_404(User, pk=pk)
+    orders = Order.objects.filter(customer=u).order_by('-created_at')
+    total_spent = orders.filter(payment_status='paid').aggregate(
+        t=Sum('total_amount'))['t'] or 0
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'update_role':
+            new_role = request.POST.get('role')
+            if new_role and new_role != u.role:
+                u.role = new_role
+                u.save()
+                messages.success(request, f'Role updated to {new_role}.')
+
+        elif action == 'toggle_active':
+            u.is_active = not u.is_active
+            u.save()
+            messages.success(request, f'User {"activated" if u.is_active else "deactivated"}.')
+
+        elif action == 'toggle_verified':
+            u.is_verified = not u.is_verified
+            u.save()
+            messages.success(request, f'User marked as {"verified" if u.is_verified else "unverified"}.')
+
+        elif action == 'reset_password':
+            new_pass = request.POST.get('new_password', '').strip()
+            if len(new_pass) < 6:
+                messages.error(request, 'Password must be at least 6 characters.')
+            else:
+                u.set_password(new_pass)
+                u.save()
+                messages.success(request, f'Password reset for {u.display_name}.')
+
+        elif action == 'delete_user':
+            name = u.display_name
+            u.delete()
+            messages.success(request, f'User "{name}" deleted.')
+            return redirect('dashboard:user_list')
+
+        return redirect('dashboard:user_detail', pk=pk)
+
+    return render(request, 'dashboard/users/detail.html', {
+        'u':            u,
+        'orders':       orders[:10],
+        'total_orders': orders.count(),
+        'total_spent':  total_spent,
     })
