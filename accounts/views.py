@@ -1,5 +1,6 @@
 
 import logging
+from django.conf import settings
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib import messages
@@ -103,50 +104,86 @@ def logout_view(request):
     messages.success(request, 'You have been signed out.')
     return redirect('frontend:home')
 
-
-# ── FORGOT PASSWORD — step 1: enter phone ────────────────
 def forgot_password(request):
-    if request.user.is_authenticated:
-        return redirect('frontend:home')
+    """
+    Step 1:
+    User enters phone number.
+    Generate OTP and store it in cache.
+    """
 
-    if request.method == 'POST':
-        phone = request.POST.get('phone', '').strip()
+    if request.user.is_authenticated:
+        return redirect("frontend:home")
+
+    if request.method == "POST":
+        phone = request.POST.get("phone", "").strip()
+
+        if not phone:
+            messages.error(request, "Please enter your phone number.")
+            return redirect("accounts:forgot_password")
 
         try:
-            user = User.objects.get(phone=phone)
-        except User.DoesNotExist:
-            messages.info(
-                request,
-                'If that number is registered, a reset code has been sent. '
-                'Please check your phone.'
+            user = User.objects.filter(phone=phone).first()
+
+            # Always show same message whether account exists or not
+            # Prevents account enumeration attacks.
+            generic_message = (
+                "If that number is registered, a reset code has been sent."
             )
-            return redirect('accounts:forgot_password')
-        except Exception as e:
-            logger.error('Forgot password lookup error: %s', str(e), exc_info=True)
-            messages.error(request, f'Something went wrong: {e}')
-            return redirect('accounts:forgot_password')
 
-        # Generate 6-digit OTP, store in cache for 10 minutes
-        otp = get_random_string(length=6, allowed_chars='0123456789')
-        cache.set(f'pwd_reset_otp_{phone}', otp, timeout=600)
+            if not user:
+                messages.info(request, generic_message)
+                return redirect("accounts:forgot_password")
 
-        logger.warning('PASSWORD RESET OTP for %s: %s', phone, otp)
+            # Generate 6-digit OTP
+            otp = get_random_string(
+                length=6,
+                allowed_chars="0123456789"
+            )
 
-        request.session['pwd_reset_phone'] = phone
+            # Store OTP for 10 minutes
+            cache.set(
+                f"pwd_reset_otp_{phone}",
+                otp,
+                timeout=600
+            )
 
-        messages.success(
-            request,
-            f'A 6-digit reset code has been sent to {phone[:4]}****{phone[-3:]}.'
-        )
+            # Store phone in session
+            request.session["pwd_reset_phone"] = phone
 
-        # Show OTP on screen in DEBUG mode for easy testing
-        from django.conf import settings
-        if settings.DEBUG:
-            messages.warning(request, f'[DEBUG] Your OTP is: {otp}')
+            logger.warning(
+                "PASSWORD RESET OTP for %s: %s",
+                phone,
+                otp
+            )
 
-        return redirect('accounts:verify_otp')
+            messages.success(request, generic_message)
 
-    return render(request, 'accounts/forgot_password.html', {})
+            # Debug only
+            if settings.DEBUG:
+                messages.warning(
+                    request,
+                    f"[DEBUG OTP] {otp}"
+                )
+
+            return redirect("accounts:verify_otp")
+
+        except Exception:
+            logger.exception(
+                "Forgot password error for phone=%s",
+                phone
+            )
+
+            messages.error(
+                request,
+                "Something went wrong. Please try again."
+            )
+
+            return redirect("accounts:forgot_password")
+
+    return render(
+        request,
+        "accounts/forgot_password.html"
+    )
 
 
 # ── FORGOT PASSWORD — step 2: enter OTP ──────────────────
