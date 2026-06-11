@@ -104,7 +104,7 @@ def logout_view(request):
     messages.success(request, 'You have been signed out.')
     return redirect('frontend:home')
 
-def forgot_password(request):
+def forget_password(request):
     """
     Step 1:
     User enters phone number.
@@ -119,7 +119,7 @@ def forgot_password(request):
 
         if not phone:
             messages.error(request, "Please enter your phone number.")
-            return redirect("accounts:forgot_password")
+            return redirect("accounts:forget_password")
 
         try:
             user = User.objects.filter(phone=phone).first()
@@ -132,7 +132,7 @@ def forgot_password(request):
 
             if not user:
                 messages.info(request, generic_message)
-                return redirect("accounts:forgot_password")
+                return redirect("accounts:forget_password")
 
             # Generate 6-digit OTP
             otp = get_random_string(
@@ -178,11 +178,11 @@ def forgot_password(request):
                 "Something went wrong. Please try again."
             )
 
-            return redirect("accounts:forgot_password")
+            return redirect("accounts:forget_password")
 
     return render(
         request,
-        "accounts/forgot_password.html"
+        "accounts/forget_password.html"
     )
 
 

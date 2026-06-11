@@ -14,7 +14,7 @@ urlpatterns = [
     path('profile/delete/',          views.delete_account,   name='delete_account'),
 
     # ── Password recovery ─────────────────────────────────
-    path('forgot-password/',         views.forgot_password,  name='forgot_password'),
-    path('forgot-password/verify/',  views.verify_otp,       name='verify_otp'),
-    path('forgot-password/reset/',   views.reset_password,   name='reset_password'),
+    path('forget-password/',         views.forget_password,  name='forget_password'),
+    path('forget-password/verify/',  views.verify_otp,       name='verify_otp'),
+    path('forget-password/reset/',   views.reset_password,   name='reset_password'),
 ]
