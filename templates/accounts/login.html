@@ -1,174 +1,112 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Sign In — Lynctel{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
-
+<div class="min-h-screen bg-cream flex items-center justify-center px-4 py-12">
   <div class="w-full max-w-md">
 
-    <!-- Logo / Header -->
+    <!-- Logo -->
     <div class="text-center mb-8">
-      <a href="{% url 'frontend:home' %}"
-         class="inline-flex items-center gap-2 text-3xl font-extrabold text-brand">
-
-        <svg class="w-9 h-9" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
-        </svg>
-
-        Lynctel
+      <a href="{% url 'frontend:home' %}" class="inline-block mb-5">
+        <img src="{% static 'logo.png' %}" alt="Lynctel" class="h-10 w-auto mx-auto"/>
       </a>
-
-      <h1 class="text-2xl font-bold text-gray-900 mt-5">
-        Welcome Back 👋
-      </h1>
-
-      <p class="text-gray-500 mt-2">
-        Sign in to continue shopping and managing your account
-      </p>
+      <h1 class="font-display font-bold text-3xl text-navy">Welcome Back 👋</h1>
+      <p class="text-gray-400 text-sm mt-2">Sign in to continue shopping on Lynctel</p>
     </div>
 
-    <!-- Card -->
-    <div class="bg-white border border-gray-200 rounded-3xl shadow-xl p-8">
+    <!-- Flash messages -->
+    {% if messages %}
+      {% for message in messages %}
+      <div class="mb-4 px-4 py-3 rounded-2xl text-sm font-medium flex items-center gap-2
+        {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200
+        {% elif message.tags == 'success' %}bg-green-50 text-green-700 border border-green-200
+        {% else %}bg-blue-50 text-blue-700 border border-blue-100{% endif %}">
+        <span>{% if message.tags == 'error' %}⚠️{% elif message.tags == 'success' %}✅{% else %}ℹ️{% endif %}</span>
+        <span>{{ message }}</span>
+      </div>
+      {% endfor %}
+    {% endif %}
 
-      <!-- Error -->
+    <!-- Card -->
+    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+
+      <!-- Inline error -->
       {% if error %}
-      <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-2xl mb-6 flex items-center gap-2">
-        <span class="text-lg">⚠️</span>
-        <span>{{ error }}</span>
+      <div class="mb-5 px-4 py-3 bg-red-50 border border-red-200 text-red-700
+                  text-sm rounded-xl flex items-center gap-2">
+        <span>⚠️</span><span>{{ error }}</span>
       </div>
       {% endif %}
 
-      <!-- Form -->
-      <form method="POST" class="space-y-5">
+      <form method="POST" class="space-y-5" novalidate>
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}"/>
 
         <!-- Phone -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
-            Phone Number
-          </label>
-
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Phone Number</label>
           <div class="relative">
-            <span class="absolute left-4 top-3.5 text-gray-400">
-              📱
-            </span>
-
-            <input type="tel"
-                   name="phone"
-                   value="{{ phone|default:'' }}"
-                   placeholder="0241234567"
-                   autofocus
-                   required
-                   class="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-2xl
-                          text-sm bg-gray-50 focus:bg-white
-                          focus:outline-none focus:ring-4 focus:ring-brand/20
-                          focus:border-brand transition"/>
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none">📱</span>
+            <input type="tel" name="phone"
+                   value="{{ form_data.phone|default:'' }}"
+                   placeholder="0558040216"
+                   autofocus required
+                   class="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm
+                          bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gold/20
+                          focus:border-gold outline-none transition"/>
           </div>
         </div>
 
         <!-- Password -->
         <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-sm font-semibold text-gray-700">
-              Password
-            </label>
-
-            <a href="#"
-               class="text-sm text-brand font-medium hover:underline">
-              Forgot Password?
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-sm font-semibold text-gray-700">Password</label>
+            <a href="{% url 'accounts:forgot_password' %}"
+               class="text-xs font-semibold text-gold-dark hover:text-navy transition-colors">
+              Forgot password?
             </a>
           </div>
-
           <div class="relative">
-            <span class="absolute left-4 top-3.5 text-gray-400">
-              🔒
-            </span>
-
-            <input type="password"
-                   name="password"
-                   id="pw"
-                   placeholder="Enter your password"
-                   required
-                   class="w-full pl-11 pr-20 py-3 border border-gray-300 rounded-2xl
-                          text-sm bg-gray-50 focus:bg-white
-                          focus:outline-none focus:ring-4 focus:ring-brand/20
-                          focus:border-brand transition"/>
-
-            <button type="button"
-                    onclick="togglePw()"
-                    class="absolute right-3 top-2 bg-gray-100 hover:bg-gray-200
-                           text-gray-700 text-xs font-semibold
-                           px-3 py-1.5 rounded-lg transition">
-              Show
-            </button>
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none">🔒</span>
+            <input type="password" name="password" id="pw"
+                   placeholder="Enter your password" required
+                   class="w-full pl-11 pr-16 py-3 border border-gray-200 rounded-xl text-sm
+                          bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gold/20
+                          focus:border-gold outline-none transition"/>
+            <button type="button" onclick="togglePw()"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold
+                           text-gray-500 hover:text-navy bg-gray-100 hover:bg-gray-200
+                           px-2.5 py-1 rounded-lg transition" id="pw-btn">Show</button>
           </div>
         </div>
 
-        <!-- Remember -->
-        <div class="flex items-center justify-between text-sm">
-          <label class="flex items-center gap-2 text-gray-600">
-            <input type="checkbox"
-                   class="rounded border-gray-300 text-brand focus:ring-brand">
-            Remember me
-          </label>
-        </div>
-
-        <!-- Sign In Button -->
-        <!-- Sign In Button -->
-<button type="submit"
-        class="w-full bg-blue-600 hover:bg-blue-700
-               text-white font-extrabold text-lg
-               py-4 rounded-2xl
-               shadow-2xl hover:shadow-blue-300/50
-               border border-blue-700
-               transition-all duration-300
-               transform hover:-translate-y-1
-               active:scale-95
-               flex items-center justify-center gap-3">
-
-  <span class="text-xl">🔐</span>
-
-  <span>
-    Sign In
-  </span>
-
-</button>
-
+        <!-- Submit -->
+        <button type="submit"
+                class="w-full bg-navy hover:bg-navy-700 text-white font-bold
+                       py-4 rounded-xl transition-all duration-200 btn-press
+                       flex items-center justify-center gap-2 text-sm shadow-lg shadow-navy/20">
+          Sign In →
+        </button>
       </form>
 
-      <!-- Divider -->
-      <div class="relative my-7">
-        <div class="absolute inset-0 flex items-center">
-          <div class="w-full border-t border-gray-200"></div>
-        </div>
-
-        <div class="relative flex justify-center text-sm">
-          <span class="bg-white px-3 text-gray-400">
-            OR
-          </span>
-        </div>
+      <div class="relative my-6">
+        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-100"></div></div>
+        <div class="relative flex justify-center"><span class="bg-white px-3 text-xs text-gray-400">New to Lynctel?</span></div>
       </div>
 
-      <!-- Create Account -->
       <a href="{% url 'accounts:signup' %}"
-         class="w-full flex items-center justify-center
-                border-2 border-brand text-brand
-                hover:bg-brand hover:text-white
-                font-semibold py-3 rounded-2xl
-                transition duration-200">
-
-        Create New Account
+         class="w-full flex items-center justify-center border-2 border-navy text-navy
+                hover:bg-navy hover:text-white font-semibold py-3 rounded-xl
+                transition-all duration-200 text-sm">
+        Create an Account
       </a>
-
     </div>
 
-    <!-- Bottom -->
-    <p class="text-center text-sm text-gray-500 mt-6">
-      Rider or Admin?
-      <a href="/admin/"
-         class="font-semibold text-brand hover:underline">
-        Use the admin panel
+    <p class="text-center text-xs text-gray-400 mt-6">
+      Rider or vendor?
+      <a href="/admin/" class="font-semibold text-navy hover:text-gold transition-colors">
+        Use the admin panel →
       </a>
     </p>
 
@@ -179,12 +117,12 @@
 {% block extra_js %}
 <script>
 function togglePw() {
-  const pw = document.getElementById('pw');
-
+  const pw  = document.getElementById('pw');
+  const btn = document.getElementById('pw-btn');
   if (pw.type === 'password') {
-    pw.type = 'text';
+    pw.type = 'text';  btn.textContent = 'Hide';
   } else {
-    pw.type = 'password';
+    pw.type = 'password'; btn.textContent = 'Show';
   }
 }
 </script>
