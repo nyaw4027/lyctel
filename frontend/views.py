@@ -1,48 +1,77 @@
 from django.shortcuts import render
+from django.db.models import Sum
 from products.models import Product, Category
+from order.models import OrderItem
 from .models import AboutPage
 
 
 def home(request):
     valid_products = Product.objects.exclude(slug__isnull=True).exclude(slug="")
 
+    # ── Top 4 most purchased products ─────────────────────
+    top_ids = (
+        OrderItem.objects
+        .filter(
+            order__payment_status='paid',
+            product__isnull=False,
+        )
+        .values('product')
+        .annotate(total_sold=Sum('quantity'))
+        .order_by('-total_sold')
+        .values_list('product', flat=True)[:4]
+    )
+
+    # Preserve sales-rank order
+    top_map = {p.pk: p for p in valid_products.filter(pk__in=top_ids, status='active').prefetch_related('images')}
+    hot_products = [top_map[pk] for pk in top_ids if pk in top_map]
+
+    # Fallback: fill remaining slots with featured/newest if not enough paid orders yet
+    if len(hot_products) < 4:
+        fallback = (
+            valid_products
+            .filter(status='active')
+            .exclude(pk__in=[p.pk for p in hot_products])
+            .prefetch_related('images')
+            .order_by('-is_featured', '-created_at')
+            [:4 - len(hot_products)]
+        )
+        hot_products = hot_products + list(fallback)
+
+    # ── Other context ──────────────────────────────────────
     featured = valid_products.filter(
         is_featured=True,
         status='active'
-    )[:4]
+    ).prefetch_related('images')[:4]
 
     new_products = valid_products.filter(
         status='active'
-    ).order_by('-created_at')[:10]
+    ).prefetch_related('images').order_by('-created_at')[:10]
 
     categories = Category.objects.filter(is_active=True)
 
     return render(request, 'frontend/home.html', {
-        'featured': featured,
+        'hot_products': hot_products,
+        'featured':     featured,
         'new_products': new_products,
-        'categories': categories,
-        'cart_count': 0,
+        'categories':   categories,
+        'cart_count':   0,
     })
+
 
 def about(request):
     page = AboutPage.objects.prefetch_related("stats", "features", "team").first()
-    
-    # If the database table is completely empty, pass empty lists so the template doesn't crash
     context = {
-        "page": page,
-        "stats": page.stats.all() if page else [],
+        "page":     page,
+        "stats":    page.stats.all()    if page else [],
         "features": page.features.all() if page else [],
-        "team": page.team.all() if page else [],
+        "team":     page.team.all()     if page else [],
     }
-
     return render(request, "frontend/about.html", context)
 
 
 def contact(request):
     return render(request, "frontend/contact.html")
 
-
-   
 
 def how_it_works(request):
     return render(request, 'frontend/how_it_works.html')
@@ -58,4 +87,3 @@ def terms(request):
 
 def cookies(request):
     return render(request, 'frontend/cookies.html')
-

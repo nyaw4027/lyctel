@@ -160,26 +160,25 @@
               </a>
             </div>
           </div>
-
-          <!-- ── SLIDE 2: Featured products ─────────── -->
+<!-- ── SLIDE 2: Most purchased products ────── -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6">
               <div class="flex items-center justify-between mb-5">
                 <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
                             px-3 py-1.5 rounded-full">
-                  🔥 Hot Right Now
+                  🔥 Most Purchased
                 </div>
                 <a href="{% url 'products:list' %}" class="text-gray-400 hover:text-gold text-xs transition-colors">
                   View all →
                 </a>
               </div>
-              {% if featured %}
+              {% if hot_products %}
               <div class="grid grid-cols-2 gap-3">
-                {% for p in featured|slice:":4" %}
+                {% for p in hot_products %}
                 <a href="{% url 'products:detail' p.slug %}"
                    class="slide-card bg-white/5 hover:bg-white/10 border border-white/10
                           hover:border-gold/30 rounded-2xl overflow-hidden transition-all duration-200">
-                  <div class="overflow-hidden h-24">
+                  <div class="overflow-hidden h-24 relative">
                     {% with p.images.first as img %}
                     {% if img %}
                     <img src="{{ img.image.url }}" alt="{{ p.name }}"
@@ -188,6 +187,9 @@
                     <div class="w-full h-24 bg-white/5 flex items-center justify-center text-2xl">📦</div>
                     {% endif %}
                     {% endwith %}
+                    <!-- Sold badge -->
+                    <span class="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px]
+                                 font-bold px-1.5 py-0.5 rounded-full">🔥 Hot</span>
                   </div>
                   <div class="p-2.5">
                     <p class="text-white text-xs font-medium truncate leading-snug">{{ p.name }}</p>
@@ -205,7 +207,6 @@
               {% endif %}
             </div>
           </div>
-
           <!-- ── SLIDE 3: Sell on Lynctel ───────────── -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6 md:p-8">
