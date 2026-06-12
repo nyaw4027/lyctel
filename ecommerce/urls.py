@@ -20,6 +20,8 @@ urlpatterns = [
     path("", include("frontend.urls")),
 
     # Apps
+    
+    path("food/", include(("food.urls", "food"), namespace="food")),
     path("products/", include("products.urls")),
     path("cart/", include("cart.urls")),
     path("accounts/", include("accounts.urls")),

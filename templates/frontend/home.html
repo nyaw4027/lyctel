@@ -15,7 +15,6 @@
   .slide-dot { transition: all .3s ease; }
   .slide-dot.active { background: #F5A623; width: 24px; border-radius: 4px; }
 
-  /* progress bar */
   .slide-progress-bar {
     animation: progressFill 5s linear forwards;
     transform-origin: left;
@@ -25,7 +24,6 @@
     to   { transform: scaleX(1); }
   }
 
-  /* product card shimmer on hover */
   .slide-card:hover .slide-card-img { transform: scale(1.06); }
   .slide-card-img { transition: transform .4s ease; }
 </style>
@@ -36,12 +34,10 @@
 <!-- ── HERO ───────────────────────────────────────────── -->
 <section class="relative overflow-hidden bg-navy">
 
-  <!-- Background dot pattern -->
   <div class="absolute inset-0 opacity-5"
        style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0);
               background-size: 32px 32px;"></div>
 
-  <!-- Gold accent blob -->
   <div class="absolute top-0 right-0 w-96 h-96 bg-gold opacity-10 rounded-full
               translate-x-1/3 -translate-y-1/4 blur-3xl pointer-events-none"></div>
   <div class="absolute bottom-0 left-0 w-64 h-64 bg-gold opacity-5 rounded-full
@@ -63,7 +59,7 @@
           <span class="shimmer">Delivered Fast.</span>
         </h1>
         <p class="text-gray-300 text-lg mb-8 max-w-lg mx-auto lg:mx-0 fade-up fade-up-3 leading-relaxed">
-          Browse electronics, fashion, gadgets and more — Quality products and delivered straight to your door anywhere in Ghana.
+          Browse electronics, fashion, gadgets and more — quality products delivered straight to your door anywhere in Ghana.
         </p>
         <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start fade-up fade-up-3">
           <a href="{% url 'products:list' %}"
@@ -71,10 +67,10 @@
                     rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/30">
             Shop Now →
           </a>
-          <a href="{% url 'vendors:directory' %}"
-             class="bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-3.5
+          <a href="{% url 'food:home' %}"
+             class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5
                     rounded-2xl transition-colors btn-press text-center">
-            Browse Shops
+            🍔 Order Food
           </a>
         </div>
 
@@ -100,7 +96,6 @@
       <!-- ── RIGHT: Slideshow ────────────────────────── -->
       <div class="flex-1 w-full max-w-md mx-auto lg:mx-0 fade-up fade-up-2">
 
-        <!-- Slide container -->
         <div id="hero-slideshow" class="relative">
 
           <!-- ── SLIDE 1: How it works ──────────────── -->
@@ -119,7 +114,7 @@
                   <div>
                     <p class="text-white font-semibold text-sm">Browse & Add to Cart</p>
                     <p class="text-gray-400 text-xs mt-0.5 leading-relaxed">
-                      Explore hundreds of quality imported products from verified vendors across Ghana.
+                      Explore hundreds of quality products and food from verified vendors across Ghana.
                     </p>
                   </div>
                 </div>
@@ -160,7 +155,8 @@
               </a>
             </div>
           </div>
-<!-- ── SLIDE 2: Most purchased products ────── -->
+
+          <!-- ── SLIDE 2: Most purchased products ────── -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6">
               <div class="flex items-center justify-between mb-5">
@@ -187,7 +183,6 @@
                     <div class="w-full h-24 bg-white/5 flex items-center justify-center text-2xl">📦</div>
                     {% endif %}
                     {% endwith %}
-                    <!-- Sold badge -->
                     <span class="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px]
                                  font-bold px-1.5 py-0.5 rounded-full">🔥 Hot</span>
                   </div>
@@ -207,7 +202,47 @@
               {% endif %}
             </div>
           </div>
-          <!-- ── SLIDE 3: Sell on Lynctel ───────────── -->
+
+          <!-- ── SLIDE 3: Food Delivery ─────────────── -->
+          <div class="slide">
+            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6 md:p-8">
+              <div class="inline-flex items-center gap-2 bg-orange-400/20 text-orange-300 text-xs font-bold
+                          px-3 py-1.5 rounded-full mb-5">
+                🍔 Food Delivery — NEW
+              </div>
+              <h3 class="font-display font-700 text-white text-xl mb-2">
+                Hungry? Order Food Now
+              </h3>
+              <p class="text-gray-400 text-sm mb-5 leading-relaxed">
+                From local restaurants straight to your door in 30–45 minutes. Pay with MoMo or cash.
+              </p>
+              <div class="space-y-3 mb-5">
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+                  <span class="text-lg">🍽️</span>
+                  <p class="text-white text-sm">Choose from local restaurants</p>
+                </div>
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+                  <span class="text-lg">📍</span>
+                  <p class="text-white text-sm">Enter your address — fee auto-calculates</p>
+                </div>
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+                  <span class="text-lg">🛵</span>
+                  <p class="text-white text-sm">Rider picks up and delivers fast</p>
+                </div>
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+                  <span class="text-lg">💵</span>
+                  <p class="text-white text-sm">Pay on delivery or pay before</p>
+                </div>
+              </div>
+              <a href="{% url 'food:home' %}"
+                 class="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600
+                        text-white font-semibold text-sm py-3 rounded-xl transition-colors w-full">
+                🍔 Order Food Now →
+              </a>
+            </div>
+          </div>
+
+          <!-- ── SLIDE 4: Sell on Lynctel ───────────── -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6 md:p-8">
               <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
@@ -217,11 +252,10 @@
               <h3 class="font-display font-700 text-white text-xl mb-2">
                 Sell to Thousands of Customers
               </h3>
-              <p class="text-gray-400 text-sm mb-6 leading-relaxed">
-                Open your shop on Lynctel for free. We handle delivery, payments, and customer support — you just sell.
+              <p class="text-gray-400 text-sm mb-5 leading-relaxed">
+                Open your shop on Lynctel for free. We handle delivery, payments, and customer support.
               </p>
-              <div class="space-y-3 mb-6">
-                {% for icon, text in vendor_perks %}{% endfor %}
+              <div class="space-y-3 mb-5">
                 <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
                   <span class="text-lg">💰</span>
                   <p class="text-white text-sm">Keep <span class="text-gold font-bold">96%</span> of every sale</p>
@@ -247,57 +281,44 @@
             </div>
           </div>
 
-          <!-- ── SLIDE 4: Delivery info ─────────────── -->
+          <!-- ── SLIDE 5: Delivery zones ────────────── -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6 md:p-8">
               <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
                           px-3 py-1.5 rounded-full mb-5">
                 🛵 Fast Delivery
               </div>
-              <h3 class="font-display font-700 text-white text-xl mb-2">
-                We Bring It To You
-              </h3>
-              <p class="text-gray-400 text-sm mb-6 leading-relaxed">
-                Order before 2pm and get same-day delivery in Accra. We're expanding to more cities every month.
+              <h3 class="font-display font-700 text-white text-xl mb-2">We Bring It To You</h3>
+              <p class="text-gray-400 text-sm mb-5 leading-relaxed">
+                Order before 2pm and get same-day delivery in Accra. Expanding to more cities every month.
               </p>
-
-              <!-- Map-style delivery zones -->
-              <div class="bg-white/5 rounded-2xl p-4 mb-5 space-y-3">
+              <div class="bg-white/5 rounded-2xl p-4 mb-4 space-y-3">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="w-2.5 h-2.5 bg-green-400 rounded-full"></div>
                     <span class="text-white text-sm font-medium">Accra & Tema</span>
                   </div>
-                  <span class="text-green-400 text-xs font-semibold bg-green-400/10 px-2 py-0.5 rounded-full">
-                    Same day
-                  </span>
+                  <span class="text-green-400 text-xs font-semibold bg-green-400/10 px-2 py-0.5 rounded-full">Same day</span>
                 </div>
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="w-2.5 h-2.5 bg-gold rounded-full"></div>
                     <span class="text-white text-sm font-medium">Kumasi</span>
                   </div>
-                  <span class="text-gold text-xs font-semibold bg-gold/10 px-2 py-0.5 rounded-full">
-                    1–2 days
-                  </span>
+                  <span class="text-gold text-xs font-semibold bg-gold/10 px-2 py-0.5 rounded-full">1–2 days</span>
                 </div>
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="w-2.5 h-2.5 bg-blue-400 rounded-full"></div>
                     <span class="text-white text-sm font-medium">Other regions</span>
                   </div>
-                  <span class="text-blue-400 text-xs font-semibold bg-blue-400/10 px-2 py-0.5 rounded-full">
-                    2–4 days
-                  </span>
+                  <span class="text-blue-400 text-xs font-semibold bg-blue-400/10 px-2 py-0.5 rounded-full">2–4 days</span>
                 </div>
               </div>
-
               <div class="flex items-center gap-3 text-gray-400 text-xs mb-5">
                 <span>📞</span>
-                <span>Track your order via WhatsApp — <a href="https://wa.me/233558040216"
-                  class="text-gold hover:underline">+233 55 804 0216</a></span>
+                <span>Track on WhatsApp — <a href="https://wa.me/233558040216" class="text-gold hover:underline">+233 55 804 0216</a></span>
               </div>
-
               <a href="{% url 'products:list' %}"
                  class="flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark
                         text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full">
@@ -318,6 +339,7 @@
               <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full" onclick="goToSlide(1)"></button>
               <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full" onclick="goToSlide(2)"></button>
               <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full" onclick="goToSlide(3)"></button>
+              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full" onclick="goToSlide(4)"></button>
             </div>
             <div class="flex items-center gap-2">
               <button onclick="prevSlide()"
@@ -331,8 +353,6 @@
 
         </div>
       </div>
-      <!-- end RIGHT -->
-
     </div>
   </div>
 </section>
@@ -354,8 +374,13 @@
         <div><p class="font-semibold text-navy text-sm">Quality Assured</p><p class="text-gray-400 text-xs">Verified imports only</p></div>
       </div>
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">💬</div>
-        <div><p class="font-semibold text-navy text-sm">WhatsApp Support</p><p class="text-gray-400 text-xs">7 days a week</p></div>
+        <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🍔</div>
+        <div>
+          <p class="font-semibold text-navy text-sm">Food Delivery</p>
+          <p class="text-gray-400 text-xs">
+            <a href="{% url 'food:home' %}" class="hover:text-orange-500 transition-colors">Order food now →</a>
+          </p>
+        </div>
       </div>
     </div>
   </div>
@@ -461,8 +486,51 @@
   </div>
 </section>
 
-<!-- ── VENDOR CTA ─────────────────────────────────────── -->
+<!-- ── FOOD DELIVERY BANNER ───────────────────────────── -->
 <section class="max-w-7xl mx-auto px-4 md:px-6 py-14">
+  <div class="relative bg-gradient-to-r from-orange-500 to-amber-500 rounded-3xl overflow-hidden">
+    <div class="absolute inset-0 opacity-10"
+         style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);
+                background-size:24px 24px;"></div>
+    <div class="absolute right-8 top-4 text-6xl opacity-20 select-none hidden md:block">🍔</div>
+    <div class="absolute right-28 bottom-4 text-5xl opacity-20 select-none hidden md:block">🍕</div>
+    <div class="absolute right-16 top-12 text-4xl opacity-20 select-none hidden md:block">🍜</div>
+    <div class="relative px-8 md:px-12 py-10 flex flex-col md:flex-row items-center gap-6 justify-between">
+      <div>
+        <div class="inline-flex items-center gap-2 bg-white/20 text-white text-xs font-bold
+                    px-3 py-1.5 rounded-full mb-4">
+          <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+          NEW — Food Delivery 🛵
+        </div>
+        <h2 class="font-display font-700 text-2xl md:text-3xl text-white mb-2">
+          Hungry? Order Food Now
+        </h2>
+        <p class="text-white/80 text-sm max-w-md leading-relaxed">
+          From local restaurants straight to your door. Pay with MoMo, cash, or card.
+          Delivered in 30–45 minutes.
+        </p>
+        <div class="flex items-center gap-4 mt-4 text-white/90 text-xs font-medium">
+          <span>🍽️ Choose Restaurant</span>
+          <span>→</span>
+          <span>🛒 Add Items</span>
+          <span>→</span>
+          <span>🛵 Fast Delivery</span>
+        </div>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+        <a href="{% url 'food:home' %}"
+           class="bg-white hover:bg-gray-50 text-orange-600 font-bold px-8 py-3.5
+                  rounded-2xl transition-colors btn-press text-center text-sm
+                  shadow-lg whitespace-nowrap">
+          🍔 Order Food Now
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── VENDOR CTA ─────────────────────────────────────── -->
+<section class="max-w-7xl mx-auto px-4 md:px-6 pb-14">
   <div class="bg-navy rounded-3xl overflow-hidden relative">
     <div class="absolute inset-0 opacity-5"
          style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 28px 28px;"></div>
@@ -499,9 +567,9 @@
 
 {% block extra_js %}
 <script>
-  // ── Slideshow ──────────────────────────────────────────
+  // ── Slideshow (5 slides) ───────────────────────────────
   let currentSlide = 0;
-  const totalSlides = 4;
+  const totalSlides = 5;
   let autoTimer = null;
 
   function goToSlide(n) {
@@ -519,9 +587,8 @@
     dots[currentSlide].classList.add('active', 'w-6', 'bg-gold');
     dots[currentSlide].classList.remove('w-1.5', 'bg-white/30');
 
-    // Reset progress bar
     bar.style.animation = 'none';
-    bar.offsetHeight;  // reflow
+    bar.offsetHeight;
     bar.style.animation = 'progressFill 5s linear forwards';
 
     resetAutoPlay();
@@ -535,10 +602,8 @@
     autoTimer = setInterval(nextSlide, 5000);
   }
 
-  // Start auto-play
   resetAutoPlay();
 
-  // Pause on hover
   document.getElementById('hero-slideshow').addEventListener('mouseenter', () => clearInterval(autoTimer));
   document.getElementById('hero-slideshow').addEventListener('mouseleave', resetAutoPlay);
 
