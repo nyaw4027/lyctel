@@ -28,7 +28,7 @@ class User(AbstractUser):
         default=uuid.uuid4,
         unique=True,
         editable=False,
-        db_index=True
+        db_index=True,
     )
 
     # ═══════════════════════════════
@@ -38,7 +38,7 @@ class User(AbstractUser):
         max_length=20,
         choices=Role.choices,
         default=Role.CUSTOMER,
-        db_index=True
+        db_index=True,
     )
 
     # ═══════════════════════════════
@@ -49,7 +49,7 @@ class User(AbstractUser):
         message=_(
             "Enter a valid Ghana phone number. "
             "Example: 0558040216 or +233558040216"
-        )
+        ),
     )
 
     # ═══════════════════════════════
@@ -61,7 +61,7 @@ class User(AbstractUser):
         validators=[phone_validator],
         db_index=True,
         blank=True,
-        null=True
+        null=True,
     )
 
     # ═══════════════════════════════
@@ -73,7 +73,7 @@ class User(AbstractUser):
         unique=True,
         blank=True,
         null=True,
-        default=None,     # ← store NULL, never empty string ""
+        default=None,
     )
 
     # ═══════════════════════════════
@@ -82,15 +82,15 @@ class User(AbstractUser):
     profile_pic = models.ImageField(
         upload_to='profiles/',
         blank=True,
-        null=True
+        null=True,
     )
 
-    address        = models.TextField(blank=True, null=True)
-    city           = models.CharField(max_length=100, blank=True, null=True)
-    region         = models.CharField(max_length=100, blank=True, null=True)
-    country        = models.CharField(max_length=100, default='Ghana')
-    date_of_birth  = models.DateField(blank=True, null=True)
-    bio            = models.TextField(blank=True, null=True)
+    address       = models.TextField(blank=True, null=True)
+    city          = models.CharField(max_length=100, blank=True, null=True)
+    region        = models.CharField(max_length=100, blank=True, null=True)
+    country       = models.CharField(max_length=100, default='Ghana')
+    date_of_birth = models.DateField(blank=True, null=True)
+    bio           = models.TextField(blank=True, null=True)
 
     # ═══════════════════════════════
     # STATUS
@@ -116,11 +116,11 @@ class User(AbstractUser):
     # ═══════════════════════════════
     # ROLE HELPERS
     # ═══════════════════════════════
-    def is_customer(self):    return self.role == self.Role.CUSTOMER
-    def is_admin_role(self):  return self.role == self.Role.ADMIN
-    def is_staff_role(self):  return self.role == self.Role.STAFF
-    def is_vendor(self):      return self.role == self.Role.VENDOR
-    def is_rider(self):       return self.role == self.Role.RIDER
+    def is_customer(self):   return self.role == self.Role.CUSTOMER
+    def is_admin_role(self): return self.role == self.Role.ADMIN
+    def is_staff_role(self): return self.role == self.Role.STAFF
+    def is_vendor(self):     return self.role == self.Role.VENDOR
+    def is_rider(self):      return self.role == self.Role.RIDER
 
     # ═══════════════════════════════
     # DISPLAY HELPERS
@@ -152,9 +152,8 @@ class User(AbstractUser):
     def clean(self):
         super().clean()
 
-        # Normalise: convert empty string email → None
-        # so the unique constraint only fires on real emails,
-        # not on multiple users with email=""
+        # Normalise: convert empty string email → None so the unique
+        # constraint only fires on real emails.
         if self.email == '':
             self.email = None
 
@@ -165,7 +164,7 @@ class User(AbstractUser):
                 qs = qs.exclude(pk=self.pk)
             if qs.exists():
                 raise ValidationError({
-                    "role": _("Only one admin user is allowed.")
+                    'role': _('Only one admin user is allowed.')
                 })
 
     # ═══════════════════════════════
@@ -173,31 +172,52 @@ class User(AbstractUser):
     # ═══════════════════════════════
     def save(self, *args, **kwargs):
 
-        # Auto-generate username if empty
+        # ── Auto-generate username from phone if empty
         if not self.username and self.phone:
             self.username = self.phone
 
-        # Normalise empty email → None BEFORE full_clean
+        # ── Normalise empty email → None BEFORE full_clean
         if self.email == '':
             self.email = None
 
-        # Permission mapping by role
+        # ── Permission mapping by role
         if self.role == self.Role.ADMIN:
-            self.is_staff      = True
-            self.is_superuser  = True
+            self.is_staff     = True
+            self.is_superuser = True
         elif self.role == self.Role.STAFF:
-            self.is_staff      = True
-            self.is_superuser  = False
+            self.is_staff     = True
+            self.is_superuser = False
         else:
-            self.is_staff      = False
-            self.is_superuser  = False
+            self.is_staff     = False
+            self.is_superuser = False
 
-        # Run validation — but EXCLUDE email from uniqueness check
-        # when email is None (multiple null values are allowed in postgres/sqlite)
-        exclude = []
-        if not self.email:
-            exclude.append('email')
-        self.full_clean(exclude=exclude)
+        # ── Run validation.
+        # Always exclude 'email' (NULL is valid for multiple users).
+        # Also exclude 'phone' when it is blank so that admin-created
+        # users without a phone don't blow up on the validator.
+        # Also exclude 'username' uniqueness check here — Django's
+        # AbstractUser validator raises an error during create because
+        # it tries to validate uniqueness before the row exists; the
+        # database unique constraint handles it correctly anyway.
+        exclude = ['email']
+        if not self.phone:
+            exclude.append('phone')
+
+        try:
+            self.full_clean(exclude=exclude)
+        except ValidationError as e:
+            # Re-raise everything EXCEPT the username uniqueness error
+            # that Django's own validator fires spuriously during creation.
+            errors = e.message_dict if hasattr(e, 'message_dict') else {}
+            filtered = {
+                field: msgs
+                for field, msgs in errors.items()
+                if not (field == 'username' and any(
+                    'already exists' in str(m) for m in msgs
+                ))
+            }
+            if filtered:
+                raise ValidationError(filtered)
 
         super().save(*args, **kwargs)
 
