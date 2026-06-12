@@ -11,10 +11,8 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'lynctel.up.railway.app']
 
-# ── Custom User Model ──────────────────────────────────────
 AUTH_USER_MODEL = 'ecommerce.User'
 
-# ── Apps ───────────────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -70,12 +68,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'ecommerce.wsgi.application'
 
 # ── Database ───────────────────────────────────────────────
-# Priority order:
-#   1. DATABASE_PRIVATE_URL  (Railway private network — no egress fees, preferred)
-#   2. DATABASE_URL          (Railway public URL — works but has egress fees)
-#   3. Individual vars       (NAME, USER, PASSWORD, HOST, PORT — your current setup)
-#   4. SQLite                (local dev fallback when none of the above exist)
-
 _db_url = (
     os.environ.get('DATABASE_PRIVATE_URL')
     or os.environ.get('DATABASE_URL')
@@ -89,8 +81,7 @@ if _db_url:
             conn_health_checks=True,
         )
     }
-elif os.environ.get('DB_HOST') or config('HOST', default=''):
-    # Individual Railway postgres variables
+elif config('HOST', default=''):
     DATABASES = {
         'default': {
             'ENGINE':   'django.db.backends.postgresql',
@@ -102,7 +93,6 @@ elif os.environ.get('DB_HOST') or config('HOST', default=''):
         }
     }
 else:
-    # Local dev — SQLite
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -110,7 +100,6 @@ else:
         }
     }
 
-# ── Password validation ────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -118,43 +107,41 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# ── Internationalisation ───────────────────────────────────
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE     = 'Africa/Accra'
 USE_I18N      = True
 USE_TZ        = True
 
-# ── Static files ───────────────────────────────────────────
 STATIC_URL       = '/static/'
 STATIC_ROOT      = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# ── Media files (local dev) ────────────────────────────────
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# ── Firebase / Google Cloud Storage (production only) ─────
-if not DEBUG:
-    FIREBASE_STORAGE_BUCKET = config(
-        'FIREBASE_STORAGE_BUCKET', default='lynctel-dd634.appspot.com'
-    )
+# ── Storage ────────────────────────────────────────────────
+# Use Firebase only if the credentials JSON is actually set.
+# Falls back to WhiteNoise + local media if not configured yet.
+_gac_json            = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
+_firebase_bucket     = config('FIREBASE_STORAGE_BUCKET', default='')
+_use_firebase        = bool(_gac_json and _firebase_bucket and not DEBUG)
 
-    # Write the service account JSON from env var to a temp file
+if _use_firebase:
     import tempfile
-    _gac_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')
-    if _gac_json:
-        _tmp = tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False, prefix='gcp_creds_'
-        )
-        _tmp.write(_gac_json)
-        _tmp.close()
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = _tmp.name
+    _tmp = tempfile.NamedTemporaryFile(
+        mode='w', suffix='.json', delete=False, prefix='gcp_creds_'
+    )
+    _tmp.write(_gac_json)
+    _tmp.close()
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = _tmp.name
 
-    GS_BUCKET_NAME      = FIREBASE_STORAGE_BUCKET
-    GS_DEFAULT_ACL      = 'publicRead'
-    GS_FILE_OVERWRITE   = False
-    GS_QUERYSTRING_AUTH = False
-    GS_CUSTOM_ENDPOINT  = f'https://storage.googleapis.com/{FIREBASE_STORAGE_BUCKET}'
+    FIREBASE_STORAGE_BUCKET = _firebase_bucket
+    GS_BUCKET_NAME          = _firebase_bucket
+    GS_DEFAULT_ACL          = 'publicRead'
+    GS_FILE_OVERWRITE       = False
+    GS_QUERYSTRING_AUTH     = False
+    GS_CUSTOM_ENDPOINT      = f'https://storage.googleapis.com/{_firebase_bucket}'
+    GS_OBJECT_PARAMETERS    = {'cache_control': 'public, max-age=86400'}
 
     STORAGES = {
         'staticfiles': {
@@ -164,25 +151,29 @@ if not DEBUG:
             'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseMediaStorage',
         },
     }
-
     STATIC_URL = '/static/'
-    MEDIA_URL  = f'https://storage.googleapis.com/{FIREBASE_STORAGE_BUCKET}/media/'
+    MEDIA_URL  = f'https://storage.googleapis.com/{_firebase_bucket}/media/'
 
-    GS_OBJECT_PARAMETERS = {
-        'cache_control': 'public, max-age=86400',
+else:
+    # No Firebase credentials yet — use WhiteNoise for static,
+    # local filesystem for media. Safe fallback.
+    STORAGES = {
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
     }
 
-# ── Auth redirects ─────────────────────────────────────────
 LOGIN_URL           = '/accounts/login/'
 LOGIN_REDIRECT_URL  = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-# ── Default primary key ────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 ASGI_APPLICATION = "ecommerce.asgi.application"
 
-# ── Cache ──────────────────────────────────────────────────
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -190,19 +181,15 @@ CACHES = {
     }
 }
 
-# ── Flutterwave ────────────────────────────────────────────
 FLW_PUBLIC_KEY     = config('FLW_PUBLIC_KEY',     default='FLWPUBK_TEST-xxxxx')
 FLW_SECRET_KEY     = config('FLW_SECRET_KEY',     default='FLWSECK_TEST-xxxxx')
 FLW_WEBHOOK_SECRET = config('FLW_WEBHOOK_SECRET', default='my-secret-string')
 
-# ── Paystack ───────────────────────────────────────────────
 PAYSTACK_PUBLIC_KEY = config('PAYSTACK_PUBLIC_KEY', default='')
 PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
 
-# ── Google Maps ────────────────────────────────────────────
 GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
 
-# ── CSRF ───────────────────────────────────────────────────
 CSRF_TRUSTED_ORIGINS = [
     'https://lynctel.up.railway.app',
 ]
