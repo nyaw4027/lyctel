@@ -6,7 +6,7 @@ from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('SECRET_KEY')
+SECRET_KEY = config('323')
 
 # DEBUG only controls error pages / debug toolbar — NOT database or storage choice
 DEBUG = config('DEBUG', default=False, cast=bool)
