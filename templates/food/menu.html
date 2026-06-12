@@ -1,0 +1,350 @@
+
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ vendor.vendor.shop_name }} — Lynctel Food{% endblock %}
+
+{% block extra_head %}
+<style>
+  .menu-item-card { transition: all .2s ease; }
+  .menu-item-card:hover { box-shadow: 0 8px 24px rgba(15,27,45,.08); }
+  .category-nav a.active { color: #F5A623; border-bottom-color: #F5A623; }
+  #cart-bar { transition: transform .3s ease; }
+  #cart-bar.hidden-bar { transform: translateY(100%); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 md:px-6 pb-28">
+
+  <!-- Back -->
+  <div class="py-4">
+    <a href="{% url 'food:home' %}" class="text-sm text-gray-500 hover:text-navy transition-colors">
+      ← All Restaurants
+    </a>
+  </div>
+
+  <!-- Vendor header -->
+  <div class="relative rounded-3xl overflow-hidden mb-6 bg-navy">
+    {% if vendor.cover_image %}
+    <img src="{{ vendor.cover_image.url }}" alt="{{ vendor.vendor.shop_name }}"
+         class="w-full h-48 object-cover opacity-60"/>
+    {% else %}
+    <div class="w-full h-48 bg-gradient-to-br from-navy to-navy-700 opacity-60"></div>
+    {% endif %}
+    <div class="absolute inset-0 flex flex-col justify-end p-6">
+      <div class="flex items-end justify-between gap-4">
+        <div>
+          <h1 class="font-display font-700 text-2xl text-white mb-1">
+            {{ vendor.vendor.shop_name }}
+          </h1>
+          {% if vendor.cuisine_types %}
+          <p class="text-gray-300 text-sm">{{ vendor.cuisine_types }}</p>
+          {% endif %}
+          <div class="flex items-center gap-3 mt-2 text-xs text-gray-300">
+            <span>⏱ {{ vendor.avg_prep_time }}–{{ vendor.avg_prep_time|add:10 }} min</span>
+            {% if vendor.rating > 0 %}
+            <span>★ {{ vendor.rating }}</span>
+            {% endif %}
+            {% if vendor.is_currently_open %}
+            <span class="text-green-400 font-semibold">● Open</span>
+            {% else %}
+            <span class="text-red-400 font-semibold">● Closed</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if vendor.min_order > 0 %}
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl px-4 py-2 text-center flex-shrink-0">
+          <p class="text-xs text-gray-300">Min order</p>
+          <p class="font-bold text-white text-sm">GHS {{ vendor.min_order }}</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Category nav (sticky) -->
+  {% if categories %}
+  <div class="sticky top-16 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-100 -mx-4 px-4 mb-6">
+    <div class="flex gap-0 overflow-x-auto category-nav">
+      {% for cat in categories %}
+      <a href="#cat-{{ cat.pk }}"
+         class="flex-shrink-0 px-4 py-3 text-sm font-semibold text-gray-500 border-b-2
+                border-transparent hover:text-navy transition-colors whitespace-nowrap">
+        {{ cat.name }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Popular items -->
+  {% if popular %}
+  <div class="mb-8">
+    <h2 class="font-display font-700 text-lg text-navy mb-4">🔥 Popular</h2>
+    <div class="flex gap-4 overflow-x-auto pb-2">
+      {% for item in popular %}
+      <div class="flex-shrink-0 w-52 bg-white rounded-2xl border border-gray-100
+                  overflow-hidden menu-item-card cursor-pointer"
+           onclick="addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.price }})">
+        {% if item.image %}
+        <img src="{{ item.image.url }}" alt="{{ item.name }}"
+             class="w-full h-32 object-cover"/>
+        {% else %}
+        <div class="w-full h-32 bg-gray-50 flex items-center justify-center text-4xl">🍽️</div>
+        {% endif %}
+        <div class="p-3">
+          <p class="font-semibold text-navy text-sm truncate">{{ item.name }}</p>
+          <p class="text-gold-dark font-bold text-sm mt-0.5">GHS {{ item.price }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Menu by category -->
+  {% for cat in categories %}
+  <div id="cat-{{ cat.pk }}" class="mb-8">
+    <h2 class="font-display font-700 text-lg text-navy mb-4 pb-2
+               border-b border-gray-100">
+      {{ cat.name }}
+    </h2>
+    <div class="space-y-3">
+      {% for item in cat.items.all %}
+      {% if item.is_available %}
+      <div class="menu-item-card bg-white border border-gray-100 rounded-2xl p-4
+                  flex items-center gap-4 cursor-pointer"
+           onclick="addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.price }})">
+
+        <!-- Info -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start gap-2">
+            <h3 class="font-semibold text-navy text-sm leading-snug">{{ item.name }}</h3>
+            {% if item.is_popular %}
+            <span class="flex-shrink-0 text-xs bg-gold-light text-gold-dark font-semibold
+                         px-2 py-0.5 rounded-full">Popular</span>
+            {% endif %}
+          </div>
+          {% if item.description %}
+          <p class="text-gray-400 text-xs mt-1 line-clamp-2 leading-relaxed">{{ item.description }}</p>
+          {% endif %}
+          <div class="flex items-center gap-3 mt-2">
+            <p class="font-display font-700 text-navy">GHS {{ item.price }}</p>
+            {% if item.prep_time %}
+            <span class="text-xs text-gray-400">⏱ {{ item.prep_time }} min</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Image + add btn -->
+        <div class="flex-shrink-0 relative">
+          {% if item.image %}
+          <img src="{{ item.image.url }}" alt="{{ item.name }}"
+               class="w-20 h-20 rounded-xl object-cover"/>
+          {% else %}
+          <div class="w-20 h-20 rounded-xl bg-gray-50 flex items-center justify-center text-3xl">🍽️</div>
+          {% endif %}
+
+          <!-- Qty badge or add button -->
+          <div id="item-control-{{ item.pk }}" class="absolute -bottom-2 -right-2">
+            {% if item.pk in cart_items_parsed %}
+            <div class="flex items-center gap-1 bg-navy rounded-xl shadow-lg px-1.5 py-1">
+              <button onclick="event.stopPropagation();updateQty({{ item.pk }}, -1)"
+                      class="w-6 h-6 text-white font-bold text-sm flex items-center justify-center">−</button>
+              <span id="qty-{{ item.pk }}" class="text-white text-xs font-bold w-4 text-center">
+                {{ cart_items|get_item:item.pk|default:0 }}
+              </span>
+              <button onclick="event.stopPropagation();updateQty({{ item.pk }}, 1)"
+                      class="w-6 h-6 text-white font-bold text-sm flex items-center justify-center">+</button>
+            </div>
+            {% else %}
+            <button id="add-btn-{{ item.pk }}"
+                    onclick="event.stopPropagation();addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.price }})"
+                    class="w-8 h-8 bg-gold rounded-full shadow-lg flex items-center justify-center
+                           text-navy font-bold text-xl hover:bg-gold-dark transition-colors">+</button>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+</div>
+
+<!-- ── FLOATING CART BAR ──────────────────────────────── -->
+<div id="cart-bar"
+     class="fixed bottom-0 left-0 right-0 z-50 p-4 hidden-bar">
+  <div class="max-w-lg mx-auto">
+    <a href="{% url 'food:cart' %}"
+       class="flex items-center justify-between bg-navy hover:bg-navy-700 text-white
+              rounded-2xl px-5 py-4 shadow-2xl transition-colors">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-gold rounded-xl flex items-center justify-center">
+          <span id="cart-bar-count" class="text-navy font-bold text-sm">0</span>
+        </div>
+        <span class="font-semibold text-sm">View Cart</span>
+      </div>
+      <span id="cart-bar-total" class="font-display font-700 text-gold">GHS 0.00</span>
+    </a>
+  </div>
+</div>
+
+<!-- ── CONFLICT MODAL ─────────────────────────────────── -->
+<div id="conflict-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl p-6 max-w-sm w-full">
+    <h3 class="font-display font-700 text-navy text-lg mb-2">Start new cart?</h3>
+    <p class="text-gray-500 text-sm mb-5" id="conflict-msg"></p>
+    <div class="flex gap-3">
+      <button onclick="closeConflict()"
+              class="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold">
+        Keep Current
+      </button>
+      <button onclick="confirmClear()"
+              class="flex-1 py-3 bg-navy text-white rounded-xl text-sm font-semibold">
+        Clear & Add
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const VENDOR_ID   = {{ vendor.pk }};
+  const CSRF        = '{{ csrf_token }}';
+  let cartCount     = 0;
+  let cartTotal     = 0;
+  let pendingItemId = null;
+  let pendingName   = null;
+  let pendingPrice  = null;
+
+  // Pre-load cart state from server
+  const cartItems = {{ cart_items|safe }};
+  cartCount = Object.values(cartItems).reduce((a,b) => a+b, 0);
+
+  function updateCartBar() {
+    const bar = document.getElementById('cart-bar');
+    document.getElementById('cart-bar-count').textContent = cartCount;
+    document.getElementById('cart-bar-total').textContent = 'GHS ' + cartTotal.toFixed(2);
+    if (cartCount > 0) {
+      bar.classList.remove('hidden-bar');
+    } else {
+      bar.classList.add('hidden-bar');
+    }
+  }
+
+  // Init bar
+  updateCartBar();
+
+  function addToCart(itemId, name, price) {
+    {% if not user.is_authenticated %}
+    window.location.href = "{% url 'accounts:login' %}?next={{ request.path }}";
+    return;
+    {% endif %}
+
+    fetch(`/food/cart/add/${itemId}/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest',
+                 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `quantity=1`
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.conflict) {
+        pendingItemId = itemId; pendingName = name; pendingPrice = price;
+        document.getElementById('conflict-msg').textContent = d.message;
+        document.getElementById('conflict-modal').classList.remove('hidden');
+        return;
+      }
+      if (d.success) {
+        cartCount = d.cart_count;
+        cartTotal = parseFloat(d.cart_total);
+        cartItems[itemId] = (cartItems[itemId] || 0) + 1;
+        updateItemControl(itemId, cartItems[itemId], price);
+        updateCartBar();
+      }
+    });
+  }
+
+  function updateQty(itemId, delta) {
+    const newQty = Math.max(0, (cartItems[itemId] || 0) + delta);
+    fetch(`/food/cart/update/${itemId}/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest',
+                 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `quantity=${newQty}`
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        cartCount = d.cart_count;
+        cartTotal = parseFloat(d.cart_total);
+        cartItems[itemId] = newQty;
+        updateItemControl(itemId, newQty);
+        updateCartBar();
+      }
+    });
+  }
+
+  function updateItemControl(itemId, qty) {
+    const el = document.getElementById(`item-control-${itemId}`);
+    if (!el) return;
+    if (qty <= 0) {
+      el.innerHTML = `<button onclick="event.stopPropagation();addToCart(${itemId})"
+        class="w-8 h-8 bg-gold rounded-full shadow-lg flex items-center justify-center
+               text-navy font-bold text-xl hover:bg-gold-dark transition-colors">+</button>`;
+    } else {
+      el.innerHTML = `<div class="flex items-center gap-1 bg-navy rounded-xl shadow-lg px-1.5 py-1">
+        <button onclick="event.stopPropagation();updateQty(${itemId},-1)"
+                class="w-6 h-6 text-white font-bold text-sm flex items-center justify-center">−</button>
+        <span class="text-white text-xs font-bold w-4 text-center">${qty}</span>
+        <button onclick="event.stopPropagation();updateQty(${itemId},1)"
+                class="w-6 h-6 text-white font-bold text-sm flex items-center justify-center">+</button>
+      </div>`;
+    }
+  }
+
+  function confirmClear() {
+    document.getElementById('conflict-modal').classList.add('hidden');
+    fetch(`/food/cart/add/${pendingItemId}/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest',
+                 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `quantity=1&confirm_clear=1`
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        // Reset cart items
+        Object.keys(cartItems).forEach(k => delete cartItems[k]);
+        cartCount = d.cart_count; cartTotal = parseFloat(d.cart_total);
+        cartItems[pendingItemId] = 1;
+        updateItemControl(pendingItemId, 1);
+        updateCartBar();
+      }
+    });
+  }
+
+  function closeConflict() {
+    document.getElementById('conflict-modal').classList.add('hidden');
+  }
+
+  // Sticky category highlight on scroll
+  const sections = document.querySelectorAll('[id^="cat-"]');
+  const navLinks = document.querySelectorAll('.category-nav a');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 100) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === `#${current}`);
+    });
+  });
+</script>
+{% endblock %}

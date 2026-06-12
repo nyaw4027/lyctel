@@ -1,0 +1,162 @@
+
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Tracking {{ order.order_ref }} — Lynctel Food{% endblock %}
+
+{% block extra_head %}
+<style>
+  .step { opacity: .35; transition: opacity .4s ease; }
+  .step.done, .step.active { opacity: 1; }
+  .step.active .step-dot { background: #F5A623; animation: pulseDot 1.5s infinite; }
+  .step.done  .step-dot { background: #16a34a; }
+  @keyframes pulseDot {
+    0%,100%{ box-shadow: 0 0 0 0 rgba(245,166,35,.4); }
+    50%    { box-shadow: 0 0 0 8px rgba(245,166,35,0); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto px-4 py-10">
+
+  <!-- Header -->
+  <div class="text-center mb-8">
+    <div class="w-16 h-16 bg-gold-light rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
+      🛵
+    </div>
+    <h1 class="font-display font-bold text-2xl text-navy">Order Placed!</h1>
+    <p class="text-gray-400 mt-1 text-sm">
+      Order <span class="font-semibold text-navy">{{ order.order_ref }}</span>
+    </p>
+  </div>
+
+  <!-- ETA card -->
+  <div class="bg-navy rounded-2xl p-5 text-center mb-6">
+    <p class="text-gray-400 text-xs uppercase tracking-widest mb-1">Estimated Delivery</p>
+    <p class="font-display font-700 text-4xl text-white mb-1" id="eta-display">
+      ~{{ order.eta_minutes }} min
+    </p>
+    {% if order.estimated_delivery %}
+    <p class="text-gray-400 text-xs">by {{ order.estimated_delivery|time:"H:i" }}</p>
+    {% endif %}
+  </div>
+
+  <!-- Status steps -->
+  <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-5">
+    <h2 class="font-display font-700 text-navy mb-5">Order Status</h2>
+    <div class="space-y-4" id="status-steps">
+
+      {% for step_key, step_label, step_icon in status_steps %}
+      <div class="step flex items-center gap-4
+                  {% if order.status == step_key %}active{% elif order_step_index > forloop.counter0 %}done{% endif %}"
+           data-step="{{ step_key }}">
+        <div class="step-dot w-10 h-10 rounded-full bg-gray-200 flex items-center
+                    justify-center text-lg flex-shrink-0 transition-colors">
+          {{ step_icon }}
+        </div>
+        <div class="flex-1">
+          <p class="font-semibold text-navy text-sm">{{ step_label }}</p>
+        </div>
+        <div class="step-check text-green-500 font-bold text-lg opacity-0 transition-opacity">✓</div>
+      </div>
+      {% endfor %}
+
+    </div>
+  </div>
+
+  <!-- Order details -->
+  <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-5">
+    <h2 class="font-display font-700 text-navy mb-4">Order Details</h2>
+    <div class="space-y-2 text-sm">
+      {% for item in order.items.all %}
+      <div class="flex justify-between">
+        <span class="text-gray-600">{{ item.quantity }}× {{ item.name }}</span>
+        <span class="font-semibold">GHS {{ item.subtotal }}</span>
+      </div>
+      {% endfor %}
+      <div class="border-t border-gray-100 pt-2 mt-2 space-y-1.5 text-gray-500">
+        <div class="flex justify-between">
+          <span>Subtotal</span><span>GHS {{ order.subtotal }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span>Delivery</span><span>GHS {{ order.delivery_fee }}</span>
+        </div>
+        <div class="flex justify-between font-display font-700 text-navy text-base pt-1.5
+                    border-t border-gray-100">
+          <span>Total</span><span>GHS {{ order.total_amount }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 pt-4 border-t border-gray-100 space-y-1.5 text-xs text-gray-400">
+      <p>📍 {{ order.delivery_address }}</p>
+      <p>💳 {{ order.get_payment_method_display }} · {{ order.get_payment_when_display }}</p>
+      {% if order.rider %}
+      <p>🛵 Rider: <span class="text-navy font-semibold">{{ order.rider.get_full_name }}</span>
+         · {{ order.rider.phone }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-3">
+    <a href="{% url 'food:home' %}"
+       class="w-full text-center bg-navy hover:bg-navy-700 text-white font-semibold
+              py-3.5 rounded-xl transition-colors text-sm">
+      Order More Food
+    </a>
+    <a href="{% url 'food:history' %}"
+       class="w-full text-center bg-white border border-gray-200 text-navy font-semibold
+              py-3.5 rounded-xl transition-colors text-sm">
+      View All Orders
+    </a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const ORDER_REF   = '{{ order.order_ref }}';
+  const STATUS_STEPS = ['pending','confirmed','preparing','ready','picked_up','delivering','delivered'];
+
+  function updateStatus(status) {
+    const steps     = document.querySelectorAll('.step');
+    const stepIndex = STATUS_STEPS.indexOf(status);
+
+    steps.forEach((el, i) => {
+      const key = el.dataset.step;
+      const idx = STATUS_STEPS.indexOf(key);
+      el.classList.remove('active','done');
+      el.querySelector('.step-check').style.opacity = '0';
+      if (idx === stepIndex) {
+        el.classList.add('active');
+      } else if (idx < stepIndex) {
+        el.classList.add('done');
+        el.querySelector('.step-check').style.opacity = '1';
+      }
+    });
+
+    if (status === 'delivered') {
+      document.getElementById('eta-display').textContent = '✓ Delivered!';
+    }
+  }
+
+  // Poll for status updates every 15 seconds
+  function pollStatus() {
+    fetch(`/food/api/order/${ORDER_REF}/status/`)
+      .then(r => r.json())
+      .then(d => {
+        updateStatus(d.status);
+        if (d.eta_minutes) {
+          document.getElementById('eta-display').textContent = `~${d.eta_minutes} min`;
+        }
+        if (d.status !== 'delivered' && d.status !== 'cancelled') {
+          setTimeout(pollStatus, 15000);
+        }
+      })
+      .catch(() => setTimeout(pollStatus, 30000));
+  }
+
+  pollStatus();
+</script>
+{% endblock %}

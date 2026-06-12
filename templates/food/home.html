@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+{% block title %}Lynctel Food — Order from Restaurants Near You{% endblock %}
+
+{% block extra_head %}
+<style>
+  @keyframes fadeSlideUp {
+    from { opacity:0; transform:translateY(20px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .card-appear { animation: fadeSlideUp .4s ease forwards; }
+  .card-appear:nth-child(2) { animation-delay:.05s; }
+  .card-appear:nth-child(3) { animation-delay:.10s; }
+  .card-appear:nth-child(4) { animation-delay:.15s; }
+
+  .cuisine-pill {
+    white-space: nowrap;
+    transition: all .2s ease;
+  }
+  .cuisine-pill.active {
+    background: #0F1B2D;
+    color: white;
+  }
+
+  /* Vendor card hover */
+  .vendor-card { transition: transform .25s ease, box-shadow .25s ease; }
+  .vendor-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(15,27,45,.12); }
+
+  /* Status badge pulse */
+  @keyframes open-pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+  .open-dot { animation: open-pulse 2s ease-in-out infinite; }
+
+  /* Location banner */
+  #location-bar { transition: all .3s ease; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── HERO ───────────────────────────────────────────── -->
+<section class="bg-navy relative overflow-hidden">
+  <div class="absolute inset-0 opacity-5"
+       style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);
+              background-size:28px 28px;"></div>
+  <div class="absolute right-0 top-0 w-72 h-72 bg-gold opacity-10 rounded-full
+              translate-x-1/3 -translate-y-1/3 blur-3xl pointer-events-none"></div>
+
+  <div class="relative max-w-5xl mx-auto px-4 md:px-6 py-12 md:py-16">
+    <div class="max-w-xl">
+      <div class="inline-flex items-center gap-2 bg-white/10 text-gold text-xs font-semibold
+                  px-4 py-2 rounded-full mb-5">
+        <span class="w-1.5 h-1.5 bg-gold rounded-full open-dot"></span>
+        Food Delivery Across Ghana 🍽️
+      </div>
+      <h1 class="font-display font-700 text-3xl md:text-5xl text-white leading-tight mb-4">
+        Hungry? We've got you.
+      </h1>
+      <p class="text-gray-300 text-base mb-6 leading-relaxed">
+        Order from the best restaurants and food vendors near you.
+        Track your rider live. Pay on delivery or with MoMo.
+      </p>
+
+      <!-- Address input bar -->
+      <div class="bg-white rounded-2xl p-2 flex gap-2 shadow-xl">
+        <div class="flex-1 flex items-center gap-2 px-3">
+          <svg class="w-5 h-5 text-red-500 flex-shrink-0"
+               fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0
+                     9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+          <input id="hero-address"
+                 type="text"
+                 placeholder="Enter your delivery address..."
+                 class="flex-1 py-2 text-navy text-sm bg-transparent outline-none
+                        placeholder-gray-400 min-w-0"/>
+          <input type="hidden" id="hero-lat"/>
+          <input type="hidden" id="hero-lng"/>
+        </div>
+        <button onclick="findRestaurants()"
+                class="bg-gold hover:bg-gold-dark text-navy font-semibold px-5 py-3
+                       rounded-xl transition-colors btn-press text-sm flex-shrink-0">
+          Find Food →
+        </button>
+      </div>
+
+      <!-- Location permission -->
+      <button onclick="useMyLocation()"
+              class="mt-3 flex items-center gap-2 text-gray-300 hover:text-gold
+                     text-xs transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Use my current location
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ── LOCATION BAR (shown after GPS) ─────────────────── -->
+<div id="location-bar" class="hidden bg-gold-light border-b border-gold/20">
+  <div class="max-w-5xl mx-auto px-4 md:px-6 py-3 flex items-center gap-2 text-sm">
+    <svg class="w-4 h-4 text-gold-dark flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+    </svg>
+    <span class="text-gold-dark font-medium" id="location-text">Detecting location…</span>
+    <button onclick="clearLocation()"
+            class="ml-auto text-xs text-gray-500 hover:text-navy transition-colors">
+      Change
+    </button>
+  </div>
+</div>
+
+<!-- ── CUISINE FILTER ─────────────────────────────────── -->
+<div class="bg-white border-b border-gray-100 sticky top-16 z-30">
+  <div class="max-w-5xl mx-auto px-4 md:px-6">
+    <div class="flex items-center gap-2 overflow-x-auto py-3 scrollbar-hide">
+      <a href="{% url 'food:home' %}"
+         class="cuisine-pill {% if not selected_cuisine %}active{% endif %}
+                flex-shrink-0 px-4 py-2 rounded-full border border-gray-200
+                text-sm font-medium text-gray-700 hover:border-navy transition-colors">
+        🍽️ All
+      </a>
+      {% for value, label in cuisines %}
+      <a href="{% url 'food:home' %}?cuisine={{ value }}{% if query %}&q={{ query }}{% endif %}"
+         class="cuisine-pill {% if selected_cuisine == value %}active{% endif %}
+                flex-shrink-0 px-4 py-2 rounded-full border border-gray-200
+                text-sm font-medium text-gray-700 hover:border-navy transition-colors">
+        {% if value == 'ghanaian' %}🇬🇭
+        {% elif value == 'fast_food' %}🍔
+        {% elif value == 'pizza' %}🍕
+        {% elif value == 'grills' %}🔥
+        {% elif value == 'seafood' %}🦐
+        {% elif value == 'vegan' %}🥗
+        {% elif value == 'drinks' %}🥤
+        {% elif value == 'bakery' %}🥐
+        {% elif value == 'chinese' %}🥡
+        {% else %}🍴{% endif %}
+        {{ label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- ── SEARCH BAR ─────────────────────────────────────── -->
+<div class="max-w-5xl mx-auto px-4 md:px-6 pt-6">
+  <form method="GET" class="relative">
+    {% if selected_cuisine %}
+    <input type="hidden" name="cuisine" value="{{ selected_cuisine }}"/>
+    {% endif %}
+    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+    </svg>
+    <input type="text" name="q" value="{{ query }}"
+           placeholder="Search restaurants, cuisines..."
+           class="w-full pl-11 pr-4 py-3 bg-white border border-gray-200
+                  rounded-2xl text-sm shadow-sm transition-all"/>
+  </form>
+</div>
+
+<!-- ── VENDOR GRID ────────────────────────────────────── -->
+<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+
+  {% if vendor_list %}
+
+  <!-- Section header -->
+  <div class="flex items-center justify-between mb-5">
+    <div>
+      <h2 class="font-display font-700 text-xl text-navy">
+        {% if selected_cuisine %}{{ selected_cuisine|title }} Restaurants
+        {% elif query %}Results for "{{ query }}"
+        {% else %}Restaurants Near You{% endif %}
+      </h2>
+      <p class="text-gray-400 text-sm mt-0.5">{{ vendor_list|length }} restaurant{{ vendor_list|length|pluralize }}</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="vendor-grid">
+    {% for item in vendor_list %}
+    {% with v=item.vendor %}
+    <a href="{% url 'food:menu' v.slug %}"
+       class="vendor-card card-appear bg-white rounded-2xl border border-gray-100
+              overflow-hidden block group">
+
+      <!-- Banner -->
+      <div class="relative h-44 overflow-hidden bg-gray-100">
+        {% if v.banner %}
+        <img src="{{ v.banner.url }}" alt="{{ v.name }}"
+             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+        {% else %}
+        <div class="w-full h-full bg-gradient-to-br from-navy to-navy-700
+                    flex items-center justify-center">
+          <span class="text-5xl opacity-30">🍽️</span>
+        </div>
+        {% endif %}
+
+        <!-- Status badge -->
+        <div class="absolute top-3 left-3">
+          {% if v.status == 'open' %}
+          <span class="bg-green-500 text-white text-xs font-semibold
+                       px-2.5 py-1 rounded-full flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 bg-white rounded-full open-dot"></span>
+            Open
+          </span>
+          {% elif v.status == 'busy' %}
+          <span class="bg-orange-500 text-white text-xs font-semibold
+                       px-2.5 py-1 rounded-full">
+            🔥 Very Busy
+          </span>
+          {% else %}
+          <span class="bg-gray-700 text-white text-xs font-semibold
+                       px-2.5 py-1 rounded-full">
+            Closed
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- Featured badge -->
+        {% if v.is_featured %}
+        <div class="absolute top-3 right-3">
+          <span class="bg-gold text-navy text-xs font-bold px-2.5 py-1 rounded-full">
+            ⭐ Featured
+          </span>
+        </div>
+        {% endif %}
+
+        <!-- Logo overlay -->
+        <div class="absolute -bottom-5 left-4">
+          <div class="w-12 h-12 rounded-xl bg-white shadow-lg overflow-hidden
+                      border-2 border-white flex items-center justify-center">
+            {% if v.logo %}
+            <img src="{{ v.logo.url }}" alt="{{ v.name }}"
+                 class="w-full h-full object-cover"/>
+            {% else %}
+            <span class="text-2xl">🍽️</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Info -->
+      <div class="pt-8 px-4 pb-4">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <h3 class="font-display font-700 text-navy text-base leading-tight">
+            {{ v.name }}
+          </h3>
+          {% if v.rating > 0 %}
+          <span class="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
+            <svg class="w-3.5 h-3.5 text-gold" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969
+                       0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755
+                       1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197
+                       -1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588
+                       -1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+            {{ v.rating }}
+          </span>
+          {% endif %}
+        </div>
+
+        <p class="text-xs text-gray-400 mb-3">
+          {{ v.get_cuisine_display }} · {{ v.address }}
+        </p>
+
+        <div class="flex items-center gap-3 text-xs text-gray-500">
+          <!-- ETA -->
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            {% if item.eta %}{{ item.eta }} min{% else %}{{ v.avg_prep_time }}+ min{% endif %}
+          </span>
+
+          <!-- Distance -->
+          {% if item.distance %}
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+            </svg>
+            {{ item.distance }} km
+          </span>
+          {% endif %}
+
+          <!-- Min order -->
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11
+                       0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+            </svg>
+            Min GHS {{ v.min_order }}
+          </span>
+        </div>
+      </div>
+    </a>
+    {% endwith %}
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <!-- Empty state -->
+  <div class="text-center py-20">
+    <div class="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center
+                text-4xl mx-auto mb-5">🍽️</div>
+    <h2 class="font-display font-700 text-2xl text-navy mb-2">No restaurants found</h2>
+    <p class="text-gray-400 text-sm mb-6">
+      {% if query %}No results for "{{ query }}". Try a different search.
+      {% else %}No restaurants are open right now. Check back soon!{% endif %}
+    </p>
+    <a href="{% url 'food:home' %}"
+       class="inline-flex items-center gap-2 bg-navy text-white font-semibold
+              px-6 py-3 rounded-2xl transition-colors btn-press text-sm">
+      ← Show all restaurants
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- ── HOW IT WORKS ───────────────────────────────────── -->
+<section class="bg-white border-t border-gray-100 py-14">
+  <div class="max-w-5xl mx-auto px-4 md:px-6">
+    <div class="text-center mb-10">
+      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-2">Simple</p>
+      <h2 class="font-display font-700 text-2xl md:text-3xl text-navy">
+        How Lynctel Food Works
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="text-center">
+        <div class="w-14 h-14 bg-gold-light rounded-2xl flex items-center justify-center
+                    text-2xl mx-auto mb-4">🍔</div>
+        <h3 class="font-display font-700 text-navy mb-2">Choose a Restaurant</h3>
+        <p class="text-gray-400 text-sm leading-relaxed">
+          Browse restaurants near you, filter by cuisine,
+          and check their menus and prices.
+        </p>
+      </div>
+      <div class="text-center">
+        <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center
+                    text-2xl mx-auto mb-4">📍</div>
+        <h3 class="font-display font-700 text-navy mb-2">Enter Your Address</h3>
+        <p class="text-gray-400 text-sm leading-relaxed">
+          Type your delivery address. We'll calculate the
+          exact delivery fee and estimated arrival time.
+        </p>
+      </div>
+      <div class="text-center">
+        <div class="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center
+                    text-2xl mx-auto mb-4">🛵</div>
+        <h3 class="font-display font-700 text-navy mb-2">Track Your Rider</h3>
+        <p class="text-gray-400 text-sm leading-relaxed">
+          Watch your rider on the live map. Pay by cash,
+          MoMo on delivery, or pay upfront.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let userLat = null, userLng = null;
+
+  // ── Use GPS location ───────────────────────────────────
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+
+      document.getElementById('hero-lat').value = userLat;
+      document.getElementById('hero-lng').value = userLng;
+
+      // Reverse geocode with Nominatim (free, no API key)
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json`, {
+        headers: { 'User-Agent': 'Lynctel/1.0' }
+      })
+      .then(r => r.json())
+      .then(data => {
+        const addr = data.display_name || `${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
+        document.getElementById('hero-address').value = addr;
+        showLocationBar(addr);
+      })
+      .catch(() => {
+        document.getElementById('hero-address').value = `${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
+      });
+
+      findRestaurants();
+    }, () => {
+      alert('Could not get your location. Please type your address instead.');
+    });
+  }
+
+  function showLocationBar(text) {
+    const bar = document.getElementById('location-bar');
+    document.getElementById('location-text').textContent = '📍 ' + text;
+    bar.classList.remove('hidden');
+  }
+
+  function clearLocation() {
+    userLat = userLng = null;
+    document.getElementById('location-bar').classList.add('hidden');
+    document.getElementById('hero-address').value = '';
+  }
+
+  // ── Address autocomplete with Nominatim ───────────────
+  let acTimer = null;
+  const input = document.getElementById('hero-address');
+
+  input.addEventListener('input', () => {
+    clearTimeout(acTimer);
+    acTimer = setTimeout(() => {
+      const q = input.value.trim();
+      if (q.length < 4) return;
+      fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=gh&format=json&limit=5`, {
+        headers: { 'User-Agent': 'Lynctel/1.0' }
+      })
+      .then(r => r.json())
+      .then(results => renderSuggestions(results));
+    }, 500);
+  });
+
+  function renderSuggestions(results) {
+    let box = document.getElementById('ac-box');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'ac-box';
+      box.className = 'absolute top-full left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden';
+      input.parentElement.style.position = 'relative';
+      input.parentElement.appendChild(box);
+    }
+    if (!results.length) { box.innerHTML = ''; return; }
+    box.innerHTML = results.map(r => `
+      <button type="button"
+              onclick="selectSuggestion('${r.display_name.replace(/'/g,"\\'")}', ${r.lat}, ${r.lon})"
+              class="w-full text-left px-4 py-3 text-sm text-navy hover:bg-gray-50
+                     border-b border-gray-50 last:border-0 transition-colors">
+        📍 ${r.display_name}
+      </button>
+    `).join('');
+  }
+
+  function selectSuggestion(name, lat, lng) {
+    input.value = name;
+    userLat = parseFloat(lat);
+    userLng = parseFloat(lng);
+    document.getElementById('hero-lat').value = lat;
+    document.getElementById('hero-lng').value = lng;
+    const box = document.getElementById('ac-box');
+    if (box) box.innerHTML = '';
+    showLocationBar(name);
+  }
+
+  function findRestaurants() {
+    const lat = document.getElementById('hero-lat').value;
+    const lng = document.getElementById('hero-lng').value;
+    if (lat && lng) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('lat', lat);
+      url.searchParams.set('lng', lng);
+      window.location.href = url.toString();
+    }
+  }
+
+  // Pre-fill if URL has lat/lng
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('lat') && urlParams.get('lng')) {
+    userLat = parseFloat(urlParams.get('lat'));
+    userLng = parseFloat(urlParams.get('lng'));
+    document.getElementById('hero-lat').value = userLat;
+    document.getElementById('hero-lng').value = userLng;
+
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json`, {
+      headers: { 'User-Agent': 'Lynctel/1.0' }
+    })
+    .then(r => r.json())
+    .then(data => {
+      const addr = data.address?.suburb
+        || data.address?.neighbourhood
+        || data.address?.road
+        || data.display_name;
+      showLocationBar(addr);
+      document.getElementById('hero-address').value = addr;
+    })
+    .catch(() => {});
+  }
+</script>
+{% endblock %}
