@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Become a Rider — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto px-4 py-12">
+
+  <!-- Header -->
+  <div class="text-center mb-10">
+    <div class="w-16 h-16 bg-navy rounded-2xl flex items-center justify-center
+                text-3xl mx-auto mb-4">🛵</div>
+    <h1 class="font-display font-700 text-3xl text-navy mb-2">
+      Become a Lynctel Rider
+    </h1>
+    <p class="text-gray-500 text-sm leading-relaxed max-w-sm mx-auto">
+      Earn money on your own schedule delivering orders across Ghana.
+      Fill in the form below to apply.
+    </p>
+  </div>
+
+  <!-- Perks -->
+  <div class="grid grid-cols-2 gap-3 mb-8">
+    <div class="bg-green-50 rounded-2xl p-4 text-center">
+      <p class="text-2xl mb-1">💰</p>
+      <p class="font-semibold text-navy text-sm">Earn Per Delivery</p>
+      <p class="text-xs text-gray-500 mt-0.5">Up to 50% commission</p>
+    </div>
+    <div class="bg-blue-50 rounded-2xl p-4 text-center">
+      <p class="text-2xl mb-1">🕐</p>
+      <p class="font-semibold text-navy text-sm">Flexible Hours</p>
+      <p class="text-xs text-gray-500 mt-0.5">Work when you want</p>
+    </div>
+    <div class="bg-gold-light rounded-2xl p-4 text-center">
+      <p class="text-2xl mb-1">📱</p>
+      <p class="font-semibold text-navy text-sm">Easy App</p>
+      <p class="text-xs text-gray-500 mt-0.5">Accept rides instantly</p>
+    </div>
+    <div class="bg-purple-50 rounded-2xl p-4 text-center">
+      <p class="text-2xl mb-1">💳</p>
+      <p class="font-semibold text-navy text-sm">Weekly MoMo Payout</p>
+      <p class="text-xs text-gray-500 mt-0.5">Every Monday</p>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+    <h2 class="font-display font-700 text-navy text-lg mb-5">Your Details</h2>
+
+    {% if errors %}
+    <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-sm text-red-700">
+      {% for field, msg in errors.items %}
+      <p>{{ msg }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-4">
+      {% csrf_token %}
+
+      {% if not request.user.is_authenticated %}
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+            First Name *
+          </label>
+          <input type="text" name="first_name"
+                 value="{{ form_data.first_name|default:'' }}"
+                 placeholder="Kofi"
+                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200
+                        rounded-xl text-sm transition-all"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+            Last Name
+          </label>
+          <input type="text" name="last_name"
+                 value="{{ form_data.last_name|default:'' }}"
+                 placeholder="Mensah"
+                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200
+                        rounded-xl text-sm transition-all"/>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+          Phone Number *
+        </label>
+        <input type="tel" name="phone"
+               value="{{ form_data.phone|default:'' }}"
+               placeholder="0551234567"
+               class="w-full px-4 py-3 bg-gray-50 border border-gray-200
+                      rounded-xl text-sm transition-all"/>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+          Password *
+        </label>
+        <input type="password" name="password"
+               placeholder="At least 6 characters"
+               class="w-full px-4 py-3 bg-gray-50 border border-gray-200
+                      rounded-xl text-sm transition-all"/>
+      </div>
+      {% endif %}
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+          Vehicle Type *
+        </label>
+        <select name="vehicle_type"
+                class="w-full px-4 py-3 bg-gray-50 border border-gray-200
+                       rounded-xl text-sm transition-all">
+          <option value="">Select vehicle</option>
+          <option value="motorbike" {% if form_data.vehicle_type == 'motorbike' %}selected{% endif %}>
+            🏍️ Motorbike
+          </option>
+          <option value="bicycle" {% if form_data.vehicle_type == 'bicycle' %}selected{% endif %}>
+            🚲 Bicycle
+          </option>
+          <option value="car" {% if form_data.vehicle_type == 'car' %}selected{% endif %}>
+            🚗 Car
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+          Vehicle Plate Number
+        </label>
+        <input type="text" name="vehicle_plate"
+               value="{{ form_data.vehicle_plate|default:'' }}"
+               placeholder="GR 1234-24"
+               class="w-full px-4 py-3 bg-gray-50 border border-gray-200
+                      rounded-xl text-sm transition-all"/>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+          Upload ID Card (Ghana Card / Voter ID)
+        </label>
+        <input type="file" name="id_card" accept="image/*,.pdf"
+               class="w-full px-4 py-3 bg-gray-50 border border-gray-200
+                      rounded-xl text-sm file:mr-3 file:py-1 file:px-3
+                      file:rounded-lg file:border-0 file:bg-navy file:text-white
+                      file:text-xs file:font-semibold"/>
+      </div>
+
+      <button type="submit"
+              class="w-full bg-navy hover:bg-navy-700 text-white font-semibold
+                     py-4 rounded-2xl transition-colors btn-press text-sm mt-2">
+        Submit Application →
+      </button>
+    </form>
+  </div>
+
+  <p class="text-center text-xs text-gray-400 mt-4">
+    Already applied?
+    <a href="{% url 'rider:dashboard' %}" class="text-gold-dark hover:underline font-semibold">
+      Go to dashboard
+    </a>
+  </p>
+</div>
+{% endblock %}

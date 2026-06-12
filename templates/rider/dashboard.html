@@ -3,26 +3,52 @@
 
 {% block extra_head %}
 <style>
-  @keyframes ring { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-15deg)} 40%{transform:rotate(15deg)} 60%{transform:rotate(-10deg)} 80%{transform:rotate(10deg)} }
+  @keyframes ring {
+    0%,100% { transform: rotate(0); }
+    20%     { transform: rotate(-15deg); }
+    40%     { transform: rotate(15deg); }
+    60%     { transform: rotate(-10deg); }
+    80%     { transform: rotate(10deg); }
+  }
   .bell-ring { animation: ring .6s ease; }
-  @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   .notif-item { animation: slideDown .3s ease; }
-  @keyframes pulse-dot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.7} }
+
+  @keyframes pulse-dot {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50%     { transform: scale(1.4); opacity: .7; }
+  }
   .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
-  @keyframes promptIn { from{opacity:0;transform:translateY(24px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+  @keyframes promptIn {
+    from { opacity: 0; transform: translateY(24px) scale(.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
   #ride-prompt { animation: promptIn .35s cubic-bezier(.22,1,.36,1); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+<div class="max-w-4xl mx-auto px-4 md:px-6 py-8">
 
-  <!-- HEADER -->
+  <!-- ── HEADER ─────────────────────────────────────────── -->
   <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
     <div class="flex items-center gap-4">
-      <div class="w-14 h-14 bg-navy rounded-2xl flex items-center justify-center
-                  text-white font-display font-700 text-xl">
-        {{ request.user.first_name|first|upper|default:"R" }}
+      <!-- Avatar -->
+      <div class="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-navy flex items-center justify-center">
+        {% if request.user.profile_pic %}
+          <img src="{{ request.user.profile_pic.url }}"
+               alt="{{ request.user.display_name }}"
+               class="w-full h-full object-cover"/>
+        {% else %}
+          <span class="text-white font-display font-700 text-xl">
+            {{ request.user.first_name|first|upper|default:"R" }}
+          </span>
+        {% endif %}
       </div>
       <div>
         <h1 class="font-display font-700 text-2xl text-navy">
@@ -30,13 +56,13 @@
         </h1>
         <div class="flex items-center gap-2 mt-1">
           <span class="w-2 h-2 rounded-full pulse-dot
-                       {% if profile.status == 'available' %}bg-green-500
-                       {% elif profile.status == 'on_delivery' %}bg-blue-500
-                       {% else %}bg-gray-400{% endif %}"></span>
+            {% if profile.status == 'available' %}bg-green-500
+            {% elif profile.status == 'on_delivery' %}bg-blue-500
+            {% else %}bg-gray-400{% endif %}"></span>
           <span class="text-xs font-semibold
-                       {% if profile.status == 'available' %}text-green-600
-                       {% elif profile.status == 'on_delivery' %}text-blue-600
-                       {% else %}text-gray-400{% endif %}">
+            {% if profile.status == 'available' %}text-green-600
+            {% elif profile.status == 'on_delivery' %}text-blue-600
+            {% else %}text-gray-400{% endif %}">
             {% if profile.status == 'available' %}Available
             {% elif profile.status == 'on_delivery' %}On Delivery
             {% else %}Offline{% endif %}
@@ -58,7 +84,8 @@
           <svg id="bell-icon" class="w-5 h-5 text-gray-600"
                fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12
+                     0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
           </svg>
           <span id="notif-badge"
                 class="{% if unread_count == 0 %}hidden{% endif %}
@@ -68,7 +95,7 @@
           </span>
         </button>
 
-        <!-- Dropdown -->
+        <!-- Notifications dropdown -->
         <div id="notif-dropdown"
              class="hidden absolute right-0 top-14 w-80 bg-white rounded-2xl shadow-2xl
                     border border-gray-100 z-50 overflow-hidden">
@@ -87,9 +114,9 @@
                  onclick="readNotif({{ notif.pk }}, '{{ notif.link|default:'' }}')">
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0
-                            {% if notif.notif_type == 'new_delivery' %}bg-green-100
-                            {% elif notif.notif_type == 'payment' %}bg-gold-light
-                            {% else %}bg-blue-50{% endif %}">
+                  {% if notif.notif_type == 'new_delivery' %}bg-green-100
+                  {% elif notif.notif_type == 'payment' %}bg-yellow-100
+                  {% else %}bg-blue-50{% endif %}">
                   {% if notif.notif_type == 'new_delivery' %}🛵
                   {% elif notif.notif_type == 'payment' %}💰
                   {% else %}📢{% endif %}
@@ -114,7 +141,7 @@
         </div>
       </div>
 
-      <!-- Online/Offline toggle -->
+      <!-- Online / Offline toggle -->
       <form method="POST" action="{% url 'rider:toggle_status' %}">
         {% csrf_token %}
         {% if profile.status == 'on_delivery' %}
@@ -139,21 +166,26 @@
         </button>
         {% endif %}
       </form>
+
     </div>
   </div>
 
-  <!-- STATS -->
+  <!-- ── STATS ──────────────────────────────────────────── -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
       <p class="font-display font-700 text-2xl text-navy">{{ total_deliveries }}</p>
       <p class="text-xs text-gray-400 mt-1">Deliveries</p>
     </div>
     <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-      <p class="font-display font-700 text-2xl text-green-600">GHS {{ total_earnings|floatformat:2 }}</p>
+      <p class="font-display font-700 text-2xl text-green-600">
+        GHS {{ total_earnings|floatformat:2 }}
+      </p>
       <p class="text-xs text-gray-400 mt-1">Total Earned</p>
     </div>
     <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-      <p class="font-display font-700 text-2xl text-orange-500">GHS {{ pending_payout|floatformat:2 }}</p>
+      <p class="font-display font-700 text-2xl text-orange-500">
+        GHS {{ pending_payout|floatformat:2 }}
+      </p>
       <p class="text-xs text-gray-400 mt-1">Pending Payout</p>
     </div>
     <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
@@ -162,125 +194,7 @@
     </div>
   </div>
 
-  <!-- ACTIVE DELIVERIES -->
-  {% if active_deliveries %}
-  <div class="mb-8">
-    <div class="flex items-center gap-2 mb-4">
-      <div class="w-2 h-2 bg-blue-500 rounded-full pulse-dot"></div>
-      <h2 class="font-display font-700 text-lg text-navy">Active Deliveries</h2>
-      <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">
-        {{ active_deliveries|length }}
-      </span>
-    </div>
-
-    <div class="space-y-4">
-      {% for delivery in active_deliveries %}
-      <div class="bg-white rounded-2xl border-2 border-blue-200 overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 bg-blue-50 flex-wrap gap-3">
-          <div>
-            <p class="font-display font-700 text-navy">{{ delivery.order.order_ref }}</p>
-            <p class="text-xs text-gray-500 mt-0.5">Assigned {{ delivery.assigned_at|timesince }} ago</p>
-          </div>
-          <span class="text-xs font-semibold px-3 py-1.5 rounded-full
-                       {% if delivery.status == 'assigned' %}bg-yellow-100 text-yellow-700
-                       {% elif delivery.status == 'picked_up' %}bg-blue-100 text-blue-700
-                       {% elif delivery.status == 'en_route' %}bg-purple-100 text-purple-700{% endif %}">
-            {% if delivery.status == 'assigned' %}📦 Assigned
-            {% elif delivery.status == 'picked_up' %}🛵 Picked Up
-            {% elif delivery.status == 'en_route' %}🚀 En Route{% endif %}
-          </span>
-        </div>
-
-        <div class="px-5 py-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Deliver To</p>
-              <p class="text-sm font-semibold text-navy">{{ delivery.order.delivery_address }}</p>
-              <p class="text-sm text-gray-500">{{ delivery.order.delivery_city }}</p>
-              <a href="tel:{{ delivery.order.delivery_phone }}"
-                 class="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-green-600">
-                📞 {{ delivery.order.delivery_phone }}
-              </a>
-            </div>
-            <div>
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Your Cut</p>
-              <p class="font-display font-700 text-2xl text-green-600">GHS {{ delivery.rider_commission }}</p>
-              <p class="text-xs text-gray-400 mt-0.5">{{ delivery.zone.name }}</p>
-            </div>
-          </div>
-
-          <!-- Items -->
-          <div class="bg-gray-50 rounded-xl p-3 mb-4">
-            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Items to deliver</p>
-            {% for item in delivery.order.items.all %}
-            <div class="flex justify-between text-sm text-gray-700">
-              <span>{{ item.product_name }} × {{ item.quantity }}</span>
-              <span class="text-gray-400">GHS {{ item.subtotal }}</span>
-            </div>
-            {% endfor %}
-          </div>
-
-          <!-- Action buttons -->
-          <div class="flex gap-3 flex-wrap">
-            {% if delivery.status == 'assigned' %}
-            <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}" class="flex-1">
-              {% csrf_token %}<input type="hidden" name="status" value="picked_up"/>
-              <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold
-                             py-3 rounded-xl transition-colors btn-press text-sm">
-                ✓ Mark Picked Up
-              </button>
-            </form>
-            {% elif delivery.status == 'picked_up' %}
-            <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}" class="flex-1">
-              {% csrf_token %}<input type="hidden" name="status" value="en_route"/>
-              <button class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold
-                             py-3 rounded-xl transition-colors btn-press text-sm">
-                🛵 Mark En Route
-              </button>
-            </form>
-            {% elif delivery.status == 'en_route' %}
-            <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}" class="flex-1">
-              {% csrf_token %}<input type="hidden" name="status" value="delivered"/>
-              <button class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold
-                             py-3 rounded-xl transition-colors btn-press text-sm">
-                🎉 Mark Delivered
-              </button>
-            </form>
-            {% endif %}
-
-            <a href="https://wa.me/233{{ delivery.order.delivery_phone|slice:'1:' }}?text=Hi! I'm your Lynctel rider for order {{ delivery.order.order_ref }}. I'm on my way to {{ delivery.order.delivery_city }}!"
-               target="_blank"
-               class="bg-green-500 hover:bg-green-600 text-white font-semibold
-                      py-3 px-4 rounded-xl transition-colors text-sm">
-              💬
-            </a>
-            <a href="https://maps.google.com/?q={{ delivery.order.delivery_address|urlencode }},{{ delivery.order.delivery_city|urlencode }}"
-               target="_blank"
-               class="bg-gray-100 hover:bg-gray-200 text-navy font-semibold
-                      py-3 px-4 rounded-xl transition-colors text-sm">
-              🗺️
-            </a>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% else %}
-  <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center mb-8">
-    <p class="text-5xl mb-3">🛵</p>
-    <p class="font-display font-700 text-navy mb-1">No active deliveries</p>
-    <p class="text-sm text-gray-400">
-      {% if profile.status == 'available' %}
-        You're online. You'll get notified when a delivery is assigned.
-      {% else %}
-        Go online to start receiving deliveries.
-      {% endif %}
-    </p>
-  </div>
-  {% endif %}
-
-  <!-- PENDING RIDE REQUESTS (from DB) -->
+  <!-- ── PENDING RIDE REQUESTS ──────────────────────────── -->
   {% if pending_requests %}
   <div class="mb-8">
     <h2 class="font-display font-700 text-lg text-navy mb-4 flex items-center gap-2">
@@ -295,18 +209,19 @@
         <div class="flex items-start justify-between gap-3 flex-wrap mb-4">
           <div>
             <p class="font-display font-700 text-navy">
-              {% if acceptance.delivery.order %}{{ acceptance.delivery.order.order_ref }}
-              {% else %}Ride #{{ acceptance.delivery.pk }}{% endif %}
+              {% if acceptance.delivery.order %}
+                {{ acceptance.delivery.order.order_ref }}
+              {% else %}
+                Ride #{{ acceptance.delivery.pk }}
+              {% endif %}
             </p>
             {% if acceptance.delivery.pickup_location %}
             <p class="text-xs text-gray-500 mt-1">📍 {{ acceptance.delivery.pickup_location }}</p>
             {% endif %}
-            {% if acceptance.delivery.dropoff_location or acceptance.delivery.order %}
+            {% if acceptance.delivery.order %}
             <p class="text-xs text-gray-400 mt-0.5">
-              →
-              {% if acceptance.delivery.dropoff_location %}{{ acceptance.delivery.dropoff_location }}
-              {% elif acceptance.delivery.order %}{{ acceptance.delivery.order.delivery_address }}, {{ acceptance.delivery.order.delivery_city }}
-              {% endif %}
+              → {{ acceptance.delivery.order.delivery_address }},
+              {{ acceptance.delivery.order.delivery_city }}
             </p>
             {% endif %}
             <p class="text-xs text-orange-500 mt-1 font-semibold">
@@ -314,19 +229,25 @@
             </p>
           </div>
           <div class="text-right">
-            <p class="font-display font-700 text-green-600 text-xl">GHS {{ acceptance.delivery.rider_commission }}</p>
+            <p class="font-display font-700 text-green-600 text-xl">
+              GHS {{ acceptance.delivery.rider_commission }}
+            </p>
             <p class="text-xs text-gray-400">Your cut</p>
           </div>
         </div>
         <div class="flex gap-3">
-          <form method="POST" action="{% url 'rider:accept_delivery' acceptance.pk %}" class="flex-1">
+          <form method="POST"
+                action="{% url 'rider:accept_delivery' acceptance.pk %}"
+                class="flex-1">
             {% csrf_token %}
             <button class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold
                            py-3 rounded-xl transition-colors btn-press text-sm">
               ✓ Accept
             </button>
           </form>
-          <form method="POST" action="{% url 'rider:reject_delivery' acceptance.pk %}" class="flex-1">
+          <form method="POST"
+                action="{% url 'rider:reject_delivery' acceptance.pk %}"
+                class="flex-1">
             {% csrf_token %}
             <button class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold
                            py-3 rounded-xl transition-colors text-sm">
@@ -340,49 +261,190 @@
   </div>
   {% endif %}
 
-  <!-- RECENT EARNINGS -->
+  <!-- ── ACTIVE DELIVERIES ──────────────────────────────── -->
+  {% if active_deliveries %}
+  <div class="mb-8">
+    <div class="flex items-center gap-2 mb-4">
+      <div class="w-2 h-2 bg-blue-500 rounded-full pulse-dot"></div>
+      <h2 class="font-display font-700 text-lg text-navy">Active Deliveries</h2>
+      <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">
+        {{ active_deliveries|length }}
+      </span>
+    </div>
+    <div class="space-y-4">
+      {% for delivery in active_deliveries %}
+      <div class="bg-white rounded-2xl border-2 border-blue-200 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 bg-blue-50 flex-wrap gap-3">
+          <div>
+            <p class="font-display font-700 text-navy">{{ delivery.order.order_ref }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">
+              Assigned {{ delivery.assigned_at|timesince }} ago
+            </p>
+          </div>
+          <span class="text-xs font-semibold px-3 py-1.5 rounded-full
+            {% if delivery.status == 'assigned' %}bg-yellow-100 text-yellow-700
+            {% elif delivery.status == 'picked_up' %}bg-blue-100 text-blue-700
+            {% elif delivery.status == 'en_route' %}bg-purple-100 text-purple-700{% endif %}">
+            {% if delivery.status == 'assigned' %}📦 Assigned
+            {% elif delivery.status == 'picked_up' %}🛵 Picked Up
+            {% elif delivery.status == 'en_route' %}🚀 En Route{% endif %}
+          </span>
+        </div>
+
+        <div class="px-5 py-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Deliver To
+              </p>
+              <p class="text-sm font-semibold text-navy">
+                {{ delivery.order.delivery_address }}
+              </p>
+              <p class="text-sm text-gray-500">{{ delivery.order.delivery_city }}</p>
+              <a href="tel:{{ delivery.order.delivery_phone }}"
+                 class="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-green-600">
+                📞 {{ delivery.order.delivery_phone }}
+              </a>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Your Cut
+              </p>
+              <p class="font-display font-700 text-2xl text-green-600">
+                GHS {{ delivery.rider_commission }}
+              </p>
+              <p class="text-xs text-gray-400 mt-0.5">{{ delivery.zone.name }}</p>
+            </div>
+          </div>
+
+          <!-- Items -->
+          <div class="bg-gray-50 rounded-xl p-3 mb-4">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Items to deliver
+            </p>
+            {% for item in delivery.order.items.all %}
+            <div class="flex justify-between text-sm text-gray-700">
+              <span>{{ item.product_name }} × {{ item.quantity }}</span>
+              <span class="text-gray-400">GHS {{ item.subtotal }}</span>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Action buttons -->
+          <div class="flex gap-3 flex-wrap">
+            {% if delivery.status == 'assigned' %}
+            <form method="POST"
+                  action="{% url 'rider:update_delivery' delivery.pk %}"
+                  class="flex-1">
+              {% csrf_token %}
+              <input type="hidden" name="status" value="picked_up"/>
+              <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold
+                             py-3 rounded-xl transition-colors btn-press text-sm">
+                ✓ Mark Picked Up
+              </button>
+            </form>
+            {% elif delivery.status == 'picked_up' %}
+            <form method="POST"
+                  action="{% url 'rider:update_delivery' delivery.pk %}"
+                  class="flex-1">
+              {% csrf_token %}
+              <input type="hidden" name="status" value="en_route"/>
+              <button class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold
+                             py-3 rounded-xl transition-colors btn-press text-sm">
+                🛵 Mark En Route
+              </button>
+            </form>
+            {% elif delivery.status == 'en_route' %}
+            <form method="POST"
+                  action="{% url 'rider:update_delivery' delivery.pk %}"
+                  class="flex-1">
+              {% csrf_token %}
+              <input type="hidden" name="status" value="delivered"/>
+              <button class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold
+                             py-3 rounded-xl transition-colors btn-press text-sm">
+                🎉 Mark Delivered
+              </button>
+            </form>
+            {% endif %}
+
+            <a href="https://wa.me/233{{ delivery.order.delivery_phone|slice:'1:' }}?text=Hi!+I'm+your+Lynctel+rider+for+order+{{ delivery.order.order_ref }}.+I'm+on+my+way."
+               target="_blank"
+               class="bg-green-500 hover:bg-green-600 text-white font-semibold
+                      py-3 px-4 rounded-xl transition-colors text-sm">
+              💬
+            </a>
+            <a href="{% url 'rider:live_map' delivery.pk %}"
+               class="bg-navy hover:bg-navy-700 text-white font-semibold
+                      py-3 px-4 rounded-xl transition-colors text-sm">
+              🗺️
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Empty state -->
+  <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center mb-8">
+    <p class="text-5xl mb-3">🛵</p>
+    <p class="font-display font-700 text-navy mb-1">No active deliveries</p>
+    <p class="text-sm text-gray-400">
+      {% if profile.status == 'available' %}
+        You're online. You'll be notified when a delivery is assigned.
+      {% else %}
+        Go online to start receiving deliveries.
+      {% endif %}
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- ── RECENT EARNINGS ────────────────────────────────── -->
   <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
     <div class="px-5 py-4 border-b border-gray-50 flex justify-between items-center">
       <h2 class="font-display font-700 text-navy">Recent Earnings</h2>
       <span class="text-xs text-gray-400">{{ profile.commission_rate }}% per delivery</span>
     </div>
     {% if recent_earnings %}
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
-          <th class="px-5 py-3 text-left font-semibold">Order</th>
-          <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Date</th>
-          <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Zone</th>
-          <th class="px-5 py-3 text-right font-semibold">Earned</th>
-          <th class="px-5 py-3 text-right font-semibold">Status</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-50">
-        {% for earning in recent_earnings %}
-        <tr class="hover:bg-gray-50">
-          <td class="px-5 py-3 font-bold text-gold-dark">
-            {{ earning.delivery.order.order_ref }}
-          </td>
-          <td class="px-5 py-3 text-gray-400 hidden md:table-cell">
-            {{ earning.created_at|date:"M d, Y" }}
-          </td>
-          <td class="px-5 py-3 text-gray-500 hidden md:table-cell">
-            {{ earning.delivery.zone.name|default:"—" }}
-          </td>
-          <td class="px-5 py-3 text-right font-display font-700 text-green-600">
-            +GHS {{ earning.amount }}
-          </td>
-          <td class="px-5 py-3 text-right">
-            <span class="text-xs font-semibold px-2.5 py-1 rounded-full
-                         {% if earning.status == 'paid' %}bg-green-100 text-green-700
-                         {% else %}bg-orange-100 text-orange-700{% endif %}">
-              {{ earning.get_status_display }}
-            </span>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
+            <th class="px-5 py-3 text-left font-semibold">Order</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Date</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Zone</th>
+            <th class="px-5 py-3 text-right font-semibold">Earned</th>
+            <th class="px-5 py-3 text-right font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for earning in recent_earnings %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-5 py-3 font-bold text-gold-dark">
+              {{ earning.delivery.order.order_ref }}
+            </td>
+            <td class="px-5 py-3 text-gray-400 hidden md:table-cell">
+              {{ earning.created_at|date:"M d, Y" }}
+            </td>
+            <td class="px-5 py-3 text-gray-500 hidden md:table-cell">
+              {{ earning.delivery.zone.name|default:"—" }}
+            </td>
+            <td class="px-5 py-3 text-right font-display font-700 text-green-600">
+              +GHS {{ earning.amount }}
+            </td>
+            <td class="px-5 py-3 text-right">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                {% if earning.status == 'paid' %}bg-green-100 text-green-700
+                {% else %}bg-orange-100 text-orange-700{% endif %}">
+                {{ earning.get_status_display }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% else %}
     <div class="text-center py-12 text-gray-400">
       <p class="text-4xl mb-3">💰</p>
@@ -392,40 +454,47 @@
   </div>
 
 </div>
-{% endblock %}
 
-<!-- ── REAL-TIME RIDE REQUEST PROMPT ────────────────────── -->
+<!-- ── REAL-TIME RIDE REQUEST PROMPT ──────────────────── -->
 <div id="ride-prompt"
      class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50
-            w-[calc(100%-2rem)] max-w-md
-            bg-white rounded-3xl shadow-2xl border-2 border-gold overflow-hidden">
-
+            w-[calc(100%-2rem)] max-w-md bg-white rounded-3xl shadow-2xl
+            border-2 border-gold overflow-hidden">
   <div class="bg-gold px-5 py-3 flex items-center gap-3">
     <span class="text-2xl">🛵</span>
     <div>
-      <p class="font-display font-700 text-navy text-base leading-tight">New Ride Request!</p>
-      <p class="text-xs text-navy/70">Respond within <span id="prompt-timer" class="font-bold">60</span>s</p>
+      <p class="font-display font-700 text-navy text-base leading-tight">
+        New Ride Request!
+      </p>
+      <p class="text-xs text-navy/70">
+        Respond within <span id="prompt-timer" class="font-bold">60</span>s
+      </p>
     </div>
     <div class="ml-auto">
       <div class="w-3 h-3 bg-navy rounded-full pulse-dot"></div>
     </div>
   </div>
-
   <div class="px-5 py-4 space-y-2">
     <div class="flex items-start gap-2">
-      <span class="w-5 h-5 bg-green-100 text-green-600 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">A</span>
+      <span class="w-5 h-5 bg-green-100 text-green-600 rounded-full text-xs
+                   flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">A</span>
       <p class="text-sm text-navy font-medium" id="prompt-pickup">—</p>
     </div>
     <div class="flex items-start gap-2">
-      <span class="w-5 h-5 bg-red-100 text-red-600 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">B</span>
+      <span class="w-5 h-5 bg-red-100 text-red-600 rounded-full text-xs
+                   flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">B</span>
       <p class="text-sm text-navy font-medium" id="prompt-dropoff">—</p>
     </div>
     <div class="flex items-center gap-4 pt-1">
-      <div class="text-xs text-gray-500">Total fee: <span id="prompt-fee" class="font-semibold text-navy">—</span></div>
-      <div class="text-xs text-gray-500">Your cut: <span id="prompt-commission" class="font-bold text-green-600 text-sm">—</span></div>
+      <div class="text-xs text-gray-500">
+        Total fee: <span id="prompt-fee" class="font-semibold text-navy">—</span>
+      </div>
+      <div class="text-xs text-gray-500">
+        Your cut:
+        <span id="prompt-commission" class="font-bold text-green-600 text-sm">—</span>
+      </div>
     </div>
   </div>
-
   <div class="flex gap-3 px-5 pb-5">
     <form id="accept-form" method="POST" class="flex-1">
       {% csrf_token %}
@@ -445,12 +514,13 @@
     </form>
   </div>
 </div>
+{% endblock %}
 
 {% block extra_js %}
 <script>
   // ── WebSocket — real-time ride request prompts ─────────
-  const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const riderWs = new WebSocket(`${wsProto}://${location.host}/ws/rider/`);
+  const wsProto  = location.protocol === 'https:' ? 'wss' : 'ws';
+  const riderWs  = new WebSocket(`${wsProto}://${location.host}/ws/rider/`);
   let promptTimer = null;
 
   riderWs.onmessage = e => {
@@ -458,18 +528,21 @@
     if (msg.type === 'ride_request') showPrompt(msg);
   };
 
+  riderWs.onerror = () => {};  // suppress console noise when WS not yet set up
+
   function showPrompt(msg) {
-    document.getElementById('prompt-pickup').textContent     = msg.pickup  || 'N/A';
-    document.getElementById('prompt-dropoff').textContent    = msg.dropoff || 'N/A';
+    document.getElementById('prompt-pickup').textContent     = msg.pickup     || 'N/A';
+    document.getElementById('prompt-dropoff').textContent    = msg.dropoff    || 'N/A';
     document.getElementById('prompt-fee').textContent        = 'GHS ' + msg.fee;
     document.getElementById('prompt-commission').textContent = 'GHS ' + msg.commission;
 
-    document.getElementById('accept-form').action = `/rider/accept/${msg.acceptance_id}/`;
-    document.getElementById('reject-form').action = `/rider/reject/${msg.acceptance_id}/`;
+    document.getElementById('accept-form').action =
+      `/rider/accept/${msg.acceptance_id}/`;
+    document.getElementById('reject-form').action =
+      `/rider/reject/${msg.acceptance_id}/`;
 
     document.getElementById('ride-prompt').classList.remove('hidden');
 
-    // 60-second countdown — auto-dismiss
     let remaining = 60;
     if (promptTimer) clearInterval(promptTimer);
     promptTimer = setInterval(() => {
@@ -481,15 +554,18 @@
       }
     }, 1000);
 
-    // Ring the bell too
-    document.getElementById('bell-icon').classList.add('bell-ring');
-    setTimeout(() => document.getElementById('bell-icon').classList.remove('bell-ring'), 700);
+    ringBell();
+  }
+
+  function ringBell() {
+    const bell = document.getElementById('bell-icon');
+    bell.classList.add('bell-ring');
+    setTimeout(() => bell.classList.remove('bell-ring'), 700);
   }
 
   function toggleNotifications() {
     document.getElementById('notif-dropdown').classList.toggle('hidden');
-    document.getElementById('bell-icon').classList.add('bell-ring');
-    setTimeout(() => document.getElementById('bell-icon').classList.remove('bell-ring'), 700);
+    ringBell();
   }
 
   document.addEventListener('click', e => {
@@ -500,12 +576,19 @@
   function readNotif(id, link) {
     fetch(`/rider/notifications/${id}/read/`, {
       method: 'POST',
-      headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' }
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN,
+        'X-Requested-With': 'XMLHttpRequest',
+      }
     })
     .then(r => r.json())
     .then(d => {
       const el = document.getElementById('notif-' + id);
-      if (el) { el.classList.remove('bg-blue-50'); const dot = el.querySelector('.w-2.h-2.bg-blue-500'); if (dot) dot.remove(); }
+      if (el) {
+        el.classList.remove('bg-blue-50');
+        const dot = el.querySelector('.w-2.h-2.bg-blue-500');
+        if (dot) dot.remove();
+      }
       updateBadge(d.unread_count);
       if (link) window.location.href = link;
     });
@@ -514,13 +597,17 @@
   function markAllRead() {
     fetch('/rider/notifications/read-all/', {
       method: 'POST',
-      headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' }
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN,
+        'X-Requested-With': 'XMLHttpRequest',
+      }
     })
     .then(r => r.json())
     .then(() => {
       document.querySelectorAll('[id^="notif-"]').forEach(el => {
         el.classList.remove('bg-blue-50');
-        const dot = el.querySelector('.w-2.h-2.bg-blue-500'); if (dot) dot.remove();
+        const dot = el.querySelector('.w-2.h-2.bg-blue-500');
+        if (dot) dot.remove();
       });
       updateBadge(0);
     });
@@ -533,19 +620,23 @@
     count > 0 ? b.classList.remove('hidden') : b.classList.add('hidden');
   }
 
-  // Poll every 30s for new deliveries
+  // Poll every 30s for new notifications
   setInterval(() => {
-    fetch('/rider/notifications/count/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    fetch('/rider/notifications/count/', {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
     .then(r => r.json())
     .then(d => {
-      const old = parseInt(document.getElementById('notif-badge').textContent || 0);
+      const old = parseInt(
+        document.getElementById('notif-badge').textContent || 0
+      );
       if (d.count > old) {
-        document.getElementById('bell-icon').classList.add('bell-ring');
-        setTimeout(() => document.getElementById('bell-icon').classList.remove('bell-ring'), 700);
+        ringBell();
         updateBadge(d.count);
         if (d.has_new_delivery) location.reload();
       }
-    }).catch(() => {});
+    })
+    .catch(() => {});
   }, 30000);
 </script>
 {% endblock %}

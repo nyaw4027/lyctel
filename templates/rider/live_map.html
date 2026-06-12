@@ -1,55 +1,90 @@
 {% extends "base.html" %}
-{% block title %}Live Delivery Map — {{ delivery.order.order_ref }}{% endblock %}
+{% block title %}Live Map — {{ delivery.order.order_ref }} · Lynctel{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-
 <style>
+  /* Map fills space below the navbar (64px) */
   #map {
-    height: calc(100vh - 64px);
-    width: 100%;
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
   }
 
-  .leaflet-popup-content-wrapper {
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(15,27,45,.15);
-  }
-
-  .leaflet-popup-content {
-    margin: 12px 16px;
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  #status-panel {
-    position: absolute;
+  /* Bottom sheet slides up over the map */
+  #bottom-sheet {
+    position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 1000;
+    z-index: 50;
     background: white;
-    border-radius: 24px 24px 0 0;
-    box-shadow: 0 -4px 40px rgba(15,27,45,.15);
-    padding: 20px 20px 28px;
+    border-radius: 22px 22px 0 0;
+    padding: 16px 16px 32px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,.18);
     max-width: 480px;
     margin: 0 auto;
   }
 
+  .drag-handle {
+    width: 40px;
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    margin: 0 auto 14px;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .info-card {
+    background: #f8fafc;
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .info-card .label { color: #9ca3af; font-size: 11px; }
+  .info-card .value { font-weight: 700; color: #0F1B2D; margin-top: 2px; }
+
+  /* FABs */
+  .fab {
+    position: fixed;
+    right: 16px;
+    z-index: 60;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.18);
+    color: white;
+    text-decoration: none;
+    transition: transform .2s;
+  }
+  .fab:active { transform: scale(.93); }
+  .fab-call { bottom: 290px; background: #0ea5e9; }
+  .fab-wa   { bottom: 230px; background: #22c55e; }
+  .fab-nav  { bottom: 170px; background: #0F1B2D; }
+
   @keyframes gps-pulse {
-    0% { transform: scale(1); opacity: 1; }
+    0%   { transform: scale(1); opacity: 1; }
     100% { transform: scale(3); opacity: 0; }
   }
-
-  .gps-dot {
-    position: relative;
-    display: inline-block;
-  }
-
-  .gps-dot::after {
-    content: "";
+  .gps-ring {
     position: absolute;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     border-radius: 50%;
     background: #22c55e;
     animation: gps-pulse 1.5s infinite ease-out;
@@ -58,214 +93,245 @@
 {% endblock %}
 
 {% block content %}
-<div class="relative">
 
-  <div id="map"></div>
+<!-- MAP -->
+<div id="map"></div>
 
-  <!-- STATUS PANEL -->
-  <div id="status-panel">
+<!-- FABs -->
+<a class="fab fab-call" href="tel:{{ delivery.order.delivery_phone }}">📞</a>
+<a class="fab fab-wa"
+   href="https://wa.me/233{{ delivery.order.delivery_phone|slice:'1:' }}?text=Hi!+I'm+your+Lynctel+rider+for+order+{{ delivery.order.order_ref }}"
+   target="_blank">💬</a>
+<a class="fab fab-nav"
+   href="https://maps.google.com/?q={{ delivery.order.delivery_address|urlencode }},{{ delivery.order.delivery_city|urlencode }},Ghana"
+   target="_blank">🧭</a>
 
-    <!-- ORDER INFO -->
-    <div class="flex justify-between mb-4">
-      <div>
-        <p class="text-xs text-gray-400 uppercase">Delivering</p>
-        <p class="font-bold text-navy text-lg">{{ delivery.order.order_ref }}</p>
-        <p class="text-sm text-gray-500">{{ delivery.order.delivery_address }}</p>
-        <p class="text-sm text-gray-500">{{ delivery.order.delivery_city }}</p>
-      </div>
+<!-- BOTTOM SHEET -->
+<div id="bottom-sheet">
+  <div class="drag-handle"></div>
 
-      <div class="text-right">
-        <p class="text-xs text-gray-400">Earnings</p>
-        <p class="text-2xl font-bold text-green-600">
-          GHS {{ delivery.rider_commission }}
-        </p>
-      </div>
-    </div>
-
-    <!-- ETA -->
-    <div class="bg-blue-50 rounded-xl px-4 py-2 mb-3 text-sm flex justify-between">
-      <span class="text-gray-600">Estimated arrival</span>
-      <span id="eta-text" class="font-bold text-navy">-- min</span>
-    </div>
-
-    <!-- GPS STATUS -->
-    <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 mb-4 text-sm">
-      <span class="gps-dot w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-      <span id="gps-text" class="text-gray-600 font-medium">
-        Waiting for GPS...
-      </span>
-    </div>
-
-    <!-- CONTACT -->
-    <div class="flex gap-3 mb-4">
-      <a href="tel:{{ delivery.order.delivery_phone }}"
-         class="flex-1 text-center bg-gray-100 py-3 rounded-xl text-sm font-semibold">
-        📞 Call
-      </a>
-
-      <a href="https://wa.me/233{{ delivery.order.delivery_phone|slice:'1:' }}"
-         target="_blank"
-         class="flex-1 text-center bg-green-500 text-white py-3 rounded-xl text-sm font-semibold">
-        💬 WhatsApp
-      </a>
-    </div>
-
-    <!-- ACTIONS -->
-    <div>
-      {% if delivery.status == 'assigned' %}
-      <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
-        {% csrf_token %}
-        <input type="hidden" name="status" value="picked_up">
-        <button class="w-full bg-blue-600 text-white py-3 rounded-xl">
-          📦 Picked Up
-        </button>
-      </form>
-
-      {% elif delivery.status == 'picked_up' %}
-      <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
-        {% csrf_token %}
-        <input type="hidden" name="status" value="en_route">
-        <button class="w-full bg-purple-600 text-white py-3 rounded-xl">
-          🛵 En Route
-        </button>
-      </form>
-
-      {% elif delivery.status == 'en_route' %}
-      <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
-        {% csrf_token %}
-        <input type="hidden" name="status" value="delivered">
-        <button class="w-full bg-green-600 text-white py-3 rounded-xl">
-          🎉 Delivered
-        </button>
-      </form>
-      {% endif %}
-    </div>
-
+  <!-- ETA bar -->
+  <div class="flex items-center justify-between bg-blue-50 rounded-xl px-4 py-2.5 mb-3">
+    <span class="text-sm text-gray-600">Estimated arrival</span>
+    <span id="eta-text" class="font-display font-700 text-navy">— min</span>
   </div>
+
+  <!-- GPS status -->
+  <div class="flex items-center gap-2.5 bg-gray-50 rounded-xl px-4 py-2.5 mb-3 text-sm">
+    <div class="relative w-2.5 h-2.5 flex-shrink-0">
+      <div class="gps-ring"></div>
+      <div class="relative w-2.5 h-2.5 bg-green-500 rounded-full"></div>
+    </div>
+    <span id="gps-text" class="text-gray-600 font-medium">Acquiring GPS…</span>
+  </div>
+
+  <!-- Info grid -->
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="label">Order</div>
+      <div class="value">{{ delivery.order.order_ref }}</div>
+    </div>
+    <div class="info-card">
+      <div class="label">Your cut</div>
+      <div class="value" style="color:#16a34a;">GHS {{ delivery.rider_commission }}</div>
+    </div>
+    <div class="info-card" style="grid-column:1/-1;">
+      <div class="label">Deliver to</div>
+      <div class="value">
+        {{ delivery.order.delivery_address }},
+        {{ delivery.order.delivery_city }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Status badge -->
+  <div class="flex items-center justify-between mb-3">
+    <span class="text-xs font-semibold px-3 py-1.5 rounded-full
+      {% if delivery.status == 'assigned' %}bg-yellow-100 text-yellow-700
+      {% elif delivery.status == 'picked_up' %}bg-blue-100 text-blue-700
+      {% elif delivery.status == 'en_route' %}bg-purple-100 text-purple-700
+      {% elif delivery.status == 'delivered' %}bg-green-100 text-green-700
+      {% endif %}">
+      {% if delivery.status == 'assigned' %}📦 Assigned
+      {% elif delivery.status == 'picked_up' %}🛵 Picked Up
+      {% elif delivery.status == 'en_route' %}🚀 En Route
+      {% elif delivery.status == 'delivered' %}✅ Delivered
+      {% endif %}
+    </span>
+    <a href="{% url 'rider:dashboard' %}"
+       class="text-xs text-gray-400 hover:text-navy transition-colors font-medium">
+      ← Dashboard
+    </a>
+  </div>
+
+  <!-- Action button -->
+  {% if delivery.status == 'assigned' %}
+  <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="status" value="picked_up">
+    <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold
+                   py-3.5 rounded-2xl transition-colors btn-press text-sm">
+      📦 Mark Picked Up
+    </button>
+  </form>
+
+  {% elif delivery.status == 'picked_up' %}
+  <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="status" value="en_route">
+    <button class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold
+                   py-3.5 rounded-2xl transition-colors btn-press text-sm">
+      🛵 Mark En Route
+    </button>
+  </form>
+
+  {% elif delivery.status == 'en_route' %}
+  <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="status" value="delivered">
+    <button class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold
+                   py-3.5 rounded-2xl transition-colors btn-press text-sm">
+      🎉 Mark as Delivered
+    </button>
+  </form>
+
+  {% elif delivery.status == 'delivered' %}
+  <div class="text-center py-3">
+    <p class="text-green-600 font-semibold text-sm">✅ Delivery complete!</p>
+    <a href="{% url 'rider:dashboard' %}"
+       class="text-xs text-gold-dark hover:underline mt-1 inline-block">
+      Back to dashboard
+    </a>
+  </div>
+  {% endif %}
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
 const CUSTOMER_LAT = {{ customer_lat }};
 const CUSTOMER_LNG = {{ customer_lng }};
-const ORDER_REF = "{{ delivery.order.order_ref|escapejs }}";
+const ORDER_REF    = "{{ delivery.order.order_ref|escapejs }}";
 
-let riderMarker = null;
-let routeLine = null;
-let watchId = null;
-let lastSent = 0;
-
-// ─────────────────────────────
-// MAP INIT
-// ─────────────────────────────
+// ── Map init ─────────────────────────────────────────────
 const map = L.map('map', { zoomControl: false })
-  .setView([CUSTOMER_LAT, CUSTOMER_LNG], 15);
+             .setView([CUSTOMER_LAT, CUSTOMER_LNG], 15);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 19,
 }).addTo(map);
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// CUSTOMER MARKER
-L.marker([CUSTOMER_LAT, CUSTOMER_LNG])
-  .addTo(map)
-  .bindPopup(ORDER_REF);
+// Customer marker (destination)
+const destIcon = L.divIcon({
+  html: '<div style="font-size:28px;line-height:1;">📍</div>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 28],
+  className: '',
+});
+L.marker([CUSTOMER_LAT, CUSTOMER_LNG], { icon: destIcon })
+ .addTo(map)
+ .bindPopup(`<b>${ORDER_REF}</b><br>Delivery destination`);
 
-// ─────────────────────────────
-// GPS TRACKING
-// ─────────────────────────────
+// ── Rider marker ─────────────────────────────────────────
+let riderMarker = null;
+let routeLine   = null;
+let watchId     = null;
+let lastSent    = 0;
+
+const riderIcon = L.divIcon({
+  html: '<div style="font-size:26px;line-height:1;">🛵</div>',
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+  className: '',
+});
+
+// ── GPS tracking ──────────────────────────────────────────
 function startTracking() {
-  if (!navigator.geolocation) return;
-
-  watchId = navigator.geolocation.watchPosition(onUpdate, onError, {
+  if (!navigator.geolocation) {
+    document.getElementById('gps-text').textContent = 'GPS not available';
+    return;
+  }
+  watchId = navigator.geolocation.watchPosition(onPosition, onGpsError, {
     enableHighAccuracy: true,
     maximumAge: 5000,
-    timeout: 10000
+    timeout: 10000,
   });
 }
 
-// ─────────────────────────────
-// UPDATE POSITION
-// ─────────────────────────────
-function onUpdate(pos) {
+function onPosition(pos) {
   const lat = pos.coords.latitude;
   const lng = pos.coords.longitude;
 
   if (!riderMarker) {
-    riderMarker = L.marker([lat, lng]).addTo(map);
-    map.fitBounds([[lat, lng], [CUSTOMER_LAT, CUSTOMER_LNG]]);
+    riderMarker = L.marker([lat, lng], { icon: riderIcon }).addTo(map);
+    map.fitBounds([[lat, lng], [CUSTOMER_LAT, CUSTOMER_LNG]], { padding: [40, 40] });
   } else {
     riderMarker.setLatLng([lat, lng]);
   }
 
+  // Update route line
   if (routeLine) map.removeLayer(routeLine);
-
   routeLine = L.polyline([[lat, lng], [CUSTOMER_LAT, CUSTOMER_LNG]], {
     color: '#0F1B2D',
     weight: 3,
-    dashArray: '6 6'
+    dashArray: '7 7',
+    opacity: .7,
   }).addTo(map);
 
+  // Distance & ETA
   const dist = haversine(lat, lng, CUSTOMER_LAT, CUSTOMER_LNG);
-  const eta = Math.max(1, Math.round((dist / 30) * 60));
+  const eta  = Math.max(1, Math.round((dist / 30) * 60));
 
-  document.getElementById("gps-text").innerText =
-    `${dist < 1 ? Math.round(dist * 1000) + "m" : dist.toFixed(1) + "km"} away`;
+  document.getElementById('gps-text').textContent =
+    dist < 1
+      ? `${Math.round(dist * 1000)} m away`
+      : `${dist.toFixed(1)} km away`;
 
-  document.getElementById("eta-text").innerText = `${eta} min`;
+  document.getElementById('eta-text').textContent = `${eta} min`;
 
   sendLocation(lat, lng);
 }
 
-// ─────────────────────────────
-// SEND TO BACKEND (THROTTLED)
-// ─────────────────────────────
+function onGpsError() {
+  document.getElementById('gps-text').textContent = 'GPS unavailable — check permissions';
+}
+
+// ── Backend location update (throttled to every 8s) ──────
 function sendLocation(lat, lng) {
   const now = Date.now();
   if (now - lastSent < 8000) return;
   lastSent = now;
-
-  fetch("/rider/location/update/", {
-    method: "POST",
+  fetch('/rider/location/update/', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      "X-Requested-With": "XMLHttpRequest"
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
     },
-    body: JSON.stringify({ latitude: lat, longitude: lng })
+    body: JSON.stringify({ latitude: lat, longitude: lng }),
   }).catch(() => {});
 }
 
-// ─────────────────────────────
-// ERROR
-// ─────────────────────────────
-function onError() {
-  document.getElementById("gps-text").innerText = "GPS unavailable";
-}
-
-// ─────────────────────────────
-// DISTANCE CALC
-// ─────────────────────────────
+// ── Haversine distance (km) ───────────────────────────────
 function haversine(lat1, lng1, lat2, lng2) {
-  const R = 6371;
+  const R    = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
-
-  const a =
+  const a    =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * Math.PI / 180) *
     Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLng / 2) ** 2;
-
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// START
 startTracking();
 
-window.addEventListener("beforeunload", () => {
-  if (watchId) navigator.geolocation.clearWatch(watchId);
+window.addEventListener('beforeunload', () => {
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
 });
 </script>
 {% endblock %}
