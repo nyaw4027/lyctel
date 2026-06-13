@@ -1,38 +1,32 @@
 """
-ecommerce/firebase_storage_backend.py
-Lazy import — only loads Google Cloud Storage when actually used,
-so the app starts fine even if google-cloud-storage isn't installed locally.
+Firebase / Google Cloud Storage backend for Django media files.
+
+Clean implementation using django-storages (GoogleCloudStorage).
+No proxy wrapper, no lazy import issues.
 """
+
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
+from storages.backends.gcloud import GoogleCloudStorage
 
 
-class FirebaseMediaStorage:
+class FirebaseStorage(GoogleCloudStorage):
     """
-    Proxy — defers the GoogleCloudStorage import until first file operation.
-    This prevents a startup crash when google-cloud-storage isn't installed.
+    Proper Django storage backend for Firebase (Google Cloud Storage).
+    Handles upload, retrieval, and URL generation correctly.
     """
-    _instance = None
 
-    def __new__(cls):
-        if cls._instance is None:
-            try:
-                from storages.backends.gcloud import GoogleCloudStorage
-            except (ImportError, ImproperlyConfigured) as e:
-                raise ImproperlyConfigured(
-                    f'Firebase Storage requires google-cloud-storage. '
-                    f'Add it to requirements.txt. Error: {e}'
-                )
+    def __init__(self, *args, **kwargs):
+        bucket_name = getattr(settings, "FIREBASE_STORAGE_BUCKET", None)
 
-            class _Backend(GoogleCloudStorage):
-                def __init__(self):
-                    super().__init__(
-                        bucket_name=getattr(settings, 'FIREBASE_STORAGE_BUCKET',
-                                            'lynctel-dd634.appspot.com'),
-                        location='media',
-                        default_acl='publicRead',
-                    )
+        if not bucket_name:
+            raise ValueError(
+                "FIREBASE_STORAGE_BUCKET is not set in settings.py"
+            )
 
-            cls._instance = _Backend()
+        kwargs.setdefault("bucket_name", bucket_name)
+        kwargs.setdefault("location", "media")
+        kwargs.setdefault("default_acl", "publicRead")
+        kwargs.setdefault("file_overwrite", False)
+        kwargs.setdefault("querystring_auth", False)
 
-        return cls._instance
+        super().__init__(*args, **kwargs)
