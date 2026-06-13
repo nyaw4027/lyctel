@@ -89,15 +89,16 @@ if _db_url:
             conn_health_checks=True,
         )
     }
-elif config('DB_HOST', default=''):
+elif config('HOST', default=''):
+    # Individual Postgres vars (NAME, USER, PASSWORD, HOST, PORT)
     DATABASES = {
         'default': {
             'ENGINE':   'django.db.backends.postgresql',
-            'NAME':     config('DB_NAME',     default='railway'),
-            'USER':     config('DB_USER',     default='postgres'),
-            'PASSWORD': config('DB_PASSWORD', default=''),
-            'HOST':     config('DB_HOST',     default=''),
-            'PORT':     config('DB_PORT',     default='5432'),
+            'NAME':     config('NAME',     default='railway'),
+            'USER':     config('USER',     default='postgres'),
+            'PASSWORD': config('PASSWORD', default=''),
+            'HOST':     config('HOST',     default=''),
+            'PORT':     config('PORT',     default='5432'),
         }
     }
 else:
@@ -128,15 +129,15 @@ STATIC_ROOT      = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # ── Media files ────────────────────────────────────────────
-# On Railway: mount a Volume at /app/media for persistence.
-# Locally: uses BASE_DIR/media.
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
-# ── Storage backend ────────────────────────────────────────
 
-_gac_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
+# ══════════════════════════════════════════════════════════════
+# Storage backend — Firebase / Google Cloud Storage (optional)
+# ══════════════════════════════════════════════════════════════
+_gac_json        = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
 _firebase_bucket = config('FIREBASE_STORAGE_BUCKET', default='')
-_use_firebase = bool(_gac_json and _firebase_bucket and not DEBUG)
+_use_firebase    = bool(_gac_json and _firebase_bucket and not DEBUG)
 
 if _use_firebase:
     import tempfile
@@ -152,9 +153,18 @@ if _use_firebase:
 
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = tmp.name
 
-    GS_BUCKET_NAME = _firebase_bucket
-    GS_FILE_OVERWRITE = False
+    GS_BUCKET_NAME      = _firebase_bucket
+    GS_FILE_OVERWRITE   = False
     GS_QUERYSTRING_AUTH = False
+
+    # IMPORTANT: Most Firebase/GCS buckets have "Uniform Bucket-Level Access"
+    # enabled. That REJECTS per-object ACLs such as "publicRead" — uploads
+    # either fail or succeed but stay private (403 when viewed in browser).
+    # Setting this to None avoids the ACL error entirely. Public read access
+    # must instead be granted at the BUCKET level via IAM:
+    #   GCP Console → Storage → Bucket → Permissions → Grant Access
+    #   Principal: allUsers   Role: Storage Object Viewer
+    GS_DEFAULT_ACL = None
 
     STORAGES = {
         "default": {
