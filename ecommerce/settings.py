@@ -157,7 +157,7 @@ if _use_firebase:
 
     STORAGES = {
         'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+           'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
         },
         'default': {
             'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseMediaStorage',
