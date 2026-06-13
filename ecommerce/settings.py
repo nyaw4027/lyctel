@@ -132,49 +132,52 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # Locally: uses BASE_DIR/media.
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
-
 # ── Storage backend ────────────────────────────────────────
-_gac_json        = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
+
+_gac_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
 _firebase_bucket = config('FIREBASE_STORAGE_BUCKET', default='')
-_use_firebase    = bool(_gac_json and _firebase_bucket and not DEBUG)
+_use_firebase = bool(_gac_json and _firebase_bucket and not DEBUG)
 
 if _use_firebase:
     import tempfile
-    _tmp = tempfile.NamedTemporaryFile(
-        mode='w', suffix='.json', delete=False, prefix='gcp_creds_'
-    )
-    _tmp.write(_gac_json)
-    _tmp.close()
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = _tmp.name
 
-    FIREBASE_STORAGE_BUCKET = _firebase_bucket
-    GS_BUCKET_NAME          = _firebase_bucket
-    GS_DEFAULT_ACL          = 'publicRead'
-    GS_FILE_OVERWRITE       = False
-    GS_QUERYSTRING_AUTH     = False
-    GS_CUSTOM_ENDPOINT      = f'https://storage.googleapis.com/{_firebase_bucket}'
-    GS_OBJECT_PARAMETERS    = {'cache_control': 'public, max-age=86400'}
+    tmp = tempfile.NamedTemporaryFile(
+        mode='w',
+        suffix='.json',
+        delete=False,
+        prefix='gcp_creds_'
+    )
+    tmp.write(_gac_json)
+    tmp.close()
+
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = tmp.name
+
+    GS_BUCKET_NAME = _firebase_bucket
+    GS_FILE_OVERWRITE = False
+    GS_QUERYSTRING_AUTH = False
 
     STORAGES = {
-    'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
-    },
-    'default': {
-        'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseMediaStorage',
-    },
-}
-    MEDIA_URL = f'https://storage.googleapis.com/{_firebase_bucket}/media/'
+        "default": {
+            "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
+    MEDIA_URL = f"https://storage.googleapis.com/{_firebase_bucket}/"
 
 else:
-    # Railway Volume or local filesystem
     STORAGES = {
-    'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
-    },
-    'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
-    },
-}
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
+    MEDIA_URL = "/media/"
 
 # ── Auth redirects ─────────────────────────────────────────
 LOGIN_URL           = '/accounts/login/'
