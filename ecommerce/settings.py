@@ -75,7 +75,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ecommerce.wsgi.application'
 
-# ── Database ───────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════
+# DATABASE
+# Priority:
+#   1. DATABASE_PRIVATE_URL / DATABASE_URL (Railway auto-provided)
+#   2. DB_NAME / DB_USER / DB_PASSWORD / DB_HOST / DB_PORT
+#      (NOTE the DB_ prefix — avoids colliding with Railway's
+#      own PORT variable, which is the web server port, not DB)
+#   3. SQLite (local dev only)
+# ══════════════════════════════════════════════════════════════
 _db_url = (
     os.environ.get('DATABASE_PRIVATE_URL') or
     os.environ.get('DATABASE_URL')
@@ -90,7 +98,6 @@ if _db_url:
         )
     }
 elif config('HOST', default=''):
-    # Individual Postgres vars (NAME, USER, PASSWORD, HOST, PORT)
     DATABASES = {
         'default': {
             'ENGINE':   'django.db.backends.postgresql',
@@ -98,7 +105,8 @@ elif config('HOST', default=''):
             'USER':     config('USER',     default='postgres'),
             'PASSWORD': config('PASSWORD', default=''),
             'HOST':     config('HOST',     default=''),
-            'PORT':     config('PORT',     default='5432'),
+            'PORT':     config('DBPORT',   default='5432'),
+            'CONN_MAX_AGE': 600,
         }
     }
 else:
@@ -156,15 +164,7 @@ if _use_firebase:
     GS_BUCKET_NAME      = _firebase_bucket
     GS_FILE_OVERWRITE   = False
     GS_QUERYSTRING_AUTH = False
-
-    # IMPORTANT: Most Firebase/GCS buckets have "Uniform Bucket-Level Access"
-    # enabled. That REJECTS per-object ACLs such as "publicRead" — uploads
-    # either fail or succeed but stay private (403 when viewed in browser).
-    # Setting this to None avoids the ACL error entirely. Public read access
-    # must instead be granted at the BUCKET level via IAM:
-    #   GCP Console → Storage → Bucket → Permissions → Grant Access
-    #   Principal: allUsers   Role: Storage Object Viewer
-    GS_DEFAULT_ACL = None
+    GS_DEFAULT_ACL      = None  # bucket has Uniform Bucket-Level Access — set public via IAM instead
 
     STORAGES = {
         "default": {
