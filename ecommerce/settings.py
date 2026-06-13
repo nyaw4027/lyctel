@@ -76,15 +76,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'ecommerce.wsgi.application'
 
 # ── Database ───────────────────────────────────────────────
-# Priority order:
-#   1. DATABASE_PRIVATE_URL  — Railway internal Postgres (fastest, recommended)
-#   2. DATABASE_URL          — Railway public Postgres URL (fallback)
-#   3. SQLite                — local development only
+# Priority:
+#   1. DATABASE_PRIVATE_URL or DATABASE_URL  — Railway auto-injects these
+#   2. DB_* individual variables             — manual fallback
+#   3. SQLite                                — local dev only
 #
-# Railway injects DATABASE_PRIVATE_URL automatically when you link
-# the Postgres plugin to your Django service.
-# DO NOT set NAME/USER/PASSWORD/HOST/PORT manually on Railway —
-# the single DATABASE_PRIVATE_URL variable handles everything.
+# NOTE: DB_PORT is used for the database connection.
+#       PORT is used by Gunicorn for the web server.
+#       They are intentionally different variables.
 
 _db_url = (
     os.environ.get('DATABASE_PRIVATE_URL') or
@@ -92,7 +91,6 @@ _db_url = (
 )
 
 if _db_url:
-    # Production / Railway — use the full Postgres connection URL
     DATABASES = {
         'default': dj_database_url.parse(
             _db_url,
@@ -100,8 +98,18 @@ if _db_url:
             conn_health_checks=True,
         )
     }
+elif config('DB_HOST', default=''):
+    DATABASES = {
+        'default': {
+            'ENGINE':   'django.db.backends.postgresql',
+            'NAME':     config('DB_NAME',     default='railway'),
+            'USER':     config('DB_USER',     default='postgres'),
+            'PASSWORD': config('DB_PASSWORD', default=''),
+            'HOST':     config('DB_HOST',     default=''),
+            'PORT':     config('DB_PORT',     default='5432'),
+        }
+    }
 else:
-    # Local development — SQLite
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -133,10 +141,6 @@ MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ── Storage backend ────────────────────────────────────────
-# Uses Firebase (Google Cloud Storage) when credentials are present.
-# Falls back to local filesystem + WhiteNoise when not configured.
-# This lets the same settings.py work both locally and on Railway.
-
 _gac_json        = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
 _firebase_bucket = config('FIREBASE_STORAGE_BUCKET', default='')
 _use_firebase    = bool(_gac_json and _firebase_bucket and not DEBUG)
@@ -160,7 +164,7 @@ if _use_firebase:
 
     STORAGES = {
         'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
         },
         'default': {
             'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseMediaStorage',
@@ -171,7 +175,7 @@ if _use_firebase:
 else:
     STORAGES = {
         'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
         },
         'default': {
             'BACKEND': 'django.core.files.storage.FileSystemStorage',
@@ -212,10 +216,10 @@ CSRF_TRUSTED_ORIGINS = [
     'https://lynctel.up.railway.app',
 ]
 
-# ── Security headers (only in production) ─────────────────
+# ── Security headers (production only) ────────────────────
 if not DEBUG:
-    SECURE_PROXY_SSL_HEADER    = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT         = False   # Railway handles HTTPS termination
+    SECURE_PROXY_SSL_HEADER     = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT         = False  # Railway handles HTTPS termination
     SESSION_COOKIE_SECURE       = True
     CSRF_COOKIE_SECURE          = True
     SECURE_BROWSER_XSS_FILTER   = True
@@ -223,17 +227,12 @@ if not DEBUG:
     X_FRAME_OPTIONS             = 'DENY'
 
 # ── Logging ────────────────────────────────────────────────
-# Shows errors in Railway logs even with DEBUG=False.
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
             'format': '{levelname} {asctime} {module} {process:d} {message}',
-            'style':  '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
             'style':  '{',
         },
     },
@@ -258,7 +257,6 @@ LOGGING = {
             'level':     'ERROR',
             'propagate': False,
         },
-        # Your app loggers — INFO level so signup/login errors show up
         'accounts': {
             'handlers':  ['console'],
             'level':     'INFO',
