@@ -156,25 +156,25 @@ if _use_firebase:
     GS_OBJECT_PARAMETERS    = {'cache_control': 'public, max-age=86400'}
 
     STORAGES = {
-        'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
-        },
-        'default': {
-            'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseMediaStorage',
-        },
-    }
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+    'default': {
+        'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseMediaStorage',
+    },
+}
     MEDIA_URL = f'https://storage.googleapis.com/{_firebase_bucket}/media/'
 
 else:
     # Railway Volume or local filesystem
     STORAGES = {
-        'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
-        },
-        'default': {
-            'BACKEND': 'django.core.files.storage.FileSystemStorage',
-        },
-    }
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+}
 
 # ── Auth redirects ─────────────────────────────────────────
 LOGIN_URL           = '/accounts/login/'
