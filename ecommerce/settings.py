@@ -76,15 +76,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'ecommerce.wsgi.application'
 
 # ── Database ───────────────────────────────────────────────
-# Priority:
-#   1. DATABASE_PRIVATE_URL or DATABASE_URL  — Railway auto-injects these
-#   2. DB_* individual variables             — manual fallback
-#   3. SQLite                                — local dev only
-#
-# NOTE: DB_PORT is used for the database connection.
-#       PORT is used by Gunicorn for the web server.
-#       They are intentionally different variables.
-
 _db_url = (
     os.environ.get('DATABASE_PRIVATE_URL') or
     os.environ.get('DATABASE_URL')
@@ -137,8 +128,10 @@ STATIC_ROOT      = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # ── Media files ────────────────────────────────────────────
+# On Railway: mount a Volume at /app/media for persistence.
+# Locally: uses BASE_DIR/media.
 MEDIA_URL  = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 
 # ── Storage backend ────────────────────────────────────────
 _gac_json        = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
@@ -173,6 +166,7 @@ if _use_firebase:
     MEDIA_URL = f'https://storage.googleapis.com/{_firebase_bucket}/media/'
 
 else:
+    # Railway Volume or local filesystem
     STORAGES = {
         'staticfiles': {
             'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
@@ -219,7 +213,7 @@ CSRF_TRUSTED_ORIGINS = [
 # ── Security headers (production only) ────────────────────
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER     = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT         = False  # Railway handles HTTPS termination
+    SECURE_SSL_REDIRECT         = False
     SESSION_COOKIE_SECURE       = True
     CSRF_COOKIE_SECURE          = True
     SECURE_BROWSER_XSS_FILTER   = True
