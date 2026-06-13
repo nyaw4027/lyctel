@@ -1,10 +1,8 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# pwa_views.py  — add to your ecommerce (or frontend) app, or create new file
-# ─────────────────────────────────────────────────────────────────────────────
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_GET
-import os, json
+import os
+import json
 from django.conf import settings
 
 
@@ -12,14 +10,27 @@ from django.conf import settings
 @cache_control(max_age=0, no_cache=True, no_store=True, must_revalidate=True)
 def service_worker(request):
     """Serve the service worker from the root scope /sw.js"""
-    sw_path = os.path.join(settings.STATIC_ROOT, 'sw.js')
-    # Fallback: look in STATICFILES_DIRS
-    if not os.path.exists(sw_path):
-        for d in settings.STATICFILES_DIRS:
-            candidate = os.path.join(d, 'sw.js')
+    sw_path = None
+
+    # Check staticfiles first (collectstatic output)
+    candidate = os.path.join(settings.STATIC_ROOT, 'sw.js')
+    if os.path.exists(candidate):
+        sw_path = candidate
+
+    # Fall back to STATICFILES_DIRS
+    if not sw_path:
+        for d in getattr(settings, 'STATICFILES_DIRS', []):
+            candidate = os.path.join(str(d), 'sw.js')
             if os.path.exists(candidate):
                 sw_path = candidate
                 break
+
+    if not sw_path:
+        return HttpResponse(
+            '// Service worker not found',
+            content_type='application/javascript',
+        )
+
     return FileResponse(
         open(sw_path, 'rb'),
         content_type='application/javascript',
@@ -30,22 +41,59 @@ def service_worker(request):
 @require_GET
 @cache_control(max_age=86400)
 def web_manifest(request):
-    """Serve manifest.json from root /manifest.json"""
-    manifest_path = os.path.join(settings.STATIC_ROOT, 'manifest.json')
-    if not os.path.exists(manifest_path):
-        for d in settings.STATICFILES_DIRS:
-            candidate = os.path.join(d, 'manifest.json')
+    """Serve manifest.json — never crash even if file is missing."""
+    manifest_path = None
+
+    # Check staticfiles first
+    candidate = os.path.join(settings.STATIC_ROOT, 'manifest.json')
+    if os.path.exists(candidate):
+        manifest_path = candidate
+
+    # Fall back to STATICFILES_DIRS
+    if not manifest_path:
+        for d in getattr(settings, 'STATICFILES_DIRS', []):
+            candidate = os.path.join(str(d), 'manifest.json')
             if os.path.exists(candidate):
                 manifest_path = candidate
                 break
-    with open(manifest_path) as f:
-        data = json.load(f)
-    return HttpResponse(json.dumps(data), content_type='application/manifest+json')
+
+    if manifest_path:
+        with open(manifest_path) as f:
+            data = json.load(f)
+    else:
+        # Safe inline fallback — never raises 500
+        data = {
+            'name':             'Lynctel',
+            'short_name':       'Lynctel',
+            'start_url':        '/',
+            'display':          'standalone',
+            'background_color': '#ffffff',
+            'theme_color':      '#0F1B2D',
+            'icons': [
+                {
+                    'src':     '/static/icons/icon-192x192.png',
+                    'sizes':   '192x192',
+                    'type':    'image/png',
+                    'purpose': 'maskable any',
+                },
+                {
+                    'src':     '/static/icons/icon-512x512.png',
+                    'sizes':   '512x512',
+                    'type':    'image/png',
+                    'purpose': 'maskable any',
+                },
+            ],
+        }
+
+    return HttpResponse(
+        json.dumps(data),
+        content_type='application/manifest+json',
+    )
 
 
 @require_GET
 def offline_page(request):
-    """Simple offline fallback page"""
+    """Simple offline fallback page."""
     html = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -66,21 +114,22 @@ def offline_page(request):
       box-shadow: 0 4px 24px rgba(0,0,0,.08);
     }
     .icon { font-size: 64px; margin-bottom: 16px; }
-    h1 { font-size: 24px; color: #1a1a2e; margin-bottom: 8px; }
+    h1 { font-size: 24px; color: #0F1B2D; margin-bottom: 8px; }
     p  { color: #666; line-height: 1.6; margin-bottom: 24px; }
     button {
-      background: #1a1a2e; color: white; border: none;
+      background: #0F1B2D; color: white; border: none;
       padding: 12px 28px; border-radius: 8px; font-size: 16px;
       cursor: pointer; width: 100%;
     }
-    button:hover { background: #2d2d5e; }
+    button:hover { opacity: 0.9; }
   </style>
 </head>
 <body>
   <div class="card">
     <div class="icon">📶</div>
     <h1>You're offline</h1>
-    <p>Check your internet connection and try again. Your cart and browsing history are saved for when you reconnect.</p>
+    <p>Check your internet connection and try again.
+       Your cart and browsing history are saved for when you reconnect.</p>
     <button onclick="location.reload()">Try again</button>
   </div>
 </body>
