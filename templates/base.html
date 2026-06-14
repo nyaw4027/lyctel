@@ -6,19 +6,59 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>{% block title %}Lynctel — Quality Products Delivered{% endblock %}</title>
 
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#0F1B2D">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Lynctel">
-  <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
-  <meta name="description" content="Lynctel — Quality products delivered fast across Ghana. Shop electronics, gadgets and more.">
-  <meta name="mobile-web-app-capable" content="yes">
+  <!-- ── SEO ────────────────────────────────────────────── -->
+  <meta name="description" content="Lynctel — Quality products delivered fast across Ghana. Shop electronics, gadgets, food and more."/>
+  <meta name="keywords" content="Lynctel, Ghana, online shopping, food delivery, electronics, fast delivery, MoMo payment"/>
+  <meta name="author" content="Lynctel"/>
+  <meta name="robots" content="index, follow"/>
 
+  <!-- ── Open Graph (Facebook / WhatsApp preview) ───────── -->
+  <meta property="og:type"        content="website"/>
+  <meta property="og:url"         content="https://lynctel.up.railway.app/"/>
+  <meta property="og:title"       content="Lynctel — Quality Products Delivered"/>
+  <meta property="og:description" content="Shop electronics, gadgets, food and more. Fast delivery across Ghana with MoMo payment."/>
+  <meta property="og:image"       content="{% static 'icons/icon-512x512.png' %}"/>
+  <meta property="og:locale"      content="en_GH"/>
+
+  <!-- ── Twitter Card ───────────────────────────────────── -->
+  <meta name="twitter:card"        content="summary_large_image"/>
+  <meta name="twitter:title"       content="Lynctel — Quality Products Delivered"/>
+  <meta name="twitter:description" content="Shop electronics, gadgets, food and more. Fast delivery across Ghana."/>
+  <meta name="twitter:image"       content="{% static 'icons/icon-512x512.png' %}"/>
+
+  <!-- ── PWA: Web App Manifest ──────────────────────────── -->
+  <link rel="manifest" href="/manifest.json"/>
+
+  <!-- ── PWA: Theme colour ──────────────────────────────── -->
+  <meta name="theme-color" content="#0F1B2D"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+
+  <!-- ── PWA: iOS / Safari ──────────────────────────────── -->
+  <meta name="apple-mobile-web-app-capable"          content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title"            content="Lynctel"/>
+
+  <!-- iOS home screen icons (Safari reads these, not the manifest) -->
+  <link rel="apple-touch-icon" sizes="152x152" href="{% static 'icons/icon-152x152.png' %}"/>
+  <link rel="apple-touch-icon" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}"/>
+  <link rel="apple-touch-icon" sizes="512x512" href="{% static 'icons/icon-512x512.png' %}"/>
+
+  <!-- iOS splash screens (optional but improves launch experience) -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <link rel="apple-touch-startup-image" href="{% static 'icons/icon-512x512.png' %}"/>
+
+  <!-- ── Favicon ────────────────────────────────────────── -->
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-96x96.png' %}"/>
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/icon-72x72.png' %}"/>
+  <link rel="shortcut icon"         href="{% static 'icons/icon-96x96.png' %}"/>
+
+  <!-- ── Fonts ──────────────────────────────────────────── -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
+        rel="stylesheet"/>
 
+  <!-- ── Tailwind ───────────────────────────────────────── -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -38,53 +78,70 @@
     }
   </script>
 
+  <!-- ── Global styles ──────────────────────────────────── -->
   <style>
     * { font-family: 'DM Sans', sans-serif; }
-    h1,h2,h3,.font-display { font-family: 'Syne', sans-serif; }
+    h1, h2, h3, .font-display { font-family: 'Syne', sans-serif; }
     body { background-color: #FAFAF7; }
 
+    /* Animations */
     @keyframes fadeUp {
-      from { opacity:0; transform:translateY(16px); }
-      to   { opacity:1; transform:translateY(0); }
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
     .fade-up   { animation: fadeUp .5s ease forwards; }
-    .fade-up-1 { animation-delay:.05s; opacity:0; }
-    .fade-up-2 { animation-delay:.12s; opacity:0; }
-    .fade-up-3 { animation-delay:.20s; opacity:0; }
+    .fade-up-1 { animation-delay: .05s; opacity: 0; }
+    .fade-up-2 { animation-delay: .12s; opacity: 0; }
+    .fade-up-3 { animation-delay: .20s; opacity: 0; }
 
-    @keyframes pop { 0%,100%{transform:scale(1)} 50%{transform:scale(1.45)} }
+    @keyframes pop {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.45); }
+    }
     .badge-pop { animation: pop .3s ease; }
 
-    .card-hover { transition: transform .25s ease, box-shadow .25s ease; }
-    .card-hover:hover { transform:translateY(-4px); box-shadow:0 16px 40px rgba(15,27,45,.10); }
-
     @keyframes shimmer {
-      0%  { background-position:-200% center; }
-      100%{ background-position:200% center; }
+      0%   { background-position: -200% center; }
+      100% { background-position:  200% center; }
     }
     .shimmer {
-      background: linear-gradient(90deg,#F5A623 25%,#ffe08a 50%,#F5A623 75%);
+      background: linear-gradient(90deg, #F5A623 25%, #ffe08a 50%, #F5A623 75%);
       background-size: 200% auto;
       animation: shimmer 3s linear infinite;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
-    .nav-scrolled { box-shadow: 0 2px 20px rgba(15,27,45,.08); }
+    /* Card hover lift */
+    .card-hover { transition: transform .25s ease, box-shadow .25s ease; }
+    .card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(15, 27, 45, .10);
+    }
+
+    /* Navbar */
+    .nav-scrolled { box-shadow: 0 2px 20px rgba(15, 27, 45, .08); }
+
+    /* Button press */
     .btn-press:active { transform: scale(.97); }
+
+    /* Smooth scroll */
     html { scroll-behavior: smooth; }
 
+    /* Cart drawer */
     #cart-drawer  { transform: translateX(100%); }
-    #cart-overlay { opacity:0; visibility:hidden; }
+    #cart-overlay { opacity: 0; visibility: hidden; }
     #cart-drawer.open  { transform: translateX(0); }
-    #cart-overlay.open { opacity:1; visibility:visible; }
+    #cart-overlay.open { opacity: 1; visibility: visible; }
 
+    /* Input gold focus ring */
     input:focus, select:focus, textarea:focus {
       outline: none;
-      box-shadow: 0 0 0 3px rgba(245,166,35,.2);
+      box-shadow: 0 0 0 3px rgba(245, 166, 35, .2);
       border-color: #F5A623 !important;
     }
 
+    /* PWA install banner */
     #pwa-banner {
       display: none;
       position: fixed;
@@ -96,7 +153,7 @@
       color: white;
       padding: 12px 20px;
       border-radius: 16px;
-      box-shadow: 0 8px 32px rgba(15,27,45,.3);
+      box-shadow: 0 8px 32px rgba(15, 27, 45, .3);
       align-items: center;
       gap: 12px;
       max-width: calc(100vw - 32px);
@@ -105,12 +162,14 @@
     }
     #pwa-banner.show { display: flex; }
 
-    .role-admin    { background:#fee2e2; color:#b91c1c; }
-    .role-staff    { background:#dbeafe; color:#1d4ed8; }
-    .role-vendor   { background:#ede9fe; color:#7c3aed; }
-    .role-rider    { background:#ffedd5; color:#c2410c; }
-    .role-customer { background:#f3f4f6; color:#374151; }
+    /* Role badge colours — used in navbar dropdown */
+    .role-admin    { background: #fee2e2; color: #b91c1c; }
+    .role-staff    { background: #dbeafe; color: #1d4ed8; }
+    .role-vendor   { background: #ede9fe; color: #7c3aed; }
+    .role-rider    { background: #ffedd5; color: #c2410c; }
+    .role-customer { background: #f3f4f6; color: #374151; }
   </style>
+
   {% block extra_head %}{% endblock %}
 </head>
 
