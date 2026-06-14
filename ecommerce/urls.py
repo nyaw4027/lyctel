@@ -43,16 +43,7 @@ urlpatterns = [
     path('chat/', include('chat.urls'))
 ]
 
-# Media files — served in ALL environments.
-# When Firebase is active, MEDIA_URL points to GCS so this route
-# is never hit for uploaded files. When using local/Railway Volume
-# storage this route serves the files directly.
-if not getattr(settings, '_use_firebase', False):
-    urlpatterns += [
-        re_path(r'^media/(?P<path>.*)$', serve, {
-            'document_root': settings.MEDIA_ROOT,
-        }),
-    ]
+
 
 # Static files in local development only
 if settings.DEBUG:
