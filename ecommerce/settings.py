@@ -77,14 +77,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'ecommerce.wsgi.application'
+ASGI_APPLICATION = 'ecommerce.asgi.application'
 
 # ── Database ───────────────────────────────────────────────
 # Priority:
-#   1. DATABASE_PRIVATE_URL or DATABASE_URL — Railway injects these
-#      automatically when Postgres plugin is linked. Use these.
-#   2. Individual vars (NAME, USER, PASSWORD, HOST, DBPORT)
-#      NOTE: use DBPORT not PORT to avoid clashing with Gunicorn's PORT.
-#   3. SQLite — local development only, never on Railway.
+#   1. DATABASE_PRIVATE_URL or DATABASE_URL — Railway auto-injects
+#   2. Individual DB_* vars — manual fallback
+#   3. SQLite — local development only
 
 _db_url = (
     os.environ.get('DATABASE_PRIVATE_URL') or
@@ -119,6 +118,27 @@ else:
         }
     }
 
+# ── Channel Layers (Django Channels / WebSocket) ───────────
+# Uses Redis on Railway if REDIS_URL is set, otherwise
+# falls back to InMemoryChannelLayer for local development.
+_redis_url = os.environ.get('REDIS_URL', '').strip()
+
+if _redis_url:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [_redis_url],
+            },
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+
 # ── Password validation ────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -139,50 +159,45 @@ STATIC_ROOT      = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # ── Media files ────────────────────────────────────────────
-# On Railway: set MEDIA_ROOT=/app/media in Variables and mount
-# a Volume at /app/media for persistence across deploys.
-# Locally: falls back to BASE_DIR/media automatically.
+# Railway: set MEDIA_ROOT=/app/media in Variables and mount
+# a Volume at /app/media for images to persist across deploys.
+# Local: falls back to BASE_DIR/media automatically.
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 
-# ── Storage backends ───────────────────────────────────────
-# Uses Firebase (Google Cloud Storage) only when BOTH of these
-# environment variables are set in Railway:
-#   GOOGLE_APPLICATION_CREDENTIALS_JSON — service account JSON string
-#   FIREBASE_STORAGE_BUCKET             — e.g. lynctel-dd634.firebasestorage.app
+# ── Storage ────────────────────────────────────────────────
+# Firebase activates ONLY when ALL THREE are true:
+#   1. GOOGLE_APPLICATION_CREDENTIALS_JSON is set and non-empty
+#   2. FIREBASE_STORAGE_BUCKET is set and non-empty
+#   3. DEBUG is False
 #
-# If either is missing or empty, falls back to local filesystem
-# (Railway Volume at /app/media or local media/ folder).
-# This means you can disable Firebase simply by clearing those vars.
+# Clear either variable in Railway to disable Firebase and use
+# the Railway Volume filesystem instead.
 
-_gac_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '').strip()
-_bucket   = os.environ.get('FIREBASE_STORAGE_BUCKET', '').strip()
+_gac_json     = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '').strip()
+_bucket       = os.environ.get('FIREBASE_STORAGE_BUCKET', '').strip()
 _use_firebase = bool(_gac_json and _bucket and not DEBUG)
 
 if _use_firebase:
     import json
     import tempfile
 
-    # Validate the JSON before writing — prevents cryptic errors later
     try:
         json.loads(_gac_json)
     except json.JSONDecodeError as e:
-        raise ValueError(
-            f'GOOGLE_APPLICATION_CREDENTIALS_JSON is not valid JSON: {e}'
-        )
+        raise ValueError(f'GOOGLE_APPLICATION_CREDENTIALS_JSON is invalid JSON: {e}')
 
-    # Write credentials to a temp file so the GCS library can read them
     _tmp = tempfile.NamedTemporaryFile(
-        mode='w', suffix='.json', delete=False, prefix='gcp_creds_'
+        mode='w', suffix='.json', delete=False, prefix='gcp_'
     )
     _tmp.write(_gac_json)
     _tmp.close()
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = _tmp.name
 
-    GS_BUCKET_NAME      = _bucket
-    GS_DEFAULT_ACL      = 'publicRead'
-    GS_FILE_OVERWRITE   = False
-    GS_QUERYSTRING_AUTH = False
+    GS_BUCKET_NAME       = _bucket
+    GS_DEFAULT_ACL       = 'publicRead'
+    GS_FILE_OVERWRITE    = False
+    GS_QUERYSTRING_AUTH  = False
     GS_OBJECT_PARAMETERS = {'cache_control': 'public, max-age=86400'}
 
     STORAGES = {
@@ -190,16 +205,13 @@ if _use_firebase:
             'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseStorage',
         },
         'staticfiles': {
-            # WhiteNoise serves static files — no Firebase needed for static
             'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
         },
     }
-
-    # Override MEDIA_URL to point to the public Firebase Storage URL
     MEDIA_URL = f'https://storage.googleapis.com/{_bucket}/media/'
 
 else:
-    # Local filesystem or Railway Volume — simple and reliable
+    # Filesystem storage — Railway Volume or local media/
     STORAGES = {
         'default': {
             'BACKEND': 'django.core.files.storage.FileSystemStorage',
@@ -208,16 +220,14 @@ else:
             'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
         },
     }
-    # MEDIA_URL stays as /media/ (set above)
 
-# ── Auth redirects ─────────────────────────────────────────
+# ── Auth ───────────────────────────────────────────────────
 LOGIN_URL           = '/accounts/login/'
 LOGIN_REDIRECT_URL  = '/'
 LOGOUT_REDIRECT_URL = '/'
 
 # ── Misc ───────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-ASGI_APPLICATION   = 'ecommerce.asgi.application'
 
 # ── Cache ──────────────────────────────────────────────────
 CACHES = {
@@ -227,7 +237,7 @@ CACHES = {
     }
 }
 
-# ── Payment gateways ───────────────────────────────────────
+# ── Payments ───────────────────────────────────────────────
 FLW_PUBLIC_KEY      = config('FLW_PUBLIC_KEY',      default='')
 FLW_SECRET_KEY      = config('FLW_SECRET_KEY',      default='')
 FLW_WEBHOOK_SECRET  = config('FLW_WEBHOOK_SECRET',  default='')
@@ -238,21 +248,18 @@ PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
 GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
 
 # ── CSRF ───────────────────────────────────────────────────
-CSRF_TRUSTED_ORIGINS = [
-    'https://lynctel.up.railway.app',
-]
+CSRF_TRUSTED_ORIGINS = ['https://lynctel.up.railway.app']
 
 # ── Security headers (production only) ────────────────────
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER     = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT         = False  # Railway terminates HTTPS upstream
+    SECURE_SSL_REDIRECT         = False
     SESSION_COOKIE_SECURE       = True
     CSRF_COOKIE_SECURE          = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS             = 'DENY'
 
 # ── Logging ────────────────────────────────────────────────
-# Shows errors in Railway logs even with DEBUG=False.
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -268,30 +275,11 @@ LOGGING = {
             'formatter': 'verbose',
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level':    'WARNING',
-    },
+    'root': {'handlers': ['console'], 'level': 'WARNING'},
     'loggers': {
-        'django': {
-            'handlers':  ['console'],
-            'level':     'ERROR',
-            'propagate': False,
-        },
-        'django.request': {
-            'handlers':  ['console'],
-            'level':     'ERROR',
-            'propagate': False,
-        },
-        'accounts': {
-            'handlers':  ['console'],
-            'level':     'INFO',
-            'propagate': False,
-        },
-        'ecommerce': {
-            'handlers':  ['console'],
-            'level':     'INFO',
-            'propagate': False,
-        },
+        'django':         {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+        'django.request': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+        'accounts':       {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
+        'ecommerce':      {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
     },
 }
