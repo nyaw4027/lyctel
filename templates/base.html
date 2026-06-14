@@ -197,8 +197,7 @@
               {{ user.first_name|default:user.phone }}
             </span>
           </button>
-
-          <!-- Dropdown menu -->
+<!-- Dropdown menu -->
           <div class="absolute right-0 top-full mt-1 w-56 bg-white rounded-2xl shadow-xl
                       border border-gray-100 py-2 opacity-0 invisible z-50
                       group-hover:opacity-100 group-hover:visible
@@ -209,6 +208,14 @@
                 {{ user.get_full_name|default:user.phone }}
               </p>
               <p class="text-xs text-gray-400 truncate">{{ user.phone }}</p>
+              <span class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full
+                {% if user.role == 'admin' %}bg-red-100 text-red-700
+                {% elif user.role == 'staff' %}bg-blue-100 text-blue-700
+                {% elif user.role == 'vendor' %}bg-purple-100 text-purple-700
+                {% elif user.role == 'rider' %}bg-orange-100 text-orange-700
+                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                {{ user.role|title }}
+              </span>
             </div>
 
             <a href="{% url 'accounts:profile' %}"
@@ -221,24 +228,44 @@
               📦 My Orders
             </a>
 
-            {% if user.is_admin %}
+            {% if user.role == 'admin' or user.is_superuser %}
             <a href="{% url 'dashboard:home' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white
+                      bg-navy hover:bg-navy-700 mx-2 rounded-xl my-1">
               ⚡ Admin Dashboard
             </a>
             {% endif %}
 
-            {% if user.is_rider %}
+            {% if user.role == 'staff' %}
+            <a href="{% url 'dashboard:home' %}"
+               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white
+                      bg-blue-600 hover:bg-blue-700 mx-2 rounded-xl my-1">
+              ⚡ Staff Dashboard
+            </a>
+            {% endif %}
+
+            {% if user.role == 'rider' %}
             <a href="{% url 'rider:dashboard' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white
+                      bg-orange-500 hover:bg-orange-600 mx-2 rounded-xl my-1">
               🛵 Rider Dashboard
             </a>
             {% endif %}
 
+            {% if user.role == 'vendor' %}
+            <a href="{% url 'vendors:dashboard' %}"
+               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white
+                      bg-purple-600 hover:bg-purple-700 mx-2 rounded-xl my-1">
+              🏪 Vendor Dashboard
+            </a>
+            {% endif %}
+
+            {% if user.role == 'customer' %}
             <a href="{% url 'vendors:apply' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               🏪 Sell on Lynctel
             </a>
+            {% endif %}
 
             <hr class="my-1 border-gray-100"/>
 
@@ -248,20 +275,6 @@
             </a>
           </div>
         </div>
-
-        {% else %}
-        <a href="{% url 'accounts:login' %}"
-           class="text-sm font-medium text-gray-600 hover:text-navy px-3 py-2
-                  rounded-lg hover:bg-gray-50 transition-colors hidden md:block">
-          Sign In
-        </a>
-        <a href="{% url 'accounts:signup' %}"
-           class="text-sm font-semibold bg-navy text-white px-4 py-2 rounded-xl
-                  hover:bg-navy-700 transition-colors btn-press">
-          Sign Up
-        </a>
-        {% endif %}
-
         <!-- Cart button -->
         <button onclick="openCart()"
                 class="relative w-10 h-10 flex items-center justify-center rounded-xl
