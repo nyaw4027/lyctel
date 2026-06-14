@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 {% load static %}
 <html lang="en">
@@ -6,17 +8,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>{% block title %}Lynctel — Quality Products Delivered{% endblock %}</title>
 
-  <!-- ── PWA: Manifest + Theme ──────────────────────── -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0F1B2D">
-
-  <!-- ── PWA: iOS / Safari ──────────────────────────── -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Lynctel">
   <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
-
-  <!-- ── PWA: General SEO / Share ───────────────────── -->
   <meta name="description" content="Lynctel — Quality products delivered fast across Ghana. Shop electronics, gadgets and more.">
   <meta name="mobile-web-app-capable" content="yes">
 
@@ -79,20 +76,17 @@
     .btn-press:active { transform: scale(.97); }
     html { scroll-behavior: smooth; }
 
-    /* Cart drawer */
     #cart-drawer  { transform: translateX(100%); }
     #cart-overlay { opacity:0; visibility:hidden; }
     #cart-drawer.open  { transform: translateX(0); }
     #cart-overlay.open { opacity:1; visibility:visible; }
 
-    /* Input focus gold ring */
     input:focus, select:focus, textarea:focus {
       outline: none;
       box-shadow: 0 0 0 3px rgba(245,166,35,.2);
       border-color: #F5A623 !important;
     }
 
-    /* PWA install banner */
     #pwa-banner {
       display: none;
       position: fixed;
@@ -112,6 +106,13 @@
       animation: fadeUp .4s ease forwards;
     }
     #pwa-banner.show { display: flex; }
+
+    /* Role badge colours */
+    .role-admin    { background:#fee2e2; color:#b91c1c; }
+    .role-staff    { background:#dbeafe; color:#1d4ed8; }
+    .role-vendor   { background:#ede9fe; color:#7c3aed; }
+    .role-rider    { background:#ffedd5; color:#c2410c; }
+    .role-customer { background:#f3f4f6; color:#374151; }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
@@ -156,7 +157,7 @@
           Shops
         </a>
 
-        <!-- DYNAMIC VENDOR ROUTING BLOCK -->
+        <!-- Vendor routing -->
         {% if request.user.is_authenticated and request.user.vendor %}
           {% if request.user.vendor.status == 'active' %}
             <a href="{% url 'vendors:dashboard' %}"
@@ -197,69 +198,73 @@
               {{ user.first_name|default:user.phone }}
             </span>
           </button>
-<!-- Dropdown menu -->
-          <div class="absolute right-0 top-full mt-1 w-56 bg-white rounded-2xl shadow-xl
+
+          <!-- Dropdown -->
+          <div class="absolute right-0 top-full mt-1 w-60 bg-white rounded-2xl shadow-xl
                       border border-gray-100 py-2 opacity-0 invisible z-50
                       group-hover:opacity-100 group-hover:visible
                       transition-all duration-150 translate-y-1 group-hover:translate-y-0">
 
+            <!-- User info header -->
             <div class="px-4 py-3 border-b border-gray-50">
               <p class="font-semibold text-navy text-sm truncate">
                 {{ user.get_full_name|default:user.phone }}
               </p>
               <p class="text-xs text-gray-400 truncate">{{ user.phone }}</p>
-              <span class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full
-                {% if user.role == 'admin' %}bg-red-100 text-red-700
-                {% elif user.role == 'staff' %}bg-blue-100 text-blue-700
-                {% elif user.role == 'vendor' %}bg-purple-100 text-purple-700
-                {% elif user.role == 'rider' %}bg-orange-100 text-orange-700
-                {% else %}bg-gray-100 text-gray-600{% endif %}">
+              <!-- Role badge — no {% if %} inside class attribute -->
+              <span id="role-badge"
+                    class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full role-{{ user.role }}">
                 {{ user.role|title }}
               </span>
             </div>
 
+            <!-- Common links -->
             <a href="{% url 'accounts:profile' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               👤 My Profile
             </a>
-
             <a href="{% url 'order:history' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               📦 My Orders
             </a>
 
-            {% if user.role == 'admin' or user.is_superuser %}
+            <!-- Admin dashboard -->
+            {% if user.role == 'admin' %}
             <a href="{% url 'dashboard:home' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white
-                      bg-navy hover:bg-navy-700 mx-2 rounded-xl my-1">
+               class="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold
+                      text-white bg-navy hover:bg-navy-700 mx-2 rounded-xl my-1">
               ⚡ Admin Dashboard
             </a>
             {% endif %}
 
+            <!-- Staff dashboard -->
             {% if user.role == 'staff' %}
             <a href="{% url 'dashboard:home' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white
-                      bg-blue-600 hover:bg-blue-700 mx-2 rounded-xl my-1">
+               class="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold
+                      text-white bg-blue-600 hover:bg-blue-700 mx-2 rounded-xl my-1">
               ⚡ Staff Dashboard
             </a>
             {% endif %}
 
+            <!-- Rider dashboard -->
             {% if user.role == 'rider' %}
             <a href="{% url 'rider:dashboard' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white
-                      bg-orange-500 hover:bg-orange-600 mx-2 rounded-xl my-1">
+               class="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold
+                      text-white bg-orange-500 hover:bg-orange-600 mx-2 rounded-xl my-1">
               🛵 Rider Dashboard
             </a>
             {% endif %}
 
+            <!-- Vendor dashboard -->
             {% if user.role == 'vendor' %}
             <a href="{% url 'vendors:dashboard' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white
-                      bg-purple-600 hover:bg-purple-700 mx-2 rounded-xl my-1">
+               class="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold
+                      text-white bg-purple-600 hover:bg-purple-700 mx-2 rounded-xl my-1">
               🏪 Vendor Dashboard
             </a>
             {% endif %}
 
+            <!-- Sell on Lynctel — only for customers -->
             {% if user.role == 'customer' %}
             <a href="{% url 'vendors:apply' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
@@ -270,11 +275,26 @@
             <hr class="my-1 border-gray-100"/>
 
             <a href="{% url 'accounts:logout' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-b-2xl">
+               class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500
+                      hover:bg-red-50 rounded-b-2xl">
               → Sign Out
             </a>
           </div>
         </div>
+
+        {% else %}
+        <a href="{% url 'accounts:login' %}"
+           class="text-sm font-medium text-gray-600 hover:text-navy px-3 py-2
+                  rounded-lg hover:bg-gray-50 transition-colors hidden md:block">
+          Sign In
+        </a>
+        <a href="{% url 'accounts:signup' %}"
+           class="text-sm font-semibold bg-navy text-white px-4 py-2 rounded-xl
+                  hover:bg-navy-700 transition-colors btn-press">
+          Sign Up
+        </a>
+        {% endif %}
+
         <!-- Cart button -->
         <button onclick="openCart()"
                 class="relative w-10 h-10 flex items-center justify-center rounded-xl
@@ -339,19 +359,15 @@
     <div class="max-w-7xl mx-auto px-4 md:px-6 py-16">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
 
-        <!-- BRAND col (spans 4 cols) -->
         <div class="lg:col-span-4">
           <div class="mb-5">
-            <img src="{% static 'logo.png' %}"
-                 alt="Lynctel"
+            <img src="{% static 'logo.png' %}" alt="Lynctel"
                  class="h-12 w-auto object-contain brightness-0 invert"/>
           </div>
-
           <p class="text-gray-400 leading-relaxed text-sm max-w-md mb-6">
             Lynctel connects customers, vendors, and riders across Ghana through
             fast delivery, secure payments, and a premium ecommerce experience.
           </p>
-
           <div class="space-y-3 text-sm">
             <a href="tel:+233558040216"
                class="flex items-center gap-3 text-gray-300 hover:text-gold transition-colors">
@@ -368,13 +384,9 @@
           </div>
         </div>
 
-        <!-- MARKETPLACE col -->
         <div class="lg:col-span-2">
-          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
-            Marketplace
-          </h3>
+          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">Marketplace</h3>
           <ul class="space-y-3 text-sm text-gray-400">
-            
             <li><a href="{% url 'products:list' %}" class="hover:text-gold transition-colors">All Products</a></li>
             <li><a href="{% url 'vendors:directory' %}" class="hover:text-gold transition-colors">Vendors & Shops</a></li>
             <li><a href="{% url 'cart:detail' %}" class="hover:text-gold transition-colors">Shopping Cart</a></li>
@@ -382,11 +394,8 @@
           </ul>
         </div>
 
-        <!-- COMPANY col -->
         <div class="lg:col-span-2">
-          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
-            Company
-          </h3>
+          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">Company</h3>
           <ul class="space-y-3 text-sm text-gray-400">
             <li><a href="{% url 'frontend:about' %}" class="hover:text-gold transition-colors">About Us</a></li>
             <li><a href="{% url 'frontend:contact' %}" class="hover:text-gold transition-colors">Contact Us</a></li>
@@ -396,11 +405,8 @@
           </ul>
         </div>
 
-        <!-- ACCOUNT col -->
         <div class="lg:col-span-2">
-          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
-            Account
-          </h3>
+          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">Account</h3>
           <ul class="space-y-3 text-sm text-gray-400">
             {% if user.is_authenticated %}
             <li><a href="{% url 'accounts:profile' %}" class="hover:text-gold transition-colors">My Profile</a></li>
@@ -412,11 +418,8 @@
           </ul>
         </div>
 
-        <!-- SOCIALS col -->
         <div class="lg:col-span-2">
-          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">
-            Follow Us
-          </h3>
+          <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">Follow Us</h3>
           <div class="flex flex-wrap gap-3">
             <a href="#" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-pink-500 transition-all duration-300 flex items-center justify-center">
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -444,7 +447,6 @@
       </div>
     </div>
 
-    <!-- Footer bottom bar -->
     <div class="border-t border-white/10">
       <div class="max-w-7xl mx-auto px-4 md:px-6 py-5 flex flex-col md:flex-row
                   items-center justify-between gap-4">
@@ -495,8 +497,7 @@
       <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center text-4xl mb-4">🛒</div>
       <p class="font-display font-700 text-navy mb-1">Your cart is empty</p>
       <p class="text-gray-400 text-sm mb-4">Add items to get started</p>
-      <button onclick="closeCart()"
-              class="text-sm text-gold-dark font-semibold hover:underline">
+      <button onclick="closeCart()" class="text-sm text-gold-dark font-semibold hover:underline">
         Continue Shopping →
       </button>
     </div>
@@ -544,7 +545,6 @@
     const IS_AUTHENTICATED = {{ user.is_authenticated|yesno:"true,false" }};
     const LOGIN_URL        = "{% url 'accounts:login' %}";
 
-    // ── Cart drawer ──────────────────────────────────────
     function openCart() {
       document.getElementById('cart-drawer').classList.add('open');
       document.getElementById('cart-overlay').classList.add('open');
@@ -696,17 +696,12 @@
       }
     }
 
-    // ── PWA Install prompt ───────────────────────────────
     let _deferredPrompt = null;
-
     window.addEventListener('beforeinstallprompt', e => {
       e.preventDefault();
       _deferredPrompt = e;
-      // Only show banner if not already dismissed
       if (!localStorage.getItem('pwa-dismissed')) {
-        setTimeout(() => {
-          document.getElementById('pwa-banner').classList.add('show');
-        }, 3000); // show after 3s on page
+        setTimeout(() => document.getElementById('pwa-banner').classList.add('show'), 3000);
       }
     });
 
@@ -724,12 +719,10 @@
       localStorage.setItem('pwa-dismissed', '1');
     }
 
-    // Hide banner if already running as installed PWA
     if (window.matchMedia('(display-mode: standalone)').matches) {
       document.getElementById('pwa-banner').style.display = 'none';
     }
 
-    // ── Service Worker registration ──────────────────────
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js', { scope: '/' })
@@ -738,7 +731,6 @@
       });
     }
 
-    // ── Auto-dismiss flash messages after 5s ─────────────
     setTimeout(() => {
       const el = document.getElementById('flash-wrap');
       if (el) {
@@ -748,7 +740,6 @@
       }
     }, 5000);
 
-    // ── Navbar shadow on scroll ───────────────────────────
     window.addEventListener('scroll', () => {
       document.getElementById('navbar').classList.toggle('nav-scrolled', window.scrollY > 10);
     });
