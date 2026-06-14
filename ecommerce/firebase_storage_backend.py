@@ -1,8 +1,9 @@
 """
-Firebase / Google Cloud Storage backend for Django media files.
+ecommerce/firebase_storage_backend.py
 
-Clean implementation using django-storages (GoogleCloudStorage).
-No proxy wrapper, no lazy import issues.
+Firebase Storage backend using django-storages GoogleCloudStorage.
+Used when GOOGLE_APPLICATION_CREDENTIALS_JSON and FIREBASE_STORAGE_BUCKET
+are both set in environment variables.
 """
 
 from django.conf import settings
@@ -11,22 +12,28 @@ from storages.backends.gcloud import GoogleCloudStorage
 
 class FirebaseStorage(GoogleCloudStorage):
     """
-    Proper Django storage backend for Firebase (Google Cloud Storage).
-    Handles upload, retrieval, and URL generation correctly.
+    Media file storage on Firebase (Google Cloud Storage).
+    Files are stored under gs://<bucket>/media/ and served publicly.
     """
 
     def __init__(self, *args, **kwargs):
-        bucket_name = getattr(settings, "FIREBASE_STORAGE_BUCKET", None)
-
-        if not bucket_name:
+        bucket = getattr(settings, 'FIREBASE_STORAGE_BUCKET', None)
+        if not bucket:
             raise ValueError(
-                "FIREBASE_STORAGE_BUCKET is not set in settings.py"
+                'FIREBASE_STORAGE_BUCKET is not set in settings.py'
             )
-
-        kwargs.setdefault("bucket_name", bucket_name)
-        kwargs.setdefault("location", "media")
-        kwargs.setdefault("default_acl", "publicRead")
-        kwargs.setdefault("file_overwrite", False)
-        kwargs.setdefault("querystring_auth", False)
-
+        kwargs.setdefault('bucket_name',     bucket)
+        kwargs.setdefault('location',        'media')
+        kwargs.setdefault('default_acl',     'publicRead')
+        kwargs.setdefault('file_overwrite',  False)
+        kwargs.setdefault('querystring_auth', False)
         super().__init__(*args, **kwargs)
+
+    def url(self, name):
+        """Return a direct public URL — no signed URL needed."""
+        bucket = getattr(settings, 'FIREBASE_STORAGE_BUCKET', '')
+        return f'https://storage.googleapis.com/{bucket}/media/{name}'
+
+
+# Legacy alias — keeps existing imports working
+FirebaseMediaStorage = FirebaseStorage

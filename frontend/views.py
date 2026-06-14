@@ -2,30 +2,24 @@ from django.shortcuts import render
 from django.db.models import Sum
 from products.models import Product, Category
 from order.models import OrderItem
-from .models import AboutPage
 
 
 def home(request):
-    valid_products = Product.objects.exclude(slug__isnull=True).exclude(slug="")
+    valid_products = Product.objects.exclude(slug__isnull=True).exclude(slug='')
 
-    # ── Top 4 most purchased products ─────────────────────
+    # Top 4 most purchased products
     top_ids = (
         OrderItem.objects
-        .filter(
-            order__payment_status='paid',
-            product__isnull=False,
-        )
+        .filter(order__payment_status='paid', product__isnull=False)
         .values('product')
         .annotate(total_sold=Sum('quantity'))
         .order_by('-total_sold')
         .values_list('product', flat=True)[:4]
     )
 
-    # Preserve sales-rank order
-    top_map = {p.pk: p for p in valid_products.filter(pk__in=top_ids, status='active').prefetch_related('images')}
+    top_map      = {p.pk: p for p in valid_products.filter(pk__in=top_ids, status='active').prefetch_related('images')}
     hot_products = [top_map[pk] for pk in top_ids if pk in top_map]
 
-    # Fallback: fill remaining slots with featured/newest if not enough paid orders yet
     if len(hot_products) < 4:
         fallback = (
             valid_products
@@ -37,17 +31,9 @@ def home(request):
         )
         hot_products = hot_products + list(fallback)
 
-    # ── Other context ──────────────────────────────────────
-    featured = valid_products.filter(
-        is_featured=True,
-        status='active'
-    ).prefetch_related('images')[:4]
-
-    new_products = valid_products.filter(
-        status='active'
-    ).prefetch_related('images').order_by('-created_at')[:10]
-
-    categories = Category.objects.filter(is_active=True)
+    featured     = valid_products.filter(is_featured=True, status='active').prefetch_related('images')[:4]
+    new_products = valid_products.filter(status='active').prefetch_related('images').order_by('-created_at')[:10]
+    categories   = Category.objects.filter(is_active=True)
 
     return render(request, 'frontend/home.html', {
         'hot_products': hot_products,
@@ -59,31 +45,40 @@ def home(request):
 
 
 def about(request):
-    page = AboutPage.objects.prefetch_related("stats", "features", "team").first()
-    context = {
-        "page":     page,
-        "stats":    page.stats.all()    if page else [],
-        "features": page.features.all() if page else [],
-        "team":     page.team.all()     if page else [],
-    }
-    return render(request, "frontend/about.html", context)
+    """
+    About page — gracefully handles missing AboutPage table
+    (e.g. migrations not yet run) so it never crashes with a 500.
+    """
+    try:
+        from .models import AboutPage
+        page = AboutPage.objects.prefetch_related('stats', 'features', 'team').first()
+    except Exception:
+        page = None
+
+    return render(request, 'frontend/about.html', {
+        'page':     page,
+        'stats':    page.stats.all()    if page else [],
+        'features': page.features.all() if page else [],
+        'team':     page.team.all()     if page else [],
+        'cart_count': 0,
+    })
 
 
 def contact(request):
-    return render(request, "frontend/contact.html")
+    return render(request, 'frontend/contact.html', {'cart_count': 0})
 
 
 def how_it_works(request):
-    return render(request, 'frontend/how_it_works.html')
+    return render(request, 'frontend/how_it_works.html', {'cart_count': 0})
 
 
 def privacy_policy(request):
-    return render(request, 'frontend/privacy_policy.html')
+    return render(request, 'frontend/privacy_policy.html', {'cart_count': 0})
 
 
 def terms(request):
-    return render(request, 'frontend/terms.html')
+    return render(request, 'frontend/terms.html', {'cart_count': 0})
 
 
 def cookies(request):
-    return render(request, 'frontend/cookies.html')
+    return render(request, 'frontend/cookies.html', {'cart_count': 0})

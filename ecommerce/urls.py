@@ -18,15 +18,15 @@ urlpatterns = [
     path('', include('frontend.urls')),
 
     # Apps
-    path('food/',     include(('food.urls',     'food'),     namespace='food')),
-    path('products/', include('products.urls')),
-    path('cart/',     include('cart.urls')),
-    path('accounts/', include('accounts.urls')),
-    path('orders/',   include(('order.urls',    'order'),    namespace='order')),
-    path('checkout/', include('payment.urls')),
-    path('dashboard/',include('dashboard.urls')),
-    path('rider/',    include('rider.urls')),
-    path('delivery/', include(('delivery.urls', 'delivery'), namespace='delivery')),
+    path('food/',      include(('food.urls',     'food'),     namespace='food')),
+    path('products/',  include('products.urls')),
+    path('cart/',      include('cart.urls')),
+    path('accounts/',  include('accounts.urls')),
+    path('orders/',    include(('order.urls',    'order'),    namespace='order')),
+    path('checkout/',  include('payment.urls')),
+    path('dashboard/', include('dashboard.urls')),
+    path('rider/',     include('rider.urls')),
+    path('delivery/',  include(('delivery.urls', 'delivery'), namespace='delivery')),
 
     # APIs
     path('api/order/', include('order.api.urls')),
@@ -35,18 +35,22 @@ urlpatterns = [
     path('', include('reviews.urls')),
     path('', include('vendors.urls')),
 
-    # Progressive Web App (PWA)
-    path('sw.js',        service_worker, name='service-worker'),
-    path('manifest.json',web_manifest,   name='web-manifest'),
-    path('offline/',     offline_page,   name='offline'),
-
-    # ── Media files ─────────────────────────────────────────
-    # Serve media in ALL environments (local + Railway volume).
-    # WhiteNoise only handles static; media needs explicit serving.
-    re_path(r'^media/(?P<path>.*)$', serve, {
-        'document_root': settings.MEDIA_ROOT,
-    }),
+    # PWA
+    path('sw.js',         service_worker, name='service-worker'),
+    path('manifest.json', web_manifest,   name='web-manifest'),
+    path('offline/',      offline_page,   name='offline'),
 ]
+
+# Media files — served in ALL environments.
+# When Firebase is active, MEDIA_URL points to GCS so this route
+# is never hit for uploaded files. When using local/Railway Volume
+# storage this route serves the files directly.
+if not getattr(settings, '_use_firebase', False):
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {
+            'document_root': settings.MEDIA_ROOT,
+        }),
+    ]
 
 # Static files in local development only
 if settings.DEBUG:

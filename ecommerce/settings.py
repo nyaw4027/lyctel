@@ -76,12 +76,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'ecommerce.wsgi.application'
 
 # ── Database ───────────────────────────────────────────────
-# Priority:
-#   1. DATABASE_PRIVATE_URL  (Railway private network — free, preferred)
-#   2. DATABASE_URL          (Railway public URL)
-#   3. Individual vars       (NAME, USER, PASSWORD, HOST, PORT)
-#   4. SQLite                (local dev only)
-
 _db_url = (
     os.environ.get('DATABASE_PRIVATE_URL') or
     os.environ.get('DATABASE_URL')
@@ -95,15 +89,15 @@ if _db_url:
             conn_health_checks=True,
         )
     }
-elif config('HOST', default=''):
+elif config('DB_HOST', default='') or config('HOST', default=''):
     DATABASES = {
         'default': {
             'ENGINE':       'django.db.backends.postgresql',
-            'NAME':         config('NAME',     default='railway'),
-            'USER':         config('USER',     default='postgres'),
-            'PASSWORD':     config('PASSWORD', default=''),
-            'HOST':         config('HOST',     default=''),
-            'PORT':         config('PORT',     default='5432'),
+            'NAME':         config('DB_NAME',  default=config('NAME',     default='railway')),
+            'USER':         config('DB_USER',  default=config('USER',     default='postgres')),
+            'PASSWORD':     config('DB_PASSWORD', default=config('PASSWORD', default='')),
+            'HOST':         config('DB_HOST',  default=config('HOST',     default='')),
+            'PORT':         config('DB_PORT',  default=config('PORT',     default='5432')),
             'CONN_MAX_AGE': 600,
         }
     }
@@ -134,18 +128,21 @@ STATIC_URL       = '/static/'
 STATIC_ROOT      = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# ── Media root (local path, always needed) ─────────────────
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# ── Media files ────────────────────────────────────────────
+# MEDIA_ROOT: Railway Volume mounts at /app/media when set via env var.
+# Locally uses BASE_DIR/media. Both work with the filesystem backend.
+MEDIA_URL  = '/media/'
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 
-# ── Firebase / Google Cloud Storage ───────────────────────
-# Defined BEFORE use — variables resolved here, then used below.
+# ── Storage backend ────────────────────────────────────────
+# Uses Firebase (Google Cloud Storage) when credentials + bucket are set.
+# Falls back to local filesystem (+ Railway Volume) when not configured.
 _gac_json        = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
 _firebase_bucket = config('FIREBASE_STORAGE_BUCKET', default='')
 _use_firebase    = bool(_gac_json and _firebase_bucket and not DEBUG)
 
 if _use_firebase:
     import tempfile
-
     _tmp = tempfile.NamedTemporaryFile(
         mode='w', suffix='.json', delete=False, prefix='gcp_creds_'
     )
@@ -153,37 +150,35 @@ if _use_firebase:
     _tmp.close()
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = _tmp.name
 
-    GS_BUCKET_NAME      = _firebase_bucket
-    GS_FILE_OVERWRITE   = False
-    GS_QUERYSTRING_AUTH = False
-    GS_DEFAULT_ACL      = 'publicRead'
-    GS_OBJECT_PARAMETERS = {'cache_control': 'public, max-age=86400'}
+    FIREBASE_STORAGE_BUCKET = _firebase_bucket
+    GS_BUCKET_NAME          = _firebase_bucket
+    GS_DEFAULT_ACL          = 'publicRead'
+    GS_FILE_OVERWRITE       = False
+    GS_QUERYSTRING_AUTH     = False
+    GS_CUSTOM_ENDPOINT      = f'https://storage.googleapis.com/{_firebase_bucket}'
+    GS_OBJECT_PARAMETERS    = {'cache_control': 'public, max-age=86400'}
 
     STORAGES = {
-        'default': {
-            'BACKEND': 'storages.backends.gcloud.GoogleCloudStorage',
-        },
         'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        },
+        'default': {
+            'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseStorage',
         },
     }
-
-    STATIC_URL = '/static/'
-    MEDIA_URL  = f'https://storage.googleapis.com/{_firebase_bucket}/media/'
+    # Override MEDIA_URL to point to Firebase public URL
+    MEDIA_URL = f'https://storage.googleapis.com/{_firebase_bucket}/media/'
 
 else:
-    # Local dev or Firebase not configured — use filesystem + WhiteNoise
+    # Local filesystem or Railway Volume
     STORAGES = {
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        },
         'default': {
             'BACKEND': 'django.core.files.storage.FileSystemStorage',
         },
-        'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
-        },
     }
-
-    STATIC_URL = '/static/'
-    MEDIA_URL  = '/media/'
 
 # ── Auth redirects ─────────────────────────────────────────
 LOGIN_URL           = '/accounts/login/'
