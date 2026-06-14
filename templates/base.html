@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 {% load static %}
 <html lang="en">
@@ -107,7 +105,6 @@
     }
     #pwa-banner.show { display: flex; }
 
-    /* Role badge colours */
     .role-admin    { background:#fee2e2; color:#b91c1c; }
     .role-staff    { background:#dbeafe; color:#1d4ed8; }
     .role-vendor   { background:#ede9fe; color:#7c3aed; }
@@ -127,8 +124,7 @@
       <!-- Logo -->
       <a href="{% url 'frontend:home' %}"
          class="flex items-center gap-2 flex-shrink-0 group">
-        <img src="{% static 'logo.png' %}"
-             alt="Lynctel"
+        <img src="{% static 'logo.png' %}" alt="Lynctel"
              class="h-9 w-auto object-contain group-hover:scale-105 transition-transform duration-200"/>
       </a>
 
@@ -157,16 +153,22 @@
           Shops
         </a>
 
+        <a href="{% url 'food:home' %}"
+           class="hidden md:flex items-center gap-1.5 text-sm font-medium text-gray-600
+                  hover:text-orange-500 px-3 py-2 rounded-lg hover:bg-orange-50 transition-colors">
+          🍔 Food
+        </a>
+
         <!-- Vendor routing -->
-        {% if request.user.is_authenticated and request.user.vendor %}
-          {% if request.user.vendor.status == 'active' %}
+        {% if user.is_authenticated %}
+          {% if user.role == 'vendor' %}
             <a href="{% url 'vendors:dashboard' %}"
                class="hidden md:flex text-sm font-semibold text-gold-dark
                       bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
-              Sell Here
+              My Shop
             </a>
           {% else %}
-            <a href="{% url 'vendors:pending' %}"
+            <a href="{% url 'vendors:apply' %}"
                class="hidden md:flex text-sm font-semibold text-gold-dark
                       bg-gold-light hover:bg-gold/20 px-3 py-2 rounded-lg transition-colors">
               Sell Here
@@ -205,15 +207,13 @@
                       group-hover:opacity-100 group-hover:visible
                       transition-all duration-150 translate-y-1 group-hover:translate-y-0">
 
-            <!-- User info header -->
+            <!-- User info -->
             <div class="px-4 py-3 border-b border-gray-50">
               <p class="font-semibold text-navy text-sm truncate">
                 {{ user.get_full_name|default:user.phone }}
               </p>
               <p class="text-xs text-gray-400 truncate">{{ user.phone }}</p>
-              <!-- Role badge — no {% if %} inside class attribute -->
-              <span id="role-badge"
-                    class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full role-{{ user.role }}">
+              <span class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full role-{{ user.role }}">
                 {{ user.role|title }}
               </span>
             </div>
@@ -228,43 +228,39 @@
               📦 My Orders
             </a>
 
-            <!-- Admin dashboard -->
+            <!-- Role-based dashboard links -->
             {% if user.role == 'admin' %}
             <a href="{% url 'dashboard:home' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold
-                      text-white bg-navy hover:bg-navy-700 mx-2 rounded-xl my-1">
+               class="flex items-center gap-2.5 px-4 py-2.5 mx-2 my-1 text-sm font-semibold
+                      text-white bg-navy hover:bg-navy-700 rounded-xl">
               ⚡ Admin Dashboard
             </a>
             {% endif %}
 
-            <!-- Staff dashboard -->
             {% if user.role == 'staff' %}
             <a href="{% url 'dashboard:home' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold
-                      text-white bg-blue-600 hover:bg-blue-700 mx-2 rounded-xl my-1">
+               class="flex items-center gap-2.5 px-4 py-2.5 mx-2 my-1 text-sm font-semibold
+                      text-white bg-blue-600 hover:bg-blue-700 rounded-xl">
               ⚡ Staff Dashboard
             </a>
             {% endif %}
 
-            <!-- Rider dashboard -->
             {% if user.role == 'rider' %}
             <a href="{% url 'rider:dashboard' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold
-                      text-white bg-orange-500 hover:bg-orange-600 mx-2 rounded-xl my-1">
+               class="flex items-center gap-2.5 px-4 py-2.5 mx-2 my-1 text-sm font-semibold
+                      text-white bg-orange-500 hover:bg-orange-600 rounded-xl">
               🛵 Rider Dashboard
             </a>
             {% endif %}
 
-            <!-- Vendor dashboard -->
             {% if user.role == 'vendor' %}
             <a href="{% url 'vendors:dashboard' %}"
-               class="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold
-                      text-white bg-purple-600 hover:bg-purple-700 mx-2 rounded-xl my-1">
+               class="flex items-center gap-2.5 px-4 py-2.5 mx-2 my-1 text-sm font-semibold
+                      text-white bg-purple-600 hover:bg-purple-700 rounded-xl">
               🏪 Vendor Dashboard
             </a>
             {% endif %}
 
-            <!-- Sell on Lynctel — only for customers -->
             {% if user.role == 'customer' %}
             <a href="{% url 'vendors:apply' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
@@ -388,6 +384,7 @@
           <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">Marketplace</h3>
           <ul class="space-y-3 text-sm text-gray-400">
             <li><a href="{% url 'products:list' %}" class="hover:text-gold transition-colors">All Products</a></li>
+            <li><a href="{% url 'food:home' %}" class="hover:text-gold transition-colors">Food Delivery</a></li>
             <li><a href="{% url 'vendors:directory' %}" class="hover:text-gold transition-colors">Vendors & Shops</a></li>
             <li><a href="{% url 'cart:detail' %}" class="hover:text-gold transition-colors">Shopping Cart</a></li>
             <li><a href="{% url 'order:history' %}" class="hover:text-gold transition-colors">My Orders</a></li>
