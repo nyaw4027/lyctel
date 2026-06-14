@@ -371,3 +371,34 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.product.name}"
+
+
+# ADD this model to your existing products/models.py
+# Place it after your existing ProductImage model
+
+class ProductVideo(models.Model):
+    """
+    Short video for a product (max 60 seconds recommended).
+    Stored in Firebase Storage under media/product_videos/.
+    """
+    product     = models.ForeignKey(
+        'Product', on_delete=models.CASCADE, related_name='videos'
+    )
+    video       = models.FileField(
+        upload_to='product_videos/',
+        help_text='MP4 recommended. Max 50MB. Keep under 60 seconds.'
+    )
+    thumbnail   = models.ImageField(
+        upload_to='product_video_thumbs/',
+        blank=True, null=True,
+        help_text='Optional thumbnail image shown before video plays.'
+    )
+    title       = models.CharField(max_length=100, blank=True)
+    order       = models.PositiveSmallIntegerField(default=0)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'uploaded_at']
+
+    def __str__(self):
+        return f'Video for {self.product.name}'

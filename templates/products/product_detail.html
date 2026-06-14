@@ -319,6 +319,57 @@
     </div>
   </div>
 
+  {# ─────────────────────────────────────────────────────────────── #}
+{# PRODUCT VIDEO SECTION                                           #}
+{# Add this block inside your product detail template,            #}
+{# right after the image gallery / before the description tabs.  #}
+{# ─────────────────────────────────────────────────────────────── #}
+
+{% if product.videos.all %}
+<div class="mt-6">
+  <h3 class="font-display font-700 text-navy text-base mb-3">📹 Product Videos</h3>
+  <div class="space-y-4">
+    {% for video in product.videos.all %}
+    <div class="rounded-2xl overflow-hidden bg-black shadow-sm">
+      <video
+        controls
+        preload="metadata"
+        class="w-full max-h-96 object-contain"
+        {% if video.thumbnail %}poster="{{ video.thumbnail.url }}"{% endif %}>
+        <source src="{{ video.video.url }}" type="video/mp4">
+        Your browser does not support video playback.
+      </video>
+      {% if video.title %}
+      <p class="px-4 py-2 text-xs text-gray-400 bg-gray-50">{{ video.title }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+
+{# ─────────────────────────────────────────────────────────────── #}
+{# CHAT WITH SELLER BUTTON                                         #}
+{# Add this near the "Add to Cart" / "Buy Now" buttons            #}
+{# ─────────────────────────────────────────────────────────────── #}
+
+{% if user.is_authenticated and product.vendor %}
+<a href="{% url 'chat:start' product.vendor.slug %}"
+   class="flex items-center justify-center gap-2 w-full border-2 border-navy
+          text-navy hover:bg-navy hover:text-white font-semibold py-3
+          rounded-2xl transition-all duration-200 btn-press text-sm mt-3">
+  💬 Chat with Seller
+</a>
+{% elif not user.is_authenticated %}
+<a href="{% url 'accounts:login' %}?next={{ request.path }}"
+   class="flex items-center justify-center gap-2 w-full border-2 border-gray-200
+          text-gray-500 hover:border-navy hover:text-navy font-semibold py-3
+          rounded-2xl transition-all duration-200 text-sm mt-3">
+  💬 Sign in to Chat with Seller
+</a>
+{% endif %}
+
   <!-- ── PRODUCT TABS ─────────────────────────────────── -->
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-10">
 

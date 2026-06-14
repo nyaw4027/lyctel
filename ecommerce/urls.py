@@ -39,6 +39,8 @@ urlpatterns = [
     path('sw.js',         service_worker, name='service-worker'),
     path('manifest.json', web_manifest,   name='web-manifest'),
     path('offline/',      offline_page,   name='offline'),
+
+    path('chat/', include('chat.urls'))
 ]
 
 # Media files — served in ALL environments.

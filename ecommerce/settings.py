@@ -20,6 +20,8 @@ AUTH_USER_MODEL = 'ecommerce.User'
 
 # ── Apps ───────────────────────────────────────────────────
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -40,6 +42,7 @@ INSTALLED_APPS = [
     'vendors',
     'staff',
     'food',
+    'chat',
 ]
 
 # ── Middleware ─────────────────────────────────────────────

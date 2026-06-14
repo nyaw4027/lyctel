@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block title %}Chat — {{ chat_room.vendor.shop_name }} — Lynctel{% endblock %}
+
+{% block extra_head %}
+<style>
+  #msg-list { scroll-behavior: smooth; }
+  .bubble-me    { background:#0F1B2D; color:white; border-radius:18px 18px 4px 18px; }
+  .bubble-them  { background:#F3F4F6; color:#0F1B2D; border-radius:18px 18px 18px 4px; }
+  .bubble-me a, .bubble-them a { text-decoration: underline; }
+  @keyframes msgPop {
+    from { opacity:0; transform:translateY(8px) scale(.97); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+  }
+  .msg-new { animation: msgPop .25s ease forwards; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-0 md:px-6 py-0 md:py-8 flex flex-col"
+     style="height: calc(100vh - 4rem);">
+
+  <!-- ── Header ────────────────────────────────────────── -->
+  <div class="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 flex-shrink-0 md:rounded-t-2xl">
+    <a href="{% url 'chat:inbox' %}"
+       class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-500 flex-shrink-0">
+      ←
+    </a>
+    <div class="w-10 h-10 rounded-xl bg-navy flex items-center justify-center
+                text-white font-display font-700 overflow-hidden flex-shrink-0">
+      {% if chat_room.vendor.logo %}
+      <img src="{{ chat_room.vendor.logo.url }}" class="w-full h-full object-cover"/>
+      {% else %}
+      🏪
+      {% endif %}
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="font-display font-700 text-navy text-sm truncate">
+        {% if is_vendor %}
+          {{ chat_room.buyer.get_full_name|default:chat_room.buyer.phone }}
+        {% else %}
+          {{ chat_room.vendor.shop_name }}
+        {% endif %}
+      </p>
+      <p class="text-xs text-gray-400">
+        {% if not is_vendor %}
+        <a href="{% url 'vendors:shop' chat_room.vendor.slug %}"
+           class="hover:text-gold transition-colors">View Shop →</a>
+        {% else %}
+        Customer
+        {% endif %}
+      </p>
+    </div>
+    <div id="conn-dot"
+         class="w-2.5 h-2.5 rounded-full bg-gray-300 flex-shrink-0 transition-colors"
+         title="Connecting..."></div>
+  </div>
+
+  <!-- ── Message list ───────────────────────────────────── -->
+  <div id="msg-list"
+       class="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
+
+    {% for msg in messages %}
+    <div class="flex {% if msg.sender == request.user %}justify-end{% else %}justify-start{% endif %} gap-2">
+      {% if msg.sender != request.user %}
+      <div class="w-7 h-7 rounded-full bg-navy flex items-center justify-center
+                  text-white text-xs font-bold flex-shrink-0 self-end overflow-hidden">
+        {% if msg.sender.profile_pic %}
+        <img src="{{ msg.sender.profile_pic.url }}" class="w-full h-full object-cover"/>
+        {% else %}
+        {{ msg.sender.first_name|first|upper|default:"?" }}
+        {% endif %}
+      </div>
+      {% endif %}
+      <div class="max-w-xs md:max-w-sm">
+        <div class="px-4 py-2.5 text-sm leading-relaxed
+                    {% if msg.sender == request.user %}bubble-me{% else %}bubble-them{% endif %}">
+          {{ msg.content }}
+        </div>
+        <p class="text-[10px] text-gray-400 mt-1
+                  {% if msg.sender == request.user %}text-right{% endif %}">
+          {{ msg.created_at|time:"H:i" }}
+          {% if msg.sender == request.user %}
+            {% if msg.is_read %}✓✓{% else %}✓{% endif %}
+          {% endif %}
+        </p>
+      </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-12 text-gray-400">
+      <p class="text-4xl mb-3">👋</p>
+      <p class="text-sm">Start the conversation!</p>
+      {% if not is_vendor %}
+      <p class="text-xs mt-1">Ask about products, availability, or delivery.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <!-- ── Input bar ─────────────────────────────────────── -->
+  <div class="bg-white border-t border-gray-100 px-4 py-3 flex items-end gap-3
+              flex-shrink-0 md:rounded-b-2xl">
+    <div class="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-2.5
+                flex items-end gap-2">
+      <textarea id="msg-input"
+                rows="1"
+                placeholder="Type a message..."
+                maxlength="2000"
+                class="flex-1 bg-transparent text-sm resize-none outline-none
+                       max-h-32 leading-relaxed text-navy placeholder-gray-400"
+                oninput="autoResize(this)"
+                onkeydown="handleKey(event)"></textarea>
+    </div>
+    <button onclick="sendMessage()"
+            id="send-btn"
+            class="w-11 h-11 bg-navy hover:bg-gold hover:text-navy text-white
+                   rounded-2xl flex items-center justify-center transition-all
+                   duration-200 btn-press flex-shrink-0 disabled:opacity-40">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+      </svg>
+    </button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const ROOM_ID   = '{{ chat_room.id }}';
+  const MY_ID     = {{ request.user.pk }};
+  const MY_NAME   = '{{ request.user.get_full_name|default:request.user.phone }}';
+  const MY_PIC    = '{% if request.user.profile_pic %}{{ request.user.profile_pic.url }}{% endif %}';
+  const WS_SCHEME = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const WS_URL    = `${WS_SCHEME}://${window.location.host}/ws/chat/${ROOM_ID}/`;
+
+  let socket = null;
+
+  function connect() {
+    socket = new WebSocket(WS_URL);
+
+    socket.onopen = () => {
+      document.getElementById('conn-dot').className =
+        'w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0 transition-colors';
+      document.getElementById('conn-dot').title = 'Connected';
+    };
+
+    socket.onclose = () => {
+      document.getElementById('conn-dot').className =
+        'w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0 transition-colors';
+      document.getElementById('conn-dot').title = 'Disconnected — reconnecting...';
+      setTimeout(connect, 3000);
+    };
+
+    socket.onerror = () => {
+      document.getElementById('conn-dot').className =
+        'w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0 transition-colors';
+    };
+
+    socket.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      appendMessage(data, data.sender_id === MY_ID);
+    };
+  }
+
+  function sendMessage() {
+    const input   = document.getElementById('msg-input');
+    const content = input.value.trim();
+    if (!content || !socket || socket.readyState !== WebSocket.OPEN) return;
+
+    socket.send(JSON.stringify({ message: content }));
+    input.value = '';
+    input.style.height = 'auto';
+    input.rows = 1;
+  }
+
+  function appendMessage(data, isMe) {
+    const list = document.getElementById('msg-list');
+
+    // Remove empty state if present
+    const empty = list.querySelector('.text-center.py-12');
+    if (empty) empty.remove();
+
+    const wrap = document.createElement('div');
+    wrap.className = `flex ${isMe ? 'justify-end' : 'justify-start'} gap-2 msg-new`;
+
+    const avatarHtml = isMe ? '' : `
+      <div class="w-7 h-7 rounded-full bg-navy flex items-center justify-center
+                  text-white text-xs font-bold flex-shrink-0 self-end overflow-hidden">
+        ${data.sender_pic
+          ? `<img src="${data.sender_pic}" class="w-full h-full object-cover"/>`
+          : (data.sender_name[0] || '?').toUpperCase()}
+      </div>`;
+
+    wrap.innerHTML = `
+      ${avatarHtml}
+      <div class="max-w-xs md:max-w-sm">
+        <div class="px-4 py-2.5 text-sm leading-relaxed ${isMe ? 'bubble-me' : 'bubble-them'}">
+          ${escapeHtml(data.message)}
+        </div>
+        <p class="text-[10px] text-gray-400 mt-1 ${isMe ? 'text-right' : ''}">
+          ${data.timestamp}${isMe ? ' ✓' : ''}
+        </p>
+      </div>`;
+
+    list.appendChild(wrap);
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/\n/g, '<br>');
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+  }
+
+  // Scroll to bottom on load
+  const list = document.getElementById('msg-list');
+  list.scrollTop = list.scrollHeight;
+
+  connect();
+</script>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Messages — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 md:px-6 py-10">
+
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="font-display font-700 text-2xl text-navy">Messages</h1>
+      <p class="text-gray-400 text-sm mt-0.5">Your conversations with vendors</p>
+    </div>
+  </div>
+
+  {% if room_data %}
+  <div class="space-y-3">
+    {% for item in room_data %}
+    {% with room=item.room last=item.last unread=item.unread %}
+    <a href="{% url 'chat:room' room.id %}"
+       class="flex items-center gap-4 bg-white rounded-2xl border
+              {% if unread %}border-gold/40 shadow-md{% else %}border-gray-100 shadow-sm{% endif %}
+              p-4 hover:shadow-md transition-all duration-200 group">
+
+      <!-- Avatar -->
+      <div class="w-12 h-12 rounded-2xl bg-navy flex items-center justify-center
+                  text-white font-display font-700 text-lg flex-shrink-0 overflow-hidden">
+        {% if user == room.buyer %}
+          {% if room.vendor.logo %}
+          <img src="{{ room.vendor.logo.url }}" class="w-full h-full object-cover"/>
+          {% else %}
+          🏪
+          {% endif %}
+        {% else %}
+          {% if room.buyer.profile_pic %}
+          <img src="{{ room.buyer.profile_pic.url }}" class="w-full h-full object-cover"/>
+          {% else %}
+          {{ room.buyer.first_name|first|upper|default:"U" }}
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <!-- Content -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <p class="font-semibold text-navy text-sm truncate">
+            {% if user == room.buyer %}
+              {{ room.vendor.shop_name }}
+            {% else %}
+              {{ room.buyer.get_full_name|default:room.buyer.phone }}
+            {% endif %}
+          </p>
+          {% if last %}
+          <span class="text-xs text-gray-400 flex-shrink-0">{{ last.created_at|timesince }} ago</span>
+          {% endif %}
+        </div>
+        {% if last %}
+        <p class="text-sm text-gray-500 truncate mt-0.5
+                  {% if unread %}font-semibold text-navy{% endif %}">
+          {% if last.sender == user %}You: {% endif %}{{ last.content }}
+        </p>
+        {% else %}
+        <p class="text-sm text-gray-400 mt-0.5">No messages yet</p>
+        {% endif %}
+      </div>
+
+      <!-- Unread badge -->
+      {% if unread %}
+      <span class="flex-shrink-0 bg-gold text-navy text-xs font-bold
+                   w-6 h-6 rounded-full flex items-center justify-center">
+        {{ unread }}
+      </span>
+      {% endif %}
+
+    </a>
+    {% endwith %}
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="text-center py-20">
+    <div class="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center
+                text-4xl mx-auto mb-5">💬</div>
+    <h2 class="font-display font-700 text-xl text-navy mb-2">No conversations yet</h2>
+    <p class="text-gray-400 text-sm mb-6">
+      Visit a vendor's shop and click "Chat with Seller" to start a conversation.
+    </p>
+    <a href="{% url 'vendors:directory' %}"
+       class="inline-flex items-center gap-2 bg-navy text-white font-semibold
+              px-6 py-3 rounded-2xl transition-colors btn-press text-sm">
+      Browse Shops →
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
