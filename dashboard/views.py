@@ -1,7 +1,8 @@
 
 
+from functools import wraps
+
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
@@ -19,16 +20,17 @@ from vendors.models import Vendor, VendorEarning, AppCommission
 
 # ── ACCESS CONTROL ────────────────────────────────────────
 def admin_required(view_func):
-
-    @login_required
+    @wraps(view_func)
     def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(f'/accounts/login/?next={request.path}')
 
-        if not request.user.is_admin_role():
+        role = getattr(request.user, 'role', '')
+        if role not in ('admin', 'staff') and not request.user.is_superuser:
             messages.error(request, 'Access denied.')
             return redirect('frontend:home')
 
         return view_func(request, *args, **kwargs)
-
     return wrapper
 
 
@@ -139,7 +141,8 @@ def product_add(request):
         base_slug = slugify(name)
         slug, counter = base_slug, 1
         while Product.objects.filter(slug=slug).exists():
-            slug = f"{base_slug}-{counter}"; counter += 1
+            slug = f"{base_slug}-{counter}"
+            counter += 1
 
         product = Product.objects.create(
             name=name, slug=slug, description=description,
@@ -252,7 +255,6 @@ def order_detail(request, pk):
     if request.method == 'POST':
         action = request.POST.get('action')
 
-        # ── Update order status ──────────────────────────
         if action == 'update_status':
             new_status = request.POST.get('status')
             old_status = order.status
@@ -268,13 +270,11 @@ def order_detail(request, pk):
                 order.save()
                 messages.success(request, f'Status updated to {new_status}.')
 
-        # ── Update payment status ────────────────────────
         elif action == 'update_payment':
             order.payment_status = request.POST.get('payment_status')
             order.save()
             messages.success(request, 'Payment status updated.')
 
-        # ── Assign rider ─────────────────────────────────
         elif action == 'assign_rider':
             rider_id = request.POST.get('rider_id')
             zone_id  = request.POST.get('zone_id')
@@ -284,7 +284,6 @@ def order_detail(request, pk):
                 zone  = get_object_or_404(DeliveryZone, pk=zone_id)
 
                 if not delivery:
-                    # Create delivery — rider must accept before it starts
                     new_delivery = Delivery.objects.create(
                         order            = order,
                         rider            = rider,
@@ -294,14 +293,11 @@ def order_detail(request, pk):
                         status           = 'pending_acceptance',
                     )
 
-                    # Create acceptance record so rider can accept/reject
                     try:
                         DeliveryAcceptance = apps.get_model('rider', 'DeliveryAcceptance')
                         if DeliveryAcceptance is not None:
                             DeliveryAcceptance.objects.create(
-                                delivery = new_delivery,
-                                rider    = rider,
-                                status   = 'pending',
+                                delivery=new_delivery, rider=rider, status='pending',
                             )
                     except Exception:
                         pass
@@ -309,20 +305,19 @@ def order_detail(request, pk):
                     order.status = 'confirmed'
                     order.save()
 
-                    # Notify rider immediately
                     try:
                         from rider.views import notify_rider
                         notify_rider(
-                            rider_user = rider.rider,
-                            title      = '🛵 New Delivery Request!',
-                            message    = (
+                            rider_user=rider.rider,
+                            title='🛵 New Delivery Request!',
+                            message=(
                                 f'Order {order.order_ref} needs delivery to '
                                 f'{order.delivery_address}, {order.delivery_city}. '
                                 f'Commission: GHS {new_delivery.rider_commission}. '
                                 f'Please accept or reject in your dashboard.'
                             ),
-                            notif_type = 'new_delivery',
-                            link       = '/rider/',
+                            notif_type='new_delivery',
+                            link='/rider/',
                         )
                     except Exception:
                         pass
@@ -396,31 +391,18 @@ def rider_detail(request, pk):
 
 @admin_required
 def category_list(request):
-
-    categories = Category.objects.annotate(
-        total_products=Count('products')
-    )
+    categories = Category.objects.annotate(total_products=Count('products'))
 
     if request.method == 'POST':
-
         name = request.POST.get('name', '').strip()
-
         if name:
             base_slug = slugify(name)
-            slug = base_slug
-            counter = 1
-
+            slug, counter = base_slug, 1
             while Category.objects.filter(slug=slug).exists():
                 slug = f"{base_slug}-{counter}"
                 counter += 1
-
-            Category.objects.create(
-                name=name,
-                slug=slug
-            )
-
+            Category.objects.create(name=name, slug=slug)
             messages.success(request, f'Category "{name}" added.')
-
         return redirect('dashboard:category_list')
 
     return render(request, 'dashboard/categories/list.html', {
@@ -535,11 +517,11 @@ def commission_overview(request):
     })
 
 
+# ── STAFF ─────────────────────────────────────────────────
 
 @admin_required
 def staff_list(request):
     staff_members = User.objects.filter(role__in=['staff', 'admin'])
-
     return render(request, 'dashboard/staff/list.html', {
         'staff_members': staff_members
     })
@@ -547,7 +529,6 @@ def staff_list(request):
 
 @admin_required
 def create_staff(request):
-
     if request.method == 'POST':
         first_name = request.POST.get('first_name')
         last_name  = request.POST.get('last_name')
@@ -555,15 +536,18 @@ def create_staff(request):
         password   = request.POST.get('password')
         role       = request.POST.get('role')
 
-        user = User.objects.create_user(
-            first_name=first_name,
-            last_name=last_name,
-            phone=phone,
-            password=password,
-            role=role,
-        )
+        try:
+            User.objects.create_user(
+                first_name=first_name,
+                last_name=last_name,
+                phone=phone,
+                password=password,
+                role=role,
+            )
+            messages.success(request, 'Staff account created successfully.')
+        except Exception as e:
+            messages.error(request, f'Could not create staff: {e}')
 
-        messages.success(request, 'Staff account created successfully.')
         return redirect('dashboard:staff_list')
 
     return render(request, 'dashboard/staff/create.html')
@@ -573,50 +557,40 @@ def create_staff(request):
 def edit_staff(request, pk):
     staff = get_object_or_404(User, pk=pk)
 
-    if request.method == "POST":
-        staff.first_name = request.POST.get("first_name")
-        staff.last_name = request.POST.get("last_name")
-        staff.phone = request.POST.get("phone")
-        staff.email = request.POST.get("email")
-        staff.role = request.POST.get("role")
+    if request.method == 'POST':
+        staff.first_name = request.POST.get('first_name')
+        staff.last_name  = request.POST.get('last_name')
+        staff.phone      = request.POST.get('phone')
+        staff.email      = request.POST.get('email') or None
+        staff.role       = request.POST.get('role')
+        staff.is_active  = bool(request.POST.get('is_active'))
 
-        staff.is_active = bool(request.POST.get("is_active"))
-
-        password = request.POST.get("password")
+        password = request.POST.get('password')
         if password:
             staff.set_password(password)
 
-        staff.save()
+        try:
+            staff.save()
+            messages.success(request, 'Staff updated successfully.')
+        except Exception as e:
+            messages.error(request, f'Could not update staff: {e}')
 
-        messages.success(request, "Staff updated successfully.")
-        return redirect("dashboard:staff_list")
+        return redirect('dashboard:staff_list')
 
-    return render(request, "dashboard/staff/edit_staff.html", {
-        "staff": staff
-    })
+    return render(request, 'dashboard/staff/edit_staff.html', {'staff': staff})
 
 
 @admin_required
 def delete_staff(request, pk):
-
     staff = get_object_or_404(User, pk=pk)
-
     if request.method == 'POST':
         staff.delete()
         messages.success(request, 'Staff deleted successfully.')
         return redirect('dashboard:staff_list')
-
-    return render(request, 'dashboard/staff/delete.html', {
-        'staff': staff
-    })
-
-# ── ADD THESE VIEWS to the bottom of your dashboard/views.py ─────────────────
-# (everything above this stays exactly as it is)
-
-from django.db.models import Q
+    return render(request, 'dashboard/staff/delete.html', {'staff': staff})
 
 
-# ── USERS ─────────────────────────────────────────────────────────────────────
+# ── USERS ─────────────────────────────────────────────────
 
 @admin_required
 def user_list(request):
@@ -701,4 +675,5 @@ def user_detail(request, pk):
         'orders':       orders[:10],
         'total_orders': orders.count(),
         'total_spent':  total_spent,
+        'role_choices': User.Role.choices,
     })
