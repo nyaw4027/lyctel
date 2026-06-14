@@ -1,30 +1,35 @@
-"""
-ecommerce/firebase_storage_backend.py
-"""
-
-from storages.backends.gcloud import GoogleCloudStorage
 from django.conf import settings
+from storages.backends.gcloud import GoogleCloudStorage
 
 
 class FirebaseStorage(GoogleCloudStorage):
     """
-    Google Cloud Storage backend for Firebase Storage.
+    Firebase / GCS storage backend
     """
 
-    bucket_name = getattr(settings, "GS_BUCKET_NAME", None)
-    location = "media"
-    file_overwrite = False
-    querystring_auth = False
-    default_acl = None
+    def __init__(self, *args, **kwargs):
+        bucket = getattr(settings, "GS_BUCKET_NAME", None)
+
+        if not bucket:
+            # DO NOT crash entire app
+            raise RuntimeError(
+                "GS_BUCKET_NAME is missing. Check FIREBASE_STORAGE_BUCKET env var."
+            )
+
+        kwargs.setdefault("bucket_name", bucket)
+        kwargs.setdefault("location", "media")
+        kwargs.setdefault("file_overwrite", False)
+        kwargs.setdefault("querystring_auth", False)
+        kwargs.setdefault("default_acl", None)
+
+        super().__init__(*args, **kwargs)
 
     def url(self, name):
-        if not self.bucket_name:
+        bucket = getattr(settings, "GS_BUCKET_NAME", None)
+        if not bucket:
             return ""
 
-        return (
-            f"https://storage.googleapis.com/"
-            f"{self.bucket_name}/media/{name}"
-        )
+        return f"https://storage.googleapis.com/{bucket}/media/{name}"
 
 
 FirebaseMediaStorage = FirebaseStorage

@@ -141,72 +141,50 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 
-# ══════════════════════════════════════════════════════════════
-# STORAGE BACKEND — Firebase / Google Cloud Storage
-#
-# IMPORTANT FIXES vs previous version:
-#   1. GS_DEFAULT_ACL = None  (not 'publicRead')
-#      Firebase Storage uses Uniform Bucket-Level Access which REJECTS
-#      per-object ACLs. Setting 'publicRead' causes uploads to fail or
-#      files to stay private. Public access is granted at the BUCKET level
-#      via IAM: allUsers → Storage Object Viewer.
-#
-#   2. Backend class is FirebaseMediaStorage (not FirebaseStorage)
-#      Match the class name defined in firebase_storage_backend.py.
-#
-#   3. Firebase only used when DEBUG=False AND both env vars are present.
-#      On any failure, falls back to local filesystem — site never crashes.
-# ══════════════════════════════════════════════════════════════
-_gac_json        = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
-_firebase_bucket = os.environ.get('FIREBASE_STORAGE_BUCKET', '')
-_use_firebase    = bool(_gac_json and _firebase_bucket and not DEBUG)
+# ── Storage backends ───────────────────────────────────────
+_gac_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
+_bucket   = os.environ.get('FIREBASE_STORAGE_BUCKET', '')
+
+_use_firebase = bool(_gac_json and _bucket and not DEBUG)
 
 if _use_firebase:
-    try:
-        import json
-        import tempfile
+    import json, tempfile
 
-        # Validate JSON before writing
-        json.loads(_gac_json)
+    json.loads(_gac_json)
 
-        _tmp = tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False, prefix='gcp_creds_'
-        )
-        _tmp.write(_gac_json)
-        _tmp.close()
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = _tmp.name
+    tmp = tempfile.NamedTemporaryFile(
+        mode='w', suffix='.json', delete=False
+    )
+    tmp.write(_gac_json)
+    tmp.close()
 
-        GS_BUCKET_NAME      = _firebase_bucket
-        GS_FILE_OVERWRITE   = False
-        GS_QUERYSTRING_AUTH = False
-        # None = do NOT set per-object ACLs — required for Uniform Bucket-Level Access
-        GS_DEFAULT_ACL      = None
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = tmp.name
 
-        STORAGES = {
-            'staticfiles': {
-                'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
-            },
-            'default': {
-                # Class name must match firebase_storage_backend.py exactly
-                'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseMediaStorage',
-            },
-        }
-        MEDIA_URL = f'https://storage.googleapis.com/{_firebase_bucket}/media/'
+    # IMPORTANT: ONLY THIS NAME IS USED BY django-storages
+    GS_BUCKET_NAME = _bucket
 
-    except Exception as e:
-        print(f'⚠️  Firebase Storage disabled — {e}')
-        _use_firebase = False
-
-if not _use_firebase:
     STORAGES = {
-        'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        "default": {
+            "BACKEND": "ecommerce.firebase_storage_backend.FirebaseStorage",
         },
-        'default': {
-            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
-    MEDIA_URL = '/media/'
+
+    MEDIA_URL = f"https://storage.googleapis.com/{_bucket}/media/"
+
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
+
+    MEDIA_URL = "/media/"
 
 # ── Auth redirects ─────────────────────────────────────────
 LOGIN_URL           = '/accounts/login/'
