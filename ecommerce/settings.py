@@ -75,7 +75,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ecommerce.wsgi.application'
 
-# ── Database ───────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════
+# DATABASE
+# Priority order:
+#   1. DATABASE_PRIVATE_URL or DATABASE_URL  (Railway auto-injects these)
+#   2. Individual vars: NAME, USER, PASSWORD, HOST, DBPORT
+#      NOTE: We read DBPORT (not PORT) to avoid colliding with Railway's
+#      web-server PORT variable. Rename PORT→DBPORT in Railway Variables.
+#   3. SQLite (local dev only — never used on Railway)
+# ══════════════════════════════════════════════════════════════
 _db_url = (
     os.environ.get('DATABASE_PRIVATE_URL') or
     os.environ.get('DATABASE_URL')
@@ -89,15 +97,16 @@ if _db_url:
             conn_health_checks=True,
         )
     }
-elif config('DB_HOST', default='') or config('HOST', default=''):
+elif os.environ.get('HOST') or os.environ.get('DB_HOST'):
     DATABASES = {
         'default': {
             'ENGINE':       'django.db.backends.postgresql',
-            'NAME':         config('DB_NAME',  default=config('NAME',     default='railway')),
-            'USER':         config('DB_USER',  default=config('USER',     default='postgres')),
-            'PASSWORD':     config('DB_PASSWORD', default=config('PASSWORD', default='')),
-            'HOST':         config('DB_HOST',  default=config('HOST',     default='')),
-            'PORT':         config('DB_PORT',  default=config('PORT',     default='5432')),
+            'NAME':         os.environ.get('NAME',     os.environ.get('DB_NAME',     'railway')),
+            'USER':         os.environ.get('USER',     os.environ.get('DB_USER',     'postgres')),
+            'PASSWORD':     os.environ.get('PASSWORD', os.environ.get('DB_PASSWORD', '')),
+            'HOST':         os.environ.get('HOST',     os.environ.get('DB_HOST',     '')),
+            # ↓ DBPORT avoids clash with Railway's web-server PORT variable
+            'PORT':         os.environ.get('DBPORT',   os.environ.get('DB_PORT',     '5432')),
             'CONN_MAX_AGE': 600,
         }
     }
@@ -129,48 +138,66 @@ STATIC_ROOT      = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # ── Media files ────────────────────────────────────────────
-# MEDIA_ROOT: Railway Volume mounts at /app/media when set via env var.
-# Locally uses BASE_DIR/media. Both work with the filesystem backend.
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 
-# ── Storage backend ────────────────────────────────────────
-# Uses Firebase (Google Cloud Storage) when credentials + bucket are set.
-# Falls back to local filesystem (+ Railway Volume) when not configured.
+# ══════════════════════════════════════════════════════════════
+# STORAGE BACKEND — Firebase / Google Cloud Storage
+#
+# IMPORTANT FIXES vs previous version:
+#   1. GS_DEFAULT_ACL = None  (not 'publicRead')
+#      Firebase Storage uses Uniform Bucket-Level Access which REJECTS
+#      per-object ACLs. Setting 'publicRead' causes uploads to fail or
+#      files to stay private. Public access is granted at the BUCKET level
+#      via IAM: allUsers → Storage Object Viewer.
+#
+#   2. Backend class is FirebaseMediaStorage (not FirebaseStorage)
+#      Match the class name defined in firebase_storage_backend.py.
+#
+#   3. Firebase only used when DEBUG=False AND both env vars are present.
+#      On any failure, falls back to local filesystem — site never crashes.
+# ══════════════════════════════════════════════════════════════
 _gac_json        = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '')
-_firebase_bucket = config('FIREBASE_STORAGE_BUCKET', default='')
+_firebase_bucket = os.environ.get('FIREBASE_STORAGE_BUCKET', '')
 _use_firebase    = bool(_gac_json and _firebase_bucket and not DEBUG)
 
 if _use_firebase:
-    import tempfile
-    _tmp = tempfile.NamedTemporaryFile(
-        mode='w', suffix='.json', delete=False, prefix='gcp_creds_'
-    )
-    _tmp.write(_gac_json)
-    _tmp.close()
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = _tmp.name
+    try:
+        import json
+        import tempfile
 
-    FIREBASE_STORAGE_BUCKET = _firebase_bucket
-    GS_BUCKET_NAME          = _firebase_bucket
-    GS_DEFAULT_ACL          = 'publicRead'
-    GS_FILE_OVERWRITE       = False
-    GS_QUERYSTRING_AUTH     = False
-    GS_CUSTOM_ENDPOINT      = f'https://storage.googleapis.com/{_firebase_bucket}'
-    GS_OBJECT_PARAMETERS    = {'cache_control': 'public, max-age=86400'}
+        # Validate JSON before writing
+        json.loads(_gac_json)
 
-    STORAGES = {
-        'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
-        },
-        'default': {
-            'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseStorage',
-        },
-    }
-    # Override MEDIA_URL to point to Firebase public URL
-    MEDIA_URL = f'https://storage.googleapis.com/{_firebase_bucket}/media/'
+        _tmp = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.json', delete=False, prefix='gcp_creds_'
+        )
+        _tmp.write(_gac_json)
+        _tmp.close()
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = _tmp.name
 
-else:
-    # Local filesystem or Railway Volume
+        GS_BUCKET_NAME      = _firebase_bucket
+        GS_FILE_OVERWRITE   = False
+        GS_QUERYSTRING_AUTH = False
+        # None = do NOT set per-object ACLs — required for Uniform Bucket-Level Access
+        GS_DEFAULT_ACL      = None
+
+        STORAGES = {
+            'staticfiles': {
+                'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+            },
+            'default': {
+                # Class name must match firebase_storage_backend.py exactly
+                'BACKEND': 'ecommerce.firebase_storage_backend.FirebaseMediaStorage',
+            },
+        }
+        MEDIA_URL = f'https://storage.googleapis.com/{_firebase_bucket}/media/'
+
+    except Exception as e:
+        print(f'⚠️  Firebase Storage disabled — {e}')
+        _use_firebase = False
+
+if not _use_firebase:
     STORAGES = {
         'staticfiles': {
             'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
@@ -179,17 +206,15 @@ else:
             'BACKEND': 'django.core.files.storage.FileSystemStorage',
         },
     }
+    MEDIA_URL = '/media/'
 
 # ── Auth redirects ─────────────────────────────────────────
 LOGIN_URL           = '/accounts/login/'
 LOGIN_REDIRECT_URL  = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-# ── Default primary key ────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# ── ASGI ───────────────────────────────────────────────────
-ASGI_APPLICATION = 'ecommerce.asgi.application'
+ASGI_APPLICATION   = 'ecommerce.asgi.application'
 
 # ── Cache ──────────────────────────────────────────────────
 CACHES = {
@@ -200,19 +225,15 @@ CACHES = {
 }
 
 # ── Payment gateways ───────────────────────────────────────
-FLW_PUBLIC_KEY      = config('FLW_PUBLIC_KEY',      default='FLWPUBK_TEST-xxxxx')
-FLW_SECRET_KEY      = config('FLW_SECRET_KEY',      default='FLWSECK_TEST-xxxxx')
-FLW_WEBHOOK_SECRET  = config('FLW_WEBHOOK_SECRET',  default='my-secret-string')
+FLW_PUBLIC_KEY      = config('FLW_PUBLIC_KEY',      default='')
+FLW_SECRET_KEY      = config('FLW_SECRET_KEY',      default='')
+FLW_WEBHOOK_SECRET  = config('FLW_WEBHOOK_SECRET',  default='')
 PAYSTACK_PUBLIC_KEY = config('PAYSTACK_PUBLIC_KEY', default='')
 PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
 
-# ── Maps ───────────────────────────────────────────────────
 GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
 
-# ── CSRF ───────────────────────────────────────────────────
-CSRF_TRUSTED_ORIGINS = [
-    'https://lynctel.up.railway.app',
-]
+CSRF_TRUSTED_ORIGINS = ['https://lynctel.up.railway.app']
 
 # ── Security headers (production only) ────────────────────
 if not DEBUG:
@@ -239,30 +260,11 @@ LOGGING = {
             'formatter': 'verbose',
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level':    'WARNING',
-    },
+    'root': {'handlers': ['console'], 'level': 'WARNING'},
     'loggers': {
-        'django': {
-            'handlers':  ['console'],
-            'level':     'ERROR',
-            'propagate': False,
-        },
-        'django.request': {
-            'handlers':  ['console'],
-            'level':     'ERROR',
-            'propagate': False,
-        },
-        'accounts': {
-            'handlers':  ['console'],
-            'level':     'INFO',
-            'propagate': False,
-        },
-        'ecommerce': {
-            'handlers':  ['console'],
-            'level':     'INFO',
-            'propagate': False,
-        },
+        'django':         {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+        'django.request': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+        'accounts':       {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
+        'ecommerce':      {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
     },
 }
