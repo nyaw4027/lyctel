@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Restaurant Dashboard</h2>
+
+    <div class="row">
+
+        <div class="col-md-3">
+            <a href="{% url 'food:restaurant_add_item' %}"
+               class="btn btn-primary w-100">
+                Add Menu Item
+            </a>
+        </div>
+
+        <div class="col-md-3">
+            <a href="{% url 'food:restaurant_add_category' %}"
+               class="btn btn-success w-100">
+                Add Category
+            </a>
+        </div>
+
+        <div class="col-md-3">
+            <a href="{% url 'food:restaurant_settings' %}"
+               class="btn btn-secondary w-100">
+                Settings
+            </a>
+        </div>
+
+    </div>
+
+    <hr>
+
+    <h4>Recent Orders</h4>
+
+    {% for order in orders %}
+        <div class="card p-3 mb-2">
+            {{ order.reference }}
+        </div>
+    {% empty %}
+        <p>No orders yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}
