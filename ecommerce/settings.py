@@ -27,7 +27,7 @@ AUTH_USER_MODEL = "ecommerce.User"
 # APPS
 # ─────────────────────────────
 INSTALLED_APPS = [
-    "daphne",
+    
     "channels",
 
     "django.contrib.admin",
