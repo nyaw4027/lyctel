@@ -1,3 +1,4 @@
+at > /mnt/user-data/outputs/base.html << 'ENDOFFILE'
 <!DOCTYPE html>
 {% load static %}
 <html lang="en">
@@ -12,7 +13,7 @@
   <meta name="author" content="Lynctel"/>
   <meta name="robots" content="index, follow"/>
 
-  <!-- ── Open Graph (Facebook / WhatsApp preview) ───────── -->
+  <!-- ── Open Graph ─────────────────────────────────────── -->
   <meta property="og:type"        content="website"/>
   <meta property="og:url"         content="https://lynctel.up.railway.app/"/>
   <meta property="og:title"       content="Lynctel — Quality Products Delivered"/>
@@ -26,37 +27,24 @@
   <meta name="twitter:description" content="Shop electronics, gadgets, food and more. Fast delivery across Ghana."/>
   <meta name="twitter:image"       content="{% static 'icons/icon-512x512.png' %}"/>
 
-  <!-- ── PWA: Web App Manifest ──────────────────────────── -->
+  <!-- ── PWA ────────────────────────────────────────────── -->
   <link rel="manifest" href="/manifest.json"/>
-
-  <!-- ── PWA: Theme colour ──────────────────────────────── -->
   <meta name="theme-color" content="#0F1B2D"/>
   <meta name="mobile-web-app-capable" content="yes"/>
-
-  <!-- ── PWA: iOS / Safari ──────────────────────────────── -->
   <meta name="apple-mobile-web-app-capable"          content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title"            content="Lynctel"/>
-
-  <!-- iOS home screen icons (Safari reads these, not the manifest) -->
   <link rel="apple-touch-icon" sizes="152x152" href="{% static 'icons/icon-152x152.png' %}"/>
   <link rel="apple-touch-icon" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}"/>
   <link rel="apple-touch-icon" sizes="512x512" href="{% static 'icons/icon-512x512.png' %}"/>
-
-  <!-- iOS splash screens (optional but improves launch experience) -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <link rel="apple-touch-startup-image" href="{% static 'icons/icon-512x512.png' %}"/>
-
-  <!-- ── Favicon ────────────────────────────────────────── -->
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-96x96.png' %}"/>
-  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/icon-72x72.png' %}"/>
-  <link rel="shortcut icon"         href="{% static 'icons/icon-96x96.png' %}"/>
+  <link rel="shortcut icon" href="{% static 'icons/icon-96x96.png' %}"/>
 
   <!-- ── Fonts ──────────────────────────────────────────── -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
-        rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
 
   <!-- ── Tailwind ───────────────────────────────────────── -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -78,13 +66,11 @@
     }
   </script>
 
-  <!-- ── Global styles ──────────────────────────────────── -->
   <style>
     * { font-family: 'DM Sans', sans-serif; }
     h1, h2, h3, .font-display { font-family: 'Syne', sans-serif; }
     body { background-color: #FAFAF7; }
 
-    /* Animations */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(16px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -94,10 +80,7 @@
     .fade-up-2 { animation-delay: .12s; opacity: 0; }
     .fade-up-3 { animation-delay: .20s; opacity: 0; }
 
-    @keyframes pop {
-      0%, 100% { transform: scale(1); }
-      50%       { transform: scale(1.45); }
-    }
+    @keyframes pop { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.45); } }
     .badge-pop { animation: pop .3s ease; }
 
     @keyframes shimmer {
@@ -112,48 +95,58 @@
       -webkit-text-fill-color: transparent;
     }
 
-    /* Card hover lift */
-    .card-hover { transition: transform .25s ease, box-shadow .25s ease; }
-    .card-hover:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 16px 40px rgba(15, 27, 45, .10);
+    /* App name shimmer in navbar */
+    @keyframes brandShimmer {
+      0%   { background-position: -200% center; }
+      100% { background-position:  200% center; }
+    }
+    .brand-name {
+      background: linear-gradient(90deg, #0F1B2D 20%, #F5A623 50%, #0F1B2D 80%);
+      background-size: 200% auto;
+      animation: brandShimmer 4s linear infinite;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
-    /* Navbar */
-    .nav-scrolled { box-shadow: 0 2px 20px rgba(15, 27, 45, .08); }
+    /* Subtle pulse on the brand dot */
+    @keyframes dotPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.4); opacity: .7; }
+    }
+    .brand-dot { animation: dotPulse 2s ease-in-out infinite; }
 
-    /* Button press */
+    .card-hover { transition: transform .25s ease, box-shadow .25s ease; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(15,27,45,.10); }
+
+    .nav-scrolled { box-shadow: 0 2px 20px rgba(15,27,45,.08); }
     .btn-press:active { transform: scale(.97); }
-
-    /* Smooth scroll */
     html { scroll-behavior: smooth; }
 
-    /* Cart drawer */
     #cart-drawer  { transform: translateX(100%); }
     #cart-overlay { opacity: 0; visibility: hidden; }
     #cart-drawer.open  { transform: translateX(0); }
     #cart-overlay.open { opacity: 1; visibility: visible; }
 
-    /* Input gold focus ring */
     input:focus, select:focus, textarea:focus {
       outline: none;
-      box-shadow: 0 0 0 3px rgba(245, 166, 35, .2);
+      box-shadow: 0 0 0 3px rgba(245,166,35,.2);
       border-color: #F5A623 !important;
     }
 
-    /* PWA install banner */
+    /* ── Android PWA install banner ──────────────────────── */
     #pwa-banner {
       display: none;
       position: fixed;
-      bottom: 16px;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 9999;
       background: #0F1B2D;
       color: white;
-      padding: 12px 20px;
-      border-radius: 16px;
-      box-shadow: 0 8px 32px rgba(15, 27, 45, .3);
+      padding: 14px 18px;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(15,27,45,.4);
       align-items: center;
       gap: 12px;
       max-width: calc(100vw - 32px);
@@ -162,7 +155,34 @@
     }
     #pwa-banner.show { display: flex; }
 
-    /* Role badge colours — used in navbar dropdown */
+    /* ── iOS install instruction sheet ───────────────────── */
+    #ios-install-sheet {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: white;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -8px 40px rgba(15,27,45,.15);
+      padding: 24px 24px 40px;
+      animation: slideUp .35s ease forwards;
+    }
+    #ios-install-sheet.show { display: block; }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    #ios-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 9998;
+    }
+    #ios-overlay.show { display: block; }
+
     .role-admin    { background: #fee2e2; color: #b91c1c; }
     .role-staff    { background: #dbeafe; color: #1d4ed8; }
     .role-vendor   { background: #ede9fe; color: #7c3aed; }
@@ -178,7 +198,7 @@
   <!-- ── NAVBAR ──────────────────────────────────────── -->
   <header id="navbar"
           class="bg-white sticky top-0 z-40 border-b border-gray-100 transition-shadow duration-300">
-    <nav class="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center gap-4">
+    <nav class="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center gap-3">
 
       <!-- Logo -->
       <a href="{% url 'frontend:home' %}"
@@ -187,7 +207,16 @@
              class="h-9 w-auto object-contain group-hover:scale-105 transition-transform duration-200"/>
       </a>
 
-      <!-- Search -->
+      <!-- ── APP NAME (centre of navbar) ─────────────── -->
+      <a href="{% url 'frontend:home' %}"
+         class="flex items-center gap-1.5 flex-shrink-0 select-none">
+        <span class="brand-name font-display font-800 text-lg md:text-xl tracking-tight leading-none">
+          Lynctel
+        </span>
+        <span class="brand-dot w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0 mt-0.5"></span>
+      </a>
+
+      <!-- Search (pushes to centre on desktop) -->
       <form method="GET" action="{% url 'products:list' %}"
             class="flex-1 max-w-lg hidden md:flex items-center">
         <div class="relative w-full">
@@ -218,7 +247,6 @@
           🍔 Food
         </a>
 
-        <!-- Vendor routing -->
         {% if user.is_authenticated %}
           {% if user.role == 'vendor' %}
             <a href="{% url 'vendors:dashboard' %}"
@@ -242,7 +270,6 @@
         {% endif %}
 
         {% if user.is_authenticated %}
-        <!-- User dropdown -->
         <div class="relative group ml-1">
           <button class="flex items-center gap-2 text-sm font-medium text-gray-700
                          hover:text-navy px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
@@ -260,13 +287,11 @@
             </span>
           </button>
 
-          <!-- Dropdown -->
           <div class="absolute right-0 top-full mt-1 w-60 bg-white rounded-2xl shadow-xl
                       border border-gray-100 py-2 opacity-0 invisible z-50
                       group-hover:opacity-100 group-hover:visible
                       transition-all duration-150 translate-y-1 group-hover:translate-y-0">
 
-            <!-- User info -->
             <div class="px-4 py-3 border-b border-gray-50">
               <p class="font-semibold text-navy text-sm truncate">
                 {{ user.get_full_name|default:user.phone }}
@@ -277,7 +302,6 @@
               </span>
             </div>
 
-            <!-- Common links -->
             <a href="{% url 'accounts:profile' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
               👤 My Profile
@@ -287,7 +311,6 @@
               📦 My Orders
             </a>
 
-            <!-- Role-based dashboard links -->
             {% if user.role == 'admin' %}
             <a href="{% url 'dashboard:home' %}"
                class="flex items-center gap-2.5 px-4 py-2.5 mx-2 my-1 text-sm font-semibold
@@ -327,6 +350,13 @@
             </a>
             {% endif %}
 
+            <!-- Install app link -->
+            <button onclick="showInstallPrompt()"
+                    class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700
+                           hover:bg-gray-50 w-full text-left">
+              📲 Install App
+            </button>
+
             <hr class="my-1 border-gray-100"/>
 
             <a href="{% url 'accounts:logout' %}"
@@ -350,7 +380,7 @@
         </a>
         {% endif %}
 
-        <!-- Cart button -->
+        <!-- Cart -->
         <button onclick="openCart()"
                 class="relative w-10 h-10 flex items-center justify-center rounded-xl
                        hover:bg-gray-50 transition-colors ml-1">
@@ -415,9 +445,10 @@
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
 
         <div class="lg:col-span-4">
-          <div class="mb-5">
+          <div class="mb-5 flex items-center gap-2">
             <img src="{% static 'logo.png' %}" alt="Lynctel"
-                 class="h-12 w-auto object-contain brightness-0 invert"/>
+                 class="h-10 w-auto object-contain brightness-0 invert"/>
+            <span class="font-display font-800 text-xl text-white tracking-tight">Lynctel</span>
           </div>
           <p class="text-gray-400 leading-relaxed text-sm max-w-md mb-6">
             Lynctel connects customers, vendors, and riders across Ghana through
@@ -471,6 +502,12 @@
             <li><a href="{% url 'accounts:login' %}" class="hover:text-gold transition-colors">Sign In</a></li>
             <li><a href="{% url 'accounts:signup' %}" class="hover:text-gold transition-colors">Create Account</a></li>
             {% endif %}
+            <li>
+              <button onclick="showInstallPrompt()"
+                      class="hover:text-gold transition-colors text-left">
+                📲 Install App
+              </button>
+            </li>
           </ul>
         </div>
 
@@ -526,7 +563,6 @@
   <div id="cart-drawer"
        class="fixed top-0 right-0 h-full w-full max-w-sm bg-white z-50
               shadow-2xl flex flex-col transition-transform duration-300">
-
     <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
       <div class="flex items-center gap-2">
         <svg class="w-5 h-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -535,29 +571,20 @@
         </svg>
         <h2 class="font-display font-700 text-navy text-lg">Your Cart</h2>
         <span id="drawer-count"
-              class="bg-gold text-navy text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center">
-          0
-        </span>
+              class="bg-gold text-navy text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center">0</span>
       </div>
       <button onclick="closeCart()"
               class="w-8 h-8 flex items-center justify-center rounded-xl
-                     hover:bg-gray-100 transition-colors text-gray-400 text-xl leading-none">
-        ✕
-      </button>
+                     hover:bg-gray-100 transition-colors text-gray-400 text-xl leading-none">✕</button>
     </div>
-
     <div id="drawer-items" class="flex-1 overflow-y-auto px-5 py-4 space-y-3"></div>
-
     <div id="drawer-empty"
          class="hidden flex-1 flex flex-col items-center justify-center text-center px-5 py-10">
       <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center text-4xl mb-4">🛒</div>
       <p class="font-display font-700 text-navy mb-1">Your cart is empty</p>
       <p class="text-gray-400 text-sm mb-4">Add items to get started</p>
-      <button onclick="closeCart()" class="text-sm text-gold-dark font-semibold hover:underline">
-        Continue Shopping →
-      </button>
+      <button onclick="closeCart()" class="text-sm text-gold-dark font-semibold hover:underline">Continue Shopping →</button>
     </div>
-
     <div id="drawer-footer" class="border-t border-gray-100 px-5 py-4 space-y-3 flex-shrink-0">
       <div class="flex items-center justify-between">
         <span class="text-gray-500 text-sm font-medium">Subtotal</span>
@@ -570,28 +597,102 @@
         Proceed to Checkout →
       </a>
       <a href="{% url 'cart:detail' %}"
-         class="block w-full text-center text-sm text-gray-500 hover:text-navy
-                font-medium transition-colors py-1">
+         class="block w-full text-center text-sm text-gray-500 hover:text-navy font-medium transition-colors py-1">
         View Full Cart
       </a>
     </div>
   </div>
 
-  <!-- ── PWA INSTALL BANNER ──────────────────────────── -->
+  <!-- ── ANDROID PWA INSTALL BANNER ─────────────────── -->
   <div id="pwa-banner">
-    <img src="{% static 'icons/icon-72x72.png' %}" alt="" class="w-8 h-8 rounded-xl flex-shrink-0"/>
+    <img src="{% static 'icons/icon-72x72.png' %}" alt="" class="w-10 h-10 rounded-xl flex-shrink-0"/>
     <div class="min-w-0">
       <p class="font-semibold text-sm leading-tight">Install Lynctel</p>
-      <p class="text-gray-400 text-xs">Add to home screen for faster access</p>
+      <p class="text-gray-400 text-xs mt-0.5">Add to home screen for faster access</p>
     </div>
     <button id="pwa-install-btn"
-            class="bg-gold text-navy text-xs font-bold px-4 py-2 rounded-lg
-                   hover:bg-yellow-400 transition-colors flex-shrink-0">
+            class="bg-gold text-navy text-xs font-bold px-4 py-2 rounded-xl
+                   hover:bg-yellow-400 transition-colors flex-shrink-0 whitespace-nowrap">
       Install
     </button>
     <button onclick="dismissPWA()"
-            class="text-gray-400 hover:text-white text-lg leading-none flex-shrink-0 ml-1">
-      ✕
+            class="text-gray-400 hover:text-white text-xl leading-none flex-shrink-0 ml-1 w-6 h-6
+                   flex items-center justify-center">✕</button>
+  </div>
+
+  <!-- ── iOS INSTALL OVERLAY ─────────────────────────── -->
+  <div id="ios-overlay" onclick="closeIOSSheet()"></div>
+
+  <div id="ios-install-sheet">
+    <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center gap-3">
+        <img src="{% static 'icons/icon-96x96.png' %}" class="w-12 h-12 rounded-2xl shadow"/>
+        <div>
+          <p class="font-display font-700 text-navy text-base">Install Lynctel</p>
+          <p class="text-xs text-gray-400">lynctel.up.railway.app</p>
+        </div>
+      </div>
+      <button onclick="closeIOSSheet()"
+              class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center
+                     text-gray-500 hover:bg-gray-200 transition-colors text-lg leading-none">✕</button>
+    </div>
+
+    <p class="text-sm text-gray-600 mb-5 leading-relaxed">
+      Install Lynctel on your iPhone for a faster, full-screen experience — no App Store needed.
+    </p>
+
+    <!-- Step by step -->
+    <div class="space-y-4">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="font-semibold text-navy text-sm">Step 1 — Tap the Share button</p>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Tap the <strong>Share</strong> icon
+            <span class="inline-block bg-gray-100 px-1.5 py-0.5 rounded text-xs mx-0.5">⬆</span>
+            at the bottom of Safari's browser bar.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 bg-green-50 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+          </svg>
+        </div>
+        <div>
+          <p class="font-semibold text-navy text-sm">Step 2 — Add to Home Screen</p>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Scroll down in the Share menu and tap
+            <strong>"Add to Home Screen"</strong>.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 bg-gold-light rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+          <span class="text-base">✅</span>
+        </div>
+        <div>
+          <p class="font-semibold text-navy text-sm">Step 3 — Tap Add</p>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Tap <strong>"Add"</strong> in the top-right corner. Lynctel will appear on your home screen like a native app.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="closeIOSSheet()"
+            class="mt-6 w-full bg-navy text-white font-semibold py-3.5 rounded-2xl
+                   transition-colors hover:bg-navy-700 text-sm">
+      Got it!
     </button>
   </div>
 
@@ -601,26 +702,23 @@
     const IS_AUTHENTICATED = {{ user.is_authenticated|yesno:"true,false" }};
     const LOGIN_URL        = "{% url 'accounts:login' %}";
 
+    // ── Cart drawer ────────────────────────────────────
     function openCart() {
       document.getElementById('cart-drawer').classList.add('open');
       document.getElementById('cart-overlay').classList.add('open');
       document.body.style.overflow = 'hidden';
       refreshDrawer();
     }
-
     function closeCart() {
       document.getElementById('cart-drawer').classList.remove('open');
       document.getElementById('cart-overlay').classList.remove('open');
       document.body.style.overflow = '';
     }
-
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCart(); });
 
     function refreshDrawer() {
       fetch('/cart/data/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(r => r.json())
-        .then(renderDrawer)
-        .catch(console.error);
+        .then(r => r.json()).then(renderDrawer).catch(console.error);
     }
 
     function renderDrawer(data) {
@@ -629,30 +727,21 @@
       const footerEl = document.getElementById('drawer-footer');
       const countEl  = document.getElementById('drawer-count');
       const subEl    = document.getElementById('drawer-subtotal');
-
-      const count = data.count || 0;
+      const count    = data.count || 0;
       countEl.textContent = count;
       subEl.textContent   = 'GHS ' + parseFloat(data.total || 0).toFixed(2);
-
       if (!data.items || data.items.length === 0) {
-        itemsEl.innerHTML = '';
-        itemsEl.classList.add('hidden');
-        emptyEl.classList.remove('hidden');
-        footerEl.classList.add('hidden');
+        itemsEl.innerHTML = ''; itemsEl.classList.add('hidden');
+        emptyEl.classList.remove('hidden'); footerEl.classList.add('hidden');
         return;
       }
-
       itemsEl.classList.remove('hidden');
       emptyEl.classList.add('hidden');
       footerEl.classList.remove('hidden');
-
       itemsEl.innerHTML = data.items.map(item => `
-        <div id="ditem-${item.id}"
-             class="flex items-start gap-3 bg-gray-50 rounded-2xl p-3 transition-opacity duration-300">
+        <div id="ditem-${item.id}" class="flex items-start gap-3 bg-gray-50 rounded-2xl p-3 transition-opacity duration-300">
           <a href="/products/${item.slug}/" class="flex-shrink-0">
-            ${item.image
-              ? `<img src="${item.image}" alt="${item.name}" class="w-16 h-16 rounded-xl object-cover bg-gray-200"/>`
-              : `<div class="w-16 h-16 rounded-xl bg-gray-200 flex items-center justify-center text-2xl">📦</div>`}
+            ${item.image ? `<img src="${item.image}" alt="${item.name}" class="w-16 h-16 rounded-xl object-cover bg-gray-200"/>` : `<div class="w-16 h-16 rounded-xl bg-gray-200 flex items-center justify-center text-2xl">📦</div>`}
           </a>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold text-navy line-clamp-2 leading-snug">${item.name}</p>
@@ -661,103 +750,68 @@
           </div>
           <div class="flex flex-col items-end gap-2 flex-shrink-0">
             <div class="flex items-center gap-1.5">
-              <button onclick="drawerQty(${item.id}, ${item.quantity}, -1)"
-                      class="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center
-                             justify-center text-navy font-bold text-sm
-                             hover:bg-navy hover:text-white hover:border-navy transition-colors">−</button>
+              <button onclick="drawerQty(${item.id},${item.quantity},-1)" class="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-navy font-bold text-sm hover:bg-navy hover:text-white hover:border-navy transition-colors">−</button>
               <span class="w-6 text-center text-sm font-semibold text-navy">${item.quantity}</span>
-              <button onclick="drawerQty(${item.id}, ${item.quantity}, 1)"
-                      class="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center
-                             justify-center text-navy font-bold text-sm
-                             hover:bg-navy hover:text-white hover:border-navy transition-colors">+</button>
+              <button onclick="drawerQty(${item.id},${item.quantity},1)"  class="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-navy font-bold text-sm hover:bg-navy hover:text-white hover:border-navy transition-colors">+</button>
             </div>
-            <button onclick="drawerRemove(${item.id})"
-                    class="text-xs text-red-400 hover:text-red-600 transition-colors font-medium">
-              Remove
-            </button>
+            <button onclick="drawerRemove(${item.id})" class="text-xs text-red-400 hover:text-red-600 transition-colors font-medium">Remove</button>
           </div>
-        </div>
-      `).join('');
+        </div>`).join('');
     }
 
     function addToCart(productId, btn) {
-      if (!IS_AUTHENTICATED) {
-        window.location.href = LOGIN_URL + '?next=' + encodeURIComponent(window.location.pathname);
-        return;
-      }
+      if (!IS_AUTHENTICATED) { window.location.href = LOGIN_URL + '?next=' + encodeURIComponent(window.location.pathname); return; }
       const orig = btn ? btn.innerHTML : '';
       if (btn) { btn.innerHTML = '...'; btn.disabled = true; }
       const fd = new FormData();
-      fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
-      fd.append('quantity', 1);
-      fetch(`/cart/add/${productId}/`, {
-        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd,
-      })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          updateCartBadge(d.cart_count);
-          if (btn) {
-            btn.innerHTML = '✓ Added';
-            btn.classList.add('bg-green-500'); btn.classList.remove('bg-navy');
-            setTimeout(() => {
-              btn.innerHTML = orig; btn.disabled = false;
-              btn.classList.remove('bg-green-500'); btn.classList.add('bg-navy');
-            }, 1200);
+      fd.append('csrfmiddlewaretoken', CSRF_TOKEN); fd.append('quantity', 1);
+      fetch(`/cart/add/${productId}/`, { method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd })
+        .then(r => r.json()).then(d => {
+          if (d.success) {
+            updateCartBadge(d.cart_count);
+            if (btn) { btn.innerHTML='✓ Added'; btn.classList.add('bg-green-500'); btn.classList.remove('bg-navy');
+              setTimeout(() => { btn.innerHTML=orig; btn.disabled=false; btn.classList.remove('bg-green-500'); btn.classList.add('bg-navy'); }, 1200); }
+            setTimeout(openCart, 350);
           }
-          setTimeout(openCart, 350);
-        }
-      })
-      .catch(() => { if (btn) { btn.innerHTML = orig; btn.disabled = false; } });
+        }).catch(() => { if (btn) { btn.innerHTML=orig; btn.disabled=false; } });
     }
 
     function drawerQty(itemId, current, delta) {
       const newQty = Math.max(1, current + delta);
-      const fd = new FormData();
-      fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
-      fd.append('quantity', newQty);
-      fetch(`/cart/update/${itemId}/`, {
-        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd,
-      })
-      .then(r => r.json())
-      .then(d => { if (d.success) { updateCartBadge(d.cart_count); refreshDrawer(); } });
+      const fd = new FormData(); fd.append('csrfmiddlewaretoken', CSRF_TOKEN); fd.append('quantity', newQty);
+      fetch(`/cart/update/${itemId}/`, { method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd })
+        .then(r => r.json()).then(d => { if (d.success) { updateCartBadge(d.cart_count); refreshDrawer(); } });
     }
 
     function drawerRemove(itemId) {
-      const fd = new FormData();
-      fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
-      fetch(`/cart/remove/${itemId}/`, {
-        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd,
-      })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          updateCartBadge(d.cart_count);
-          const row = document.getElementById('ditem-' + itemId);
-          if (row) { row.style.opacity = '0'; setTimeout(refreshDrawer, 300); }
-        }
-      });
+      const fd = new FormData(); fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+      fetch(`/cart/remove/${itemId}/`, { method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd })
+        .then(r => r.json()).then(d => {
+          if (d.success) { updateCartBadge(d.cart_count);
+            const row = document.getElementById('ditem-'+itemId);
+            if (row) { row.style.opacity='0'; setTimeout(refreshDrawer, 300); } }
+        });
     }
 
     function updateCartBadge(count) {
       const badge = document.getElementById('cart-count');
       if (!badge) return;
       badge.textContent = count;
-      if (count > 0) {
-        badge.classList.remove('hidden');
-        badge.classList.add('badge-pop');
-        setTimeout(() => badge.classList.remove('badge-pop'), 300);
-      } else {
-        badge.classList.add('hidden');
-      }
+      if (count > 0) { badge.classList.remove('hidden'); badge.classList.add('badge-pop'); setTimeout(() => badge.classList.remove('badge-pop'), 300); }
+      else badge.classList.add('hidden');
     }
 
+    // ── PWA Install — Android ──────────────────────────
     let _deferredPrompt = null;
+    const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const _isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                       || window.navigator.standalone === true;
+
     window.addEventListener('beforeinstallprompt', e => {
       e.preventDefault();
       _deferredPrompt = e;
-      if (!localStorage.getItem('pwa-dismissed')) {
-        setTimeout(() => document.getElementById('pwa-banner').classList.add('show'), 3000);
+      if (!localStorage.getItem('pwa-dismissed') && !_isStandalone) {
+        setTimeout(() => document.getElementById('pwa-banner').classList.add('show'), 4000);
       }
     });
 
@@ -775,10 +829,46 @@
       localStorage.setItem('pwa-dismissed', '1');
     }
 
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    // ── PWA Install — iOS ──────────────────────────────
+    function showInstallPrompt() {
+      if (_isStandalone) {
+        alert('Lynctel is already installed on your device! ✅');
+        return;
+      }
+      if (_isIOS) {
+        document.getElementById('ios-install-sheet').classList.add('show');
+        document.getElementById('ios-overlay').classList.add('show');
+        document.body.style.overflow = 'hidden';
+      } else if (_deferredPrompt) {
+        _deferredPrompt.prompt();
+      } else {
+        document.getElementById('ios-install-sheet').classList.add('show');
+        document.getElementById('ios-overlay').classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function closeIOSSheet() {
+      document.getElementById('ios-install-sheet').classList.remove('show');
+      document.getElementById('ios-overlay').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
+    // Show iOS install hint after 5s if on iOS and not installed
+    if (_isIOS && !_isStandalone && !localStorage.getItem('ios-hint-shown')) {
+      setTimeout(() => {
+        document.getElementById('ios-install-sheet').classList.add('show');
+        document.getElementById('ios-overlay').classList.add('show');
+        localStorage.setItem('ios-hint-shown', '1');
+      }, 5000);
+    }
+
+    // Hide Android banner if already installed
+    if (_isStandalone) {
       document.getElementById('pwa-banner').style.display = 'none';
     }
 
+    // ── Service Worker ─────────────────────────────────
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js', { scope: '/' })
@@ -787,15 +877,13 @@
       });
     }
 
+    // ── Auto-dismiss flash messages ────────────────────
     setTimeout(() => {
       const el = document.getElementById('flash-wrap');
-      if (el) {
-        el.style.transition = 'opacity .5s';
-        el.style.opacity = '0';
-        setTimeout(() => el.remove(), 500);
-      }
+      if (el) { el.style.transition='opacity .5s'; el.style.opacity='0'; setTimeout(()=>el.remove(), 500); }
     }, 5000);
 
+    // ── Navbar shadow on scroll ────────────────────────
     window.addEventListener('scroll', () => {
       document.getElementById('navbar').classList.toggle('nav-scrolled', window.scrollY > 10);
     });
