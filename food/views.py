@@ -495,3 +495,34 @@ def order_history(request):
         'orders':     orders,
         'cart_count': 0,
     })
+
+
+@login_required
+def register_restaurant(request):
+    return render(request, "food/register.html")
+
+
+@login_required
+def restaurant_dashboard(request):
+    return render(request, "food/dashboard.html")
+
+from django.http import HttpResponse
+
+def restaurant_update_order(request, ref):
+    return HttpResponse("restaurant_update_order")
+
+def restaurant_add_item(request):
+    return HttpResponse("restaurant_add_item")
+
+def restaurant_edit_item(request, pk):
+    return HttpResponse("restaurant_edit_item")
+
+def restaurant_delete_item(request, pk):
+    return HttpResponse("restaurant_delete_item")
+
+def restaurant_add_category(request):
+    return HttpResponse("restaurant_add_category")
+
+def restaurant_settings(request):
+    return HttpResponse("restaurant_settings")
+
