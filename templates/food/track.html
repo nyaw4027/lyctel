@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Track Order {{ order.order_ref }} — Lynctel Food{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto px-4 md:px-6 py-10">
+
+  <div class="text-center mb-8">
+    <div class="w-16 h-16 bg-gold-light rounded-3xl flex items-center justify-center mx-auto mb-4 text-3xl">🛵</div>
+    <h1 class="font-display font-700 text-2xl text-navy mb-1">Order {{ order.order_ref }}</h1>
+    <p class="text-gray-400 text-sm">From {{ order.vendor.name }}</p>
+  </div>
+
+  <!-- Status timeline -->
+  <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
+    <div class="flex items-center justify-between mb-2">
+      <span id="status-label" class="font-display font-700 text-navy">{{ order.get_status_display }}</span>
+      <span class="text-xs text-gray-400">ETA: {{ order.estimated_delivery_time }} mins</span>
+    </div>
+
+    <div class="flex items-center gap-1 mt-4">
+      <div id="step-pending"   class="flex-1 h-1.5 rounded-full bg-navy"></div>
+      <div id="step-confirmed" class="flex-1 h-1.5 rounded-full bg-gray-200"></div>
+      <div id="step-preparing" class="flex-1 h-1.5 rounded-full bg-gray-200"></div>
+      <div id="step-ready"     class="flex-1 h-1.5 rounded-full bg-gray-200"></div>
+      <div id="step-delivered" class="flex-1 h-1.5 rounded-full bg-gray-200"></div>
+    </div>
+    <div class="grid grid-cols-5 gap-1 mt-2 text-center">
+      <span class="text-[10px] text-gray-400">Placed</span>
+      <span class="text-[10px] text-gray-400">Confirmed</span>
+      <span class="text-[10px] text-gray-400">Preparing</span>
+      <span class="text-[10px] text-gray-400">Ready</span>
+      <span class="text-[10px] text-gray-400">Delivered</span>
+    </div>
+  </div>
+
+  <!-- Rider info -->
+  <div id="rider-card" class="bg-white rounded-2xl border border-gray-100 p-5 mb-6 hidden">
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Your Rider</p>
+    <div class="flex items-center justify-between">
+      <div>
+        <p id="rider-name" class="font-semibold text-navy text-sm"></p>
+        <p class="text-xs text-gray-400">On the way</p>
+      </div>
+      <a id="rider-call" href="#" class="bg-green-50 text-green-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-100 transition-colors">
+        📞 Call
+      </a>
+    </div>
+  </div>
+
+  <!-- Order items -->
+  <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
+    <p class="font-display font-700 text-navy text-sm mb-3">Order Items</p>
+    <div class="space-y-2">
+      {% for item in order.items.all %}
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-gray-600">{{ item.quantity }}× {{ item.name }}</span>
+        <span class="font-medium text-navy">GHS {{ item.price }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-50">
+      <span class="font-display font-700 text-navy">Total</span>
+      <span class="font-display font-700 text-navy">GHS {{ order.subtotal|add:order.delivery_fee }}</span>
+    </div>
+  </div>
+
+  <div class="text-center">
+    <a href="{% url 'food:order_history' %}" class="text-sm text-gold-dark font-semibold hover:underline">
+      View All Orders →
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const ORDER_REF = '{{ order.order_ref }}';
+  const STEPS = ['pending','confirmed','preparing','ready','delivered'];
+
+  function updateUI(data) {
+    document.getElementById('status-label').textContent = data.status_label;
+    const idx = STEPS.indexOf(data.status);
+    STEPS.forEach((s, i) => {
+      const el = document.getElementById('step-' + s);
+      if (el) el.className = `flex-1 h-1.5 rounded-full ${i <= idx ? 'bg-navy' : 'bg-gray-200'}`;
+    });
+
+    if (data.rider_name) {
+      document.getElementById('rider-card').classList.remove('hidden');
+      document.getElementById('rider-name').textContent = data.rider_name;
+      if (data.rider_phone) document.getElementById('rider-call').href = 'tel:' + data.rider_phone;
+    }
+  }
+
+  function poll() {
+    fetch(`{% url 'food:order_track_api' order.order_ref %}`)
+      .then(r => r.json())
+      .then(updateUI)
+      .catch(console.error);
+  }
+
+  poll();
+  setInterval(poll, 8000);
+</script>
+{% endblock %}
