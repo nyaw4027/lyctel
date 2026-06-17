@@ -39,4 +39,16 @@ urlpatterns = [
     # Users  ← these were missing
     path('users/',                              views.user_list,              name='user_list'),
     path('users/<int:pk>/',                     views.user_detail,            name='user_detail'),
+
+
+
+    # Add these lines to your dashboard/urls.py urlpatterns list:
+
+# ── Food ──────────────────────────────────────────────────
+path('food/',                  views.food_vendor_list,   name='food_vendor_list'),
+path('food/<int:pk>/',         views.food_vendor_detail, name='food_vendor_detail'),
+path('food/orders/',           views.food_orders,        name='food_orders'),
+
+# ── Commissions (already exists in views, just needs URL) ─
+path('vendors/commissions/',   views.commission_overview, name='commission_overview'),
 ]

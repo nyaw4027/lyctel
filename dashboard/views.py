@@ -677,3 +677,145 @@ def user_detail(request, pk):
         'total_spent':  total_spent,
         'role_choices': User.Role.choices,
     })
+
+
+
+# ── Add these imports at the top of dashboard/views.py ───────────────────────
+# from food.models import FoodVendor, FoodOrder
+
+# ── FOOD VENDORS ──────────────────────────────────────────────────────────────
+
+@admin_required
+def food_vendor_list(request):
+    from food.models import FoodVendor, FoodOrder
+    from django.utils import timezone
+
+    query          = request.GET.get('q', '').strip()
+    filter_status  = request.GET.get('status', '')
+    filter_cuisine = request.GET.get('cuisine', '')
+
+    vendors = FoodVendor.objects.select_related('owner').order_by('-joined_at')
+
+    if query:
+        vendors = vendors.filter(
+            Q(name__icontains=query) |
+            Q(city__icontains=query) |
+            Q(owner__phone__icontains=query)
+        )
+    if filter_status:
+        vendors = vendors.filter(status=filter_status)
+    if filter_cuisine:
+        vendors = vendors.filter(cuisine=filter_cuisine)
+
+    total_vendors  = FoodVendor.objects.count()
+    open_count     = FoodVendor.objects.filter(status='open').count()
+    suspended_count = FoodVendor.objects.filter(status='suspended').count()
+    total_orders   = FoodOrder.objects.count()
+
+    return render(request, 'dashboard/food/list.html', {
+        'vendors':        vendors,
+        'query':          query,
+        'filter_status':  filter_status,
+        'filter_cuisine': filter_cuisine,
+        'cuisines':       FoodVendor.CuisineType.choices,
+        'total_vendors':  total_vendors,
+        'open_count':     open_count,
+        'suspended_count': suspended_count,
+        'total_orders':   total_orders,
+    })
+
+
+@admin_required
+def food_vendor_detail(request, pk):
+    from food.models import FoodVendor, FoodOrder
+    from django.db.models import Sum
+
+    vendor = get_object_or_404(FoodVendor, pk=pk)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'update_status':
+            vendor.status = request.POST.get('status', vendor.status)
+            vendor.save()
+            messages.success(request, f'Status updated to {vendor.get_status_display()}.')
+
+        elif action == 'suspend':
+            vendor.status = FoodVendor.Status.SUSPENDED
+            vendor.save()
+            messages.warning(request, f'"{vendor.name}" suspended.')
+
+        elif action == 'reactivate':
+            vendor.status = FoodVendor.Status.OPEN
+            vendor.save()
+            messages.success(request, f'"{vendor.name}" reactivated.')
+
+        return redirect('dashboard:food_vendor_detail', pk=pk)
+
+    orders        = FoodOrder.objects.filter(vendor=vendor).select_related('customer').order_by('-created_at')
+    total_orders  = orders.count()
+    total_revenue = orders.filter(payment_status='paid').aggregate(
+        t=Sum('total_amount'))['t'] or 0
+    menu_items    = vendor.food_items.select_related('category').order_by('sort_order', 'name')
+    menu_count    = menu_items.count()
+
+    return render(request, 'dashboard/food/detail.html', {
+        'vendor':        vendor,
+        'recent_orders': orders[:10],
+        'total_orders':  total_orders,
+        'total_revenue': total_revenue,
+        'menu_items':    menu_items[:20],
+        'menu_count':    menu_count,
+    })
+
+
+@admin_required
+def food_orders(request):
+    from food.models import FoodOrder
+    from django.db.models import Sum
+    from django.utils import timezone
+
+    query          = request.GET.get('q', '').strip()
+    filter_status  = request.GET.get('status', '')
+    filter_payment = request.GET.get('payment', '')
+    vendor_pk      = request.GET.get('vendor', '')
+
+    orders = FoodOrder.objects.select_related(
+        'vendor', 'customer'
+    ).prefetch_related('items').order_by('-created_at')
+
+    if query:
+        orders = orders.filter(
+            Q(order_ref__icontains=query) |
+            Q(customer__phone__icontains=query) |
+            Q(delivery_address__icontains=query)
+        )
+    if filter_status:
+        orders = orders.filter(status=filter_status)
+    if filter_payment:
+        orders = orders.filter(payment_status=filter_payment)
+    if vendor_pk:
+        orders = orders.filter(vendor__pk=vendor_pk)
+
+    today = timezone.now().date()
+    total_orders   = FoodOrder.objects.count()
+    pending_count  = FoodOrder.objects.filter(status='pending').count()
+    delivered_today = FoodOrder.objects.filter(
+        status='delivered', delivered_at__date=today
+    ).count()
+    revenue_today  = FoodOrder.objects.filter(
+        payment_status='paid', created_at__date=today
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
+
+    return render(request, 'dashboard/food/orders.html', {
+        'orders':         orders,
+        'query':          query,
+        'filter_status':  filter_status,
+        'filter_payment': filter_payment,
+        'status_choices': FoodOrder.Status.choices,
+        'total_orders':   total_orders,
+        'pending_count':  pending_count,
+        'delivered_today': delivered_today,
+        'revenue_today':  revenue_today,
+    })
+

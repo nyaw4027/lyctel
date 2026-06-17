@@ -22,10 +22,9 @@
 
     <div class="px-5 py-5 border-b border-gray-800">
       <a href="{% url 'dashboard:home' %}" class="flex items-center gap-2.5 font-bold text-lg group">
-        <img src="{% static 'logo.png' %}" 
-             alt="Lynctel Logo" 
+        <img src="{% static 'logo.png' %}"
+             alt="Lynctel Logo"
              class="w-6 h-6 object-contain rounded-md bg-white/5 border border-white/10 p-0.5 shadow-sm group-hover:scale-105 transition-transform duration-200">
-        
         <span class="tracking-tight text-white group-hover:text-gray-200 transition-colors">
           Lynctel Admin
         </span>
@@ -36,6 +35,7 @@
     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
       {% with request.resolver_match.url_name as url_name %}
 
+      <!-- Overview -->
       <a href="{% url 'dashboard:home' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 {% if url_name == 'home' %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
@@ -46,9 +46,10 @@
         Overview
       </a>
 
+      <!-- Orders -->
       <a href="{% url 'dashboard:order_list' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                {% if 'order' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                {% if 'order' in url_name and 'food' not in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -56,6 +57,7 @@
         Orders
       </a>
 
+      <!-- Products -->
       <a href="{% url 'dashboard:product_list' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 {% if 'product' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
@@ -66,6 +68,7 @@
         Products
       </a>
 
+      <!-- Categories -->
       <a href="{% url 'dashboard:category_list' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 {% if 'category' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
@@ -75,6 +78,7 @@
         Categories
       </a>
 
+      <!-- Riders -->
       <a href="{% url 'dashboard:rider_list' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 {% if 'rider' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
@@ -85,9 +89,10 @@
         Riders
       </a>
 
+      <!-- Vendors -->
       <a href="{% url 'dashboard:vendor_list' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                {% if 'vendor' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                {% if 'vendor' in url_name and 'food' not in url_name and 'commission' not in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
@@ -95,13 +100,52 @@
         Vendors
       </a>
 
+      <!-- Commissions -->
+      <a href="{% url 'dashboard:commission_overview' %}"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                {% if 'commission' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Commissions
+      </a>
+
+      <hr class="border-gray-800 my-2"/>
+
+      <!-- Food & Restaurants -->
+      <p class="px-3 pt-1 pb-0.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">Food</p>
+
+      <a href="{% url 'dashboard:food_vendor_list' %}"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                {% if 'food_vendor' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+        Restaurants
+      </a>
+
+      <a href="{% url 'dashboard:food_orders' %}"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                {% if 'food_orders' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        Food Orders
+      </a>
+
+      <hr class="border-gray-800 my-2"/>
+
+      <!-- Staff & Users -->
+      <p class="px-3 pt-1 pb-0.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">Team</p>
+
       <a href="{% url 'dashboard:staff_list' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 {% if 'staff' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-8 0v2m8 0H7m4-10a4 4 0 110-8 4 4 0 010 8z"/>
         </svg>
         Staff
@@ -109,12 +153,10 @@
 
       <a href="{% url 'dashboard:user_list' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                {% if 'users' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                {% if 'user' in url_name %}bg-brand text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-8 0v2m8 0H7m4-10a4 4 0 110-8 4 4 0 010 8z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
         </svg>
         Users
       </a>
@@ -124,7 +166,8 @@
       <a href="{% url 'frontend:home' %}" target="_blank"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
         </svg>
         View Storefront
       </a>
@@ -136,7 +179,8 @@
       <a href="{% url 'accounts:logout' %}"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-red-900 hover:text-red-200 transition-colors">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
         </svg>
         Sign Out
       </a>
