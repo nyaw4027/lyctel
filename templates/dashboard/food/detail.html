@@ -1,0 +1,207 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ vendor.name }} — Lynctel Admin{% endblock %}
+{% block page_title %}Food Vendor Detail{% endblock %}
+{% block page_title_lg %}{{ vendor.name }}{% endblock %}
+
+{% block content %}
+
+<div class="mb-4">
+  <a href="{% url 'dashboard:food_vendor_list' %}"
+     class="text-sm text-blue-600 hover:underline">← Back to Food Vendors</a>
+</div>
+
+<!-- HEADER CARD -->
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+  {% if vendor.banner %}
+  <img src="{{ vendor.banner.url }}" class="w-full h-36 object-cover"/>
+  {% else %}
+  <div class="w-full h-36 bg-gradient-to-r from-orange-400 to-red-500"></div>
+  {% endif %}
+  <div class="px-6 pb-6 -mt-8 flex items-end gap-4">
+    {% if vendor.logo %}
+    <img src="{{ vendor.logo.url }}" class="w-16 h-16 rounded-xl object-cover border-4 border-white shadow"/>
+    {% else %}
+    <div class="w-16 h-16 rounded-xl bg-orange-100 border-4 border-white shadow flex items-center justify-center text-2xl">🍽️</div>
+    {% endif %}
+    <div class="pb-1">
+      <h1 class="text-xl font-bold text-gray-900">{{ vendor.name }}</h1>
+      <p class="text-sm text-gray-500">{{ vendor.get_cuisine_display }} · {{ vendor.city }} · {{ vendor.phone }}</p>
+    </div>
+    <div class="ml-auto pb-1">
+      <span class="text-xs font-semibold px-3 py-1.5 rounded-full
+        {% if vendor.status == 'open' %}bg-green-100 text-green-700
+        {% elif vendor.status == 'busy' %}bg-yellow-100 text-yellow-700
+        {% elif vendor.status == 'suspended' %}bg-red-100 text-red-700
+        {% else %}bg-gray-100 text-gray-600{% endif %}">
+        {{ vendor.get_status_display }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Orders</p>
+    <p class="text-2xl font-bold text-gray-800">{{ total_orders }}</p>
+  </div>
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Revenue</p>
+    <p class="text-2xl font-bold text-gray-800">GHS {{ total_revenue|floatformat:2 }}</p>
+  </div>
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Menu Items</p>
+    <p class="text-2xl font-bold text-gray-800">{{ menu_count }}</p>
+  </div>
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Rating</p>
+    <p class="text-2xl font-bold text-yellow-500">{{ vendor.rating }} ⭐</p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- RECENT ORDERS -->
+  <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+      <h2 class="font-bold text-gray-800">Recent Orders</h2>
+      <a href="{% url 'dashboard:food_orders' %}?vendor={{ vendor.pk }}"
+         class="text-xs text-blue-600 hover:underline">View all →</a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
+            <th class="px-5 py-3 text-left font-semibold">Ref</th>
+            <th class="px-5 py-3 text-left font-semibold">Customer</th>
+            <th class="px-5 py-3 text-left font-semibold">Amount</th>
+            <th class="px-5 py-3 text-left font-semibold">Status</th>
+            <th class="px-5 py-3 text-left font-semibold">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for order in recent_orders %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-5 py-3 font-bold text-blue-600">{{ order.order_ref }}</td>
+            <td class="px-5 py-3 text-gray-600">{{ order.customer.get_full_name|default:order.customer.phone|default:"—" }}</td>
+            <td class="px-5 py-3 font-semibold">GHS {{ order.total_amount }}</td>
+            <td class="px-5 py-3">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                {% if order.status == 'delivered' %}bg-green-100 text-green-700
+                {% elif order.status == 'cancelled' %}bg-red-100 text-red-700
+                {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
+                {% else %}bg-blue-100 text-blue-700{% endif %}">
+                {{ order.get_status_display }}
+              </span>
+            </td>
+            <td class="px-5 py-3 text-gray-400 text-xs">{{ order.created_at|date:"d M, H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="px-5 py-8 text-center text-gray-400 text-sm">No orders yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="space-y-4">
+
+    <!-- ACTIONS -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h3 class="font-bold text-gray-800 mb-4">Actions</h3>
+      <form method="post" class="space-y-2">
+        {% csrf_token %}
+        {% if vendor.status == 'suspended' %}
+        <button name="action" value="reactivate"
+                class="w-full px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors">
+          ✅ Reactivate Restaurant
+        </button>
+        {% else %}
+        <button name="action" value="suspend"
+                class="w-full px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors">
+          🚫 Suspend Restaurant
+        </button>
+        {% endif %}
+
+        <div class="pt-2 border-t border-gray-100">
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Change Status</label>
+          <select name="status"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="open"      {% if vendor.status == 'open'      %}selected{% endif %}>Open</option>
+            <option value="closed"    {% if vendor.status == 'closed'    %}selected{% endif %}>Closed</option>
+            <option value="busy"      {% if vendor.status == 'busy'      %}selected{% endif %}>Very Busy</option>
+            <option value="suspended" {% if vendor.status == 'suspended' %}selected{% endif %}>Suspended</option>
+          </select>
+          <button name="action" value="update_status"
+                  class="w-full px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+            Update Status
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- VENDOR INFO -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h3 class="font-bold text-gray-800 mb-3">Details</h3>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <dt class="text-gray-400">Address</dt>
+          <dd class="font-medium text-gray-700 text-right max-w-40">{{ vendor.address }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-400">Opening</dt>
+          <dd class="font-medium text-gray-700">{{ vendor.opening_time }} – {{ vendor.closing_time }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-400">Min Order</dt>
+          <dd class="font-medium text-gray-700">GHS {{ vendor.min_order }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-400">Avg Prep</dt>
+          <dd class="font-medium text-gray-700">{{ vendor.avg_prep_time }} mins</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-400">Delivery Range</dt>
+          <dd class="font-medium text-gray-700">{{ vendor.delivery_range }} km</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-400">Joined</dt>
+          <dd class="font-medium text-gray-700">{{ vendor.joined_at|date:"d M Y" }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- MENU ITEMS -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-50">
+        <h3 class="font-bold text-gray-800">Menu Items</h3>
+      </div>
+      <div class="divide-y divide-gray-50 max-h-64 overflow-y-auto">
+        {% for item in menu_items %}
+        <div class="px-5 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2 min-w-0">
+            {% if item.image %}
+            <img src="{{ item.image.url }}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0"/>
+            {% else %}
+            <div class="w-8 h-8 rounded-lg bg-orange-50 flex-shrink-0 flex items-center justify-center text-sm">🍴</div>
+            {% endif %}
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-700 truncate">{{ item.name }}</p>
+              <p class="text-xs text-gray-400">GHS {{ item.final_price }}</p>
+            </div>
+          </div>
+          <span class="flex-shrink-0 text-xs {% if item.is_available %}text-green-600{% else %}text-red-400{% endif %}">
+            {% if item.is_available %}Available{% else %}Off{% endif %}
+          </span>
+        </div>
+        {% empty %}
+        <div class="px-5 py-6 text-center text-gray-400 text-sm">No menu items yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

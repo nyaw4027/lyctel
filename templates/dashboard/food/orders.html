@@ -1,0 +1,136 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Food Orders — Lynctel Admin{% endblock %}
+{% block page_title %}Food Orders{% endblock %}
+{% block page_title_lg %}Food Orders{% endblock %}
+
+{% block content %}
+
+<!-- STATS -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Orders</p>
+    <p class="text-2xl font-bold text-gray-800">{{ total_orders }}</p>
+  </div>
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Pending</p>
+    <p class="text-2xl font-bold text-yellow-500">{{ pending_count }}</p>
+  </div>
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Delivered Today</p>
+    <p class="text-2xl font-bold text-green-600">{{ delivered_today }}</p>
+  </div>
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Revenue Today</p>
+    <p class="text-2xl font-bold text-gray-800">GHS {{ revenue_today|floatformat:2 }}</p>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 p-4">
+  <form method="get" class="flex flex-wrap gap-3 items-end">
+    <div class="flex-1 min-w-48">
+      <label class="block text-xs font-semibold text-gray-500 mb-1">Search</label>
+      <input type="text" name="q" value="{{ query }}"
+             placeholder="Order ref, customer phone…"
+             class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+      <select name="status" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">All Statuses</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if filter_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-gray-500 mb-1">Payment</label>
+      <select name="payment" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">All</option>
+        <option value="paid"   {% if filter_payment == 'paid'   %}selected{% endif %}>Paid</option>
+        <option value="unpaid" {% if filter_payment == 'unpaid' %}selected{% endif %}>Unpaid</option>
+      </select>
+    </div>
+    <button type="submit"
+            class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+      Filter
+    </button>
+    {% if query or filter_status or filter_payment %}
+    <a href="{% url 'dashboard:food_orders' %}"
+       class="px-4 py-2 bg-gray-100 text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+      Clear
+    </a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- ORDERS TABLE -->
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+    <h2 class="font-bold text-gray-800">Orders ({{ orders|length }})</h2>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
+          <th class="px-5 py-3 text-left font-semibold">Ref</th>
+          <th class="px-5 py-3 text-left font-semibold">Restaurant</th>
+          <th class="px-5 py-3 text-left font-semibold">Customer</th>
+          <th class="px-5 py-3 text-left font-semibold">Items</th>
+          <th class="px-5 py-3 text-left font-semibold">Amount</th>
+          <th class="px-5 py-3 text-left font-semibold">Payment</th>
+          <th class="px-5 py-3 text-left font-semibold">Status</th>
+          <th class="px-5 py-3 text-left font-semibold">Date</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for order in orders %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-5 py-3 font-bold text-blue-600">{{ order.order_ref }}</td>
+          <td class="px-5 py-3">
+            <div class="flex items-center gap-2">
+              {% if order.vendor.logo %}
+              <img src="{{ order.vendor.logo.url }}" class="w-7 h-7 rounded-lg object-cover flex-shrink-0"/>
+              {% else %}
+              <div class="w-7 h-7 rounded-lg bg-orange-100 flex-shrink-0 flex items-center justify-center text-xs">🍽️</div>
+              {% endif %}
+              <span class="text-gray-700 font-medium">{{ order.vendor.name|default:"—" }}</span>
+            </div>
+          </td>
+          <td class="px-5 py-3 text-gray-600">
+            <p>{{ order.customer.get_full_name|default:order.customer.phone|default:"—" }}</p>
+            <p class="text-xs text-gray-400">{{ order.delivery_phone }}</p>
+          </td>
+          <td class="px-5 py-3 text-gray-600">{{ order.items.count }} item{{ order.items.count|pluralize }}</td>
+          <td class="px-5 py-3 font-semibold text-gray-800">GHS {{ order.total_amount }}</td>
+          <td class="px-5 py-3">
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+              {% if order.payment_status == 'paid' %}bg-green-100 text-green-700
+              {% else %}bg-gray-100 text-gray-500{% endif %}">
+              {{ order.get_payment_status_display }}
+            </span>
+          </td>
+          <td class="px-5 py-3">
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+              {% if order.status == 'delivered' %}bg-green-100 text-green-700
+              {% elif order.status == 'cancelled' %}bg-red-100 text-red-700
+              {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
+              {% elif order.status in 'preparing,confirmed' %}bg-blue-100 text-blue-700
+              {% else %}bg-purple-100 text-purple-700{% endif %}">
+              {{ order.get_status_display }}
+            </span>
+          </td>
+          <td class="px-5 py-3 text-gray-400 text-xs">{{ order.created_at|date:"d M, H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="px-5 py-12 text-center text-gray-400 text-sm">No food orders found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
