@@ -113,7 +113,6 @@ def shop_page(request, slug):
 
 
 # ── APPLY TO BECOME A VENDOR ──────────────────────────────
-
 def apply(request):
     if request.user.is_authenticated:
         try:
@@ -136,16 +135,19 @@ def apply(request):
         password     = request.POST.get('password', '')
 
         errors = {}
-        if not shop_name:   errors['shop_name']   = 'Shop name is required.'
-        if not phone:       errors['phone']        = 'Phone number is required.'
-        if not momo_number: errors['momo_number']  = 'MoMo number is required for payouts.'
+        if not shop_name:   errors['shop_name']  = 'Shop name is required.'
+        if not phone:       errors['phone']       = 'Phone number is required.'
+        if not momo_number: errors['momo_number'] = 'MoMo number is required for payouts.'
 
         if not request.user.is_authenticated:
-            if not first_name:    errors['first_name'] = 'First name is required.'
-            if not password:      errors['password']   = 'Password is required.'
-            if len(password) < 6: errors['password']   = 'Password must be at least 6 characters.'
             from ecommerce.models import User
-            if User.objects.filter(phone=phone).exists():
+            if not first_name:
+                errors['first_name'] = 'First name is required.'
+            if not password:
+                errors['password'] = 'Password is required.'
+            elif len(password) < 6:
+                errors['password'] = 'Password must be at least 6 characters.'
+            if phone and User.objects.filter(phone=phone).exists():
                 errors['phone'] = 'An account with this number already exists. Sign in first.'
 
         if errors:
@@ -157,21 +159,31 @@ def apply(request):
             from ecommerce.models import User
             from django.contrib.auth import login as auth_login
             user = User.objects.create_user(
-                username=phone, phone=phone, password=password,
-                first_name=first_name, last_name=last_name, role='customer',
+                phone=phone,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                role='vendor',
             )
-            auth_login(request, user)
+            auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         else:
             user = request.user
+            # Update role to vendor if they were a customer
+            if user.role == 'customer':
+                user.role = 'vendor'
+                user.save(update_fields=['role'])
 
         vendor = Vendor.objects.create(
-            owner=user, shop_name=shop_name, description=description,
-            phone=phone, location=location, momo_number=momo_number,
-            momo_network=momo_network, status=Vendor.Status.PENDING,
+            owner        = user,
+            shop_name    = shop_name,
+            description  = description,
+            phone        = phone,
+            location     = location,
+            momo_number  = momo_number,
+            momo_network = momo_network,
+            logo         = request.FILES.get('logo') or None,
+            status       = Vendor.Status.PENDING,
         )
-        if 'logo' in request.FILES:
-            vendor.logo = request.FILES['logo']
-            vendor.save()
 
         messages.success(request, f'Application submitted! We\'ll review "{shop_name}" shortly.')
         return redirect('vendors:pending')
