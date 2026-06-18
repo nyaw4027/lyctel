@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}My Earnings — Lynctel Rider{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 md:px-6 py-8">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div>
+      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Rider</p>
+      <h1 class="font-display font-700 text-2xl text-navy">My Earnings</h1>
+      <p class="text-gray-400 text-sm mt-0.5">{{ profile.rider.get_full_name }}</p>
+    </div>
+    <a href="{% url 'rider:dashboard' %}"
+       class="text-sm text-navy font-semibold hover:text-gold transition-colors">
+      ← Dashboard
+    </a>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm col-span-2 md:col-span-1">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Earned</p>
+      <p class="text-2xl font-display font-700 text-navy">GHS {{ total_earnings|floatformat:2 }}</p>
+      <p class="text-xs text-gray-400 mt-1">{{ total_deliveries }} deliveries</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">This Week</p>
+      <p class="text-2xl font-display font-700 text-green-600">GHS {{ week_earnings|floatformat:2 }}</p>
+      <p class="text-xs text-gray-400 mt-1">{{ week_deliveries }} deliveries</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">This Month</p>
+      <p class="text-2xl font-display font-700 text-navy">GHS {{ month_earnings|floatformat:2 }}</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Pending Payout</p>
+      <p class="text-2xl font-display font-700 text-orange-500">GHS {{ pending_payout|floatformat:2 }}</p>
+      <p class="text-xs text-green-600 mt-1">GHS {{ paid_out|floatformat:2 }} paid out</p>
+    </div>
+  </div>
+
+  <!-- Commission rate info -->
+  <div class="bg-gold-light border border-gold/30 rounded-2xl px-5 py-4 mb-6 flex items-center gap-4">
+    <div class="w-10 h-10 bg-gold rounded-xl flex items-center justify-center text-navy font-bold text-lg flex-shrink-0">
+      %
+    </div>
+    <div>
+      <p class="font-semibold text-navy text-sm">Your Commission Rate: {{ profile.commission_rate }}%</p>
+      <p class="text-xs text-gray-500 mt-0.5">
+        You earn {{ profile.commission_rate }}% of every delivery fee.
+        Contact admin to negotiate your rate.
+      </p>
+    </div>
+  </div>
+
+  <!-- RECENT DELIVERIES -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+      <h2 class="font-display font-700 text-navy">Recent Deliveries</h2>
+      <span class="text-xs text-gray-400">Last 20</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
+            <th class="px-5 py-3 text-left font-semibold">Order</th>
+            <th class="px-5 py-3 text-left font-semibold">Type</th>
+            <th class="px-5 py-3 text-left font-semibold">Delivery Fee</th>
+            <th class="px-5 py-3 text-left font-semibold">Your Cut</th>
+            <th class="px-5 py-3 text-left font-semibold">Delivered</th>
+            <th class="px-5 py-3 text-left font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for delivery in recent %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-5 py-3 font-bold text-navy">
+              {% if delivery.order %}
+                {{ delivery.order.order_ref }}
+              {% elif delivery.food_order %}
+                {{ delivery.food_order.order_ref }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="px-5 py-3">
+              {% if delivery.order %}
+              <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-full">📦 Product</span>
+              {% elif delivery.food_order %}
+              <span class="text-xs bg-orange-100 text-orange-700 font-semibold px-2.5 py-1 rounded-full">🍔 Food</span>
+              {% else %}
+              <span class="text-xs bg-gray-100 text-gray-600 font-semibold px-2.5 py-1 rounded-full">Ride</span>
+              {% endif %}
+            </td>
+            <td class="px-5 py-3 text-gray-600">GHS {{ delivery.delivery_fee|floatformat:2 }}</td>
+            <td class="px-5 py-3 font-semibold text-green-600">GHS {{ delivery.rider_commission|floatformat:2 }}</td>
+            <td class="px-5 py-3 text-gray-400 text-xs">
+              {% if delivery.delivered_at %}
+                {{ delivery.delivered_at|date:"d M Y, H:i" }}
+              {% else %}—{% endif %}
+            </td>
+            <td class="px-5 py-3">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                {% if delivery.status == 'delivered' %}bg-green-100 text-green-700
+                {% elif delivery.status == 'assigned' %}bg-blue-100 text-blue-700
+                {% elif delivery.status == 'en_route' %}bg-purple-100 text-purple-700
+                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                {{ delivery.get_status_display }}
+              </span>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="px-5 py-12 text-center text-gray-400 text-sm">
+              No completed deliveries yet. Accept your first delivery to start earning!
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MoMo payout info -->
+  <div class="mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+    <h3 class="font-display font-700 text-navy text-sm mb-3">💰 Payout Information</h3>
+    <p class="text-sm text-gray-500 leading-relaxed">
+      Earnings are paid out weekly every <strong class="text-navy">Friday</strong> via MoMo.
+      Your registered MoMo number is used for payouts.
+      Contact admin on
+      <a href="https://wa.me/233558040216" class="text-gold-dark font-semibold hover:underline">
+        WhatsApp
+      </a>
+      if you have payout questions.
+    </p>
+  </div>
+
+</div>
+{% endblock %}

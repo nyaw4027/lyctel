@@ -382,6 +382,29 @@ def _mark_paid(order, payment, gateway_ref, gateway_data):
 
         _split_commissions(order)
 
+    # Auto-assign rider AFTER transaction commits (outside atomic block)
+    try:
+        from delivery.services import auto_assign_for_order
+        auto_assign_for_order(order)
+    except Exception:
+        pass  # Never crash payment confirmation due to rider assignment
+
+
+# ── Also add this function for food order payment (call it from food payment flow) ──
+
+def _mark_food_order_paid(food_order):
+    """Mark a FoodOrder as paid and auto-assign a rider."""
+    from food.models import FoodOrder
+    food_order.payment_status = FoodOrder.PaymentStatus.PAID
+    food_order.status         = FoodOrder.Status.CONFIRMED
+    food_order.confirmed_at   = timezone.now()
+    food_order.save(update_fields=['payment_status', 'status', 'confirmed_at'])
+
+    try:
+        from delivery.services import auto_assign_for_food_order
+        auto_assign_for_food_order(food_order)
+    except Exception:
+        pass
 
 def _split_commissions(order):
     try:

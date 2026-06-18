@@ -3,7 +3,7 @@ from django.dispatch import receiver
 
 from order.models import Order
 from delivery.models import Delivery
-from delivery.services import assign_nearest_rider
+from delivery.services import assign_rider_to_delivery
 
 
 @receiver(post_save, sender=Order)
@@ -36,4 +36,4 @@ def create_delivery_on_payment(sender, instance, created, **kwargs):
     # ─────────────────────────────
     # AUTO ASSIGN RIDER
     # ─────────────────────────────
-    assign_nearest_rider(delivery)
+    assign_rider_to_delivery(delivery)
