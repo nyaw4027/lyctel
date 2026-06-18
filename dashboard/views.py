@@ -496,10 +496,10 @@ def vendor_detail(request, pk):
         'total_earned':     total_earned,
         'total_commission': total_commission,
     })
-
-
 @admin_required
 def commission_overview(request):
+    from django.utils import timezone
+    
     commissions = AppCommission.objects.select_related(
         'order', 'vendor'
     ).order_by('-created_at')
@@ -514,8 +514,8 @@ def commission_overview(request):
         'commissions': commissions,
         'total':       total,
         'month_total': month_total,
+        'now':         timezone.now(),   # ← this was missing
     })
-
 
 # ── STAFF ─────────────────────────────────────────────────
 
