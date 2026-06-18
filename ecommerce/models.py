@@ -1,3 +1,4 @@
+import re
 import uuid
 
 from django.contrib.auth.models import AbstractUser
@@ -7,6 +8,23 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from accounts.managers import UserManager
+
+
+def normalize_phone(raw_phone):
+    """
+    Strip spaces, dashes, and any other formatting characters that people
+    naturally type into a phone number — e.g. "024 665 2183" or
+    "024-665-2183" both become "0246652183". Keeps digits and a leading
+    '+' (for the +233... international format) only.
+
+    This MUST be used consistently everywhere a phone number is created
+    OR looked up (signup, login, password reset), otherwise a user who
+    types their number with spaces at signup but without spaces at login
+    (or vice versa) will silently fail to match.
+    """
+    if not raw_phone:
+        return raw_phone
+    return re.sub(r'[^\d+]', '', raw_phone)
 
 
 class User(AbstractUser):
@@ -172,8 +190,19 @@ class User(AbstractUser):
     # ═══════════════════════════════
     def save(self, *args, **kwargs):
 
-        # ── Auto-generate username from phone if empty
-        if not self.username and self.phone:
+        # ── Normalize phone FIRST — strip spaces/dashes that people
+        # naturally type (e.g. "024 665 2183" → "0246652183"). This must
+        # happen before full_clean() validates the format, and before
+        # username is derived from it below.
+        if self.phone:
+            self.phone = normalize_phone(self.phone)
+
+        # ── username always mirrors the normalized phone in this app —
+        # every signup/apply flow passes username=phone anyway, so this
+        # keeps them in sync as a single source of truth rather than
+        # silently carrying forward a stale, unnormalized value that was
+        # set before this point (e.g. via create_user's username=phone).
+        if self.phone:
             self.username = self.phone
 
         # ── Normalise empty email → None BEFORE full_clean
