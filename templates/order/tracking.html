@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Track Order {{ order.order_ref }} — Lynctel{% endblock %}
+{% block title %}Track {{ order.order_ref }} — Lynctel{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
-  #tracking-map { height: 320px; border-radius: 16px; overflow: hidden; }
+  #tracking-map { height: 300px; border-radius: 0; }
   @keyframes pulse-dot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.7} }
-  .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+  .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; display:inline-block; }
 </style>
 {% endblock %}
 
@@ -19,17 +19,27 @@
     <div>
       <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Tracking</p>
       <h1 class="font-display font-700 text-2xl text-navy">{{ order.order_ref }}</h1>
+      <p class="text-xs text-gray-400 mt-0.5">Placed {{ order.created_at|date:"d M Y, H:i" }}</p>
     </div>
-    <span class="text-xs font-semibold px-4 py-2 rounded-full
-                 {% if order.status == 'delivered' %}bg-green-100 text-green-700
-                 {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
-                 {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
-                 {% else %}bg-gray-100 text-gray-600{% endif %}">
-      {{ order.get_status_display }}
-    </span>
+    <div class="flex flex-col items-end gap-1.5">
+      <span class="text-xs font-semibold px-4 py-1.5 rounded-full
+                   {% if order.status == 'delivered' %}bg-green-100 text-green-700
+                   {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
+                   {% elif order.status == 'cancelled' %}bg-red-100 text-red-700
+                   {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
+                   {% else %}bg-purple-100 text-purple-700{% endif %}">
+        {{ order.get_status_display }}
+      </span>
+      <span class="text-xs font-semibold px-4 py-1.5 rounded-full
+                   {% if order.payment_status == 'paid' %}bg-green-100 text-green-700
+                   {% elif order.payment_status == 'failed' %}bg-red-100 text-red-700
+                   {% else %}bg-orange-100 text-orange-700{% endif %}">
+        {{ order.get_payment_status_display }}
+      </span>
+    </div>
   </div>
 
-  <!-- LIVE MAP (shown when rider is dispatched) -->
+  <!-- LIVE MAP (dispatched only) -->
   {% if delivery and order.status == 'dispatched' %}
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
     <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
@@ -40,27 +50,22 @@
     <div id="tracking-map"></div>
     <div class="px-4 py-3 flex items-center justify-between flex-wrap gap-3">
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 bg-navy rounded-xl flex items-center justify-center
-                    text-white font-display font-700 text-sm">
+        <div class="w-9 h-9 bg-navy rounded-xl flex items-center justify-center text-white font-bold text-sm">
           {{ delivery.rider.rider.first_name|first|upper }}
         </div>
         <div>
-          <p class="font-semibold text-navy text-sm">
-            {{ delivery.rider.rider.get_full_name }}
-          </p>
+          <p class="font-semibold text-navy text-sm">{{ delivery.rider.rider.get_full_name }}</p>
           <p id="rider-distance" class="text-xs text-gray-400">Locating rider...</p>
         </div>
       </div>
       <div class="flex gap-2">
         <a href="tel:{{ delivery.rider.rider.phone }}"
-           class="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-navy
-                  text-xs font-semibold px-4 py-2 rounded-xl transition-colors">
+           class="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-navy text-xs font-semibold px-4 py-2 rounded-xl transition-colors">
           📞 Call
         </a>
-        <a href="https://wa.me/233{{ delivery.rider.rider.phone|slice:'1:' }}?text=Hi, I'm tracking order {{ order.order_ref }}"
+        <a href="https://wa.me/233{{ delivery.rider.rider.phone|slice:'1:' }}?text=Hi,+I'm+tracking+order+{{ order.order_ref }}"
            target="_blank"
-           class="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white
-                  text-xs font-semibold px-4 py-2 rounded-xl transition-colors">
+           class="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors">
           💬 WhatsApp
         </a>
       </div>
@@ -111,14 +116,28 @@
       <h2 class="font-display font-700 text-navy text-sm">Order Items</h2>
     </div>
     {% for item in order.items.all %}
-    <div class="px-5 py-3 flex justify-between text-sm border-b border-gray-50 last:border-0">
-      <span class="text-gray-600">{{ item.product_name }} × {{ item.quantity }}</span>
-      <span class="font-semibold text-navy">GHS {{ item.subtotal }}</span>
+    <div class="px-5 py-3 flex items-center justify-between text-sm border-b border-gray-50 last:border-0">
+      <div class="flex items-center gap-3 min-w-0">
+        {% if item.product and item.product.images.first %}
+        <img src="{{ item.product.images.first.image.url }}"
+             class="w-10 h-10 rounded-lg object-cover flex-shrink-0"/>
+        {% else %}
+        <div class="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center text-base">📦</div>
+        {% endif %}
+        <span class="text-gray-600 truncate">{{ item.product_name }} × {{ item.quantity }}</span>
+      </div>
+      <span class="font-semibold text-navy flex-shrink-0 ml-3">GHS {{ item.subtotal }}</span>
     </div>
     {% endfor %}
-    <div class="px-5 py-3 flex justify-between font-display font-700 text-navy">
-      <span>Total</span>
-      <span>GHS {{ order.total_amount }}</span>
+    <div class="px-5 py-3 space-y-1 text-sm">
+      <div class="flex justify-between text-gray-500">
+        <span>Delivery fee</span>
+        <span>GHS {{ order.delivery_fee }}</span>
+      </div>
+      <div class="flex justify-between font-display font-700 text-navy text-base">
+        <span>Total</span>
+        <span>GHS {{ order.total_amount }}</span>
+      </div>
     </div>
   </div>
 
@@ -126,33 +145,36 @@
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
     <h2 class="font-display font-700 text-navy text-sm mb-3">Delivery Details</h2>
     <div class="space-y-2 text-sm">
-      <div class="flex gap-3"><span class="text-gray-400 w-20">Address</span><span class="text-navy font-medium">{{ order.delivery_address }}</span></div>
-      <div class="flex gap-3"><span class="text-gray-400 w-20">City</span><span class="text-navy font-medium">{{ order.delivery_city }}</span></div>
-      <div class="flex gap-3"><span class="text-gray-400 w-20">Phone</span><span class="text-navy font-medium">{{ order.delivery_phone }}</span></div>
-      <div class="flex gap-3"><span class="text-gray-400 w-20">Payment</span>
-        <span class="font-semibold {% if order.payment_status == 'paid' %}text-green-600{% else %}text-orange-500{% endif %}">
-          {{ order.get_payment_status_display }}
-        </span>
+      <div class="flex gap-3">
+        <span class="text-gray-400 w-20 flex-shrink-0">Address</span>
+        <span class="text-navy font-medium">{{ order.delivery_address }}</span>
+      </div>
+      <div class="flex gap-3">
+        <span class="text-gray-400 w-20 flex-shrink-0">City</span>
+        <span class="text-navy font-medium">{{ order.delivery_city }}</span>
+      </div>
+      <div class="flex gap-3">
+        <span class="text-gray-400 w-20 flex-shrink-0">Phone</span>
+        <span class="text-navy font-medium">{{ order.delivery_phone }}</span>
       </div>
     </div>
   </div>
 
   <!-- Auto-refresh notice -->
-  {% if order.status not in 'delivered,cancelled' %}
-  <div class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-xs text-gray-400 mb-5">
+  {% if order.status not in 'delivered,cancelled,refunded' %}
+  <div class="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-center text-xs text-gray-400 mb-5">
     <span id="refresh-timer">Page refreshes every 30 seconds for live updates</span>
   </div>
   {% endif %}
 
-  <div class="flex gap-3 flex-wrap">
-    <a href="{% url 'order:history' %}" class="text-sm text-navy hover:text-gold transition-colors font-medium">
-      ← My Orders
-    </a>
-    <a href="https://wa.me/{{ support_number }}?text=Hi, I need help with order {{ order.order_ref }}"
+  <!-- Actions -->
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <a href="{% url 'order:history' %}"
+       class="text-sm text-navy hover:text-gold transition-colors font-medium">← My Orders</a>
+    <a href="https://wa.me/233558040216?text=Hi,+I+need+help+with+order+{{ order.order_ref }}"
        target="_blank"
-       class="ml-auto text-sm bg-green-500 hover:bg-green-600 text-white font-semibold
-              px-5 py-2 rounded-xl transition-colors">
-      Need Help?
+       class="text-sm bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-2 rounded-xl transition-colors">
+      💬 Need Help?
     </a>
   </div>
 
@@ -162,40 +184,23 @@
 {% block extra_js %}
 {% if delivery and order.status == 'dispatched' %}
 <script>
-  const ORDER_REF    = '{{ order.order_ref }}';
-  const CUST_LAT     = 5.6037;  // Will be updated by geocoding
-  const CUST_LNG     = -0.1870;
-  const CUST_ADDR    = '{{ order.delivery_address|escapejs }}, {{ order.delivery_city|escapejs }}';
-
-  // Init map centred on Accra until we get real coords
-  const map = L.map('tracking-map', { zoomControl: false })
-               .setView([5.6037, -0.1870], 14);
-
+  const ORDER_REF = '{{ order.order_ref }}';
+  const map = L.map('tracking-map', { zoomControl: false }).setView([5.6037, -0.1870], 14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap', maxZoom: 19
   }).addTo(map);
-
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-  // Customer marker
   const custIcon = L.divIcon({
-    html: `<div style="background:#0F1B2D;color:white;padding:6px 10px;border-radius:10px;
-                       font-size:11px;font-weight:700;white-space:nowrap;
-                       box-shadow:0 2px 8px rgba(15,27,45,.3)">📍 You</div>`,
-    className: '', iconAnchor: [30, 36],
+    html: `<div style="background:#0F1B2D;color:white;padding:5px 10px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(15,27,45,.3)">📍 You</div>`,
+    className: '', iconAnchor: [28, 34],
   });
-
-  // Rider marker
   const riderIcon = L.divIcon({
-    html: `<div style="background:#F5A623;color:#0F1B2D;padding:6px 10px;border-radius:10px;
-                       font-size:11px;font-weight:700;white-space:nowrap;
-                       box-shadow:0 2px 8px rgba(245,166,35,.4)">🛵 Rider</div>`,
-    className: '', iconAnchor: [30, 36],
+    html: `<div style="background:#F5A623;color:#0F1B2D;padding:5px 10px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(245,166,35,.4)">🛵 Rider</div>`,
+    className: '', iconAnchor: [28, 34],
   });
 
-  let custMarker  = null;
-  let riderMarker = null;
-  let routeLine   = null;
+  let custMarker = null, riderMarker = null, routeLine = null;
 
   function haversine(lat1, lng1, lat2, lng2) {
     const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
@@ -204,59 +209,42 @@
   }
 
   function pollRider() {
-    fetch(`/rider/location/${ORDER_REF}/`, {
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
-    .then(d => {
-      if (!d.success) return;
-
-      const rLat = d.lat, rLng = d.lng;
-
-      if (!riderMarker) {
-        riderMarker = L.marker([rLat, rLng], { icon: riderIcon }).addTo(map);
-      } else {
-        riderMarker.setLatLng([rLat, rLng]);
-      }
-
-      // Try to show customer location too (use first delivery address geocode)
-      const cLat = 5.6037, cLng = -0.1870; // fallback
-      if (!custMarker) {
-        custMarker = L.marker([cLat, cLng], { icon: custIcon })
-          .addTo(map)
-          .bindPopup(`<strong>${ORDER_REF}</strong><br>${CUST_ADDR}`);
-        map.fitBounds(L.latLngBounds([[rLat, rLng], [cLat, cLng]]), { padding: [40,40] });
-      }
-
-      if (routeLine) map.removeLayer(routeLine);
-      routeLine = L.polyline(
-        [[rLat, rLng], [cLat, cLng]],
-        { color: '#0F1B2D', weight: 3, dashArray: '8 6', opacity: 0.5 }
-      ).addTo(map);
-
-      const dist = haversine(rLat, rLng, cLat, cLng);
-      document.getElementById('rider-distance').textContent =
-        `${dist < 1 ? Math.round(dist*1000) + 'm' : dist.toFixed(1) + 'km'} away`;
-      document.getElementById('map-updated').textContent =
-        `Updated ${d.updated}`;
-
-      if (d.status === 'delivered') location.reload();
-    })
-    .catch(() => {});
+    fetch(`/rider/location/${ORDER_REF}/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        const rLat = d.lat, rLng = d.lng, cLat = 5.6037, cLng = -0.1870;
+        if (!riderMarker) {
+          riderMarker = L.marker([rLat, rLng], { icon: riderIcon }).addTo(map);
+        } else { riderMarker.setLatLng([rLat, rLng]); }
+        if (!custMarker) {
+          custMarker = L.marker([cLat, cLng], { icon: custIcon }).addTo(map);
+          map.fitBounds(L.latLngBounds([[rLat, rLng],[cLat, cLng]]), { padding: [40,40] });
+        }
+        if (routeLine) map.removeLayer(routeLine);
+        routeLine = L.polyline([[rLat, rLng],[cLat, cLng]], {
+          color: '#0F1B2D', weight: 3, dashArray: '8 6', opacity: 0.5
+        }).addTo(map);
+        const dist = haversine(rLat, rLng, cLat, cLng);
+        document.getElementById('rider-distance').textContent =
+          dist < 1 ? Math.round(dist*1000) + 'm away' : dist.toFixed(1) + 'km away';
+        document.getElementById('map-updated').textContent = 'Updated ' + (d.updated || 'just now');
+        if (d.status === 'delivered') location.reload();
+      }).catch(() => {});
   }
 
   pollRider();
-  setInterval(pollRider, 10000); // every 10s
+  setInterval(pollRider, 10000);
 </script>
 {% endif %}
 
-{% if order.status not in 'delivered,cancelled' %}
+{% if order.status not in 'delivered,cancelled,refunded' %}
 <script>
   let secs = 30;
   const el = document.getElementById('refresh-timer');
   const iv = setInterval(() => {
     secs--;
-    if (el) el.textContent = `Refreshing in ${secs} seconds...`;
+    if (el) el.textContent = `Refreshing in ${secs} second${secs !== 1 ? 's' : ''}...`;
     if (secs <= 0) { clearInterval(iv); location.reload(); }
   }, 1000);
 </script>
