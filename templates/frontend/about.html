@@ -32,7 +32,7 @@
                 </h1>
 
                 <p class="text-lg text-gray-400 leading-relaxed mb-8 max-w-2xl">
-                    {% if page %}
+                    {% if page and page.subtitle %}
                         {{ page.subtitle }}
                     {% else %}
                         Lynctel connects customers, vendors, and riders across Ghana through a modern ecommerce ecosystem built for speed, trust, and convenience.
@@ -53,11 +53,11 @@
 
                 <!-- METRICS GRID -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16">
-                    {% if page and page.stats.all %}
-                        {% for stat in page.stats.all %}
+                    {% if stats %}
+                        {% for stat in stats %}
                         <div class="bg-white/5 border border-white/5 rounded-2xl p-5 text-center backdrop-blur-sm hover:border-white/20 transition-colors duration-300">
                             <h3 class="text-3xl font-black text-gold tracking-tight">
-                                {{ stat.value }}
+                                {% if stat.icon %}{{ stat.icon }} {% endif %}{{ stat.value }}
                             </h3>
                             <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mt-2">
                                 {{ stat.label }}
@@ -141,7 +141,7 @@
                 </h2>
 
                 <p class="text-gray-600 text-lg leading-relaxed mb-6">
-                    {% if page %}
+                    {% if page and page.story_text %}
                         {{ page.story_text }}
                     {% else %}
                         Lynctel was created to modernize ecommerce across Ghana and Africa by building a reliable platform where customers, vendors, and riders can thrive together.
@@ -193,8 +193,8 @@
         </div>
 
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {% if page and page.features.all %}
-                {% for feature in page.features.all %}
+            {% if features %}
+                {% for feature in features %}
                 <div class="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:bg-white hover:border-gold/30 transition-all duration-300 hover:-translate-y-1 group">
                     <div class="w-14 h-14 bg-amber-500/5 text-amber-600 rounded-2xl flex items-center justify-center text-2xl mb-6 transition-transform duration-300 group-hover:scale-110">
                         {{ feature.icon }}
@@ -264,10 +264,10 @@
         </div>
 
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {% if page and page.team.all %}
-                {% for member in page.team.all %}
+            {% if team_members %}
+                {% for member in team_members %}
                 <div class="bg-white/5 rounded-[2rem] overflow-hidden border border-white/10 hover:border-gold/40 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
-                    
+
                     <!-- IMAGE CONTAINER (SAFE BOUNDARIES) -->
                     <div class="w-full h-80 overflow-hidden relative bg-slate-900/50 flex items-center justify-center p-4">
                         {% if member.image %}
@@ -326,7 +326,7 @@
         </h2>
 
         <p class="text-lg text-gray-400 leading-relaxed max-w-3xl mx-auto mb-10">
-            {% if page %}
+            {% if page and page.cta_text %}
                 {{ page.cta_text }}
             {% else %}
                 Join thousands of customers and vendors already growing with Lynctel.
