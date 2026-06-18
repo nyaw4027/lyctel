@@ -11,7 +11,8 @@ from rest_framework.response import Response
 # ----------------------------------------
 
 from cart.models import Cart
-from delivery.models import DeliveryZone
+from delivery.models import Delivery, DeliveryZone
+from delivery.services import assign_rider_to_delivery
 from .models import Order
 
 
@@ -143,7 +144,6 @@ def order_history(request):
 
 
 from delivery.models import Delivery, DeliveryZone
-from delivery.services import assign_nearest_rider
 
 def create_delivery_for_order(order):
     zone = DeliveryZone.objects.filter(is_active=True).first()
@@ -160,13 +160,10 @@ def create_delivery_for_order(order):
         status=Delivery.Status.PENDING
     )
 
-    # 🚀 AUTO ASSIGN RIDER
-    rider = assign_nearest_rider(delivery)
+    rider = assign_rider_to_delivery(delivery)
 
     if not rider:
-        # fallback: retry later system
-        from delivery.tasks import try_reassign_later
-        try_reassign_later(delivery)
+        print("No available rider found.")
 
     return delivery
 

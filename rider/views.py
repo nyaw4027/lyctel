@@ -5,11 +5,13 @@ from django.http import JsonResponse
 from django.db.models import Sum
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from datetime import timedelta
 
 from delivery.models import Delivery
 from rider.models import RiderProfile, RiderEarning, RiderLocation, DeliveryAcceptance
 from .notification_model import RiderNotification
 from ecommerce.models import User
+
 
 import json
 import urllib.request
@@ -507,3 +509,68 @@ def eta_api(request):
         return JsonResponse({'success': False, 'error': 'Invalid coordinate format'})
     except Exception:
         return JsonResponse({'success': False, 'error': 'Server error'})
+
+
+
+@login_required
+def rider_earnings(request):
+    try:
+        profile = request.user.rider_profile
+    except Exception:
+        return redirect('rider:apply')
+
+    deliveries = profile.deliveries.select_related(
+        'order', 'order__customer'
+    ).order_by('-assigned_at')
+
+    # ── Stats ──────────────────────────────────────────────────────────────────
+    total_earnings = deliveries.filter(
+        status='delivered'
+    ).aggregate(t=Sum('rider_commission'))['t'] or 0
+
+    total_deliveries = deliveries.filter(status='delivered').count()
+
+    # This week
+    week_start = timezone.now() - timedelta(days=7)
+    week_earnings = deliveries.filter(
+        status='delivered',
+        delivered_at__gte=week_start,
+    ).aggregate(t=Sum('rider_commission'))['t'] or 0
+
+    week_deliveries = deliveries.filter(
+        status='delivered',
+        delivered_at__gte=week_start,
+    ).count()
+
+    # This month
+    month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0)
+    month_earnings = deliveries.filter(
+        status='delivered',
+        delivered_at__gte=month_start,
+    ).aggregate(t=Sum('rider_commission'))['t'] or 0
+
+    # Pending payout (delivered but not yet paid out)
+    pending_payout = profile.earnings.filter(
+        status='pending'
+    ).aggregate(t=Sum('amount'))['t'] or 0
+
+    paid_out = profile.earnings.filter(
+        status='paid'
+    ).aggregate(t=Sum('amount'))['t'] or 0
+
+    # Recent completed deliveries
+    recent = deliveries.filter(status='delivered')[:20]
+
+    return render(request, 'rider/earnings.html', {
+        'profile':          profile,
+        'total_earnings':   total_earnings,
+        'total_deliveries': total_deliveries,
+        'week_earnings':    week_earnings,
+        'week_deliveries':  week_deliveries,
+        'month_earnings':   month_earnings,
+        'pending_payout':   pending_payout,
+        'paid_out':         paid_out,
+        'recent':           recent,
+        'cart_count':       0,
+    })
+
