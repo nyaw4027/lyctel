@@ -50,5 +50,5 @@ path('food/<int:pk>/',         views.food_vendor_detail, name='food_vendor_detai
 path('food/orders/',           views.food_orders,        name='food_orders'),
 
 # ── Commissions (already exists in views, just needs URL) ─
-path('vendors/commissions/',   views.commission_overview, name='commission_overview'),
+path('vendors/commissions/', views.commission_overview, name='commission_overview'),
 ]
