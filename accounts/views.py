@@ -10,7 +10,7 @@ from django.shortcuts import render, redirect
 from django.utils.crypto import get_random_string
 
 from order.models import Order
-from ecommerce.models import User
+from ecommerce.models import User, normalize_phone
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def signup(request):
     if request.method == 'POST':
         first_name = request.POST.get('first_name', '').strip()
         last_name  = request.POST.get('last_name', '').strip()
-        phone      = request.POST.get('phone', '').strip()
+        phone      = normalize_phone(request.POST.get('phone', '').strip())
         password   = request.POST.get('password', '')
         confirm    = request.POST.get('confirm_password', '')
 
@@ -81,7 +81,7 @@ def login_view(request):
         return redirect('frontend:home')
 
     if request.method == 'POST':
-        phone    = request.POST.get('phone', '').strip()
+        phone    = normalize_phone(request.POST.get('phone', '').strip())
         password = request.POST.get('password', '')
 
         try:
@@ -128,7 +128,7 @@ def forget_password(request):
         return redirect('frontend:home')
 
     if request.method == 'POST':
-        phone = request.POST.get('phone', '').strip()
+        phone = normalize_phone(request.POST.get('phone', '').strip())
 
         if not phone:
             messages.error(request, 'Please enter your phone number.')
