@@ -56,11 +56,11 @@ def about(request):
         page = None
 
     return render(request, 'frontend/about.html', {
-        'page':     page,
-        'stats':    page.stats.all()    if page else [],
-        'features': page.features.all() if page else [],
-        'team':     page.team.all()     if page else [],
-        'cart_count': 0,
+        'page':         page,
+        'stats':        page.stats.all()    if page else [],
+        'features':     page.features.all() if page else [],
+        'team_members': page.team.filter(is_active=True) if page else [],
+        'cart_count':   0,
     })
 
 
