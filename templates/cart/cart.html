@@ -7,184 +7,245 @@
   <div class="mb-6">
     <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Shopping</p>
     <h1 class="font-display font-700 text-2xl text-navy">Your Cart
-      {% if cart.total_items %}
-      <span class="text-gray-400 font-400 text-lg ml-2">({{ cart.total_items }} item{{ cart.total_items|pluralize }})</span>
-      {% endif %}
+      <span id="page-count-wrap" class="{% if not cart.total_items %}hidden{% endif %}">
+        <span id="page-item-count" class="text-gray-400 font-400 text-lg ml-2">({{ cart.total_items }} item{{ cart.total_items|pluralize }})</span>
+      </span>
     </h1>
   </div>
 
-  {% if cart_items %}
-  <div class="flex flex-col lg:flex-row gap-6">
+  <!-- CART HAS ITEMS -->
+  <div id="cart-page-content" class="{% if not cart_items %}hidden{% endif %}">
+    <div class="flex flex-col lg:flex-row gap-6">
 
-    <!-- CART ITEMS -->
-    <div class="flex-1 space-y-3" id="cart-items">
-      {% for item in cart_items %}
-      <div id="row-{{ item.pk }}"
-           class="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4
-                  transition-all duration-300">
-        <a href="{% url 'products:detail' item.product.slug %}" class="flex-shrink-0">
-          {% with item.product.images.first as img %}
-          {% if img %}
-          <img src="{{ img.image.url }}" class="w-20 h-20 rounded-xl object-cover"/>
-          {% else %}
-          <div class="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-3xl">📦</div>
-          {% endif %}
-          {% endwith %}
-        </a>
+      <!-- ITEMS LIST -->
+      <div class="flex-1 space-y-3" id="cart-items">
+        {% for item in cart_items %}
+        <div id="row-{{ item.pk }}"
+             class="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 transition-all duration-300">
 
-        <div class="flex-1 min-w-0">
-          <a href="{% url 'products:detail' item.product.slug %}"
-             class="font-semibold text-navy hover:text-gold transition-colors line-clamp-2 text-sm leading-snug">
-            {{ item.product.name }}
+          <a href="{% url 'products:detail' item.product.slug %}" class="flex-shrink-0">
+            {% with item.product.images.first as img %}
+            {% if img %}
+            <img src="{{ img.image.url }}" class="w-20 h-20 rounded-xl object-cover"/>
+            {% else %}
+            <div class="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-3xl">📦</div>
+            {% endif %}
+            {% endwith %}
           </a>
-          {% if item.product.vendor %}
-          <p class="text-xs text-gray-400 mt-0.5">🏪 {{ item.product.vendor.shop_name }}</p>
-          {% endif %}
-          <p class="font-display font-700 text-navy mt-1 text-sm">GHS {{ item.product.selling_price }}</p>
-        </div>
 
-        <!-- Qty -->
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <button onclick="updateQty({{ item.pk }}, -1)"
-                  class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-navy hover:text-white
-                         flex items-center justify-center font-bold transition-colors text-gray-600">−</button>
-          <span id="qty-{{ item.pk }}" class="w-8 text-center font-semibold text-navy text-sm">
-            {{ item.quantity }}
-          </span>
-          <button onclick="updateQty({{ item.pk }}, 1)"
-                  class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-navy hover:text-white
-                         flex items-center justify-center font-bold transition-colors text-gray-600">+</button>
-        </div>
+          <div class="flex-1 min-w-0">
+            <a href="{% url 'products:detail' item.product.slug %}"
+               class="font-semibold text-navy hover:text-gold transition-colors line-clamp-2 text-sm leading-snug">
+              {{ item.product.name }}
+            </a>
+            {% if item.product.vendor %}
+            <p class="text-xs text-gray-400 mt-0.5">🏪 {{ item.product.vendor.shop_name }}</p>
+            {% endif %}
+            <p class="font-display font-700 text-navy mt-1 text-sm">GHS {{ item.product.selling_price }}</p>
+          </div>
 
-        <!-- Subtotal -->
-        <div class="text-right flex-shrink-0 min-w-[80px]">
-          <p id="sub-{{ item.pk }}" class="font-display font-700 text-navy text-sm">
-            GHS {{ item.subtotal }}
+          <!-- Qty controls -->
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button onclick="pageUpdateQty({{ item.pk }}, -1)"
+                    class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-navy hover:text-white
+                           flex items-center justify-center font-bold transition-colors text-gray-600">−</button>
+            <span id="qty-{{ item.pk }}" class="w-8 text-center font-semibold text-navy text-sm">{{ item.quantity }}</span>
+            <button onclick="pageUpdateQty({{ item.pk }}, 1)"
+                    class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-navy hover:text-white
+                           flex items-center justify-center font-bold transition-colors text-gray-600">+</button>
+          </div>
+
+          <!-- Subtotal + remove -->
+          <div class="text-right flex-shrink-0 min-w-[80px]">
+            <p id="sub-{{ item.pk }}" class="font-display font-700 text-navy text-sm">GHS {{ item.subtotal }}</p>
+            <button onclick="pageRemoveItem({{ item.pk }})"
+                    class="text-xs text-red-400 hover:text-red-600 transition-colors mt-1">Remove</button>
+          </div>
+        </div>
+        {% endfor %}
+
+        <a href="{% url 'products:list' %}"
+           class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-navy transition-colors mt-2">
+          ← Continue Shopping
+        </a>
+      </div>
+
+      <!-- ORDER SUMMARY -->
+      <div class="w-full lg:w-80 flex-shrink-0">
+        <div class="bg-white rounded-2xl border border-gray-100 p-5 sticky top-20">
+          <h2 class="font-display font-700 text-navy text-lg mb-4">Order Summary</h2>
+
+          <div class="space-y-3 text-sm mb-5">
+            <div class="flex justify-between">
+              <span class="text-gray-500">Subtotal</span>
+              <span id="summary-subtotal" class="font-semibold text-navy">GHS {{ cart.total_price }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Delivery fee</span>
+              <span class="text-gray-400 text-xs">At checkout</span>
+            </div>
+            <div class="border-t border-gray-100 pt-3 flex justify-between">
+              <span class="font-display font-700 text-navy">Total</span>
+              <span id="summary-total" class="font-display font-700 text-navy text-base">GHS {{ cart.total_price }}</span>
+            </div>
+          </div>
+
+          {% if user.is_authenticated %}
+          <a href="{% url 'order:checkout' %}"
+             class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold
+                    text-center py-3.5 rounded-xl transition-colors btn-press mb-3 text-sm">
+            Proceed to Checkout →
+          </a>
+          {% else %}
+          <a href="{% url 'accounts:login' %}?next={% url 'order:checkout' %}"
+             class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold
+                    text-center py-3.5 rounded-xl transition-colors btn-press mb-3 text-sm">
+            Sign In to Checkout →
+          </a>
+          <p class="text-center text-xs text-gray-400 mb-3">
+            Don't have an account?
+            <a href="{% url 'accounts:signup' %}" class="text-gold-dark hover:underline">Sign up free</a>
           </p>
-          <button onclick="removeItem({{ item.pk }})"
-                  class="text-xs text-red-400 hover:text-red-600 transition-colors mt-1">
-            Remove
+          {% endif %}
+
+          <!-- Clear cart -->
+          <button onclick="clearCart()"
+                  class="w-full text-center text-xs text-red-400 hover:text-red-600 transition-colors py-1 font-medium">
+            🗑 Clear Cart
           </button>
-        </div>
-      </div>
-      {% endfor %}
 
-      <a href="{% url 'products:list' %}"
-         class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-navy transition-colors mt-2">
-        ← Continue Shopping
-      </a>
-    </div>
-
-    <!-- ORDER SUMMARY -->
-    <div class="w-full lg:w-80 flex-shrink-0">
-      <div class="bg-white rounded-2xl border border-gray-100 p-5 sticky top-20">
-        <h2 class="font-display font-700 text-navy text-lg mb-4">Order Summary</h2>
-
-        <div class="space-y-3 text-sm mb-5">
-          <div class="flex justify-between">
-            <span class="text-gray-500">Subtotal</span>
-            <span id="summary-subtotal" class="font-semibold text-navy">GHS {{ cart.total_price }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-400">Delivery fee</span>
-            <span class="text-gray-400 text-xs">At checkout</span>
-          </div>
-          <div class="border-t border-gray-100 pt-3 flex justify-between">
-            <span class="font-display font-700 text-navy">Total</span>
-            <span id="summary-total" class="font-display font-700 text-navy text-base">
-              GHS {{ cart.total_price }}
-            </span>
-          </div>
-        </div>
-
-        {% if user.is_authenticated %}
-        <a href="{% url 'order:checkout' %}"
-           class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold
-                  text-center py-3.5 rounded-xl transition-colors btn-press mb-3 text-sm">
-          Proceed to Checkout →
-        </a>
-        {% else %}
-        <a href="{% url 'accounts:login' %}?next={% url 'order:checkout' %}"
-           class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold
-                  text-center py-3.5 rounded-xl transition-colors btn-press mb-3 text-sm">
-          Sign In to Checkout →
-        </a>
-        <p class="text-center text-xs text-gray-400 mb-3">
-          Don't have an account?
-          <a href="{% url 'accounts:signup' %}" class="text-gold-dark hover:underline">Sign up free</a>
-        </p>
-        {% endif %}
-
-        <div class="border-t border-gray-100 pt-3">
-          <p class="text-xs text-center text-gray-400 mb-2">Secure payment via</p>
-          <div class="flex items-center justify-center gap-2 flex-wrap">
-            <span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">MTN MoMo</span>
-            <span class="text-xs font-semibold bg-red-100 text-red-600 px-2.5 py-1 rounded-full">Vodafone</span>
-            <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">AirtelTigo</span>
-            <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">Card</span>
+          <div class="border-t border-gray-100 pt-3 mt-3">
+            <p class="text-xs text-center text-gray-400 mb-2">Secure payment via</p>
+            <div class="flex items-center justify-center gap-2 flex-wrap">
+              <span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">MTN MoMo</span>
+              <span class="text-xs font-semibold bg-red-100 text-red-600 px-2.5 py-1 rounded-full">Vodafone</span>
+              <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">AirtelTigo</span>
+              <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">Card</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
+    </div>
   </div>
 
-  {% else %}
-  <div class="flex flex-col items-center justify-center py-28 text-center">
+  <!-- EMPTY STATE -->
+  <div id="cart-page-empty" class="{% if cart_items %}hidden{% endif %} flex flex-col items-center justify-center py-28 text-center">
     <div class="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center text-5xl mb-6">🛒</div>
     <h2 class="font-display font-700 text-2xl text-navy mb-2">Your cart is empty</h2>
-    <p class="text-gray-400 text-sm mb-8 max-w-xs">
-      Browse our products and add items you love.
-    </p>
+    <p class="text-gray-400 text-sm mb-8 max-w-xs">Browse our products and add items you love.</p>
     <a href="{% url 'products:list' %}"
-       class="bg-navy hover:bg-navy-700 text-white font-semibold px-8 py-3.5
-              rounded-2xl transition-colors btn-press">
+       class="bg-navy hover:bg-navy-700 text-white font-semibold px-8 py-3.5 rounded-2xl transition-colors btn-press">
       Start Shopping
     </a>
   </div>
-  {% endif %}
 
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  function updateQty(itemId, delta) {
-    const qtyEl = document.getElementById('qty-' + itemId);
+  // ── Page-level cart actions (sync with drawer) ─────────────────────────────
+
+  function pageUpdateQty(itemId, delta) {
+    const qtyEl  = document.getElementById('qty-' + itemId);
     const newQty = Math.max(1, parseInt(qtyEl.textContent) + delta);
-    const fd = new FormData();
+    const fd     = new FormData();
     fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
     fd.append('quantity', newQty);
+
     fetch(`/cart/update/${itemId}/`, {
-      method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: fd
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
     })
     .then(r => r.json())
     .then(d => {
-      if (d.success) {
-        qtyEl.textContent = newQty;
-        document.getElementById('sub-' + itemId).textContent = 'GHS ' + d.item_subtotal;
-        document.getElementById('summary-subtotal').textContent = 'GHS ' + d.cart_total;
-        document.getElementById('summary-total').textContent = 'GHS ' + d.cart_total;
-        updateCartBadge(d.cart_count);
+      if (!d.success) return;
+      qtyEl.textContent = newQty;
+
+      // Recalculate subtotal from server total and current items
+      fetch('/cart/data/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.json())
+        .then(data => {
+          // Update individual subtotals
+          data.items.forEach(item => {
+            const sub = document.getElementById('sub-' + item.id);
+            if (sub) sub.textContent = 'GHS ' + parseFloat(item.subtotal).toFixed(2);
+          });
+          const total = 'GHS ' + parseFloat(data.total).toFixed(2);
+          document.getElementById('summary-subtotal').textContent = total;
+          document.getElementById('summary-total').textContent    = total;
+          updateCartBadge(data.count);
+          updatePageCount(data.count);
+        });
+    });
+  }
+
+  function pageRemoveItem(itemId) {
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+
+    fetch(`/cart/remove/${itemId}/`, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.success) return;
+      const row = document.getElementById('row-' + itemId);
+      if (row) {
+        row.style.opacity    = '0';
+        row.style.transform  = 'translateX(20px)';
+        row.style.transition = 'all .3s ease';
+        setTimeout(() => {
+          row.remove();
+          const total = 'GHS ' + parseFloat(d.cart_total).toFixed(2);
+          document.getElementById('summary-subtotal').textContent = total;
+          document.getElementById('summary-total').textContent    = total;
+          updateCartBadge(d.cart_count);
+          updatePageCount(d.cart_count);
+          if (d.cart_count === 0) showEmptyState();
+        }, 300);
       }
     });
   }
 
-  function removeItem(itemId) {
-    const fd = new FormData();
-    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
-    fetch(`/cart/remove/${itemId}/`, {
-      method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: fd
-    })
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        const row = document.getElementById('row-' + itemId);
-        if (row) { row.style.opacity = '0'; setTimeout(() => row.remove(), 300); }
-        updateCartBadge(d.cart_count);
-        if (d.cart_count === 0) setTimeout(() => location.reload(), 350);
-      }
+  function clearCart() {
+    if (!confirm('Remove all items from your cart?')) return;
+    const items = document.querySelectorAll('[id^="row-"]');
+    items.forEach(row => {
+      const id = row.id.replace('row-', '');
+      const fd = new FormData();
+      fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+      fetch(`/cart/remove/${id}/`, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd,
+      });
     });
+    setTimeout(() => {
+      updateCartBadge(0);
+      showEmptyState();
+    }, 400);
+  }
+
+  function showEmptyState() {
+    document.getElementById('cart-page-content').classList.add('hidden');
+    document.getElementById('cart-page-empty').classList.remove('hidden');
+    document.getElementById('page-count-wrap').classList.add('hidden');
+  }
+
+  function updatePageCount(count) {
+    const wrap = document.getElementById('page-count-wrap');
+    const el   = document.getElementById('page-item-count');
+    if (count > 0) {
+      wrap.classList.remove('hidden');
+      el.textContent = `(${count} item${count !== 1 ? 's' : ''})`;
+    } else {
+      wrap.classList.add('hidden');
+    }
   }
 </script>
 {% endblock %}
