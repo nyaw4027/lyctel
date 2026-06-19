@@ -21,8 +21,8 @@ AUTH_USER_MODEL = 'ecommerce.User'
 
 # ── Apps ───────────────────────────────────────────────────
 INSTALLED_APPS = [
+    'daphne',
     'channels',
-    "daphne",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -31,7 +31,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'cloudinary',
     'cloudinary_storage',
-     
     'ecommerce',
     'products',
     'cart',
@@ -54,6 +53,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -61,9 +61,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF      = 'ecommerce.urls'
-WSGI_APPLICATION  = 'ecommerce.wsgi.application'
-ASGI_APPLICATION  = 'ecommerce.asgi.application'
+ROOT_URLCONF     = 'ecommerce.urls'
+WSGI_APPLICATION = 'ecommerce.wsgi.application'
+ASGI_APPLICATION = 'ecommerce.asgi.application'
 
 # ── Templates ──────────────────────────────────────────────
 TEMPLATES = [
@@ -77,12 +77,16 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.i18n',
             ],
         },
     },
 ]
 
 # ── Database ───────────────────────────────────────────────
+# Priority:
+#   1. DATABASE_PRIVATE_URL / DATABASE_URL — Railway auto-injects
+#   2. SQLite — local dev only
 _db_url = (
     os.environ.get('DATABASE_PRIVATE_URL') or
     os.environ.get('DATABASE_URL')
@@ -105,6 +109,8 @@ else:
     }
 
 # ── Channel Layers ─────────────────────────────────────────
+# Uses Redis on Railway when REDIS_URL is set.
+# Falls back to InMemory for local dev / Railway without Redis.
 _redis_url = os.environ.get('REDIS_URL', '').strip()
 
 if _redis_url:
@@ -130,10 +136,25 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # ── Internationalisation ───────────────────────────────────
+from django.utils.translation import gettext_lazy as _
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE     = 'Africa/Accra'
 USE_I18N      = True
+USE_L10N      = True
 USE_TZ        = True
+
+LANGUAGES = [
+    ('en', _('English')),
+    ('tw', _('Twi')),
+    ('ga', _('Ga')),
+    ('ha', _('Hausa')),
+]
+
+# Locale files live at <project root>/locale/
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
 
 # ── Static files ───────────────────────────────────────────
 STATIC_URL       = '/static/'
@@ -141,8 +162,9 @@ STATIC_ROOT      = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # ── Media & Storage ────────────────────────────────────────
-# Cloudinary is used when all three vars are set in Railway.
-# Falls back to local filesystem (Railway Volume) if not configured.
+# Cloudinary activates when all three vars are set in Railway.
+# Falls back to Railway Volume / local filesystem when not set.
+# To disable Cloudinary: clear CLOUDINARY_CLOUD_NAME in Railway vars.
 
 _cloud_name   = config('CLOUDINARY_CLOUD_NAME', default='').strip()
 _cloud_key    = config('CLOUDINARY_API_KEY',    default='').strip()
@@ -172,8 +194,6 @@ if _use_cloudinary:
             'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
         },
         'staticfiles': {
-            # CompressedStaticFilesStorage — does NOT crash on missing
-            # manifest entries unlike CompressedManifestStaticFilesStorage
             'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
         },
     }
@@ -212,11 +232,15 @@ CACHES = {
 }
 
 # ── Payments ───────────────────────────────────────────────
-FLW_PUBLIC_KEY      = config('FLW_PUBLIC_KEY',      default='')
-FLW_SECRET_KEY      = config('FLW_SECRET_KEY',      default='')
-FLW_WEBHOOK_SECRET  = config('FLW_WEBHOOK_SECRET',  default='')
+FLW_PUBLIC_KEY     = config('FLW_PUBLIC_KEY',     default='')
+FLW_SECRET_KEY     = config('FLW_SECRET_KEY',     default='')
+FLW_WEBHOOK_SECRET = config('FLW_WEBHOOK_SECRET', default='')
 PAYSTACK_PUBLIC_KEY = config('PAYSTACK_PUBLIC_KEY', default='')
 PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
+
+# ── SMS (Termii) ───────────────────────────────────────────
+TERMII_API_KEY   = config('TERMII_API_KEY',   default='')
+TERMII_SENDER_ID = config('TERMII_SENDER_ID', default='Lynctel')
 
 # ── Maps ───────────────────────────────────────────────────
 GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
@@ -227,7 +251,7 @@ CSRF_TRUSTED_ORIGINS = ['https://lynctel.up.railway.app']
 # ── Security headers (production only) ────────────────────
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER     = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT         = False
+    SECURE_SSL_REDIRECT         = False  # Railway handles HTTPS termination
     SESSION_COOKIE_SECURE       = True
     CSRF_COOKIE_SECURE          = True
     SECURE_CONTENT_TYPE_NOSNIFF = True

@@ -367,6 +367,7 @@ def _verify_flw_transaction(transaction_id, expected_amount):
     except Exception:
         return False
 
+# ── Replace the existing _mark_paid function in payment/views.py ──────────────
 
 def _mark_paid(order, payment, gateway_ref, gateway_data):
     with transaction.atomic():

@@ -33,4 +33,6 @@ urlpatterns = [
     path('notifications/<int:pk>/read/',    views.notification_read,    name='notif_read'),
     path('notifications/read-all/',         views.notification_read_all,name='notif_read_all'),
     path('notifications/count/',            views.notification_count,   name='notif_count'),
+    # Add this to rider/urls.py urlpatterns:
+    path('earnings/', views.rider_earnings, name='earnings'),
 ]
