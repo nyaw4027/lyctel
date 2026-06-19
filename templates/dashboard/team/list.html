@@ -1,0 +1,122 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block page_title %}Team Members{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-xl font-bold text-gray-800">About Us — Team Members</h2>
+      <p class="text-sm text-gray-500 mt-1">
+        These members appear on the public About Us page. Drag to reorder using the Order field.
+      </p>
+    </div>
+    <a href="{% url 'dashboard:team_add' %}"
+       class="inline-flex items-center gap-2 bg-brand text-white text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-brand-dark transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Add Team Member
+    </a>
+  </div>
+
+  <!-- Empty state -->
+  {% if not members %}
+  <div class="bg-white border border-dashed border-gray-300 rounded-xl p-16 text-center">
+    <div class="text-5xl mb-4">👥</div>
+    <h3 class="text-gray-700 font-semibold text-lg mb-2">No team members yet</h3>
+    <p class="text-gray-400 text-sm mb-6">Add your first team member and they'll appear on the About Us page.</p>
+    <a href="{% url 'dashboard:team_add' %}"
+       class="inline-flex items-center gap-2 bg-brand text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-brand-dark transition-colors">
+      Add First Member
+    </a>
+  </div>
+  {% else %}
+
+  <!-- Team grid -->
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for member in members %}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden
+                {% if not member.is_active %}opacity-60{% endif %}">
+
+      <!-- Photo -->
+      <div class="h-44 bg-gray-100 flex items-center justify-center overflow-hidden relative">
+        {% if member.image %}
+          <img src="{{ member.image.url }}"
+               alt="{{ member.name }}"
+               class="w-full h-full object-cover">
+        {% else %}
+          <div class="flex flex-col items-center gap-2 text-gray-400">
+            <div class="w-16 h-16 rounded-full bg-brand/10 text-brand flex items-center justify-center text-2xl font-bold">
+              {{ member.name|slice:":1" }}
+            </div>
+            <span class="text-xs">No photo</span>
+          </div>
+        {% endif %}
+
+        <!-- Status badge -->
+        <span class="absolute top-2 right-2 text-xs font-semibold px-2 py-1 rounded-full
+                     {% if member.is_active %}bg-green-100 text-green-700{% else %}bg-gray-200 text-gray-500{% endif %}">
+          {% if member.is_active %}Visible{% else %}Hidden{% endif %}
+        </span>
+
+        <!-- Order badge -->
+        <span class="absolute top-2 left-2 text-xs font-bold px-2 py-1 rounded-full bg-black/40 text-white">
+          #{{ member.order }}
+        </span>
+      </div>
+
+      <!-- Info -->
+      <div class="p-4">
+        <h3 class="font-bold text-gray-900 text-base leading-tight">{{ member.name }}</h3>
+        <p class="text-brand text-sm font-semibold mt-0.5">{{ member.role }}</p>
+        {% if member.bio %}
+          <p class="text-gray-500 text-xs leading-relaxed mt-2 line-clamp-2">{{ member.bio }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div class="px-4 pb-4 flex items-center gap-2">
+        <a href="{% url 'dashboard:team_edit' member.pk %}"
+           class="flex-1 text-center text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg transition-colors">
+          ✏️ Edit
+        </a>
+
+        <!-- Toggle show/hide -->
+        <form method="post" action="{% url 'dashboard:team_toggle' member.pk %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="text-sm font-medium px-3 py-2 rounded-lg transition-colors
+                         {% if member.is_active %}bg-yellow-50 hover:bg-yellow-100 text-yellow-700{% else %}bg-green-50 hover:bg-green-100 text-green-700{% endif %}"
+                  title="{% if member.is_active %}Hide from About page{% else %}Show on About page{% endif %}">
+            {% if member.is_active %}👁 Hide{% else %}👁 Show{% endif %}
+          </button>
+        </form>
+
+        <!-- Delete -->
+        <form method="post" action="{% url 'dashboard:team_delete' member.pk %}"
+              onsubmit="return confirm('Remove {{ member.name }} from the team?')">
+          {% csrf_token %}
+          <button type="submit"
+                  class="text-sm font-medium px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors">
+            🗑
+          </button>
+        </form>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <p class="text-xs text-gray-400 mt-5 text-center">
+    {{ members.count }} team member{{ members.count|pluralize }} · 
+    Changes appear live on the 
+    <a href="{% url 'frontend:about' %}" target="_blank" class="text-brand hover:underline">About Us page</a>
+  </p>
+  {% endif %}
+
+</div>
+{% endblock %}
