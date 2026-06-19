@@ -1,5 +1,3 @@
-
-
 from functools import wraps
 
 from django.shortcuts import render, get_object_or_404, redirect
@@ -496,10 +494,10 @@ def vendor_detail(request, pk):
         'total_earned':     total_earned,
         'total_commission': total_commission,
     })
+
+
 @admin_required
 def commission_overview(request):
-    from django.utils import timezone
-    
     commissions = AppCommission.objects.select_related(
         'order', 'vendor'
     ).order_by('-created_at')
@@ -514,8 +512,9 @@ def commission_overview(request):
         'commissions': commissions,
         'total':       total,
         'month_total': month_total,
-        'now':         timezone.now(),   # ← this was missing
+        'now':         timezone.now(),
     })
+
 
 # ── STAFF ─────────────────────────────────────────────────
 
@@ -679,16 +678,11 @@ def user_detail(request, pk):
     })
 
 
-
-# ── Add these imports at the top of dashboard/views.py ───────────────────────
-# from food.models import FoodVendor, FoodOrder
-
-# ── FOOD VENDORS ──────────────────────────────────────────────────────────────
+# ── FOOD VENDORS ──────────────────────────────────────────
 
 @admin_required
 def food_vendor_list(request):
     from food.models import FoodVendor, FoodOrder
-    from django.utils import timezone
 
     query          = request.GET.get('q', '').strip()
     filter_status  = request.GET.get('status', '')
@@ -707,28 +701,27 @@ def food_vendor_list(request):
     if filter_cuisine:
         vendors = vendors.filter(cuisine=filter_cuisine)
 
-    total_vendors  = FoodVendor.objects.count()
-    open_count     = FoodVendor.objects.filter(status='open').count()
+    total_vendors   = FoodVendor.objects.count()
+    open_count      = FoodVendor.objects.filter(status='open').count()
     suspended_count = FoodVendor.objects.filter(status='suspended').count()
-    total_orders   = FoodOrder.objects.count()
+    total_orders    = FoodOrder.objects.count()
 
     return render(request, 'dashboard/food/list.html', {
-        'vendors':        vendors,
-        'query':          query,
-        'filter_status':  filter_status,
-        'filter_cuisine': filter_cuisine,
-        'cuisines':       FoodVendor.CuisineType.choices,
-        'total_vendors':  total_vendors,
-        'open_count':     open_count,
+        'vendors':         vendors,
+        'query':           query,
+        'filter_status':   filter_status,
+        'filter_cuisine':  filter_cuisine,
+        'cuisines':        FoodVendor.CuisineType.choices,
+        'total_vendors':   total_vendors,
+        'open_count':      open_count,
         'suspended_count': suspended_count,
-        'total_orders':   total_orders,
+        'total_orders':    total_orders,
     })
 
 
 @admin_required
 def food_vendor_detail(request, pk):
     from food.models import FoodVendor, FoodOrder
-    from django.db.models import Sum
 
     vendor = get_object_or_404(FoodVendor, pk=pk)
 
@@ -772,8 +765,6 @@ def food_vendor_detail(request, pk):
 @admin_required
 def food_orders(request):
     from food.models import FoodOrder
-    from django.db.models import Sum
-    from django.utils import timezone
 
     query          = request.GET.get('q', '').strip()
     filter_status  = request.GET.get('status', '')
@@ -797,31 +788,30 @@ def food_orders(request):
     if vendor_pk:
         orders = orders.filter(vendor__pk=vendor_pk)
 
-    today = timezone.now().date()
-    total_orders   = FoodOrder.objects.count()
-    pending_count  = FoodOrder.objects.filter(status='pending').count()
+    today           = timezone.now().date()
+    total_orders    = FoodOrder.objects.count()
+    pending_count   = FoodOrder.objects.filter(status='pending').count()
     delivered_today = FoodOrder.objects.filter(
         status='delivered', delivered_at__date=today
     ).count()
-    revenue_today  = FoodOrder.objects.filter(
+    revenue_today   = FoodOrder.objects.filter(
         payment_status='paid', created_at__date=today
     ).aggregate(t=Sum('total_amount'))['t'] or 0
 
     return render(request, 'dashboard/food/orders.html', {
-        'orders':         orders,
-        'query':          query,
-        'filter_status':  filter_status,
-        'filter_payment': filter_payment,
-        'status_choices': FoodOrder.Status.choices,
-        'total_orders':   total_orders,
-        'pending_count':  pending_count,
+        'orders':          orders,
+        'query':           query,
+        'filter_status':   filter_status,
+        'filter_payment':  filter_payment,
+        'status_choices':  FoodOrder.Status.choices,
+        'total_orders':    total_orders,
+        'pending_count':   pending_count,
         'delivered_today': delivered_today,
-        'revenue_today':  revenue_today,
+        'revenue_today':   revenue_today,
     })
 
+
 # ── TEAM MEMBERS (About Us page) ─────────────────────────
-# Add this import near the top of dashboard/views.py:
-# from frontend.models import AboutPage, TeamMember
 
 @admin_required
 def team_list(request):
@@ -840,10 +830,10 @@ def team_add(request):
     page = AboutPage.get_solo()
 
     if request.method == 'POST':
-        name     = request.POST.get('name', '').strip()
-        role     = request.POST.get('role', '').strip()
-        bio      = request.POST.get('bio', '').strip()
-        order    = request.POST.get('order', 0)
+        name      = request.POST.get('name', '').strip()
+        role      = request.POST.get('role', '').strip()
+        bio       = request.POST.get('bio', '').strip()
+        order     = request.POST.get('order', 0)
         is_active = request.POST.get('is_active') == 'on'
 
         errors = {}
@@ -852,6 +842,7 @@ def team_add(request):
 
         if errors:
             return render(request, 'dashboard/team/form.html', {
+                'member':    None,       # ← required so template doesn't crash
                 'errors':    errors,
                 'form_data': request.POST,
                 'action':    'Add',
@@ -872,7 +863,11 @@ def team_add(request):
         messages.success(request, f'"{name}" added to the team.')
         return redirect('dashboard:team_list')
 
-    return render(request, 'dashboard/team/form.html', {'action': 'Add'})
+    # GET — no member object exists yet for a new entry
+    return render(request, 'dashboard/team/form.html', {
+        'member': None,          # ← required so template doesn't crash
+        'action': 'Add',
+    })
 
 
 @admin_required
@@ -908,7 +903,6 @@ def team_edit(request, pk):
         if 'image' in request.FILES:
             member.image = request.FILES['image']
 
-        # Allow clearing the image
         if request.POST.get('clear_image') == 'on':
             member.image = None
 
