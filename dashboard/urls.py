@@ -51,4 +51,12 @@ path('food/orders/',           views.food_orders,        name='food_orders'),
 
 # ── Commissions (already exists in views, just needs URL) ─
 path('vendors/commissions/', views.commission_overview, name='commission_overview'),
+
+# Add these lines to your existing dashboard/urls.py urlpatterns list:
+
+path('team/',                  views.team_list,   name='team_list'),
+path('team/add/',              views.team_add,    name='team_add'),
+path('team/<int:pk>/edit/',    views.team_edit,   name='team_edit'),
+path('team/<int:pk>/delete/',  views.team_delete, name='team_delete'),
+path('team/<int:pk>/toggle/',  views.team_toggle, name='team_toggle'),
 ]

@@ -1,0 +1,178 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ action }} Team Member{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-6">
+    <a href="{% url 'dashboard:team_list' %}"
+       class="text-gray-400 hover:text-gray-600 transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+    </a>
+    <div>
+      <h2 class="text-xl font-bold text-gray-800">{{ action }} Team Member</h2>
+      <p class="text-sm text-gray-500">This person will appear on the public About Us page.</p>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data"
+        class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    {% csrf_token %}
+
+    <!-- Photo preview -->
+    <div class="p-6 border-b border-gray-100 flex items-center gap-6">
+      <div class="w-24 h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300
+                  flex items-center justify-center overflow-hidden flex-shrink-0" id="photo-preview-wrap">
+        {% if member and member.image %}
+          <img src="{{ member.image.url }}" id="photo-preview"
+               class="w-full h-full object-cover" alt="{{ member.name }}">
+        {% else %}
+          <span class="text-3xl text-gray-300" id="photo-placeholder">📷</span>
+          <img src="" id="photo-preview" class="hidden w-full h-full object-cover">
+        {% endif %}
+      </div>
+
+      <div class="flex-1">
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Profile Photo</label>
+        <input type="file" name="image" accept="image/*" id="image-input"
+               class="block w-full text-sm text-gray-500
+                      file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0
+                      file:text-sm file:font-semibold file:bg-brand/10 file:text-brand
+                      hover:file:bg-brand/20 cursor-pointer">
+        <p class="text-xs text-gray-400 mt-1.5">JPG, PNG, or WebP. Recommended: square, at least 400×400px.</p>
+
+        {% if member and member.image %}
+        <label class="inline-flex items-center gap-2 mt-3 text-sm text-red-500 cursor-pointer">
+          <input type="checkbox" name="clear_image" class="rounded">
+          Remove current photo
+        </label>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Fields -->
+    <div class="p-6 space-y-5">
+
+      <!-- Name -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+          Full Name <span class="text-red-500">*</span>
+        </label>
+        <input type="text" name="name"
+               value="{{ form_data.name|default:member.name|default:'' }}"
+               placeholder="e.g. Kwame Mensah"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand
+                      {% if errors.name %}border-red-400 bg-red-50{% endif %}">
+        {% if errors.name %}
+          <p class="text-red-500 text-xs mt-1">{{ errors.name }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Role / Position -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+          Role / Position <span class="text-red-500">*</span>
+        </label>
+        <input type="text" name="role"
+               value="{{ form_data.role|default:member.role|default:'' }}"
+               placeholder="e.g. CEO & Co-Founder, Head of Operations"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand
+                      {% if errors.role %}border-red-400 bg-red-50{% endif %}">
+        {% if errors.role %}
+          <p class="text-red-500 text-xs mt-1">{{ errors.role }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Bio -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+          Short Bio <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <textarea name="bio" rows="3"
+                  placeholder="A brief sentence or two about this person's background or contribution..."
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none
+                         focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand">{{ form_data.bio|default:member.bio|default:'' }}</textarea>
+        <p class="text-xs text-gray-400 mt-1">Keep it under 2 sentences for the best look on the About page.</p>
+      </div>
+
+      <!-- Order + Visibility row -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+            Display Order
+          </label>
+          <input type="number" name="order" min="0" max="99"
+                 value="{{ form_data.order|default:member.order|default:'0' }}"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand">
+          <p class="text-xs text-gray-400 mt-1">Lower numbers appear first. 0 = top.</p>
+        </div>
+
+        <div class="flex flex-col justify-center">
+          <label class="block text-sm font-semibold text-gray-700 mb-3">
+            Visibility
+          </label>
+          <label class="inline-flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" name="is_active"
+                   class="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
+                   {% if member.is_active or not member %}checked{% endif %}>
+            <span class="text-sm text-gray-700">
+              Show on About Us page
+            </span>
+          </label>
+          <p class="text-xs text-gray-400 mt-1.5 ml-7">Uncheck to hide without deleting.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer actions -->
+    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+      <a href="{% url 'dashboard:team_list' %}"
+         class="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors">
+        ← Cancel
+      </a>
+      <div class="flex items-center gap-3">
+        {% if member %}
+        <a href="{% url 'frontend:about' %}" target="_blank"
+           class="text-sm text-brand hover:underline font-medium">
+          Preview About page ↗
+        </a>
+        {% endif %}
+        <button type="submit"
+                class="bg-brand hover:bg-brand-dark text-white text-sm font-semibold
+                       px-6 py-2.5 rounded-lg transition-colors">
+          {% if action == 'Edit' %}Save Changes{% else %}Add to Team{% endif %}
+        </button>
+      </div>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Live photo preview when a file is selected
+  document.getElementById('image-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const preview = document.getElementById('photo-preview');
+      const placeholder = document.getElementById('photo-placeholder');
+      preview.src = ev.target.result;
+      preview.classList.remove('hidden');
+      if (placeholder) placeholder.classList.add('hidden');
+    };
+    reader.readAsDataURL(file);
+  });
+</script>
+{% endblock %}

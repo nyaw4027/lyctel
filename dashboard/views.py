@@ -819,3 +819,128 @@ def food_orders(request):
         'revenue_today':  revenue_today,
     })
 
+# ── TEAM MEMBERS (About Us page) ─────────────────────────
+# Add this import near the top of dashboard/views.py:
+# from frontend.models import AboutPage, TeamMember
+
+@admin_required
+def team_list(request):
+    from frontend.models import AboutPage, TeamMember
+    page    = AboutPage.get_solo()
+    members = TeamMember.objects.filter(page=page).order_by('order', 'id')
+    return render(request, 'dashboard/team/list.html', {
+        'members': members,
+        'page':    page,
+    })
+
+
+@admin_required
+def team_add(request):
+    from frontend.models import AboutPage, TeamMember
+    page = AboutPage.get_solo()
+
+    if request.method == 'POST':
+        name     = request.POST.get('name', '').strip()
+        role     = request.POST.get('role', '').strip()
+        bio      = request.POST.get('bio', '').strip()
+        order    = request.POST.get('order', 0)
+        is_active = request.POST.get('is_active') == 'on'
+
+        errors = {}
+        if not name: errors['name'] = 'Name is required.'
+        if not role: errors['role'] = 'Role/position is required.'
+
+        if errors:
+            return render(request, 'dashboard/team/form.html', {
+                'errors':    errors,
+                'form_data': request.POST,
+                'action':    'Add',
+            })
+
+        member = TeamMember(
+            page      = page,
+            name      = name,
+            role      = role,
+            bio       = bio,
+            order     = order or 0,
+            is_active = is_active,
+        )
+        if 'image' in request.FILES:
+            member.image = request.FILES['image']
+        member.save()
+
+        messages.success(request, f'"{name}" added to the team.')
+        return redirect('dashboard:team_list')
+
+    return render(request, 'dashboard/team/form.html', {'action': 'Add'})
+
+
+@admin_required
+def team_edit(request, pk):
+    from frontend.models import TeamMember
+    member = get_object_or_404(TeamMember, pk=pk)
+
+    if request.method == 'POST':
+        name      = request.POST.get('name', '').strip()
+        role      = request.POST.get('role', '').strip()
+        bio       = request.POST.get('bio', '').strip()
+        order     = request.POST.get('order', member.order)
+        is_active = request.POST.get('is_active') == 'on'
+
+        errors = {}
+        if not name: errors['name'] = 'Name is required.'
+        if not role: errors['role'] = 'Role/position is required.'
+
+        if errors:
+            return render(request, 'dashboard/team/form.html', {
+                'member':    member,
+                'errors':    errors,
+                'form_data': request.POST,
+                'action':    'Edit',
+            })
+
+        member.name      = name
+        member.role      = role
+        member.bio       = bio
+        member.order     = order or 0
+        member.is_active = is_active
+
+        if 'image' in request.FILES:
+            member.image = request.FILES['image']
+
+        # Allow clearing the image
+        if request.POST.get('clear_image') == 'on':
+            member.image = None
+
+        member.save()
+        messages.success(request, f'"{name}" updated successfully.')
+        return redirect('dashboard:team_list')
+
+    return render(request, 'dashboard/team/form.html', {
+        'member': member,
+        'action': 'Edit',
+    })
+
+
+@admin_required
+def team_delete(request, pk):
+    from frontend.models import TeamMember
+    member = get_object_or_404(TeamMember, pk=pk)
+    if request.method == 'POST':
+        name = member.name
+        member.delete()
+        messages.success(request, f'"{name}" removed from the team.')
+    return redirect('dashboard:team_list')
+
+
+@admin_required
+def team_toggle(request, pk):
+    """Quick show/hide toggle without opening the edit form."""
+    from frontend.models import TeamMember
+    member = get_object_or_404(TeamMember, pk=pk)
+    if request.method == 'POST':
+        member.is_active = not member.is_active
+        member.save()
+        state = 'visible' if member.is_active else 'hidden'
+        messages.success(request, f'"{member.name}" is now {state} on the About page.')
+    return redirect('dashboard:team_list')
