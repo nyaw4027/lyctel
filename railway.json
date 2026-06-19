@@ -1,7 +1,7 @@
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "python manage.py compilemessages && python manage.py collectstatic --noinput"
+    "buildCommand": "python manage.py collectstatic --noinput"
   },
   "deploy": {
     "startCommand": "python manage.py migrate && gunicorn ecommerce.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120",
