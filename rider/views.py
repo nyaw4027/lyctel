@@ -512,55 +512,56 @@ def eta_api(request):
 
 
 
+ 
 @login_required
 def rider_earnings(request):
     try:
         profile = request.user.rider_profile
     except Exception:
         return redirect('rider:apply')
-
+ 
     deliveries = profile.deliveries.select_related(
         'order', 'order__customer'
     ).order_by('-assigned_at')
-
+ 
     # ── Stats ──────────────────────────────────────────────────────────────────
     total_earnings = deliveries.filter(
         status='delivered'
     ).aggregate(t=Sum('rider_commission'))['t'] or 0
-
+ 
     total_deliveries = deliveries.filter(status='delivered').count()
-
+ 
     # This week
     week_start = timezone.now() - timedelta(days=7)
     week_earnings = deliveries.filter(
         status='delivered',
         delivered_at__gte=week_start,
     ).aggregate(t=Sum('rider_commission'))['t'] or 0
-
+ 
     week_deliveries = deliveries.filter(
         status='delivered',
         delivered_at__gte=week_start,
     ).count()
-
+ 
     # This month
     month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0)
     month_earnings = deliveries.filter(
         status='delivered',
         delivered_at__gte=month_start,
     ).aggregate(t=Sum('rider_commission'))['t'] or 0
-
+ 
     # Pending payout (delivered but not yet paid out)
     pending_payout = profile.earnings.filter(
         status='pending'
     ).aggregate(t=Sum('amount'))['t'] or 0
-
+ 
     paid_out = profile.earnings.filter(
         status='paid'
     ).aggregate(t=Sum('amount'))['t'] or 0
-
+ 
     # Recent completed deliveries
     recent = deliveries.filter(status='delivered')[:20]
-
+ 
     return render(request, 'rider/earnings.html', {
         'profile':          profile,
         'total_earnings':   total_earnings,
@@ -573,4 +574,3 @@ def rider_earnings(request):
         'recent':           recent,
         'cart_count':       0,
     })
-

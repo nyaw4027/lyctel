@@ -3,8 +3,6 @@ from django.db import transaction
 from django.utils import timezone
 
 
-
-
 def calculate_distance(lat1, lng1, lat2, lng2):
     """Haversine formula — returns distance in km."""
     R = 6371

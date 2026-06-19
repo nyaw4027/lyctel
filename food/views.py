@@ -16,6 +16,10 @@ from .models import (
     FoodOrder, FoodOrderItem, FoodCart, FoodCartItem,
 )
 from delivery.models import Delivery, DeliveryZone
+try:
+    from delivery.notifications import notify_food_order_status_change
+except ImportError:
+    notify_food_order_status_change = None
 
 
 # ─────────────────────────────
@@ -287,6 +291,12 @@ def restaurant_update_order(request, ref):
             order.payment_status = FoodOrder.PaymentStatus.PAID
         order.save()
         messages.success(request, f'Order {ref} → {order.get_status_display()}')
+
+        if notify_food_order_status_change:
+            try:
+                notify_food_order_status_change(order, new_status)
+            except Exception:
+                pass
     else:
         messages.error(request, 'Invalid status.')
 
@@ -586,6 +596,7 @@ def price_estimate(request):
     })
 
 
+
 # ─────────────────────────────
 # CHECKOUT
 # ─────────────────────────────
@@ -604,25 +615,32 @@ def checkout(request):
     vendor = cart.vendor
 
     if request.method == 'POST':
-        address    = request.POST.get('delivery_address', '').strip()
-        phone      = request.POST.get('delivery_phone', '').strip()
-        note       = request.POST.get('delivery_note', '').strip()
-        pay_method = request.POST.get('payment_method', 'cash')
-        dlat       = request.POST.get('delivery_lat')
-        dlng       = request.POST.get('delivery_lng')
-        fee_posted = request.POST.get('delivery_fee', '0')
+        address     = request.POST.get('delivery_address', '').strip()
+        phone       = request.POST.get('delivery_phone', '').strip()
+        note        = request.POST.get('delivery_note', '').strip()
+        pay_method  = request.POST.get('payment_method', 'cash')
+        dlat        = request.POST.get('delivery_lat')
+        dlng        = request.POST.get('delivery_lng')
+        fee_posted  = request.POST.get('delivery_fee', '0')
         dist_posted = request.POST.get('distance_km', '0')
 
         errors = {}
-        if not address: errors['address'] = 'Please enter your delivery address.'
-        if not phone:   errors['phone']   = 'Please enter your phone number.'
+
+        if not address:
+            errors['address'] = 'Please enter your delivery address.'
+
+        if not phone:
+            errors['phone'] = 'Please enter your phone number.'
 
         if errors:
             return render(request, 'food/checkout.html', {
-                'cart': cart, 'vendor': vendor,
+                'cart': cart,
+                'vendor': vendor,
                 'cart_items': cart.cart_items.select_related('food').all(),
-                'subtotal': cart.total, 'default_fee': str(MIN_FARE),
-                'user': request.user, 'cart_count': 0,
+                'subtotal': cart.total,
+                'default_fee': str(MIN_FARE),
+                'user': request.user,
+                'cart_count': 0,
                 'payment_methods': FoodOrder.PaymentMethod.choices,
                 'vendor_lat': vendor.latitude or '',
                 'vendor_lng': vendor.longitude or '',
@@ -631,85 +649,105 @@ def checkout(request):
 
         try:
             delivery_fee = Decimal(fee_posted)
-            distance_km  = float(dist_posted) if dist_posted else None
+            distance_km = float(dist_posted) if dist_posted else None
         except Exception:
             delivery_fee = MIN_FARE
-            distance_km  = None
+            distance_km = None
 
+        # Create food order
         order = FoodOrder.objects.create(
-            customer                = request.user,
-            vendor                  = vendor,
-            delivery_address        = address,
-            delivery_lat            = float(dlat) if dlat else None,
-            delivery_lng            = float(dlng) if dlng else None,
-            delivery_phone          = phone,
-            delivery_note           = note,
-            subtotal                = cart.total,
-            delivery_fee            = delivery_fee,
-            distance_km             = distance_km,
-            payment_method          = pay_method,
-            payment_status          = FoodOrder.PaymentStatus.UNPAID,
-            estimated_delivery_time = estimate_eta(distance_km or 5, vendor.avg_prep_time),
+            customer=request.user,
+            vendor=vendor,
+            delivery_address=address,
+            delivery_lat=float(dlat) if dlat else None,
+            delivery_lng=float(dlng) if dlng else None,
+            delivery_phone=phone,
+            delivery_note=note,
+            subtotal=cart.total,
+            delivery_fee=delivery_fee,
+            distance_km=distance_km,
+            payment_method=pay_method,
+            payment_status=FoodOrder.PaymentStatus.UNPAID,
+            estimated_delivery_time=estimate_eta(
+                distance_km or 5,
+                vendor.avg_prep_time
+            ),
         )
 
+        # Create order items
         for ci in cart.cart_items.select_related('food').all():
             FoodOrderItem.objects.create(
-                order=order, food=ci.food, name=ci.food.name,
-                price=ci.food.final_price, quantity=ci.quantity, note=ci.note,
+                order=order,
+                food=ci.food,
+                name=ci.food.name,
+                price=ci.food.final_price,
+                quantity=ci.quantity,
+                note=ci.note,
             )
 
+        # Create delivery record
         zone = DeliveryZone.objects.filter(is_active=True).first()
+
         delivery = Delivery.objects.create(
-            booker           = request.user,
-            pickup_location  = vendor.address,
-            dropoff_location = address,
-            pickup_lat       = vendor.latitude,
-            pickup_lng       = vendor.longitude,
-            dropoff_lat      = float(dlat) if dlat else None,
-            dropoff_lng      = float(dlng) if dlng else None,
-            delivery_fee     = delivery_fee,
-            rider_commission = delivery_fee * Decimal('0.5'),
-            distance_km      = distance_km,
-            zone             = zone,
-            delivery_type    = 'express',
-            status           = 'pending',
-            delivery_note    = note,
+            booker=request.user,
+            pickup_location=vendor.address,
+            dropoff_location=address,
+            pickup_lat=vendor.latitude,
+            pickup_lng=vendor.longitude,
+            dropoff_lat=float(dlat) if dlat else None,
+            dropoff_lng=float(dlng) if dlng else None,
+            delivery_fee=delivery_fee,
+            rider_commission=delivery_fee * Decimal('0.5'),
+            distance_km=distance_km,
+            zone=zone,
+            delivery_type=Delivery.DeliveryType.EXPRESS,
+            status=Delivery.Status.PENDING,
+            delivery_note=note,
         )
+
+        # Link delivery to food order
         order.delivery = delivery
-        order.save()
+        order.save(update_fields=['delivery'])
 
+        # Auto assign rider
         try:
-            from delivery.views import _auto_assign_and_notify
-            _auto_assign_and_notify(delivery)
-        except Exception:
-            pass
+            from delivery.services import auto_assign_for_food_order
+            auto_assign_for_food_order(order)
+        except Exception as e:
+            print(f"Auto assignment error: {e}")
 
+        # Update vendor stats
         vendor.total_orders += 1
         vendor.save(update_fields=['total_orders'])
 
+        # Clear cart
         cart.cart_items.all().delete()
         cart.vendor = None
         cart.save()
 
         messages.success(
             request,
-            f'Order {order.order_ref} placed! '
-            f'Estimated delivery: {order.estimated_delivery_time} mins.'
+            f'Order {order.order_ref} placed successfully! '
+            f'Estimated delivery time: {order.estimated_delivery_time} minutes.'
         )
+
         return redirect('food:order_track', ref=order.order_ref)
 
     return render(request, 'food/checkout.html', {
-        'cart':            cart,
-        'vendor':          vendor,
-        'cart_items':      cart.cart_items.select_related('food').all(),
-        'subtotal':        cart.total,
-        'default_fee':     str(MIN_FARE),
-        'user':            request.user,
-        'cart_count':      0,
+        'cart': cart,
+        'vendor': vendor,
+        'cart_items': cart.cart_items.select_related('food').all(),
+        'subtotal': cart.total,
+        'default_fee': str(MIN_FARE),
+        'user': request.user,
+        'cart_count': 0,
         'payment_methods': FoodOrder.PaymentMethod.choices,
-        'vendor_lat':      vendor.latitude or '',
-        'vendor_lng':      vendor.longitude or '',
+        'vendor_lat': vendor.latitude or '',
+        'vendor_lng': vendor.longitude or '',
     })
+
+
+    
 
 
 # ─────────────────────────────
