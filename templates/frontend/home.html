@@ -1,417 +1,393 @@
+
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Lynctel — Quality Products Delivered in Ghana{% endblock %}
 
 {% block extra_head %}
 <style>
-  /* ── Slideshow ─────────────────────────────────────── */
-  .slide { display: none; animation: slideFadeIn .6s ease forwards; }
-  .slide.active { display: block; }
-
+  /* ── Slideshow ─────────────────────────── */
+  .slide { display:none; animation: slideFadeIn .5s ease forwards; }
+  .slide.active { display:block; }
   @keyframes slideFadeIn {
-    from { opacity: 0; transform: translateY(12px) scale(.98); }
-    to   { opacity: 1; transform: translateY(0)   scale(1); }
+    from { opacity:0; transform:translateY(10px) scale(.99); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+  }
+  .slide-dot { transition:all .3s ease; }
+  .slide-dot.active { background:#F5A623; width:24px; border-radius:4px; }
+  .slide-progress-bar { animation:progressFill 5s linear forwards; transform-origin:left; }
+  @keyframes progressFill { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+  .slide-card:hover .slide-card-img { transform:scale(1.06); }
+  .slide-card-img { transition:transform .4s ease; }
+
+  /* ── Mobile touch improvements ─────────── */
+  @media (max-width: 768px) {
+    .touch-target { min-height: 44px; min-width: 44px; }
+    .hero-btn { font-size: 1rem; padding: 14px 24px; width: 100%; }
+    .product-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .product-img { height: 140px; }
+    .category-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .stat-num { font-size: 1.4rem; }
   }
 
-  .slide-dot { transition: all .3s ease; }
-  .slide-dot.active { background: #F5A623; width: 24px; border-radius: 4px; }
-
-  .slide-progress-bar {
-    animation: progressFill 5s linear forwards;
-    transform-origin: left;
+  /* ── Swipe hint on mobile ───────────────── */
+  @media (max-width: 640px) {
+    #hero-slideshow::after {
+      content: '';
+      position: absolute;
+      bottom: 48px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      background: rgba(245,166,35,.2);
+      border-radius: 50%;
+      animation: swipeHint 2s ease-in-out 3s forwards;
+    }
+    @keyframes swipeHint {
+      0%   { opacity:1; transform:translateX(0); }
+      50%  { opacity:1; transform:translateX(-20px); }
+      100% { opacity:0; transform:translateX(-40px); }
+    }
   }
-  @keyframes progressFill {
-    from { transform: scaleX(0); }
-    to   { transform: scaleX(1); }
+
+  /* ── Pull to refresh indicator ─────────── */
+  #ptr-indicator {
+    position: fixed; top: 64px; left: 50%;
+    transform: translateX(-50%) translateY(-60px);
+    z-index: 100;
+    background: white;
+    border-radius: 999px;
+    padding: 8px 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.1);
+    font-size: 12px;
+    font-weight: 600;
+    color: #0F1B2D;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform .3s ease;
+    pointer-events: none;
+  }
+  #ptr-indicator.visible { transform: translateX(-50%) translateY(0); }
+
+  /* ── Skeleton loaders ───────────────────── */
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shine 1.5s infinite;
+    border-radius: 12px;
+  }
+  @keyframes skeleton-shine {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
 
-  .slide-card:hover .slide-card-img { transform: scale(1.06); }
-  .slide-card-img { transition: transform .4s ease; }
+  /* ── Dark mode product cards ────────────── */
+  html.dark .product-card { background: var(--card-bg); border-color: var(--border-color); }
+  html.dark .category-card:hover { background: var(--bg-tertiary); }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- ── HERO ───────────────────────────────────────────── -->
+<!-- ── PULL TO REFRESH INDICATOR ──────────── -->
+<div id="ptr-indicator">
+  <svg class="w-4 h-4 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+  </svg>
+  Refreshing...
+</div>
+
+<!-- ── HERO ───────────────────────────────── -->
 <section class="relative overflow-hidden bg-navy">
-
   <div class="absolute inset-0 opacity-5"
-       style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0);
-              background-size: 32px 32px;"></div>
-
+       style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);
+              background-size:32px 32px;"></div>
   <div class="absolute top-0 right-0 w-96 h-96 bg-gold opacity-10 rounded-full
               translate-x-1/3 -translate-y-1/4 blur-3xl pointer-events-none"></div>
-  <div class="absolute bottom-0 left-0 w-64 h-64 bg-gold opacity-5 rounded-full
-              -translate-x-1/2 translate-y-1/3 blur-3xl pointer-events-none"></div>
 
-  <div class="relative max-w-7xl mx-auto px-4 md:px-6 py-16 md:py-24">
-    <div class="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+  <div class="relative max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-24">
+    <div class="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
 
-      <!-- ── LEFT: copy ──────────────────────────────── -->
+      <!-- LEFT: copy -->
       <div class="flex-1 text-center lg:text-left">
         <div class="inline-flex items-center gap-2 bg-white/10 text-gold text-xs font-semibold
-                    px-4 py-2 rounded-full mb-6 fade-up fade-up-1">
+                    px-4 py-2 rounded-full mb-4 fade-up fade-up-1">
           <span class="w-1.5 h-1.5 bg-gold rounded-full animate-pulse"></span>
           Fast Delivery Across Ghana 🇬🇭
         </div>
-        <h1 class="font-display font-800 text-4xl md:text-5xl lg:text-6xl text-white
-                   leading-tight mb-6 fade-up fade-up-2">
+        <h1 class="font-display font-800 text-3xl md:text-5xl lg:text-6xl text-white
+                   leading-tight mb-4 fade-up fade-up-2">
           Quality Products.<br/>
           <span class="shimmer">Delivered Fast.</span>
         </h1>
-        <p class="text-gray-300 text-lg mb-8 max-w-lg mx-auto lg:mx-0 fade-up fade-up-3 leading-relaxed">
-          Browse electronics, fashion, gadgets and more — quality products delivered straight to your door anywhere in Ghana.
+        <p class="text-gray-300 text-base md:text-lg mb-6 max-w-lg mx-auto lg:mx-0
+                  fade-up fade-up-3 leading-relaxed">
+          Browse electronics, fashion, gadgets and more — delivered straight to your door anywhere in Ghana.
         </p>
-        <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start fade-up fade-up-3">
+
+        <!-- CTA buttons — full width on mobile -->
+        <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start fade-up fade-up-3 mb-8">
           <a href="{% url 'products:list' %}"
-             class="bg-gold hover:bg-gold-dark text-navy font-semibold px-8 py-3.5
-                    rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/30">
+             class="hero-btn bg-gold hover:bg-gold-dark text-navy font-semibold px-8 py-3.5
+                    rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/30
+                    touch-target flex items-center justify-center gap-2">
             Shop Now →
           </a>
           <a href="{% url 'food:home' %}"
-             class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5
-                    rounded-2xl transition-colors btn-press text-center">
+             class="hero-btn bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5
+                    rounded-2xl transition-colors btn-press text-center touch-target
+                    flex items-center justify-center gap-2">
             🍔 Order Food
           </a>
         </div>
 
-        <!-- Stats row -->
-        <div class="mt-10 flex items-center gap-6 justify-center lg:justify-start fade-up fade-up-3">
+        <!-- Stats -->
+        <div class="flex items-center gap-5 justify-center lg:justify-start fade-up fade-up-3">
           <div class="text-center lg:text-left">
-            <p class="font-display font-700 text-2xl text-white">500+</p>
+            <p class="font-display font-700 text-xl md:text-2xl text-white stat-num">500+</p>
             <p class="text-gray-400 text-xs">Products</p>
           </div>
-          <div class="w-px h-8 bg-white/20"></div>
+          <div class="w-px h-7 bg-white/20"></div>
           <div class="text-center lg:text-left">
-            <p class="font-display font-700 text-2xl text-white">50+</p>
+            <p class="font-display font-700 text-xl md:text-2xl text-white stat-num">50+</p>
             <p class="text-gray-400 text-xs">Vendors</p>
           </div>
-          <div class="w-px h-8 bg-white/20"></div>
+          <div class="w-px h-7 bg-white/20"></div>
           <div class="text-center lg:text-left">
-            <p class="font-display font-700 text-2xl text-white">Accra</p>
-            <p class="text-gray-400 text-xs">Same-day delivery</p>
+            <p class="font-display font-700 text-xl md:text-2xl text-white stat-num">Accra</p>
+            <p class="text-gray-400 text-xs">Same-day</p>
           </div>
         </div>
       </div>
 
-      <!-- ── RIGHT: Slideshow ────────────────────────── -->
+      <!-- RIGHT: Slideshow — touch/swipe enabled -->
       <div class="flex-1 w-full max-w-md mx-auto lg:mx-0 fade-up fade-up-2">
+        <div id="hero-slideshow" class="relative select-none">
 
-        <div id="hero-slideshow" class="relative">
-
-          <!-- ── SLIDE 1: How it works ──────────────── -->
+          <!-- SLIDE 1: How it works -->
           <div class="slide active">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6 md:p-8">
+            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
               <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
-                          px-3 py-1.5 rounded-full mb-5">
-                ✨ How Lynctel Works
-              </div>
+                          px-3 py-1.5 rounded-full mb-4">✨ How Lynctel Works</div>
               <div class="space-y-4">
-
+                {% for step in "123" %}
                 <div class="flex items-start gap-4 group">
-                  <div class="w-10 h-10 bg-gold rounded-xl flex items-center justify-center
-                              text-navy font-display font-700 text-sm flex-shrink-0
-                              group-hover:scale-110 transition-transform">1</div>
+                  <div class="w-10 h-10 {% if forloop.first %}bg-gold{% else %}bg-white/10 border border-white/20{% endif %}
+                              rounded-xl flex items-center justify-center
+                              {% if forloop.first %}text-navy{% else %}text-gold{% endif %}
+                              font-display font-700 text-sm flex-shrink-0
+                              group-hover:scale-110 transition-transform">{{ forloop.counter }}</div>
                   <div>
+                    {% if forloop.first %}
                     <p class="text-white font-semibold text-sm">Browse & Add to Cart</p>
-                    <p class="text-gray-400 text-xs mt-0.5 leading-relaxed">
-                      Explore hundreds of quality products and food from verified vendors across Ghana.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="w-px h-4 bg-white/10 ml-5"></div>
-
-                <div class="flex items-start gap-4 group">
-                  <div class="w-10 h-10 bg-white/10 border border-white/20 rounded-xl flex items-center
-                              justify-center text-gold font-display font-700 text-sm flex-shrink-0
-                              group-hover:scale-110 transition-transform">2</div>
-                  <div>
+                    <p class="text-gray-400 text-xs mt-0.5 leading-relaxed">Explore hundreds of products from verified vendors.</p>
+                    {% elif forloop.counter == 2 %}
                     <p class="text-white font-semibold text-sm">Pay with MoMo or Card</p>
-                    <p class="text-gray-400 text-xs mt-0.5 leading-relaxed">
-                      Checkout securely with MTN, Vodafone, AirtelTigo, or your bank card via Paystack.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="w-px h-4 bg-white/10 ml-5"></div>
-
-                <div class="flex items-start gap-4 group">
-                  <div class="w-10 h-10 bg-white/10 border border-white/20 rounded-xl flex items-center
-                              justify-center text-gold font-display font-700 text-sm flex-shrink-0
-                              group-hover:scale-110 transition-transform">3</div>
-                  <div>
+                    <p class="text-gray-400 text-xs mt-0.5 leading-relaxed">Checkout securely with MTN, Vodafone, AirtelTigo or Paystack.</p>
+                    {% else %}
                     <p class="text-white font-semibold text-sm">Get It Delivered</p>
-                    <p class="text-gray-400 text-xs mt-0.5 leading-relaxed">
-                      A Lynctel rider picks up your order and delivers it right to your door.
-                    </p>
+                    <p class="text-gray-400 text-xs mt-0.5 leading-relaxed">A Lynctel rider delivers it right to your door.</p>
+                    {% endif %}
                   </div>
                 </div>
-
+                {% if not forloop.last %}<div class="w-px h-3 bg-white/10 ml-5"></div>{% endif %}
+                {% endfor %}
               </div>
               <a href="{% url 'products:list' %}"
-                 class="mt-6 flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark
-                        text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full">
-                Start Shopping <span>→</span>
+                 class="mt-5 flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark
+                        text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full touch-target">
+                Start Shopping →
               </a>
             </div>
           </div>
 
-          <!-- ── SLIDE 2: Most purchased products ────── -->
+          <!-- SLIDE 2: Hot products -->
           <div class="slide">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6">
-              <div class="flex items-center justify-between mb-5">
+            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5">
+              <div class="flex items-center justify-between mb-4">
                 <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
-                            px-3 py-1.5 rounded-full">
-                  🔥 Most Purchased
-                </div>
-                <a href="{% url 'products:list' %}" class="text-gray-400 hover:text-gold text-xs transition-colors">
-                  View all →
-                </a>
+                            px-3 py-1.5 rounded-full">🔥 Most Purchased</div>
+                <a href="{% url 'products:list' %}" class="text-gray-400 hover:text-gold text-xs transition-colors">View all →</a>
               </div>
               {% if hot_products %}
-              <div class="grid grid-cols-2 gap-3">
+              <div class="grid grid-cols-2 gap-2.5">
                 {% for p in hot_products %}
                 <a href="{% url 'products:detail' p.slug %}"
                    class="slide-card bg-white/5 hover:bg-white/10 border border-white/10
-                          hover:border-gold/30 rounded-2xl overflow-hidden transition-all duration-200">
-                  <div class="overflow-hidden h-24 relative">
+                          hover:border-gold/30 rounded-2xl overflow-hidden transition-all">
+                  <div class="overflow-hidden h-20 relative">
                     {% with p.images.first as img %}
-                    {% if img %}
-                    <img src="{{ img.image.url }}" alt="{{ p.name }}"
-                         class="slide-card-img w-full h-24 object-cover"/>
-                    {% else %}
-                    <div class="w-full h-24 bg-white/5 flex items-center justify-center text-2xl">📦</div>
-                    {% endif %}
+                    {% if img %}<img src="{{ img.image.url }}" alt="{{ p.name }}" class="slide-card-img w-full h-20 object-cover"/>
+                    {% else %}<div class="w-full h-20 bg-white/5 flex items-center justify-center text-2xl">📦</div>{% endif %}
                     {% endwith %}
-                    <span class="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px]
-                                 font-bold px-1.5 py-0.5 rounded-full">🔥 Hot</span>
+                    <span class="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">🔥</span>
                   </div>
-                  <div class="p-2.5">
-                    <p class="text-white text-xs font-medium truncate leading-snug">{{ p.name }}</p>
-                    <p class="text-gold text-xs font-bold mt-0.5">GHS {{ p.selling_price }}</p>
+                  <div class="p-2">
+                    <p class="text-white text-xs font-medium truncate">{{ p.name }}</p>
+                    <p class="text-gold text-xs font-bold">GHS {{ p.selling_price }}</p>
                   </div>
                 </a>
                 {% endfor %}
               </div>
               {% else %}
-              <div class="grid grid-cols-2 gap-3">
-                {% for i in "1234" %}
-                <div class="bg-white/5 rounded-2xl h-36 animate-pulse"></div>
-                {% endfor %}
+              <div class="grid grid-cols-2 gap-2.5">
+                {% for i in "1234" %}<div class="skeleton h-32"></div>{% endfor %}
               </div>
               {% endif %}
             </div>
           </div>
 
-          <!-- ── SLIDE 3: Food Delivery ─────────────── -->
+          <!-- SLIDE 3: Food -->
           <div class="slide">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6 md:p-8">
+            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
               <div class="inline-flex items-center gap-2 bg-orange-400/20 text-orange-300 text-xs font-bold
-                          px-3 py-1.5 rounded-full mb-5">
-                🍔 Food Delivery — NEW
-              </div>
-              <h3 class="font-display font-700 text-white text-xl mb-2">
-                Hungry? Order Food Now
-              </h3>
-              <p class="text-gray-400 text-sm mb-5 leading-relaxed">
-                From local restaurants straight to your door in 30–45 minutes. Pay with MoMo or cash.
-              </p>
-              <div class="space-y-3 mb-5">
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                  <span class="text-lg">🍽️</span>
-                  <p class="text-white text-sm">Choose from local restaurants</p>
+                          px-3 py-1.5 rounded-full mb-4">🍔 Food Delivery</div>
+              <h3 class="font-display font-700 text-white text-lg mb-2">Hungry? Order Now</h3>
+              <p class="text-gray-400 text-sm mb-4 leading-relaxed">From local restaurants straight to your door in 30–45 minutes.</p>
+              <div class="space-y-2 mb-4">
+                {% for item in "1234" %}
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5">
+                  {% if forloop.first %}<span>🍽️</span><p class="text-white text-sm">Choose from local restaurants</p>
+                  {% elif forloop.counter == 2 %}<span>📍</span><p class="text-white text-sm">Enter address — fee auto-calculates</p>
+                  {% elif forloop.counter == 3 %}<span>🛵</span><p class="text-white text-sm">Rider picks up and delivers fast</p>
+                  {% else %}<span>💵</span><p class="text-white text-sm">Pay on delivery or MoMo</p>
+                  {% endif %}
                 </div>
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                  <span class="text-lg">📍</span>
-                  <p class="text-white text-sm">Enter your address — fee auto-calculates</p>
-                </div>
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                  <span class="text-lg">🛵</span>
-                  <p class="text-white text-sm">Rider picks up and delivers fast</p>
-                </div>
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                  <span class="text-lg">💵</span>
-                  <p class="text-white text-sm">Pay on delivery or pay before</p>
-                </div>
+                {% endfor %}
               </div>
               <a href="{% url 'food:home' %}"
                  class="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600
-                        text-white font-semibold text-sm py-3 rounded-xl transition-colors w-full">
+                        text-white font-semibold text-sm py-3 rounded-xl transition-colors w-full touch-target">
                 🍔 Order Food Now →
               </a>
             </div>
           </div>
 
-          <!-- ── SLIDE 4: Sell on Lynctel ───────────── -->
+          <!-- SLIDE 4: Sell -->
           <div class="slide">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6 md:p-8">
+            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
               <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
-                          px-3 py-1.5 rounded-full mb-5">
-                🏪 Become a Vendor
-              </div>
-              <h3 class="font-display font-700 text-white text-xl mb-2">
-                Sell to Thousands of Customers
-              </h3>
-              <p class="text-gray-400 text-sm mb-5 leading-relaxed">
-                Open your shop on Lynctel for free. We handle delivery, payments, and customer support.
-              </p>
-              <div class="space-y-3 mb-5">
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                  <span class="text-lg">💰</span>
-                  <p class="text-white text-sm">Keep <span class="text-gold font-bold">96%</span> of every sale</p>
-                </div>
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                  <span class="text-lg">🚀</span>
-                  <p class="text-white text-sm">Free shop setup, no monthly fees</p>
-                </div>
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                  <span class="text-lg">📊</span>
-                  <p class="text-white text-sm">Real-time sales dashboard</p>
-                </div>
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                  <span class="text-lg">🛵</span>
-                  <p class="text-white text-sm">Our riders handle all deliveries</p>
-                </div>
+                          px-3 py-1.5 rounded-full mb-4">🏪 Become a Vendor</div>
+              <h3 class="font-display font-700 text-white text-lg mb-2">Sell to Thousands</h3>
+              <div class="space-y-2 mb-4">
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5"><span>💰</span><p class="text-white text-sm">Keep <span class="text-gold font-bold">96%</span> of every sale</p></div>
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5"><span>🚀</span><p class="text-white text-sm">Free setup, no monthly fees</p></div>
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5"><span>📊</span><p class="text-white text-sm">Real-time sales dashboard</p></div>
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5"><span>🛵</span><p class="text-white text-sm">Our riders handle deliveries</p></div>
               </div>
               <a href="{% url 'vendors:apply' %}"
                  class="flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark
-                        text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full">
+                        text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full touch-target">
                 Open Your Shop →
               </a>
             </div>
           </div>
 
-          <!-- ── SLIDE 5: Delivery zones ────────────── -->
+          <!-- SLIDE 5: Delivery zones -->
           <div class="slide">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-6 md:p-8">
+            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
               <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
-                          px-3 py-1.5 rounded-full mb-5">
-                🛵 Fast Delivery
-              </div>
-              <h3 class="font-display font-700 text-white text-xl mb-2">We Bring It To You</h3>
-              <p class="text-gray-400 text-sm mb-5 leading-relaxed">
-                Order before 2pm and get same-day delivery in Accra. Expanding to more cities every month.
-              </p>
+                          px-3 py-1.5 rounded-full mb-4">🛵 Fast Delivery</div>
+              <h3 class="font-display font-700 text-white text-lg mb-2">We Bring It To You</h3>
               <div class="bg-white/5 rounded-2xl p-4 mb-4 space-y-3">
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <div class="w-2.5 h-2.5 bg-green-400 rounded-full"></div>
-                    <span class="text-white text-sm font-medium">Accra & Tema</span>
-                  </div>
+                  <div class="flex items-center gap-2"><div class="w-2 h-2 bg-green-400 rounded-full"></div><span class="text-white text-sm">Accra & Tema</span></div>
                   <span class="text-green-400 text-xs font-semibold bg-green-400/10 px-2 py-0.5 rounded-full">Same day</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <div class="w-2.5 h-2.5 bg-gold rounded-full"></div>
-                    <span class="text-white text-sm font-medium">Kumasi</span>
-                  </div>
+                  <div class="flex items-center gap-2"><div class="w-2 h-2 bg-gold rounded-full"></div><span class="text-white text-sm">Kumasi</span></div>
                   <span class="text-gold text-xs font-semibold bg-gold/10 px-2 py-0.5 rounded-full">1–2 days</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <div class="w-2.5 h-2.5 bg-blue-400 rounded-full"></div>
-                    <span class="text-white text-sm font-medium">Other regions</span>
-                  </div>
+                  <div class="flex items-center gap-2"><div class="w-2 h-2 bg-blue-400 rounded-full"></div><span class="text-white text-sm">Other regions</span></div>
                   <span class="text-blue-400 text-xs font-semibold bg-blue-400/10 px-2 py-0.5 rounded-full">2–4 days</span>
                 </div>
               </div>
-              <div class="flex items-center gap-3 text-gray-400 text-xs mb-5">
-                <span>📞</span>
-                <span>Track on WhatsApp — <a href="https://wa.me/233558040216" class="text-gold hover:underline">+233 55 804 0216</a></span>
-              </div>
               <a href="{% url 'products:list' %}"
                  class="flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark
-                        text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full">
+                        text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full touch-target">
                 Order Now →
               </a>
             </div>
           </div>
 
-          <!-- ── Progress bar ───────────────────────── -->
+          <!-- Progress bar -->
           <div class="mt-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
             <div id="slide-progress" class="h-full bg-gold slide-progress-bar"></div>
           </div>
 
-          <!-- ── Dots + arrows ──────────────────────── -->
-          <div class="mt-4 flex items-center justify-between">
+          <!-- Dots + arrows -->
+          <div class="mt-3 flex items-center justify-between">
             <div class="flex items-center gap-1.5" id="slide-dots">
-              <button class="slide-dot active h-1.5 w-6 bg-gold rounded-full" onclick="goToSlide(0)"></button>
-              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full" onclick="goToSlide(1)"></button>
-              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full" onclick="goToSlide(2)"></button>
-              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full" onclick="goToSlide(3)"></button>
-              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full" onclick="goToSlide(4)"></button>
+              <button class="slide-dot active h-1.5 w-6 bg-gold rounded-full touch-target" onclick="goToSlide(0)"></button>
+              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full touch-target" onclick="goToSlide(1)"></button>
+              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full touch-target" onclick="goToSlide(2)"></button>
+              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full touch-target" onclick="goToSlide(3)"></button>
+              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full touch-target" onclick="goToSlide(4)"></button>
             </div>
             <div class="flex items-center gap-2">
               <button onclick="prevSlide()"
-                      class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center
-                             justify-center text-white transition-colors text-sm">‹</button>
+                      class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center
+                             justify-center text-white transition-colors touch-target">‹</button>
               <button onclick="nextSlide()"
-                      class="w-8 h-8 rounded-xl bg-gold hover:bg-gold-dark flex items-center
-                             justify-center text-navy transition-colors text-sm font-bold">›</button>
+                      class="w-9 h-9 rounded-xl bg-gold hover:bg-gold-dark flex items-center
+                             justify-center text-navy transition-colors font-bold touch-target">›</button>
             </div>
           </div>
-
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── TRUST BADGES ───────────────────────────────────── -->
+<!-- ── TRUST BADGES ───────────────────────── -->
 <section class="border-b border-gray-100 bg-white">
-  <div class="max-w-7xl mx-auto px-4 md:px-6 py-5">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-gold-light rounded-xl flex items-center justify-center text-xl flex-shrink-0">🚚</div>
-        <div><p class="font-semibold text-navy text-sm">Fast Delivery</p><p class="text-gray-400 text-xs">Accra same day</p></div>
+  <div class="max-w-7xl mx-auto px-4 md:px-6 py-4">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 bg-gold-light rounded-xl flex items-center justify-center text-lg flex-shrink-0">🚚</div>
+        <div><p class="font-semibold text-navy text-xs md:text-sm">Fast Delivery</p><p class="text-gray-400 text-xs">Accra same day</p></div>
       </div>
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">📱</div>
-        <div><p class="font-semibold text-navy text-sm">MoMo Payment</p><p class="text-gray-400 text-xs">MTN, Vodafone, AirtelTigo</p></div>
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 bg-green-50 rounded-xl flex items-center justify-center text-lg flex-shrink-0">📱</div>
+        <div><p class="font-semibold text-navy text-xs md:text-sm">MoMo Payment</p><p class="text-gray-400 text-xs">MTN, Vodafone, ATM</p></div>
       </div>
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">✅</div>
-        <div><p class="font-semibold text-navy text-sm">Quality Assured</p><p class="text-gray-400 text-xs">Verified imports only</p></div>
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center text-lg flex-shrink-0">✅</div>
+        <div><p class="font-semibold text-navy text-xs md:text-sm">Quality Assured</p><p class="text-gray-400 text-xs">Verified vendors</p></div>
       </div>
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🍔</div>
-        <div>
-          <p class="font-semibold text-navy text-sm">Food Delivery</p>
-          <p class="text-gray-400 text-xs">
-            <a href="{% url 'food:home' %}" class="hover:text-orange-500 transition-colors">Order food now →</a>
-          </p>
-        </div>
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center text-lg flex-shrink-0">🍔</div>
+        <div><p class="font-semibold text-navy text-xs md:text-sm">Food Delivery</p>
+          <a href="{% url 'food:home' %}" class="text-xs text-orange-500">Order now →</a></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── CATEGORIES ─────────────────────────────────────── -->
+<!-- ── CATEGORIES ─────────────────────────── -->
 {% if categories %}
-<section class="max-w-7xl mx-auto px-4 md:px-6 py-14">
-  <div class="flex items-end justify-between mb-8">
+<section class="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-14">
+  <div class="flex items-end justify-between mb-6">
     <div>
-      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-2">Browse by</p>
-      <h2 class="font-display font-700 text-2xl md:text-3xl text-navy">Categories</h2>
+      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Browse by</p>
+      <h2 class="font-display font-700 text-xl md:text-3xl text-navy">Categories</h2>
     </div>
-    <a href="{% url 'products:list' %}"
-       class="text-sm font-semibold text-navy hover:text-gold transition-colors flex items-center gap-1">
-      View all <span>→</span>
-    </a>
+    <a href="{% url 'products:list' %}" class="text-sm font-semibold text-navy hover:text-gold transition-colors">View all →</a>
   </div>
-  <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+  <div class="category-grid grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 md:gap-3">
     {% for category in categories %}
     <a href="{% url 'products:list' %}?category={{ category.slug }}"
-       class="group bg-white hover:bg-navy rounded-2xl border border-gray-100
-              p-4 flex flex-col items-center gap-2.5 transition-all duration-200
-              hover:border-navy hover:shadow-lg hover:shadow-navy/10 card-hover">
+       class="category-card group bg-white hover:bg-navy rounded-2xl border border-gray-100
+              p-3 md:p-4 flex flex-col items-center gap-2 transition-all duration-200
+              hover:border-navy hover:shadow-lg hover:shadow-navy/10 touch-target">
       {% if category.icon %}
-      <img src="{{ category.icon.url }}" alt="{{ category.name }}" class="w-10 h-10 object-cover rounded-xl"/>
+      <img src="{{ category.icon.url }}" alt="{{ category.name }}" class="w-9 h-9 md:w-10 md:h-10 object-cover rounded-xl"/>
       {% else %}
-      <div class="w-10 h-10 bg-gold-light rounded-xl flex items-center justify-center group-hover:bg-gold/20 transition-colors">
-        <svg class="w-5 h-5 text-gold-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+      <div class="w-9 h-9 md:w-10 md:h-10 bg-gold-light rounded-xl flex items-center justify-center group-hover:bg-gold/20 transition-colors">
+        <svg class="w-4 h-4 md:w-5 md:h-5 text-gold-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
         </svg>
       </div>
       {% endif %}
@@ -424,104 +400,88 @@
 </section>
 {% endif %}
 
-<!-- ── NEW ARRIVALS ───────────────────────────────────── -->
-<section class="bg-white py-14">
+<!-- ── NEW ARRIVALS ───────────────────────── -->
+<section class="bg-white py-10 md:py-14">
   <div class="max-w-7xl mx-auto px-4 md:px-6">
-    <div class="flex items-end justify-between mb-8">
+    <div class="flex items-end justify-between mb-6">
       <div>
-        <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-2">Just landed</p>
-        <h2 class="font-display font-700 text-2xl md:text-3xl text-navy">New Arrivals</h2>
+        <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Just landed</p>
+        <h2 class="font-display font-700 text-xl md:text-3xl text-navy">New Arrivals</h2>
       </div>
-      <a href="{% url 'products:list' %}"
-         class="text-sm font-semibold text-navy hover:text-gold transition-colors flex items-center gap-1">
-        See all <span>→</span>
-      </a>
+      <a href="{% url 'products:list' %}" class="text-sm font-semibold text-navy hover:text-gold transition-colors">See all →</a>
     </div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+
+    <!-- Horizontal scroll on mobile, grid on desktop -->
+    <div class="product-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
       {% for product in new_products %}
-      <div class="group bg-cream rounded-2xl overflow-hidden card-hover border border-gray-100 flex flex-col">
+      <div class="product-card group bg-cream rounded-2xl overflow-hidden card-hover border border-gray-100 flex flex-col">
         <a href="{% url 'products:detail' product.slug %}" class="relative block overflow-hidden">
           {% with product.images.first as img %}
           {% if img %}
           <img src="{{ img.image.url }}" alt="{{ product.name }}"
-               class="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-500"/>
+               class="product-img w-full h-36 md:h-44 object-cover group-hover:scale-105 transition-transform duration-500"/>
           {% else %}
-          <div class="w-full h-44 bg-gray-100 flex items-center justify-center">
-            <span class="text-5xl opacity-20">📦</span>
+          <div class="product-img w-full h-36 md:h-44 bg-gray-100 flex items-center justify-center">
+            <span class="text-4xl opacity-20">📦</span>
           </div>
           {% endif %}
           {% endwith %}
           {% if product.is_featured %}
-          <span class="absolute top-2.5 right-2.5 bg-gold text-navy text-[10px] font-bold
-                       px-2 py-0.5 rounded-full">⭐ Pick</span>
+          <span class="absolute top-2 right-2 bg-gold text-navy text-[9px] font-bold px-1.5 py-0.5 rounded-full">⭐</span>
           {% endif %}
         </a>
-        <div class="p-3.5 flex flex-col flex-1">
+        <div class="p-3 flex flex-col flex-1">
           <a href="{% url 'products:detail' product.slug %}"
-             class="text-sm font-semibold text-navy hover:text-gold transition-colors
-                    line-clamp-2 mb-2 leading-snug">
-            {{ product.name }}
-          </a>
-          <div class="mt-auto flex items-center justify-between">
-            <span class="font-display font-700 text-navy text-base">GHS {{ product.selling_price }}</span>
+             class="text-xs md:text-sm font-semibold text-navy hover:text-gold transition-colors
+                    line-clamp-2 mb-2 leading-snug">{{ product.name }}</a>
+          <div class="mt-auto flex items-center justify-between gap-1">
+            <span class="font-display font-700 text-navy text-sm md:text-base">GHS {{ product.selling_price }}</span>
             {% if product.is_in_stock %}
             <button onclick="quickAdd({{ product.pk }}, this)"
                     class="text-xs bg-navy hover:bg-gold hover:text-navy text-white
-                           font-semibold px-3 py-1.5 rounded-xl transition-all duration-200 btn-press">
+                           font-semibold px-2.5 py-1.5 rounded-xl transition-all btn-press touch-target">
               + Add
             </button>
             {% else %}
-            <span class="text-xs text-gray-400">Out of stock</span>
+            <span class="text-xs text-gray-400">Out</span>
             {% endif %}
           </div>
         </div>
       </div>
       {% empty %}
-      <div class="col-span-full text-center py-16 text-gray-400">
-        <p class="text-4xl mb-3">📦</p>
-        <p>No products yet — add some in admin.</p>
+      <div class="col-span-full text-center py-12 text-gray-400">
+        <p class="text-4xl mb-2">📦</p>
+        <p class="text-sm">No products yet.</p>
       </div>
       {% endfor %}
     </div>
   </div>
 </section>
 
-<!-- ── FOOD DELIVERY BANNER ───────────────────────────── -->
-<section class="max-w-7xl mx-auto px-4 md:px-6 py-14">
+<!-- ── FOOD BANNER ───────────────────────── -->
+<section class="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-14">
   <div class="relative bg-gradient-to-r from-orange-500 to-amber-500 rounded-3xl overflow-hidden">
     <div class="absolute inset-0 opacity-10"
-         style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);
-                background-size:24px 24px;"></div>
-    <div class="absolute right-8 top-4 text-6xl opacity-20 select-none hidden md:block">🍔</div>
-    <div class="absolute right-28 bottom-4 text-5xl opacity-20 select-none hidden md:block">🍕</div>
-    <div class="absolute right-16 top-12 text-4xl opacity-20 select-none hidden md:block">🍜</div>
-    <div class="relative px-8 md:px-12 py-10 flex flex-col md:flex-row items-center gap-6 justify-between">
-      <div>
-        <div class="inline-flex items-center gap-2 bg-white/20 text-white text-xs font-bold
-                    px-3 py-1.5 rounded-full mb-4">
-          <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
-          NEW — Food Delivery 🛵
+         style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);background-size:24px 24px;"></div>
+    <div class="absolute right-6 top-4 text-5xl opacity-20 hidden md:block">🍔</div>
+    <div class="absolute right-24 bottom-4 text-4xl opacity-20 hidden md:block">🍕</div>
+    <div class="relative px-6 md:px-12 py-8 md:py-10">
+      <div class="flex flex-col md:flex-row items-start md:items-center gap-5 justify-between">
+        <div>
+          <div class="inline-flex items-center gap-2 bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-3">
+            <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+            NEW — Food Delivery 🛵
+          </div>
+          <h2 class="font-display font-700 text-xl md:text-3xl text-white mb-2">Hungry? Order Food Now</h2>
+          <p class="text-white/80 text-sm max-w-md">From local restaurants to your door. Pay with MoMo, cash, or card. Delivered in 30–45 mins.</p>
+          <div class="flex items-center gap-3 mt-3 text-white/90 text-xs font-medium flex-wrap">
+            <span>🍽️ Choose</span><span>→</span><span>🛒 Add</span><span>→</span><span>🛵 Delivered</span>
+          </div>
         </div>
-        <h2 class="font-display font-700 text-2xl md:text-3xl text-white mb-2">
-          Hungry? Order Food Now
-        </h2>
-        <p class="text-white/80 text-sm max-w-md leading-relaxed">
-          From local restaurants straight to your door. Pay with MoMo, cash, or card.
-          Delivered in 30–45 minutes.
-        </p>
-        <div class="flex items-center gap-4 mt-4 text-white/90 text-xs font-medium">
-          <span>🍽️ Choose Restaurant</span>
-          <span>→</span>
-          <span>🛒 Add Items</span>
-          <span>→</span>
-          <span>🛵 Fast Delivery</span>
-        </div>
-      </div>
-      <div class="flex flex-col sm:flex-row gap-3 flex-shrink-0">
         <a href="{% url 'food:home' %}"
-           class="bg-white hover:bg-gray-50 text-orange-600 font-bold px-8 py-3.5
-                  rounded-2xl transition-colors btn-press text-center text-sm
-                  shadow-lg whitespace-nowrap">
+           class="bg-white hover:bg-gray-50 text-orange-600 font-bold px-6 md:px-8 py-3.5
+                  rounded-2xl transition-colors btn-press text-sm shadow-lg whitespace-nowrap
+                  touch-target flex items-center gap-2 w-full md:w-auto justify-center">
           🍔 Order Food Now
         </a>
       </div>
@@ -529,35 +489,32 @@
   </div>
 </section>
 
-<!-- ── VENDOR CTA ─────────────────────────────────────── -->
-<section class="max-w-7xl mx-auto px-4 md:px-6 pb-14">
+<!-- ── VENDOR CTA ─────────────────────────── -->
+<section class="max-w-7xl mx-auto px-4 md:px-6 pb-10 md:pb-14">
   <div class="bg-navy rounded-3xl overflow-hidden relative">
     <div class="absolute inset-0 opacity-5"
-         style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 28px 28px;"></div>
-    <div class="absolute right-0 top-0 w-72 h-72 bg-gold opacity-10 rounded-full
-                translate-x-1/4 -translate-y-1/4 blur-3xl pointer-events-none"></div>
-    <div class="relative px-8 md:px-12 py-12 flex flex-col md:flex-row items-center gap-6 justify-between">
-      <div>
-        <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-2">For sellers</p>
-        <h2 class="font-display font-700 text-2xl md:text-3xl text-white mb-2">
-          Start Selling on Lynctel
-        </h2>
-        <p class="text-gray-400 text-sm max-w-md">
-          Open your shop. No upfront cost. We only take a small 4% commission per sale.
-          You keep 96% of everything you earn.
-        </p>
-      </div>
-      <div class="flex flex-col sm:flex-row gap-3 flex-shrink-0">
-        <a href="{% url 'vendors:apply' %}"
-           class="bg-gold hover:bg-gold-dark text-navy font-semibold px-8 py-3.5
-                  rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/20 whitespace-nowrap">
-          Open Your Shop
-        </a>
-        <a href="{% url 'vendors:directory' %}"
-           class="bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-3.5
-                  rounded-2xl transition-colors text-center whitespace-nowrap">
-          Browse Shops
-        </a>
+         style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);background-size:28px 28px;"></div>
+    <div class="absolute right-0 top-0 w-72 h-72 bg-gold opacity-10 rounded-full translate-x-1/4 -translate-y-1/4 blur-3xl pointer-events-none"></div>
+    <div class="relative px-6 md:px-12 py-10 md:py-12">
+      <div class="flex flex-col md:flex-row items-start md:items-center gap-5 justify-between">
+        <div>
+          <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-2">For sellers</p>
+          <h2 class="font-display font-700 text-xl md:text-3xl text-white mb-2">Start Selling on Lynctel</h2>
+          <p class="text-gray-400 text-sm max-w-md">No upfront cost. We only take 4% per sale. You keep 96%.</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <a href="{% url 'vendors:apply' %}"
+             class="bg-gold hover:bg-gold-dark text-navy font-semibold px-6 py-3.5
+                    rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/20
+                    whitespace-nowrap touch-target">
+            Open Your Shop
+          </a>
+          <a href="{% url 'vendors:directory' %}"
+             class="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3.5
+                    rounded-2xl transition-colors text-center whitespace-nowrap touch-target">
+            Browse Shops
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -567,10 +524,12 @@
 
 {% block extra_js %}
 <script>
-  // ── Slideshow (5 slides) ───────────────────────────────
+  // ── Slideshow with touch/swipe ─────────────────────
   let currentSlide = 0;
   const totalSlides = 5;
   let autoTimer = null;
+  let touchStartX = 0;
+  let touchStartY = 0;
 
   function goToSlide(n) {
     const slides = document.querySelectorAll('.slide');
@@ -578,19 +537,18 @@
     const bar    = document.getElementById('slide-progress');
 
     slides[currentSlide].classList.remove('active');
-    dots[currentSlide].classList.remove('active', 'w-6', 'bg-gold');
-    dots[currentSlide].classList.add('w-1.5', 'bg-white/30');
+    dots[currentSlide].classList.remove('active','w-6','bg-gold');
+    dots[currentSlide].classList.add('w-1.5','bg-white/30');
 
     currentSlide = (n + totalSlides) % totalSlides;
 
     slides[currentSlide].classList.add('active');
-    dots[currentSlide].classList.add('active', 'w-6', 'bg-gold');
-    dots[currentSlide].classList.remove('w-1.5', 'bg-white/30');
+    dots[currentSlide].classList.add('active','w-6','bg-gold');
+    dots[currentSlide].classList.remove('w-1.5','bg-white/30');
 
     bar.style.animation = 'none';
     bar.offsetHeight;
     bar.style.animation = 'progressFill 5s linear forwards';
-
     resetAutoPlay();
   }
 
@@ -601,13 +559,27 @@
     clearInterval(autoTimer);
     autoTimer = setInterval(nextSlide, 5000);
   }
-
   resetAutoPlay();
 
-  document.getElementById('hero-slideshow').addEventListener('mouseenter', () => clearInterval(autoTimer));
-  document.getElementById('hero-slideshow').addEventListener('mouseleave', resetAutoPlay);
+  // Touch swipe support
+  const slideshow = document.getElementById('hero-slideshow');
+  slideshow.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
 
-  // ── Quick add to cart ──────────────────────────────────
+  slideshow.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].screenX - touchStartX;
+    const dy = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      dx < 0 ? nextSlide() : prevSlide();
+    }
+  }, { passive: true });
+
+  slideshow.addEventListener('mouseenter', () => clearInterval(autoTimer));
+  slideshow.addEventListener('mouseleave', resetAutoPlay);
+
+  // ── Quick add ─────────────────────────────────────
   function quickAdd(productId, btn) {
     const orig = btn.innerHTML;
     btn.disabled = true; btn.innerHTML = '...';
@@ -615,22 +587,42 @@
     fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
     fd.append('quantity', 1);
     fetch(`/cart/add/${productId}/`, {
-      method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: fd
+      method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd
     })
     .then(r => r.json())
     .then(d => {
       if (d.success) {
         btn.innerHTML = '✓';
-        btn.classList.add('bg-gold', 'text-navy');
-        btn.classList.remove('bg-navy', 'text-white');
+        btn.classList.add('bg-gold','text-navy'); btn.classList.remove('bg-navy','text-white');
         updateCartBadge(d.cart_count);
         setTimeout(() => {
           btn.innerHTML = orig; btn.disabled = false;
-          btn.classList.remove('bg-gold', 'text-navy');
-          btn.classList.add('bg-navy', 'text-white');
+          btn.classList.remove('bg-gold','text-navy'); btn.classList.add('bg-navy','text-white');
         }, 2000);
       }
     });
   }
+
+  // ── Pull to refresh ───────────────────────────────
+  let ptrStartY = 0;
+  let ptrActive = false;
+  const ptrEl = document.getElementById('ptr-indicator');
+
+  document.addEventListener('touchstart', e => {
+    if (window.scrollY === 0) ptrStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (window.scrollY !== 0) return;
+    const dy = e.touches[0].clientY - ptrStartY;
+    if (dy > 60) { ptrEl.classList.add('visible'); ptrActive = true; }
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    if (ptrActive) {
+      ptrActive = false;
+      setTimeout(() => { ptrEl.classList.remove('visible'); window.location.reload(); }, 300);
+    }
+  }, { passive: true });
 </script>
 {% endblock %}
