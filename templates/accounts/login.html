@@ -2,36 +2,55 @@
 {% load static %}
 {% block title %}Sign In — Lynctel{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Full viewport on all phones */
+  .auth-page {
+    min-height: calc(100vh - 64px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px 80px;
+  }
+  @media (max-width: 380px) {
+    .auth-card { padding: 20px 16px; border-radius: 20px; }
+    .auth-input { font-size: 16px !important; } /* prevents iOS zoom */
+  }
+  /* Prevent iOS zoom on input focus */
+  input, select, textarea { font-size: 16px !important; }
+  @media (min-width: 640px) {
+    input, select, textarea { font-size: 14px !important; }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="min-h-screen bg-cream flex items-center justify-center px-4 py-12">
+<div class="auth-page bg-cream">
   <div class="w-full max-w-md">
 
     <!-- Logo -->
-    <div class="text-center mb-8">
-      <a href="{% url 'frontend:home' %}" class="inline-block mb-5">
+    <div class="text-center mb-6">
+      <a href="{% url 'frontend:home' %}" class="inline-block mb-4">
         <img src="{% static 'logo.png' %}" alt="Lynctel" class="h-10 w-auto mx-auto"/>
       </a>
-      <h1 class="font-display font-bold text-3xl text-navy">Welcome Back 👋</h1>
-      <p class="text-gray-400 text-sm mt-2">Sign in to continue shopping on Lynctel</p>
+      <h1 class="font-display font-bold text-2xl md:text-3xl text-navy">Welcome Back 👋</h1>
+      <p class="text-gray-400 text-sm mt-1.5">Sign in to continue shopping on Lynctel</p>
     </div>
 
-    <!-- Flash messages -->
     {% if messages %}
-      {% for message in messages %}
-      <div class="mb-4 px-4 py-3 rounded-2xl text-sm font-medium flex items-center gap-2
-        {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200
-        {% elif message.tags == 'success' %}bg-green-50 text-green-700 border border-green-200
-        {% else %}bg-blue-50 text-blue-700 border border-blue-100{% endif %}">
-        <span>{% if message.tags == 'error' %}⚠️{% elif message.tags == 'success' %}✅{% else %}ℹ️{% endif %}</span>
-        <span>{{ message }}</span>
-      </div>
-      {% endfor %}
+    {% for message in messages %}
+    <div class="mb-4 px-4 py-3 rounded-2xl text-sm font-medium flex items-center gap-2
+      {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200
+      {% elif message.tags == 'success' %}bg-green-50 text-green-700 border border-green-200
+      {% else %}bg-blue-50 text-blue-700 border border-blue-100{% endif %}">
+      <span>{% if message.tags == 'error' %}⚠️{% elif message.tags == 'success' %}✅{% else %}ℹ️{% endif %}</span>
+      <span>{{ message }}</span>
+    </div>
+    {% endfor %}
     {% endif %}
 
-    <!-- Card -->
-    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+    <div class="auth-card bg-white rounded-3xl border border-gray-100 shadow-sm p-6 md:p-8">
 
-      <!-- Inline error -->
       {% if error %}
       <div class="mb-5 px-4 py-3 bg-red-50 border border-red-200 text-red-700
                   text-sm rounded-xl flex items-center gap-2">
@@ -39,7 +58,7 @@
       </div>
       {% endif %}
 
-      <form method="POST" class="space-y-5" novalidate>
+      <form method="POST" class="space-y-4" novalidate autocomplete="on">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}"/>
 
@@ -47,14 +66,15 @@
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">Phone Number</label>
           <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none">📱</span>
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none select-none">📱</span>
             <input type="tel" name="phone"
                    value="{{ form_data.phone|default:'' }}"
                    placeholder="0558040216"
-                   autofocus required
-                   class="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm
+                   autofocus autocomplete="tel"
+                   inputmode="tel"
+                   class="auth-input w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-xl
                           bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gold/20
-                          focus:border-gold outline-none transition"/>
+                          focus:border-gold outline-none transition-all"/>
           </div>
         </div>
 
@@ -64,52 +84,55 @@
             <label class="text-sm font-semibold text-gray-700">Password</label>
             <a href="{% url 'accounts:forget_password' %}"
                class="text-xs font-semibold text-gold-dark hover:text-navy transition-colors">
-              Forgot password?
+              Forgot?
             </a>
           </div>
           <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none">🔒</span>
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none select-none">🔒</span>
             <input type="password" name="password" id="pw"
-                   placeholder="Enter your password" required
-                   class="w-full pl-11 pr-16 py-3 border border-gray-200 rounded-xl text-sm
+                   placeholder="Your password"
+                   autocomplete="current-password"
+                   class="auth-input w-full pl-11 pr-16 py-3.5 border border-gray-200 rounded-xl
                           bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gold/20
-                          focus:border-gold outline-none transition"/>
+                          focus:border-gold outline-none transition-all"/>
             <button type="button" onclick="togglePw()"
                     class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold
                            text-gray-500 hover:text-navy bg-gray-100 hover:bg-gray-200
-                           px-2.5 py-1 rounded-lg transition" id="pw-btn">Show</button>
+                           px-2.5 py-1.5 rounded-lg transition min-w-[44px]" id="pw-btn">
+              Show
+            </button>
           </div>
         </div>
 
-        <!-- Submit -->
+        <!-- Submit — large touch target -->
         <button type="submit"
                 class="w-full bg-navy hover:bg-navy-700 text-white font-bold
-                       py-4 rounded-xl transition-all duration-200 btn-press
-                       flex items-center justify-center gap-2 text-sm shadow-lg shadow-navy/20">
+                       py-4 rounded-xl transition-all btn-press
+                       flex items-center justify-center gap-2 text-sm
+                       shadow-lg shadow-navy/20 min-h-[52px] mt-2">
           Sign In →
         </button>
       </form>
 
-      <div class="relative my-6">
+      <div class="relative my-5">
         <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-100"></div></div>
         <div class="relative flex justify-center"><span class="bg-white px-3 text-xs text-gray-400">New to Lynctel?</span></div>
       </div>
 
       <a href="{% url 'accounts:signup' %}"
          class="w-full flex items-center justify-center border-2 border-navy text-navy
-                hover:bg-navy hover:text-white font-semibold py-3 rounded-xl
-                transition-all duration-200 text-sm">
+                hover:bg-navy hover:text-white font-semibold py-3.5 rounded-xl
+                transition-all text-sm min-h-[52px]">
         Create an Account
       </a>
     </div>
 
-    <p class="text-center text-xs text-gray-400 mt-6">
+    <p class="text-center text-xs text-gray-400 mt-5">
       Rider or vendor?
       <a href="/admin/" class="font-semibold text-navy hover:text-gold transition-colors">
         Use the admin panel →
       </a>
     </p>
-
   </div>
 </div>
 {% endblock %}
@@ -119,11 +142,8 @@
 function togglePw() {
   const pw  = document.getElementById('pw');
   const btn = document.getElementById('pw-btn');
-  if (pw.type === 'password') {
-    pw.type = 'text';  btn.textContent = 'Hide';
-  } else {
-    pw.type = 'password'; btn.textContent = 'Show';
-  }
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+  btn.textContent = pw.type === 'password' ? 'Show' : 'Hide';
 }
 </script>
 {% endblock %}
