@@ -1,6 +1,6 @@
 import math
 import json
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
@@ -302,7 +302,6 @@ def restaurant_update_order(request, ref):
 
     return redirect(f'/food/dashboard/?tab=orders')
 
-
 # ─────────────────────────────
 # ADD MENU ITEM
 # ─────────────────────────────
@@ -312,20 +311,59 @@ def restaurant_add_item(request):
     categories = restaurant.food_categories.all()
 
     if request.method == 'POST':
-        name        = request.POST.get('name', '').strip()
-        description = request.POST.get('description', '').strip()
-        category_id = request.POST.get('category_id')
-        price       = request.POST.get('price', '').strip()
-        discount    = request.POST.get('discount_price', '').strip()
-        prep_time   = request.POST.get('prep_time', '15')
-        is_available = request.POST.get('is_available') == 'on'
-        is_featured  = request.POST.get('is_featured') == 'on'
-        is_spicy     = request.POST.get('is_spicy') == 'on'
-        is_vegan     = request.POST.get('is_vegan') == 'on'
+        name           = request.POST.get('name', '').strip()
+        description    = request.POST.get('description', '').strip()
+        category_id    = request.POST.get('category_id', '').strip()
+        price_raw      = request.POST.get('price', '').strip()
+        discount_raw   = request.POST.get('discount_price', '').strip()
+        prep_time_raw  = request.POST.get('prep_time', '15').strip()
+        is_available   = request.POST.get('is_available') == 'on'
+        is_featured    = request.POST.get('is_featured') == 'on'
+        is_spicy       = request.POST.get('is_spicy') == 'on'
+        is_vegan       = request.POST.get('is_vegan') == 'on'
 
         errors = {}
-        if not name:  errors['name']  = 'Item name is required.'
-        if not price: errors['price'] = 'Price is required.'
+
+        if not name:
+            errors['name'] = 'Item name is required.'
+
+        # ── Validate price ──────────────────────────────
+        price = None
+        if not price_raw:
+            errors['price'] = 'Price is required.'
+        else:
+            try:
+                price = Decimal(price_raw)
+                if price <= 0:
+                    errors['price'] = 'Price must be greater than 0.'
+            except (InvalidOperation, ValueError):
+                errors['price'] = 'Enter a valid price (e.g. 25.00).'
+
+        # ── Validate discount price (optional) ──────────
+        discount_price = None
+        if discount_raw:
+            try:
+                discount_price = Decimal(discount_raw)
+                if price and discount_price >= price:
+                    errors['discount_price'] = 'Discount price must be lower than the regular price.'
+            except (InvalidOperation, ValueError):
+                errors['discount_price'] = 'Enter a valid discount price.'
+
+        # ── Validate prep time ───────────────────────────
+        try:
+            prep_time = int(prep_time_raw) if prep_time_raw else 15
+            if prep_time < 0:
+                prep_time = 15
+        except ValueError:
+            prep_time = 15
+
+        # ── Validate category belongs to this restaurant ─
+        category_obj = None
+        if category_id:
+            try:
+                category_obj = restaurant.food_categories.get(pk=category_id)
+            except (FoodCategory.DoesNotExist, ValueError):
+                errors['category_id'] = 'Invalid category selected.'
 
         if errors:
             return render(request, 'food/item_form.html', {
@@ -334,22 +372,31 @@ def restaurant_add_item(request):
                 'cart_count': 0,
             })
 
-        item = FoodItem(
-            vendor        = restaurant,
-            name          = name,
-            description   = description,
-            category_id   = category_id or None,
-            price         = Decimal(price),
-            discount_price = Decimal(discount) if discount else None,
-            prep_time     = int(prep_time),
-            is_available  = is_available,
-            is_featured   = is_featured,
-            is_spicy      = is_spicy,
-            is_vegan      = is_vegan,
-        )
-        if 'image' in request.FILES:
-            item.image = request.FILES['image']
-        item.save()
+        try:
+            item = FoodItem(
+                vendor         = restaurant,
+                name           = name,
+                description    = description,
+                category       = category_obj,
+                price          = price,
+                discount_price = discount_price,
+                prep_time      = prep_time,
+                is_available   = is_available,
+                is_featured    = is_featured,
+                is_spicy       = is_spicy,
+                is_vegan       = is_vegan,
+            )
+            if 'image' in request.FILES:
+                item.image = request.FILES['image']
+            item.save()
+        except Exception as e:
+            messages.error(request, f'Could not save item: {e}')
+            return render(request, 'food/item_form.html', {
+                'restaurant': restaurant, 'categories': categories,
+                'errors': {'name': 'Something went wrong saving this item. Please try again.'},
+                'form_data': request.POST, 'action': 'Add',
+                'cart_count': 0,
+            })
 
         messages.success(request, f'"{name}" added to your menu!')
         return redirect('/food/dashboard/?tab=menu')
@@ -358,8 +405,6 @@ def restaurant_add_item(request):
         'restaurant': restaurant, 'categories': categories,
         'action': 'Add', 'cart_count': 0,
     })
-
-
 # ─────────────────────────────
 # EDIT MENU ITEM
 # ─────────────────────────────
