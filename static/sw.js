@@ -1,5 +1,6 @@
 /**
- * Lynctel Service Worker (Production Ready)
+ * Lynctel Service Worker v3 — Production Ready
+ * Supports all mobile browsers: Chrome, Safari, Firefox, Samsung Internet
  */
 
 const CACHE_VERSION  = 'lynctel-v3';
