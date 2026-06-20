@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Lynctel — Quality Products Delivered in Ghana{% endblock %}
@@ -621,7 +620,7 @@
   document.addEventListener('touchend', () => {
     if (ptrActive) {
       ptrActive = false;
-      setTimeout(() => { ptrEl.classList.remove('visible'); window.location.reload(); }, 300);
+      window.location.reload();
     }
   }, { passive: true });
 </script>
