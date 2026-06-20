@@ -1,6 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ action }} Menu Item — {{ restaurant.name }}{% endblock %}
 
+{% block extra_head %}
+<style>
+  input, select, textarea { font-size: 16px !important; }
+  @media (min-width: 640px) {
+    input, select, textarea { font-size: 14px !important; }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 md:px-6 py-10">
 
@@ -16,51 +25,75 @@
 
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
 
+      <!-- Name -->
       <div>
         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Item Name *</label>
-        <input type="text" name="name" value="{{ item.name|default:form_data.name|default:'' }}"
+        <input type="text" name="name"
+               value="{{ form_data.name|default:item.name|default:'' }}"
                placeholder="e.g. Jollof Rice with Chicken"
-               class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.name %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+               class="w-full px-4 py-3 border rounded-xl text-sm transition-colors
+                      {% if errors.name %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
         {% if errors.name %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.name }}</p>{% endif %}
       </div>
 
+      <!-- Description -->
       <div>
         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
         <textarea name="description" rows="3"
-                  class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ item.description|default:'' }}</textarea>
+                  class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.description|default:item.description|default:'' }}</textarea>
       </div>
 
+      <!-- Category -->
       <div>
         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Category</label>
-        <select name="category_id" class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white">
+        <select name="category_id"
+                class="w-full px-4 py-3 border rounded-xl text-sm bg-white transition-colors
+                       {% if errors.category_id %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}">
           <option value="">No category</option>
           {% for cat in categories %}
-          <option value="{{ cat.id }}" {% if item.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+          <option value="{{ cat.id }}"
+                  {% if form_data.category_id|default:item.category_id|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
+            {{ cat.name }}
+          </option>
           {% endfor %}
         </select>
+        {% if errors.category_id %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.category_id }}</p>{% endif %}
+        {% if not categories %}
+        <p class="text-xs text-gray-400 mt-1">No categories yet — items will appear under "Uncategorized."</p>
+        {% endif %}
       </div>
 
+      <!-- Price / Discount -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Price (GHS) *</label>
-          <input type="number" step="0.01" name="price" value="{{ item.price|default:'' }}"
-                 class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.price %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+          <input type="number" step="0.01" min="0" name="price"
+                 value="{{ form_data.price|default:item.price|default:'' }}"
+                 placeholder="25.00"
+                 class="w-full px-4 py-3 border rounded-xl text-sm transition-colors
+                        {% if errors.price %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
           {% if errors.price %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.price }}</p>{% endif %}
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Discount Price (optional)</label>
-          <input type="number" step="0.01" name="discount_price" value="{{ item.discount_price|default:'' }}"
+          <input type="number" step="0.01" min="0" name="discount_price"
+                 value="{{ form_data.discount_price|default:item.discount_price|default:'' }}"
                  placeholder="Leave blank for no discount"
-                 class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+                 class="w-full px-4 py-3 border rounded-xl text-sm transition-colors
+                        {% if errors.discount_price %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+          {% if errors.discount_price %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.discount_price }}</p>{% endif %}
         </div>
       </div>
 
+      <!-- Prep time -->
       <div>
         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Prep Time (mins)</label>
-        <input type="number" name="prep_time" value="{{ item.prep_time|default:'15' }}"
+        <input type="number" min="0" name="prep_time"
+               value="{{ form_data.prep_time|default:item.prep_time|default:'15' }}"
                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm sm:w-1/3"/>
       </div>
 
+      <!-- Photo -->
       <div>
         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Photo</label>
         <div class="border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center hover:border-gold transition-colors cursor-pointer"
@@ -69,6 +102,7 @@
           <p class="text-sm font-medium text-navy">
             {% if item.image %}Change photo{% else %}Upload photo{% endif %}
           </p>
+          <p class="text-xs text-gray-400 mt-0.5">PNG or JPG, up to 5MB</p>
           <input type="file" id="img-input" name="image" accept="image/*" class="hidden" onchange="previewImg(this)"/>
         </div>
         <img id="img-preview"
@@ -76,21 +110,30 @@
              class="{% if not item.image %}hidden{% endif %} mt-3 w-24 h-24 rounded-2xl object-cover border-2 border-gold/30 mx-auto"/>
       </div>
 
+      <!-- Toggles -->
       <div class="grid grid-cols-2 gap-3 pt-2">
         <label class="flex items-center gap-2.5 bg-gray-50 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors">
-          <input type="checkbox" name="is_available" {% if item.is_available|default:True %}checked{% endif %} class="w-4 h-4 accent-gold"/>
+          <input type="checkbox" name="is_available"
+                 {% if form_data %}{% if form_data.is_available %}checked{% endif %}{% elif item.pk %}{% if item.is_available %}checked{% endif %}{% else %}checked{% endif %}
+                 class="w-4 h-4 accent-gold"/>
           <span class="text-sm font-medium text-navy">✅ Available</span>
         </label>
         <label class="flex items-center gap-2.5 bg-gray-50 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors">
-          <input type="checkbox" name="is_featured" {% if item.is_featured %}checked{% endif %} class="w-4 h-4 accent-gold"/>
+          <input type="checkbox" name="is_featured"
+                 {% if form_data.is_featured or item.is_featured %}checked{% endif %}
+                 class="w-4 h-4 accent-gold"/>
           <span class="text-sm font-medium text-navy">⭐ Featured</span>
         </label>
         <label class="flex items-center gap-2.5 bg-gray-50 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors">
-          <input type="checkbox" name="is_spicy" {% if item.is_spicy %}checked{% endif %} class="w-4 h-4 accent-gold"/>
+          <input type="checkbox" name="is_spicy"
+                 {% if form_data.is_spicy or item.is_spicy %}checked{% endif %}
+                 class="w-4 h-4 accent-gold"/>
           <span class="text-sm font-medium text-navy">🌶️ Spicy</span>
         </label>
         <label class="flex items-center gap-2.5 bg-gray-50 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors">
-          <input type="checkbox" name="is_vegan" {% if item.is_vegan %}checked{% endif %} class="w-4 h-4 accent-gold"/>
+          <input type="checkbox" name="is_vegan"
+                 {% if form_data.is_vegan or item.is_vegan %}checked{% endif %}
+                 class="w-4 h-4 accent-gold"/>
           <span class="text-sm font-medium text-navy">🌱 Vegan</span>
         </label>
       </div>
@@ -99,11 +142,11 @@
 
     <div class="flex gap-3">
       <a href="{% url 'food:restaurant_dashboard' %}?tab=menu"
-         class="flex-1 text-center border border-gray-200 text-gray-600 font-semibold py-3.5 rounded-2xl hover:bg-gray-50 transition-colors text-sm">
+         class="flex-1 text-center border border-gray-200 text-gray-600 font-semibold py-3.5 rounded-2xl hover:bg-gray-50 transition-colors text-sm min-h-[52px] flex items-center justify-center">
         Cancel
       </a>
       <button type="submit"
-              class="flex-1 bg-navy hover:bg-navy-700 text-white font-semibold py-3.5 rounded-2xl transition-colors btn-press text-sm">
+              class="flex-1 bg-navy hover:bg-navy-700 text-white font-semibold py-3.5 rounded-2xl transition-colors btn-press text-sm min-h-[52px]">
         {{ action }} Item
       </button>
     </div>
