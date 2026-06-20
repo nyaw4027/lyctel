@@ -1,14 +1,14 @@
 import requests
-from django.conf import settings
+from decouple import config
 from django.core.cache import cache
 
-GOOGLE_MAPS_API_KEY = settings.GOOGLE_MAPS_API_KEY
+LOCATIONIQ_API_KEY = config('LOCATIONIQ_API_KEY', default='')
 
 
-def get_google_eta(origin_lat, origin_lng, dest_lat, dest_lng):
+def get_locationiq_eta(origin_lat, origin_lng, dest_lat, dest_lng):
     """
-    Returns real road ETA in minutes using Google Directions API
-    Includes caching + safe fallback handling
+    Returns real road ETA in minutes using LocationIQ's Directions API.
+    Includes caching + safe fallback handling.
     """
 
     # ─────────────────────────────
@@ -20,14 +20,17 @@ def get_google_eta(origin_lat, origin_lng, dest_lat, dest_lng):
     if cached_eta:
         return cached_eta
 
+    if not LOCATIONIQ_API_KEY:
+        return None
+
     # ─────────────────────────────
-    # GOOGLE API REQUEST
+    # LOCATIONIQ DIRECTIONS REQUEST
+    # Coordinate order is lon,lat (note: reversed from lat,lng)
     # ─────────────────────────────
     url = (
-        "https://maps.googleapis.com/maps/api/directions/json"
-        f"?origin={origin_lat},{origin_lng}"
-        f"&destination={dest_lat},{dest_lng}"
-        f"&key={GOOGLE_MAPS_API_KEY}"
+        f"https://us1.locationiq.com/v1/directions/driving/"
+        f"{origin_lng},{origin_lat};{dest_lng},{dest_lat}"
+        f"?key={LOCATIONIQ_API_KEY}&overview=false"
     )
 
     try:
@@ -35,19 +38,14 @@ def get_google_eta(origin_lat, origin_lng, dest_lat, dest_lng):
         data = response.json()
 
         # ── SAFE VALIDATION
-        if data.get("status") != "OK":
+        if data.get("code") != "Ok":
             return None
 
-        route = data.get("routes", [])
-        if not route:
+        routes = data.get("routes", [])
+        if not routes:
             return None
 
-        legs = route[0].get("legs", [])
-        if not legs:
-            return None
-
-        duration_seconds = legs[0].get("duration", {}).get("value")
-
+        duration_seconds = routes[0].get("duration")
         if not duration_seconds:
             return None
 
@@ -65,3 +63,12 @@ def get_google_eta(origin_lat, origin_lng, dest_lat, dest_lng):
 
     except Exception:
         return None
+
+
+# ─────────────────────────────
+# BACKWARD-COMPATIBLE ALIAS
+# Some call sites may still import `get_google_eta` by its old name
+# from before the LocationIQ switch — this keeps those imports working
+# without needing to track down and edit every reference.
+# ─────────────────────────────
+get_google_eta = get_locationiq_eta

@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Checkout — {{ vendor.name }} | Lynctel Food{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  #delivery-map {
+    height: 320px;
+    border-radius: 1rem;
+    z-index: 1;
+  }
+  .leaflet-control-attribution { font-size: 9px; }
+  #address-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-top: none;
+    border-radius: 0 0 0.75rem 0.75rem;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 50;
+    box-shadow: 0 8px 20px rgba(15,27,45,.10);
+    display: none;
+  }
+  #address-suggestions.show { display: block; }
+  .suggestion-item {
+    padding: 10px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .suggestion-item:hover { background: #f9fafb; }
+  .suggestion-item:last-child { border-bottom: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+
+  <div class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+    <a href="{% url 'food:home' %}" class="hover:text-navy">Food</a>
+    <span>/</span>
+    <a href="{% url 'food:vendor_menu' vendor.slug %}" class="hover:text-navy">{{ vendor.name }}</a>
+    <span>/</span>
+    <span class="text-navy font-medium">Checkout</span>
+  </div>
+
+  <h1 class="font-display font-800 text-2xl md:text-3xl text-navy mb-6">Checkout</h1>
+
+  <form method="POST" id="checkout-form" class="grid lg:grid-cols-3 gap-8">
+    {% csrf_token %}
+
+    <!-- LEFT: Delivery details + map -->
+    <div class="lg:col-span-2 space-y-6">
+
+      {% if errors %}
+      <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl px-4 py-3">
+        {% for field, msg in errors.items %}<p>{{ msg }}</p>{% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Delivery address card -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+        <h2 class="font-display font-700 text-navy text-lg mb-4">📍 Delivery Address</h2>
+
+        <div class="relative mb-4">
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Search your address</label>
+          <input type="text" id="address-search" autocomplete="off"
+                 placeholder="Start typing your street, area, or landmark..."
+                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"/>
+          <div id="address-suggestions"></div>
+        </div>
+
+        <p class="text-xs text-gray-400 mb-3">Or drag the pin on the map below to your exact location 👇</p>
+
+        <div id="delivery-map"></div>
+
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Delivery Address <span class="text-red-500">*</span></label>
+          <textarea name="delivery_address" id="delivery_address" rows="2" required
+                    placeholder="House number, street name, area..."
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.delivery_address|default:'' }}</textarea>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Phone Number <span class="text-red-500">*</span></label>
+            <input type="tel" name="delivery_phone" required
+                   value="{{ form_data.delivery_phone|default:user.phone }}"
+                   placeholder="024 xxx xxxx"
+                   class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"/>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Delivery Note (optional)</label>
+            <input type="text" name="delivery_note"
+                   value="{{ form_data.delivery_note|default:'' }}"
+                   placeholder="e.g. Blue gate, call on arrival"
+                   class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"/>
+          </div>
+        </div>
+
+        <!-- Hidden fields populated by the map/autocomplete JS -->
+        <input type="hidden" name="delivery_lat"  id="delivery_lat"  value="">
+        <input type="hidden" name="delivery_lng"  id="delivery_lng"  value="">
+        <input type="hidden" name="delivery_fee"  id="delivery_fee_input"  value="{{ default_fee }}">
+        <input type="hidden" name="distance_km"   id="distance_km_input"   value="">
+      </div>
+
+      <!-- Payment method -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+        <h2 class="font-display font-700 text-navy text-lg mb-4">💳 Payment Method</h2>
+        <div class="space-y-2">
+          {% for value, label in payment_methods %}
+          <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-gold has-[:checked]:bg-gold-light transition-colors">
+            <input type="radio" name="payment_method" value="{{ value }}" {% if forloop.first %}checked{% endif %} class="accent-gold w-4 h-4">
+            <span class="text-sm font-medium text-navy">{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Order summary -->
+    <div class="lg:col-span-1">
+      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm sticky top-24">
+        <h2 class="font-display font-700 text-navy text-lg mb-4">🧾 Order Summary</h2>
+
+        <p class="text-sm font-semibold text-navy mb-3">{{ vendor.name }}</p>
+
+        <div class="space-y-3 mb-4 max-h-64 overflow-y-auto">
+          {% for item in cart_items %}
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">{{ item.quantity }}× {{ item.food.name }}</span>
+            <span class="text-navy font-medium">GHS {{ item.subtotal }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="border-t border-gray-100 pt-4 space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500">Subtotal</span>
+            <span class="text-navy font-medium">GHS {{ subtotal }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500">Delivery Fee</span>
+            <span id="display-fee" class="text-navy font-medium">GHS {{ default_fee }}</span>
+          </div>
+          <div id="display-eta" class="text-xs text-gray-400"></div>
+          <div class="flex justify-between text-base font-display font-700 text-navy pt-2 border-t border-gray-100">
+            <span>Total</span>
+            <span id="display-total">GHS {{ subtotal }}</span>
+          </div>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-navy hover:bg-navy-700 text-white font-semibold py-3.5 rounded-xl mt-5 transition-colors btn-press text-sm">
+          Place Order →
+        </button>
+        <p class="text-xs text-gray-400 text-center mt-3">Pin your location above for accurate delivery pricing</p>
+      </div>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function() {
+  const LOCATIONIQ_KEY = "{{ locationiq_key|default:'' }}";
+  const VENDOR_LAT = parseFloat("{{ vendor_lat }}") || 5.6037;   // fallback: Accra
+  const VENDOR_LNG = parseFloat("{{ vendor_lng }}") || -0.1870;
+  const SUBTOTAL   = parseFloat("{{ subtotal }}") || 0;
+
+  if (!LOCATIONIQ_KEY) {
+    console.warn('LocationIQ key missing — map will not load. Check that the checkout view passes locationiq_key into context.');
+  }
+
+  // ── MAP SETUP ─────────────────────────────────────────
+  const map = L.map('delivery-map').setView([VENDOR_LAT, VENDOR_LNG], 14);
+
+  L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
+    attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
+    maxZoom: 19,
+    subdomains: ['a', 'b', 'c'],
+  }).addTo(map);
+
+  // Vendor marker (fixed, not draggable)
+  const vendorIcon = L.divIcon({
+    html: '<div style="background:#0F1B2D;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>',
+    className: '', iconSize: [20, 20], iconAnchor: [10, 10],
+  });
+  L.marker([VENDOR_LAT, VENDOR_LNG], { icon: vendorIcon, interactive: false })
+    .addTo(map)
+    .bindPopup('{{ vendor.name|escapejs }} (pickup point)');
+
+  // Delivery marker (draggable)
+  let deliveryMarker = null;
+
+  function setDeliveryPin(lat, lng) {
+    if (deliveryMarker) {
+      deliveryMarker.setLatLng([lat, lng]);
+    } else {
+      deliveryMarker = L.marker([lat, lng], { draggable: true })
+        .addTo(map)
+        .bindPopup('Your delivery location')
+        .on('dragend', function(e) {
+          const pos = e.target.getLatLng();
+          onLocationChosen(pos.lat, pos.lng, true);
+        });
+    }
+    map.setView([lat, lng], 15);
+    document.getElementById('delivery_lat').value = lat;
+    document.getElementById('delivery_lng').value = lng;
+  }
+
+  // Click anywhere on the map to drop/move the pin
+  map.on('click', function(e) {
+    onLocationChosen(e.latlng.lat, e.latlng.lng, true);
+  });
+
+  // ── PRICE/DISTANCE ESTIMATE ──────────────────────────
+  function onLocationChosen(lat, lng, reverseGeocode) {
+    setDeliveryPin(lat, lng);
+    fetchPriceEstimate(lat, lng);
+    if (reverseGeocode) reverseGeocodeAddress(lat, lng);
+  }
+
+  function fetchPriceEstimate(lat, lng) {
+    const url = `/food/api/price-estimate/?vlat=${VENDOR_LAT}&vlng=${VENDOR_LNG}&dlat=${lat}&dlng=${lng}&prep=20`;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return;
+        document.getElementById('delivery_fee_input').value = data.fee;
+        document.getElementById('distance_km_input').value  = data.distance_km;
+        document.getElementById('display-fee').textContent  = 'GHS ' + data.fee;
+        document.getElementById('display-eta').textContent  = `${data.distance_km} km away · ~${data.eta_minutes} min`;
+        const total = (SUBTOTAL + parseFloat(data.fee)).toFixed(2);
+        document.getElementById('display-total').textContent = 'GHS ' + total;
+      })
+      .catch(err => console.error('Price estimate failed:', err));
+  }
+
+  // ── REVERSE GEOCODE (pin → address text) ─────────────
+  function reverseGeocodeAddress(lat, lng) {
+    if (!LOCATIONIQ_KEY) return;
+    fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.display_name) {
+          document.getElementById('delivery_address').value = data.display_name;
+        }
+      })
+      .catch(err => console.error('Reverse geocode failed:', err));
+  }
+
+  // ── ADDRESS AUTOCOMPLETE (typed search) ──────────────
+  const searchInput = document.getElementById('address-search');
+  const suggestBox  = document.getElementById('address-suggestions');
+  let debounceTimer = null;
+
+  searchInput.addEventListener('input', function() {
+    const query = this.value.trim();
+    clearTimeout(debounceTimer);
+    if (query.length < 3 || !LOCATIONIQ_KEY) {
+      suggestBox.classList.remove('show');
+      return;
+    }
+    debounceTimer = setTimeout(() => {
+      fetch(`https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(query)}&countrycodes=gh&limit=5&format=json`)
+        .then(r => r.json())
+        .then(results => {
+          if (!Array.isArray(results) || results.length === 0) {
+            suggestBox.classList.remove('show');
+            return;
+          }
+          suggestBox.innerHTML = results.map(r => `
+            <div class="suggestion-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.replace(/"/g, '&quot;')}">
+              ${r.display_name}
+            </div>
+          `).join('');
+          suggestBox.classList.add('show');
+        })
+        .catch(err => console.error('Autocomplete failed:', err));
+    }, 400); // debounce to respect LocationIQ rate limits
+  });
+
+  suggestBox.addEventListener('click', function(e) {
+    const item = e.target.closest('.suggestion-item');
+    if (!item) return;
+    const lat = parseFloat(item.dataset.lat);
+    const lon = parseFloat(item.dataset.lon);
+    searchInput.value = item.dataset.name;
+    document.getElementById('delivery_address').value = item.dataset.name;
+    suggestBox.classList.remove('show');
+    onLocationChosen(lat, lon, false); // skip reverse-geocode, we already have the name
+  });
+
+  // Hide suggestions when clicking elsewhere
+  document.addEventListener('click', function(e) {
+    if (e.target !== searchInput) suggestBox.classList.remove('show');
+  });
+
+  // ── TRY BROWSER GEOLOCATION ON LOAD ──────────────────
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => onLocationChosen(pos.coords.latitude, pos.coords.longitude, true),
+      () => { /* user denied or unavailable — they can search/click instead */ },
+      { timeout: 5000 }
+    );
+  }
+})();
+</script>
+{% endblock %}

@@ -1,8 +1,8 @@
-
 import math
 import json
 from decimal import Decimal
 
+from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -645,6 +645,7 @@ def checkout(request):
                 'vendor_lat': vendor.latitude or '',
                 'vendor_lng': vendor.longitude or '',
                 'errors': errors,
+                'locationiq_key': settings.LOCATIONIQ_API_KEY,
             })
 
         try:
@@ -744,10 +745,8 @@ def checkout(request):
         'payment_methods': FoodOrder.PaymentMethod.choices,
         'vendor_lat': vendor.latitude or '',
         'vendor_lng': vendor.longitude or '',
+        'locationiq_key': settings.LOCATIONIQ_API_KEY,
     })
-
-
-    
 
 
 # ─────────────────────────────
