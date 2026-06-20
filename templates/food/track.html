@@ -2,8 +2,26 @@
 {% block title %}Track Order {{ order.order_ref }} — Lynctel Food{% endblock %}
 
 {% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   #food-map { height: 280px; width: 100%; border-radius: 16px; }
+  .pin-customer, .pin-vendor {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  }
+  .pin-customer { background: #ef4444; }
+  .pin-vendor   { background: #F5A623; }
+  .rider-icon-wrap {
+    background: #0F1B2D;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
 </style>
 {% endblock %}
 
@@ -112,56 +130,46 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const ORDER_REF   = '{{ order.order_ref }}';
-  const DROPOFF_LAT = {{ order.delivery_lat|default:"null" }};
-  const DROPOFF_LNG = {{ order.delivery_lng|default:"null" }};
-  const VENDOR_LAT  = {{ order.vendor.latitude|default:"null" }};
-  const VENDOR_LNG  = {{ order.vendor.longitude|default:"null" }};
-  const GMAPS_KEY   = "{{ GOOGLE_MAPS_API_KEY }}";
-  const STEPS       = ['pending','confirmed','preparing','ready','picked_up','en_route','delivered'];
+(function() {
+  const ORDER_REF      = '{{ order.order_ref }}';
+  const DROPOFF_LAT    = {{ order.delivery_lat|default:"null" }};
+  const DROPOFF_LNG    = {{ order.delivery_lng|default:"null" }};
+  const VENDOR_LAT     = {{ order.vendor.latitude|default:"null" }};
+  const VENDOR_LNG     = {{ order.vendor.longitude|default:"null" }};
+  const LOCATIONIQ_KEY = "{{ locationiq_key|default:'' }}";
+  const STEPS          = ['pending','confirmed','preparing','ready','picked_up','en_route','delivered'];
 
-  let map, riderMarker, directionsRenderer, mapInitialized = false;
+  if (!LOCATIONIQ_KEY) {
+    console.warn('LocationIQ key missing — map will not load. Check that order_track passes locationiq_key into context.');
+  }
+
+  let map, riderMarker, routeLine, mapInitialized = false;
 
   function initMap() {
     if (!DROPOFF_LAT || !DROPOFF_LNG) return;
 
-    map = new google.maps.Map(document.getElementById('food-map'), {
-      center: { lat: DROPOFF_LAT, lng: DROPOFF_LNG },
-      zoom: 14,
-      mapTypeControl: false,
-      streetViewControl: false,
-      styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }],
-    });
+    map = L.map('food-map').setView([DROPOFF_LAT, DROPOFF_LNG], 14);
 
-    directionsRenderer = new google.maps.DirectionsRenderer({
-      suppressMarkers: true,
-      polylineOptions: { strokeColor: '#F5A623', strokeWeight: 4, strokeOpacity: 0.8 },
-    });
-    directionsRenderer.setMap(map);
+    L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
+      attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
+      maxZoom: 19,
+      subdomains: ['a', 'b', 'c'],
+    }).addTo(map);
 
-    // Customer marker
-    new google.maps.Marker({
-      position: { lat: DROPOFF_LAT, lng: DROPOFF_LNG },
-      map,
-      icon: {
-        url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-        scaledSize: new google.maps.Size(40, 40),
-      },
-      title: 'Your location',
-    });
+    // Customer marker (red)
+    L.marker([DROPOFF_LAT, DROPOFF_LNG], {
+      icon: L.divIcon({ html: '<div class="pin-customer"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] }),
+      zIndexOffset: 500,
+    }).addTo(map).bindPopup('Your location');
 
-    // Restaurant marker
+    // Restaurant marker (gold)
     if (VENDOR_LAT && VENDOR_LNG) {
-      new google.maps.Marker({
-        position: { lat: VENDOR_LAT, lng: VENDOR_LNG },
-        map,
-        icon: {
-          url: 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png',
-          scaledSize: new google.maps.Size(36, 36),
-        },
-        title: '{{ order.vendor.name|escapejs }}',
-      });
+      L.marker([VENDOR_LAT, VENDOR_LNG], {
+        icon: L.divIcon({ html: '<div class="pin-vendor"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] }),
+        zIndexOffset: 400,
+      }).addTo(map).bindPopup('{{ order.vendor.name|escapejs }}');
     }
 
     mapInitialized = true;
@@ -172,34 +180,35 @@
     document.getElementById('map-section').classList.remove('hidden');
 
     if (!riderMarker) {
-      riderMarker = new google.maps.Marker({
-        position: { lat, lng },
-        map,
-        icon: {
-          url: 'https://maps.google.com/mapfiles/ms/icons/motorcycling.png',
-          scaledSize: new google.maps.Size(38, 38),
-        },
-        title: 'Rider',
-        zIndex: 10,
-      });
+      riderMarker = L.marker([lat, lng], {
+        icon: L.divIcon({ html: '<div class="rider-icon-wrap">🛵</div>', className: '', iconSize: [32, 32], iconAnchor: [16, 16] }),
+        zIndexOffset: 1000,
+      }).addTo(map).bindPopup('Rider');
     } else {
-      riderMarker.setPosition({ lat, lng });
+      riderMarker.setLatLng([lat, lng]);
     }
 
-    if (DROPOFF_LAT && DROPOFF_LNG) {
-      const ds = new google.maps.DirectionsService();
-      ds.route({
-        origin:      { lat, lng },
-        destination: { lat: DROPOFF_LAT, lng: DROPOFF_LNG },
-        travelMode:  google.maps.TravelMode.DRIVING,
-      }, (result, status) => {
-        if (status === 'OK') {
-          directionsRenderer.setDirections(result);
-          const leg = result.routes[0].legs[0];
-          document.getElementById('rider-distance').textContent = `${leg.distance.text} · ETA ${leg.duration.text}`;
-          document.getElementById('eta-display').textContent = leg.duration.text;
-        }
-      });
+    if (DROPOFF_LAT && DROPOFF_LNG && LOCATIONIQ_KEY) {
+      const url = `https://us1.locationiq.com/v1/directions/driving/${lng},${lat};${DROPOFF_LNG},${DROPOFF_LAT}?key=${LOCATIONIQ_KEY}&overview=full&geometries=geojson`;
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+          if (data.code !== 'Ok' || !data.routes || !data.routes.length) return;
+          const route = data.routes[0];
+          const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+          if (routeLine) {
+            routeLine.setLatLngs(coords);
+          } else {
+            routeLine = L.polyline(coords, { color: '#F5A623', weight: 4, opacity: 0.8 }).addTo(map);
+          }
+
+          const etaMinutes = Math.max(1, Math.round(route.duration / 60));
+          const distanceKm = (route.distance / 1000).toFixed(1);
+          document.getElementById('rider-distance').textContent = `${distanceKm} km · ETA ${etaMinutes} min`;
+          document.getElementById('eta-display').textContent = `${etaMinutes} mins`;
+        })
+        .catch(err => console.error('Route fetch failed:', err));
     }
   }
 
@@ -245,15 +254,9 @@
       .catch(console.error);
   }
 
-  // Load Google Maps then start polling
-  const script = document.createElement('script');
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&callback=initMap`;
-  script.async = true;
-  script.defer = true;
-  document.head.appendChild(script);
-
-  // Poll immediately and every 8s
+  initMap();
   poll();
   setInterval(poll, 8000);
+})();
 </script>
 {% endblock %}
