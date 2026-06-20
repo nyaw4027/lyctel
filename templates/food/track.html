@@ -1,28 +1,38 @@
 {% extends "base.html" %}
 {% block title %}Track Order {{ order.order_ref }} — Lynctel Food{% endblock %}
 
-{% block content %}
-<div class="max-w-xl mx-auto px-4 md:px-6 py-10">
+{% block extra_head %}
+<style>
+  #food-map { height: 280px; width: 100%; border-radius: 16px; }
+</style>
+{% endblock %}
 
-  <div class="text-center mb-8">
-    <div class="w-16 h-16 bg-gold-light rounded-3xl flex items-center justify-center mx-auto mb-4 text-3xl">🛵</div>
-    <h1 class="font-display font-700 text-2xl text-navy mb-1">Order {{ order.order_ref }}</h1>
-    <p class="text-gray-400 text-sm">From {{ order.vendor.name }}</p>
+{% block content %}
+<div class="max-w-xl mx-auto px-4 md:px-6 py-8">
+
+  <!-- Header -->
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-orange-100 rounded-3xl flex items-center justify-center mx-auto mb-4 text-3xl">🛵</div>
+    <h1 class="font-display font-700 text-2xl text-navy mb-1">{{ order.order_ref }}</h1>
+    <p class="text-gray-400 text-sm">From <strong class="text-navy">{{ order.vendor.name }}</strong></p>
   </div>
 
-  <!-- Status timeline -->
-  <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
-    <div class="flex items-center justify-between mb-2">
-      <span id="status-label" class="font-display font-700 text-navy">{{ order.get_status_display }}</span>
-      <span class="text-xs text-gray-400">ETA: {{ order.estimated_delivery_time }} mins</span>
+  <!-- Status bar -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+    <div class="flex items-center justify-between mb-4">
+      <span id="status-label" class="font-display font-700 text-navy text-base">{{ order.get_status_display }}</span>
+      <span class="text-xs text-gray-400 bg-gray-50 px-3 py-1.5 rounded-full">
+        ETA: <strong id="eta-display">{{ order.estimated_delivery_time }} mins</strong>
+      </span>
     </div>
 
-    <div class="flex items-center gap-1 mt-4">
-      <div id="step-pending"   class="flex-1 h-1.5 rounded-full bg-navy"></div>
-      <div id="step-confirmed" class="flex-1 h-1.5 rounded-full bg-gray-200"></div>
-      <div id="step-preparing" class="flex-1 h-1.5 rounded-full bg-gray-200"></div>
-      <div id="step-ready"     class="flex-1 h-1.5 rounded-full bg-gray-200"></div>
-      <div id="step-delivered" class="flex-1 h-1.5 rounded-full bg-gray-200"></div>
+    <!-- Progress steps -->
+    <div class="flex items-center gap-1">
+      <div id="step-pending"   class="flex-1 h-2 rounded-full bg-navy transition-all duration-500"></div>
+      <div id="step-confirmed" class="flex-1 h-2 rounded-full bg-gray-200 transition-all duration-500"></div>
+      <div id="step-preparing" class="flex-1 h-2 rounded-full bg-gray-200 transition-all duration-500"></div>
+      <div id="step-ready"     class="flex-1 h-2 rounded-full bg-gray-200 transition-all duration-500"></div>
+      <div id="step-delivered" class="flex-1 h-2 rounded-full bg-gray-200 transition-all duration-500"></div>
     </div>
     <div class="grid grid-cols-5 gap-1 mt-2 text-center">
       <span class="text-[10px] text-gray-400">Placed</span>
@@ -33,35 +43,64 @@
     </div>
   </div>
 
+  <!-- Live map (shows when rider is dispatched) -->
+  <div id="map-section" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5 hidden">
+    <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-50">
+      <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+      <p class="font-semibold text-navy text-sm">Live Rider Location</p>
+      <span id="rider-distance" class="text-xs text-gray-400 ml-auto"></span>
+    </div>
+    <div id="food-map"></div>
+  </div>
+
   <!-- Rider info -->
-  <div id="rider-card" class="bg-white rounded-2xl border border-gray-100 p-5 mb-6 hidden">
-    <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Your Rider</p>
+  <div id="rider-card" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5 hidden">
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-3">Your Rider</p>
     <div class="flex items-center justify-between">
-      <div>
-        <p id="rider-name" class="font-semibold text-navy text-sm"></p>
-        <p class="text-xs text-gray-400">On the way</p>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-navy rounded-xl flex items-center justify-center text-white font-bold" id="rider-avatar">R</div>
+        <div>
+          <p id="rider-name" class="font-semibold text-navy text-sm"></p>
+          <p class="text-xs text-gray-400">On the way to you</p>
+        </div>
       </div>
-      <a id="rider-call" href="#" class="bg-green-50 text-green-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-100 transition-colors">
-        📞 Call
-      </a>
+      <div class="flex gap-2">
+        <a id="rider-call" href="#"
+           class="w-10 h-10 bg-navy text-white rounded-xl flex items-center justify-center transition-colors hover:bg-navy-700">📞</a>
+        <a id="rider-wa" href="#" target="_blank"
+           class="w-10 h-10 bg-green-500 text-white rounded-xl flex items-center justify-center transition-colors hover:bg-green-600">💬</a>
+      </div>
     </div>
   </div>
 
   <!-- Order items -->
-  <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
-    <p class="font-display font-700 text-navy text-sm mb-3">Order Items</p>
-    <div class="space-y-2">
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+    <p class="font-display font-700 text-navy text-sm mb-3">Your Order</p>
+    <div class="space-y-2 mb-3">
       {% for item in order.items.all %}
       <div class="flex items-center justify-between text-sm">
         <span class="text-gray-600">{{ item.quantity }}× {{ item.name }}</span>
-        <span class="font-medium text-navy">GHS {{ item.price }}</span>
+        <span class="font-semibold text-navy">GHS {{ item.price }}</span>
       </div>
       {% endfor %}
     </div>
-    <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-50">
-      <span class="font-display font-700 text-navy">Total</span>
-      <span class="font-display font-700 text-navy">GHS {{ order.subtotal|add:order.delivery_fee }}</span>
+    <div class="border-t border-gray-50 pt-3 space-y-1 text-sm">
+      <div class="flex justify-between text-gray-500">
+        <span>Delivery fee</span>
+        <span>GHS {{ order.delivery_fee }}</span>
+      </div>
+      <div class="flex justify-between font-display font-700 text-navy">
+        <span>Total</span>
+        <span>GHS {{ order.total_amount }}</span>
+      </div>
     </div>
+  </div>
+
+  <!-- Delivered state -->
+  <div id="delivered-card" class="hidden bg-green-50 border border-green-200 rounded-2xl p-5 text-center mb-5">
+    <p class="text-3xl mb-2">🎉</p>
+    <p class="font-display font-700 text-green-700 text-lg">Order Delivered!</p>
+    <p class="text-sm text-green-600 mt-1">Enjoy your meal from {{ order.vendor.name }}</p>
   </div>
 
   <div class="text-center">
@@ -74,31 +113,146 @@
 
 {% block extra_js %}
 <script>
-  const ORDER_REF = '{{ order.order_ref }}';
-  const STEPS = ['pending','confirmed','preparing','ready','delivered'];
+  const ORDER_REF   = '{{ order.order_ref }}';
+  const DROPOFF_LAT = {{ order.delivery_lat|default:"null" }};
+  const DROPOFF_LNG = {{ order.delivery_lng|default:"null" }};
+  const VENDOR_LAT  = {{ order.vendor.latitude|default:"null" }};
+  const VENDOR_LNG  = {{ order.vendor.longitude|default:"null" }};
+  const GMAPS_KEY   = "{{ GOOGLE_MAPS_API_KEY }}";
+  const STEPS       = ['pending','confirmed','preparing','ready','picked_up','en_route','delivered'];
 
-  function updateUI(data) {
-    document.getElementById('status-label').textContent = data.status_label;
-    const idx = STEPS.indexOf(data.status);
-    STEPS.forEach((s, i) => {
-      const el = document.getElementById('step-' + s);
-      if (el) el.className = `flex-1 h-1.5 rounded-full ${i <= idx ? 'bg-navy' : 'bg-gray-200'}`;
+  let map, riderMarker, directionsRenderer, mapInitialized = false;
+
+  function initMap() {
+    if (!DROPOFF_LAT || !DROPOFF_LNG) return;
+
+    map = new google.maps.Map(document.getElementById('food-map'), {
+      center: { lat: DROPOFF_LAT, lng: DROPOFF_LNG },
+      zoom: 14,
+      mapTypeControl: false,
+      streetViewControl: false,
+      styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }],
     });
 
+    directionsRenderer = new google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: { strokeColor: '#F5A623', strokeWeight: 4, strokeOpacity: 0.8 },
+    });
+    directionsRenderer.setMap(map);
+
+    // Customer marker
+    new google.maps.Marker({
+      position: { lat: DROPOFF_LAT, lng: DROPOFF_LNG },
+      map,
+      icon: {
+        url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+        scaledSize: new google.maps.Size(40, 40),
+      },
+      title: 'Your location',
+    });
+
+    // Restaurant marker
+    if (VENDOR_LAT && VENDOR_LNG) {
+      new google.maps.Marker({
+        position: { lat: VENDOR_LAT, lng: VENDOR_LNG },
+        map,
+        icon: {
+          url: 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png',
+          scaledSize: new google.maps.Size(36, 36),
+        },
+        title: '{{ order.vendor.name|escapejs }}',
+      });
+    }
+
+    mapInitialized = true;
+  }
+
+  function moveRider(lat, lng) {
+    if (!mapInitialized) return;
+    document.getElementById('map-section').classList.remove('hidden');
+
+    if (!riderMarker) {
+      riderMarker = new google.maps.Marker({
+        position: { lat, lng },
+        map,
+        icon: {
+          url: 'https://maps.google.com/mapfiles/ms/icons/motorcycling.png',
+          scaledSize: new google.maps.Size(38, 38),
+        },
+        title: 'Rider',
+        zIndex: 10,
+      });
+    } else {
+      riderMarker.setPosition({ lat, lng });
+    }
+
+    if (DROPOFF_LAT && DROPOFF_LNG) {
+      const ds = new google.maps.DirectionsService();
+      ds.route({
+        origin:      { lat, lng },
+        destination: { lat: DROPOFF_LAT, lng: DROPOFF_LNG },
+        travelMode:  google.maps.TravelMode.DRIVING,
+      }, (result, status) => {
+        if (status === 'OK') {
+          directionsRenderer.setDirections(result);
+          const leg = result.routes[0].legs[0];
+          document.getElementById('rider-distance').textContent = `${leg.distance.text} · ETA ${leg.duration.text}`;
+          document.getElementById('eta-display').textContent = leg.duration.text;
+        }
+      });
+    }
+  }
+
+  function updateUI(data) {
+    document.getElementById('status-label').textContent = data.status_label || data.status;
+
+    // Progress bar
+    const idx = STEPS.indexOf(data.status);
+    ['pending','confirmed','preparing','ready','delivered'].forEach((s, i) => {
+      const el = document.getElementById('step-' + s);
+      if (el) el.className = `flex-1 h-2 rounded-full transition-all duration-500 ${i <= idx ? 'bg-navy' : 'bg-gray-200'}`;
+    });
+
+    // Rider info
     if (data.rider_name) {
-      document.getElementById('rider-card').classList.remove('hidden');
-      document.getElementById('rider-name').textContent = data.rider_name;
-      if (data.rider_phone) document.getElementById('rider-call').href = 'tel:' + data.rider_phone;
+      const card = document.getElementById('rider-card');
+      card.classList.remove('hidden');
+      document.getElementById('rider-name').textContent   = data.rider_name;
+      document.getElementById('rider-avatar').textContent = data.rider_name[0].toUpperCase();
+      if (data.rider_phone) {
+        document.getElementById('rider-call').href = 'tel:' + data.rider_phone;
+        const wa = data.rider_phone.replace(/^0/, '233');
+        document.getElementById('rider-wa').href = `https://wa.me/${wa}`;
+      }
+    }
+
+    // Rider GPS
+    if (data.rider_lat && data.rider_lng) {
+      moveRider(parseFloat(data.rider_lat), parseFloat(data.rider_lng));
+    }
+
+    // Delivered
+    if (data.status === 'delivered') {
+      document.getElementById('delivered-card').classList.remove('hidden');
+      document.getElementById('map-section').classList.add('hidden');
     }
   }
 
   function poll() {
-    fetch(`{% url 'food:order_track_api' order.order_ref %}`)
+    fetch('{% url "food:order_track_api" order.order_ref %}')
       .then(r => r.json())
       .then(updateUI)
       .catch(console.error);
   }
 
+  // Load Google Maps then start polling
+  const script = document.createElement('script');
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&callback=initMap`;
+  script.async = true;
+  script.defer = true;
+  document.head.appendChild(script);
+
+  // Poll immediately and every 8s
   poll();
   setInterval(poll, 8000);
 </script>

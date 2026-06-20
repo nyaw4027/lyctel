@@ -78,6 +78,8 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.i18n',
+                'ecommerce.context_processors.google_maps',
+                'ecommerce.context_processors.rbac_context',
             ],
         },
     },
@@ -243,7 +245,8 @@ TERMII_API_KEY   = config('TERMII_API_KEY',   default='')
 TERMII_SENDER_ID = config('TERMII_SENDER_ID', default='Lynctel')
 
 # ── Maps ───────────────────────────────────────────────────
-GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
+# ── Maps ───────────────────────────────────────────────────
+LOCATIONIQ_API_KEY = config('LOCATIONIQ_API_KEY', default='')
 
 # ── CSRF ───────────────────────────────────────────────────
 CSRF_TRUSTED_ORIGINS = ['https://lynctel.up.railway.app']

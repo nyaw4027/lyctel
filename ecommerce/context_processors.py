@@ -1,7 +1,8 @@
 # ============================================================
 # ecommerce/context_processors.py
-# Makes RBAC data available in every Django template
+# Makes RBAC data and global settings available in every template
 # ============================================================
+from django.conf import settings
 from .rbac import get_user_permissions, get_role_label, get_role_icon, has_permission, ROLES
 
 
@@ -36,6 +37,16 @@ def rbac_context(request):
         'user_permissions': perms,
         'can':              _PermissionProxy(perms),
         'all_roles':        ROLES,
+    }
+
+
+def google_maps(request):
+    """
+    Makes GOOGLE_MAPS_API_KEY available in every template.
+    Usage: {{ GOOGLE_MAPS_API_KEY }}
+    """
+    return {
+        'GOOGLE_MAPS_API_KEY': getattr(settings, 'GOOGLE_MAPS_API_KEY', ''),
     }
 
 
