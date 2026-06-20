@@ -1,7 +1,7 @@
 
 {% extends "base.html" %}
 {% load static %}
-{% block title %}{{ vendor.vendor.shop_name }} — Lynctel Food{% endblock %}
+{% block title %}{{ vendor.name }} — Lynctel Food{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -25,8 +25,8 @@
 
   <!-- Vendor header -->
   <div class="relative rounded-3xl overflow-hidden mb-6 bg-navy">
-    {% if vendor.cover_image %}
-    <img src="{{ vendor.cover_image.url }}" alt="{{ vendor.vendor.shop_name }}"
+    {% if vendor.banner %}
+    <img src="{{ vendor.banner.url }}" alt="{{ vendor.name }}"
          class="w-full h-48 object-cover opacity-60"/>
     {% else %}
     <div class="w-full h-48 bg-gradient-to-br from-navy to-navy-700 opacity-60"></div>
@@ -35,18 +35,18 @@
       <div class="flex items-end justify-between gap-4">
         <div>
           <h1 class="font-display font-700 text-2xl text-white mb-1">
-            {{ vendor.vendor.shop_name }}
+            {{ vendor.name }}
           </h1>
-          {% if vendor.cuisine_types %}
-          <p class="text-gray-300 text-sm">{{ vendor.cuisine_types }}</p>
-          {% endif %}
+          <p class="text-gray-300 text-sm">{{ vendor.get_cuisine_display }}</p>
           <div class="flex items-center gap-3 mt-2 text-xs text-gray-300">
             <span>⏱ {{ vendor.avg_prep_time }}–{{ vendor.avg_prep_time|add:10 }} min</span>
             {% if vendor.rating > 0 %}
             <span>★ {{ vendor.rating }}</span>
             {% endif %}
-            {% if vendor.is_currently_open %}
+            {% if vendor.status == 'open' %}
             <span class="text-green-400 font-semibold">● Open</span>
+            {% elif vendor.status == 'busy' %}
+            <span class="text-orange-400 font-semibold">● Very Busy</span>
             {% else %}
             <span class="text-red-400 font-semibold">● Closed</span>
             {% endif %}
@@ -62,6 +62,13 @@
     </div>
   </div>
 
+  {% if cart_vendor_id and cart_vendor_id != vendor.pk %}
+  <div class="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-6 text-sm text-amber-700 flex items-center gap-2">
+    <span>⚠️</span>
+    <span>You have items from another restaurant in your cart. Adding from here will replace it.</span>
+  </div>
+  {% endif %}
+
   <!-- Category nav (sticky) -->
   {% if categories %}
   <div class="sticky top-16 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-100 -mx-4 px-4 mb-6">
@@ -73,19 +80,26 @@
         {{ cat.name }}
       </a>
       {% endfor %}
+      {% if uncategorized_items %}
+      <a href="#cat-other"
+         class="flex-shrink-0 px-4 py-3 text-sm font-semibold text-gray-500 border-b-2
+                border-transparent hover:text-navy transition-colors whitespace-nowrap">
+        Other
+      </a>
+      {% endif %}
     </div>
   </div>
   {% endif %}
 
   <!-- Popular items -->
-  {% if popular %}
+  {% if featured_items %}
   <div class="mb-8">
     <h2 class="font-display font-700 text-lg text-navy mb-4">🔥 Popular</h2>
     <div class="flex gap-4 overflow-x-auto pb-2">
-      {% for item in popular %}
+      {% for item in featured_items %}
       <div class="flex-shrink-0 w-52 bg-white rounded-2xl border border-gray-100
                   overflow-hidden menu-item-card cursor-pointer"
-           onclick="addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.price }})">
+           onclick="addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.final_price }})">
         {% if item.image %}
         <img src="{{ item.image.url }}" alt="{{ item.name }}"
              class="w-full h-32 object-cover"/>
@@ -94,7 +108,7 @@
         {% endif %}
         <div class="p-3">
           <p class="font-semibold text-navy text-sm truncate">{{ item.name }}</p>
-          <p class="text-gold-dark font-bold text-sm mt-0.5">GHS {{ item.price }}</p>
+          <p class="text-gold-dark font-bold text-sm mt-0.5">GHS {{ item.final_price }}</p>
         </div>
       </div>
       {% endfor %}
@@ -114,22 +128,36 @@
       {% if item.is_available %}
       <div class="menu-item-card bg-white border border-gray-100 rounded-2xl p-4
                   flex items-center gap-4 cursor-pointer"
-           onclick="addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.price }})">
+           onclick="addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.final_price }})">
 
         <!-- Info -->
         <div class="flex-1 min-w-0">
-          <div class="flex items-start gap-2">
+          <div class="flex items-start gap-2 flex-wrap">
             <h3 class="font-semibold text-navy text-sm leading-snug">{{ item.name }}</h3>
-            {% if item.is_popular %}
+            {% if item.is_featured %}
             <span class="flex-shrink-0 text-xs bg-gold-light text-gold-dark font-semibold
-                         px-2 py-0.5 rounded-full">Popular</span>
+                         px-2 py-0.5 rounded-full">⭐ Popular</span>
+            {% endif %}
+            {% if item.is_spicy %}
+            <span class="flex-shrink-0 text-xs bg-red-50 text-red-600 font-semibold
+                         px-2 py-0.5 rounded-full">🌶️</span>
+            {% endif %}
+            {% if item.is_vegan %}
+            <span class="flex-shrink-0 text-xs bg-green-50 text-green-600 font-semibold
+                         px-2 py-0.5 rounded-full">🌱</span>
             {% endif %}
           </div>
           {% if item.description %}
           <p class="text-gray-400 text-xs mt-1 line-clamp-2 leading-relaxed">{{ item.description }}</p>
           {% endif %}
           <div class="flex items-center gap-3 mt-2">
+            {% if item.discount_price %}
+            <p class="font-display font-700 text-navy">GHS {{ item.discount_price }}
+              <span class="text-xs text-gray-400 line-through font-normal ml-1">GHS {{ item.price }}</span>
+            </p>
+            {% else %}
             <p class="font-display font-700 text-navy">GHS {{ item.price }}</p>
+            {% endif %}
             {% if item.prep_time %}
             <span class="text-xs text-gray-400">⏱ {{ item.prep_time }} min</span>
             {% endif %}
@@ -145,24 +173,12 @@
           <div class="w-20 h-20 rounded-xl bg-gray-50 flex items-center justify-center text-3xl">🍽️</div>
           {% endif %}
 
-          <!-- Qty badge or add button -->
+          <!-- Add button (cart quantity sync handled via JS after fetch) -->
           <div id="item-control-{{ item.pk }}" class="absolute -bottom-2 -right-2">
-            {% if item.pk in cart_items_parsed %}
-            <div class="flex items-center gap-1 bg-navy rounded-xl shadow-lg px-1.5 py-1">
-              <button onclick="event.stopPropagation();updateQty({{ item.pk }}, -1)"
-                      class="w-6 h-6 text-white font-bold text-sm flex items-center justify-center">−</button>
-              <span id="qty-{{ item.pk }}" class="text-white text-xs font-bold w-4 text-center">
-                {{ cart_items|get_item:item.pk|default:0 }}
-              </span>
-              <button onclick="event.stopPropagation();updateQty({{ item.pk }}, 1)"
-                      class="w-6 h-6 text-white font-bold text-sm flex items-center justify-center">+</button>
-            </div>
-            {% else %}
             <button id="add-btn-{{ item.pk }}"
-                    onclick="event.stopPropagation();addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.price }})"
+                    onclick="event.stopPropagation();addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.final_price }})"
                     class="w-8 h-8 bg-gold rounded-full shadow-lg flex items-center justify-center
                            text-navy font-bold text-xl hover:bg-gold-dark transition-colors">+</button>
-            {% endif %}
           </div>
         </div>
 
@@ -173,18 +189,61 @@
   </div>
   {% endfor %}
 
+  <!-- Uncategorized items -->
+  {% if uncategorized_items %}
+  <div id="cat-other" class="mb-8">
+    <h2 class="font-display font-700 text-lg text-navy mb-4 pb-2 border-b border-gray-100">Other</h2>
+    <div class="space-y-3">
+      {% for item in uncategorized_items %}
+      {% if item.is_available %}
+      <div class="menu-item-card bg-white border border-gray-100 rounded-2xl p-4
+                  flex items-center gap-4 cursor-pointer"
+           onclick="addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.final_price }})">
+        <div class="flex-1 min-w-0">
+          <h3 class="font-semibold text-navy text-sm leading-snug">{{ item.name }}</h3>
+          {% if item.description %}
+          <p class="text-gray-400 text-xs mt-1 line-clamp-2 leading-relaxed">{{ item.description }}</p>
+          {% endif %}
+          <p class="font-display font-700 text-navy mt-2">GHS {{ item.final_price }}</p>
+        </div>
+        <div class="flex-shrink-0 relative">
+          {% if item.image %}
+          <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-20 h-20 rounded-xl object-cover"/>
+          {% else %}
+          <div class="w-20 h-20 rounded-xl bg-gray-50 flex items-center justify-center text-3xl">🍽️</div>
+          {% endif %}
+          <div class="absolute -bottom-2 -right-2">
+            <button onclick="event.stopPropagation();addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.final_price }})"
+                    class="w-8 h-8 bg-gold rounded-full shadow-lg flex items-center justify-center
+                           text-navy font-bold text-xl hover:bg-gold-dark transition-colors">+</button>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not categories and not uncategorized_items %}
+  <div class="text-center py-16 text-gray-400">
+    <p class="text-4xl mb-3">🍽️</p>
+    <p class="text-sm">This restaurant hasn't added any menu items yet.</p>
+  </div>
+  {% endif %}
+
 </div>
 
 <!-- ── FLOATING CART BAR ──────────────────────────────── -->
 <div id="cart-bar"
-     class="fixed bottom-0 left-0 right-0 z-50 p-4 hidden-bar">
+     class="fixed bottom-0 left-0 right-0 z-50 p-4 {% if not food_cart_count %}hidden-bar{% endif %}">
   <div class="max-w-lg mx-auto">
-    <a href="{% url 'food:cart' %}"
+    <a href="{% url 'food:checkout' %}"
        class="flex items-center justify-between bg-navy hover:bg-navy-700 text-white
               rounded-2xl px-5 py-4 shadow-2xl transition-colors">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 bg-gold rounded-xl flex items-center justify-center">
-          <span id="cart-bar-count" class="text-navy font-bold text-sm">0</span>
+          <span id="cart-bar-count" class="text-navy font-bold text-sm">{{ food_cart_count|default:0 }}</span>
         </div>
         <span class="font-semibold text-sm">View Cart</span>
       </div>
@@ -215,17 +274,10 @@
 
 {% block extra_js %}
 <script>
-  const VENDOR_ID   = {{ vendor.pk }};
   const CSRF        = '{{ csrf_token }}';
-  let cartCount     = 0;
+  let cartCount     = {{ food_cart_count|default:0 }};
   let cartTotal     = 0;
   let pendingItemId = null;
-  let pendingName   = null;
-  let pendingPrice  = null;
-
-  // Pre-load cart state from server
-  const cartItems = {{ cart_items|safe }};
-  cartCount = Object.values(cartItems).reduce((a,b) => a+b, 0);
 
   function updateCartBar() {
     const bar = document.getElementById('cart-bar');
@@ -238,8 +290,17 @@
     }
   }
 
-  // Init bar
-  updateCartBar();
+  // Fetch current cart total on load so the bar shows accurate figures
+  fetch('/food/cart/data/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        cartCount = d.count || 0;
+        cartTotal = parseFloat(d.total || 0);
+        updateCartBar();
+      }
+    })
+    .catch(() => updateCartBar());
 
   function addToCart(itemId, name, price) {
     {% if not user.is_authenticated %}
@@ -249,14 +310,17 @@
 
     fetch(`/food/cart/add/${itemId}/`, {
       method: 'POST',
-      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest',
-                 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `quantity=1`
+      headers: {
+        'X-CSRFToken': CSRF,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ quantity: 1 }),
     })
     .then(r => r.json())
     .then(d => {
       if (d.conflict) {
-        pendingItemId = itemId; pendingName = name; pendingPrice = price;
+        pendingItemId = itemId;
         document.getElementById('conflict-msg').textContent = d.message;
         document.getElementById('conflict-modal').classList.remove('hidden');
         return;
@@ -264,70 +328,27 @@
       if (d.success) {
         cartCount = d.cart_count;
         cartTotal = parseFloat(d.cart_total);
-        cartItems[itemId] = (cartItems[itemId] || 0) + 1;
-        updateItemControl(itemId, cartItems[itemId], price);
         updateCartBar();
+        const btn = document.getElementById(`add-btn-${itemId}`);
+        if (btn) {
+          const orig = btn.textContent;
+          btn.textContent = '✓';
+          setTimeout(() => { btn.textContent = orig; }, 800);
+        }
       }
-    });
-  }
-
-  function updateQty(itemId, delta) {
-    const newQty = Math.max(0, (cartItems[itemId] || 0) + delta);
-    fetch(`/food/cart/update/${itemId}/`, {
-      method: 'POST',
-      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest',
-                 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `quantity=${newQty}`
     })
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        cartCount = d.cart_count;
-        cartTotal = parseFloat(d.cart_total);
-        cartItems[itemId] = newQty;
-        updateItemControl(itemId, newQty);
-        updateCartBar();
-      }
-    });
-  }
-
-  function updateItemControl(itemId, qty) {
-    const el = document.getElementById(`item-control-${itemId}`);
-    if (!el) return;
-    if (qty <= 0) {
-      el.innerHTML = `<button onclick="event.stopPropagation();addToCart(${itemId})"
-        class="w-8 h-8 bg-gold rounded-full shadow-lg flex items-center justify-center
-               text-navy font-bold text-xl hover:bg-gold-dark transition-colors">+</button>`;
-    } else {
-      el.innerHTML = `<div class="flex items-center gap-1 bg-navy rounded-xl shadow-lg px-1.5 py-1">
-        <button onclick="event.stopPropagation();updateQty(${itemId},-1)"
-                class="w-6 h-6 text-white font-bold text-sm flex items-center justify-center">−</button>
-        <span class="text-white text-xs font-bold w-4 text-center">${qty}</span>
-        <button onclick="event.stopPropagation();updateQty(${itemId},1)"
-                class="w-6 h-6 text-white font-bold text-sm flex items-center justify-center">+</button>
-      </div>`;
-    }
+    .catch(() => {});
   }
 
   function confirmClear() {
     document.getElementById('conflict-modal').classList.add('hidden');
-    fetch(`/food/cart/add/${pendingItemId}/`, {
+    if (!pendingItemId) return;
+    fetch(`/food/cart/clear/`, {
       method: 'POST',
-      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest',
-                 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `quantity=1&confirm_clear=1`
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
     })
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        // Reset cart items
-        Object.keys(cartItems).forEach(k => delete cartItems[k]);
-        cartCount = d.cart_count; cartTotal = parseFloat(d.cart_total);
-        cartItems[pendingItemId] = 1;
-        updateItemControl(pendingItemId, 1);
-        updateCartBar();
-      }
-    });
+    .then(() => addToCart(pendingItemId))
+    .catch(() => {});
   }
 
   function closeConflict() {
@@ -348,3 +369,4 @@
   });
 </script>
 {% endblock %}
+
