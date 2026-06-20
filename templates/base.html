@@ -794,6 +794,7 @@
     const CSRF_TOKEN       = '{{ csrf_token }}';
     const IS_AUTHENTICATED = {{ user.is_authenticated|yesno:"true,false" }};
     const LOGIN_URL        = "{% url 'accounts:login' %}";
+    const LOCATIONIQ_KEY   = '{{ LOCATIONIQ_API_KEY|default:"" }}';
 
     // ── DARK MODE ─────────────────────────────────────────
     const THEME_KEY = 'lynctel-theme';

@@ -42,11 +42,12 @@ def rbac_context(request):
 
 def google_maps(request):
     """
-    Makes GOOGLE_MAPS_API_KEY available in every template.
-    Usage: {{ GOOGLE_MAPS_API_KEY }}
+    Makes GOOGLE_MAPS_API_KEY and LOCATIONIQ_API_KEY available in every template.
+    Usage: {{ GOOGLE_MAPS_API_KEY }}  /  {{ LOCATIONIQ_API_KEY }}
     """
     return {
         'GOOGLE_MAPS_API_KEY': getattr(settings, 'GOOGLE_MAPS_API_KEY', ''),
+        'LOCATIONIQ_API_KEY':  getattr(settings, 'LOCATIONIQ_API_KEY', ''),
     }
 
 

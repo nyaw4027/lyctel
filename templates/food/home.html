@@ -306,41 +306,39 @@ function useMyLocation() {
     document.getElementById('hero-lat').value = userLat;
     document.getElementById('hero-lng').value = userLng;
 
-    // Show coordinates immediately as a safe fallback while we resolve the address
     const fallbackText = `Near ${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
     document.getElementById('hero-address').value = fallbackText;
     showLocationBar(fallbackText);
 
-    // Sanity check — if GPS reports outside Ghana, don't bother geocoding
     if (!isInGhana(userLat, userLng)) {
       if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
       findRestaurants();
       return;
     }
 
-    // Reverse geocode with a bounded, Ghana-restricted Nominatim query
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json&zoom=16&addressdetails=1&countrycodes=gh`, {
-      headers: { 'Accept-Language': 'en' }
-    })
-    .then(r => { if (!r.ok) throw new Error('geocode failed'); return r.json(); })
-    .then(data => {
-      // Verify the returned address is actually tagged as Ghana before trusting it
-      if (data?.address?.country_code === 'gh') {
-        const addr = data.address.suburb || data.address.neighbourhood ||
-                     data.address.road || data.address.town ||
-                     data.address.city || data.display_name || fallbackText;
-        document.getElementById('hero-address').value = addr;
-        showLocationBar(addr);
-      }
-      // If country doesn't match Ghana, silently keep the coordinate fallback already shown
-    })
-    .catch(() => {
-      // Keep the coordinate fallback already displayed — no action needed
-    })
-    .finally(() => {
+    if (!LOCATIONIQ_KEY) {
       if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
       findRestaurants();
-    });
+      return;
+    }
+
+    // LocationIQ reverse geocoding
+    fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${userLat}&lon=${userLng}&format=json&normalizeaddress=1`)
+      .then(r => { if (!r.ok) throw new Error('geocode failed'); return r.json(); })
+      .then(data => {
+        if (data?.address?.country_code === 'gh') {
+          const addr = data.address.suburb || data.address.neighbourhood ||
+                       data.address.road || data.address.town ||
+                       data.address.city || data.display_name || fallbackText;
+          document.getElementById('hero-address').value = addr;
+          showLocationBar(addr);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+        findRestaurants();
+      });
   }, err => {
     if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
     if (err.code === err.PERMISSION_DENIED) {
@@ -366,16 +364,19 @@ function clearLocation() {
   document.getElementById('hero-address').value = '';
 }
 
+// ── Address autocomplete via LocationIQ ───────────────
 let acTimer = null;
 const input = document.getElementById('hero-address');
+
 input.addEventListener('input', () => {
   clearTimeout(acTimer);
   acTimer = setTimeout(() => {
     const q = input.value.trim();
-    if (q.length < 3) return;
-    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=gh&format=json&limit=5`, {
-      headers: { 'User-Agent': 'Lynctel/1.0' }
-    }).then(r => r.json()).then(renderSuggestions);
+    if (q.length < 3 || !LOCATIONIQ_KEY) return;
+    fetch(`https://us1.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&countrycodes=gh&limit=5&normalizeaddress=1`)
+      .then(r => { if (!r.ok) throw new Error('autocomplete failed'); return r.json(); })
+      .then(results => renderSuggestions(results))
+      .catch(() => renderSuggestions([]));
   }, 400);
 });
 
@@ -391,10 +392,10 @@ function renderSuggestions(results) {
   if (!results.length) { box.innerHTML = ''; return; }
   box.innerHTML = results.map(r => `
     <button type="button"
-            onclick="selectSuggestion('${r.display_name.replace(/'/g,"\\'")}',${r.lat},${r.lon})"
+            onclick="selectSuggestion('${(r.display_name || r.display_place || '').replace(/'/g,"\\'")}',${r.lat},${r.lon})"
             class="w-full text-left px-4 py-3.5 text-sm text-navy hover:bg-gray-50
                    border-b border-gray-50 last:border-0 transition-colors min-h-[44px]">
-      📍 ${r.display_name}
+      📍 ${r.display_name || r.display_place}
     </button>`).join('');
 }
 
@@ -430,20 +431,18 @@ if (urlParams.get('lat') && urlParams.get('lng')) {
   document.getElementById('hero-address').value = fallbackText;
   showLocationBar(fallbackText);
 
-  if (isInGhana(userLat, userLng)) {
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json&zoom=16&addressdetails=1&countrycodes=gh`, {
-      headers: { 'Accept-Language': 'en' }
-    })
-    .then(r => { if (!r.ok) throw new Error('geocode failed'); return r.json(); })
-    .then(data => {
-      if (data?.address?.country_code === 'gh') {
-        const addr = data.address.suburb || data.address.neighbourhood ||
-                     data.address.town || data.address.city || data.display_name || fallbackText;
-        showLocationBar(addr);
-        document.getElementById('hero-address').value = addr;
-      }
-    })
-    .catch(() => {});
+  if (isInGhana(userLat, userLng) && LOCATIONIQ_KEY) {
+    fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${userLat}&lon=${userLng}&format=json&normalizeaddress=1`)
+      .then(r => { if (!r.ok) throw new Error('geocode failed'); return r.json(); })
+      .then(data => {
+        if (data?.address?.country_code === 'gh') {
+          const addr = data.address.suburb || data.address.neighbourhood ||
+                       data.address.town || data.address.city || data.display_name || fallbackText;
+          showLocationBar(addr);
+          document.getElementById('hero-address').value = addr;
+        }
+      })
+      .catch(() => {});
   }
 }
 </script>
