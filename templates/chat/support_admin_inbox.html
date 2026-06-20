@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Support Inbox — Lynctel Admin{% endblock %}
+
+{% block extra_head %}
+<style>
+  .category-badge { font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px; }
+  .cat-order    { background:#dbeafe; color:#1d4ed8; }
+  .cat-payment  { background:#fef3c7; color:#b45309; }
+  .cat-delivery { background:#fce7f3; color:#be185d; }
+  .cat-vendor   { background:#ede9fe; color:#7c3aed; }
+  .cat-account  { background:#dcfce7; color:#15803d; }
+  .cat-other    { background:#f3f4f6; color:#374151; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
+
+  <div class="mb-6">
+    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Admin</p>
+    <h1 class="font-display font-700 text-xl md:text-2xl text-navy">Support Inbox</h1>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 gap-3 mb-5">
+    <div class="bg-white rounded-2xl border border-gray-100 p-4">
+      <p class="font-display font-700 text-2xl text-amber-600">{{ open_count }}</p>
+      <p class="text-xs text-gray-400">Unclaimed</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-4">
+      <p class="font-display font-700 text-2xl text-blue-600">{{ answered_count }}</p>
+      <p class="text-xs text-gray-400">In Progress</p>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <div class="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+    <a href="?" class="flex-shrink-0 text-xs font-semibold px-3 py-2 rounded-full
+                       {% if not status_filter %}bg-navy text-white{% else %}bg-white border border-gray-200 text-gray-600{% endif %}">
+      Active
+    </a>
+    {% for value, label in status_choices %}
+    <a href="?status={{ value }}"
+       class="flex-shrink-0 text-xs font-semibold px-3 py-2 rounded-full
+              {% if status_filter == value %}bg-navy text-white{% else %}bg-white border border-gray-200 text-gray-600{% endif %}">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if room_data %}
+  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+    {% for entry in room_data %}
+    <a href="{% url 'chat:support_room' entry.room.id %}"
+       class="flex items-center gap-3 px-4 md:px-5 py-4 hover:bg-gray-50 transition-colors
+              {% if not forloop.last %}border-b border-gray-50{% endif %}
+              {% if entry.unread > 0 %}bg-gold-light/30{% endif %}">
+      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-navy to-navy-500
+                  flex items-center justify-center text-white font-display font-700 flex-shrink-0">
+        {{ entry.room.customer.first_name|first|upper|default:"U" }}
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <p class="font-semibold text-navy text-sm">{{ entry.room.customer.get_full_name|default:entry.room.customer.phone }}</p>
+          <span class="category-badge cat-{{ entry.room.category }}">{{ entry.room.get_category_display }}</span>
+          {% if entry.room.assigned_to %}
+          <span class="text-xs text-gray-400">· {{ entry.room.assigned_to.first_name|default:"Staff" }}</span>
+          {% endif %}
+        </div>
+        <p class="text-xs text-gray-400 truncate mt-0.5">
+          {% if entry.last %}{{ entry.last.content|default:"📷 Image" }}{% else %}No messages yet{% endif %}
+        </p>
+        {% if entry.room.related_order_ref %}
+        <p class="text-xs text-blue-500 mt-0.5">Order: {{ entry.room.related_order_ref }}</p>
+        {% endif %}
+      </div>
+      <div class="flex flex-col items-end gap-1 flex-shrink-0">
+        <span class="text-xs text-gray-400">{{ entry.room.updated_at|timesince }} ago</span>
+        {% if entry.unread > 0 %}
+        <span class="bg-gold text-navy text-xs font-bold min-w-[20px] h-5 rounded-full flex items-center justify-center px-1.5">
+          {{ entry.unread }}
+        </span>
+        {% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-16">
+    <div class="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4">✅</div>
+    <h2 class="font-display font-700 text-lg text-navy mb-2">All caught up!</h2>
+    <p class="text-gray-400 text-sm">No support conversations need attention right now.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
