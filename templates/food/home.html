@@ -286,24 +286,73 @@
 <script>
 let userLat = null, userLng = null;
 
+// Ghana's approximate bounding box — used to sanity-check geocoding results
+const GHANA_BOUNDS = { minLat: 4.5, maxLat: 11.5, minLng: -3.5, maxLng: 1.5 };
+
+function isInGhana(lat, lng) {
+  return lat >= GHANA_BOUNDS.minLat && lat <= GHANA_BOUNDS.maxLat &&
+         lng >= GHANA_BOUNDS.minLng && lng <= GHANA_BOUNDS.maxLng;
+}
+
 function useMyLocation() {
-  if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
+  if (!navigator.geolocation) { alert('Geolocation not supported on this device.'); return; }
+
+  const btn = event && event.currentTarget;
+  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; }
+
   navigator.geolocation.getCurrentPosition(pos => {
     userLat = pos.coords.latitude;
     userLng = pos.coords.longitude;
     document.getElementById('hero-lat').value = userLat;
     document.getElementById('hero-lng').value = userLng;
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json`, {
-      headers: { 'User-Agent': 'Lynctel/1.0' }
-    }).then(r => r.json()).then(data => {
-      const addr = data.address?.suburb || data.address?.neighbourhood || data.address?.road || data.display_name;
-      document.getElementById('hero-address').value = addr;
-      showLocationBar(addr);
-    }).catch(() => {
-      document.getElementById('hero-address').value = `${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
+
+    // Show coordinates immediately as a safe fallback while we resolve the address
+    const fallbackText = `Near ${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
+    document.getElementById('hero-address').value = fallbackText;
+    showLocationBar(fallbackText);
+
+    // Sanity check — if GPS reports outside Ghana, don't bother geocoding
+    if (!isInGhana(userLat, userLng)) {
+      if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+      findRestaurants();
+      return;
+    }
+
+    // Reverse geocode with a bounded, Ghana-restricted Nominatim query
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json&zoom=16&addressdetails=1&countrycodes=gh`, {
+      headers: { 'Accept-Language': 'en' }
+    })
+    .then(r => { if (!r.ok) throw new Error('geocode failed'); return r.json(); })
+    .then(data => {
+      // Verify the returned address is actually tagged as Ghana before trusting it
+      if (data?.address?.country_code === 'gh') {
+        const addr = data.address.suburb || data.address.neighbourhood ||
+                     data.address.road || data.address.town ||
+                     data.address.city || data.display_name || fallbackText;
+        document.getElementById('hero-address').value = addr;
+        showLocationBar(addr);
+      }
+      // If country doesn't match Ghana, silently keep the coordinate fallback already shown
+    })
+    .catch(() => {
+      // Keep the coordinate fallback already displayed — no action needed
+    })
+    .finally(() => {
+      if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+      findRestaurants();
     });
-    findRestaurants();
-  }, () => alert('Could not get location. Please type your address.'));
+  }, err => {
+    if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+    if (err.code === err.PERMISSION_DENIED) {
+      alert('Location access was denied. Please enable location permissions for this site, or type your address manually.');
+    } else {
+      alert('Could not get your location. Please type your address instead.');
+    }
+  }, {
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 0,
+  });
 }
 
 function showLocationBar(text) {
@@ -376,13 +425,26 @@ if (urlParams.get('lat') && urlParams.get('lng')) {
   userLng = parseFloat(urlParams.get('lng'));
   document.getElementById('hero-lat').value = userLat;
   document.getElementById('hero-lng').value = userLng;
-  fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json`, {
-    headers: { 'User-Agent': 'Lynctel/1.0' }
-  }).then(r => r.json()).then(data => {
-    const addr = data.address?.suburb || data.address?.neighbourhood || data.display_name;
-    showLocationBar(addr);
-    document.getElementById('hero-address').value = addr;
-  }).catch(() => {});
+
+  const fallbackText = `Near ${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
+  document.getElementById('hero-address').value = fallbackText;
+  showLocationBar(fallbackText);
+
+  if (isInGhana(userLat, userLng)) {
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json&zoom=16&addressdetails=1&countrycodes=gh`, {
+      headers: { 'Accept-Language': 'en' }
+    })
+    .then(r => { if (!r.ok) throw new Error('geocode failed'); return r.json(); })
+    .then(data => {
+      if (data?.address?.country_code === 'gh') {
+        const addr = data.address.suburb || data.address.neighbourhood ||
+                     data.address.town || data.address.city || data.display_name || fallbackText;
+        showLocationBar(addr);
+        document.getElementById('hero-address').value = addr;
+      }
+    })
+    .catch(() => {});
+  }
 }
 </script>
 {% endblock %}
