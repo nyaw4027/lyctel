@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -292,11 +293,12 @@ def live_map(request, pk):
         pass
 
     return render(request, 'rider/live_map.html', {
-        'delivery':     delivery,
-        'profile':      profile,
-        'customer_lat': customer_lat,
-        'customer_lng': customer_lng,
-        'cart_count':   0,
+        'delivery':       delivery,
+        'profile':        profile,
+        'customer_lat':   customer_lat,
+        'customer_lng':   customer_lng,
+        'cart_count':     0,
+        'locationiq_key': settings.LOCATIONIQ_API_KEY,
     })
 
 
