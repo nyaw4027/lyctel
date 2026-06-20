@@ -2,6 +2,7 @@
 {% block title %}Live Map — {{ delivery.order.order_ref }} · Lynctel{% endblock %}
 
 {% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   #map {
     position: fixed;
@@ -48,6 +49,23 @@
     background: #22c55e;
     animation: gps-pulse 1.5s infinite ease-out;
   }
+  .rider-icon-wrap {
+    background: #0F1B2D;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+  .pin-customer, .pin-pickup {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  }
+  .pin-customer { background: #ef4444; }
+  .pin-pickup   { background: #22c55e; }
 </style>
 {% endblock %}
 
@@ -146,63 +164,47 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const CUSTOMER_LAT = {{ customer_lat|default:"5.6037" }};
-  const CUSTOMER_LNG = {{ customer_lng|default:"-0.1870" }};
-  const PICKUP_LAT   = {{ delivery.pickup_lat|default:"5.6037" }};
-  const PICKUP_LNG   = {{ delivery.pickup_lng|default:"-0.1870" }};
-  const ORDER_REF    = "{{ delivery.order.order_ref|escapejs }}";
-  const DELIVERY_ID  = {{ delivery.pk }};
-  const GMAPS_KEY    = "{{ GOOGLE_MAPS_API_KEY }}";
+(function() {
+  const CUSTOMER_LAT  = parseFloat("{{ customer_lat|default:'5.6037' }}");
+  const CUSTOMER_LNG  = parseFloat("{{ customer_lng|default:'-0.1870' }}");
+  const PICKUP_LAT    = parseFloat("{{ delivery.pickup_lat|default:'5.6037' }}");
+  const PICKUP_LNG    = parseFloat("{{ delivery.pickup_lng|default:'-0.1870' }}");
+  const ORDER_REF     = "{{ delivery.order.order_ref|escapejs }}";
+  const DELIVERY_ID   = {{ delivery.pk }};
+  const LOCATIONIQ_KEY = "{{ locationiq_key|default:'' }}";
 
-  let map, riderMarker, directionsRenderer, watchId, lastSent = 0;
-
-  function initMap() {
-    map = new google.maps.Map(document.getElementById('map'), {
-      center: { lat: PICKUP_LAT, lng: PICKUP_LNG },
-      zoom: 14,
-      mapTypeControl: false,
-      streetViewControl: false,
-      zoomControl: true,
-      zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP },
-      styles: [
-        { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-      ],
-    });
-
-    directionsRenderer = new google.maps.DirectionsRenderer({
-      suppressMarkers: true,
-      polylineOptions: { strokeColor: '#0F1B2D', strokeWeight: 5, strokeOpacity: 0.8 },
-    });
-    directionsRenderer.setMap(map);
-
-    // Customer / destination marker
-    new google.maps.Marker({
-      position: { lat: CUSTOMER_LAT, lng: CUSTOMER_LNG },
-      map,
-      icon: {
-        url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-        scaledSize: new google.maps.Size(44, 44),
-      },
-      title: 'Customer',
-      zIndex: 5,
-    });
-
-    // Pickup marker
-    new google.maps.Marker({
-      position: { lat: PICKUP_LAT, lng: PICKUP_LNG },
-      map,
-      icon: {
-        url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
-        scaledSize: new google.maps.Size(36, 36),
-      },
-      title: 'Pickup',
-      zIndex: 4,
-    });
-
-    startGPS();
+  if (!LOCATIONIQ_KEY) {
+    console.warn('LocationIQ key missing — map will not load. Check that the live_map view passes locationiq_key into context.');
   }
 
+  let map, riderMarker, routeLine, watchId, lastSent = 0;
+
+  // ── MAP SETUP ─────────────────────────────────────────
+  map = L.map('map').setView([PICKUP_LAT, PICKUP_LNG], 14);
+
+  L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
+    attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
+    maxZoom: 19,
+    subdomains: ['a', 'b', 'c'],
+  }).addTo(map);
+
+  // Customer / destination marker (red)
+  L.marker([CUSTOMER_LAT, CUSTOMER_LNG], {
+    icon: L.divIcon({ html: '<div class="pin-customer"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] }),
+    zIndexOffset: 500,
+  }).addTo(map).bindPopup('Customer');
+
+  // Pickup marker (green)
+  L.marker([PICKUP_LAT, PICKUP_LNG], {
+    icon: L.divIcon({ html: '<div class="pin-pickup"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] }),
+    zIndexOffset: 400,
+  }).addTo(map).bindPopup('Pickup');
+
+  startGPS();
+
+  // ── GPS TRACKING ──────────────────────────────────────
   function startGPS() {
     if (!navigator.geolocation) {
       document.getElementById('gps-text').textContent = 'GPS not available on this device';
@@ -220,34 +222,16 @@
     const lng = pos.coords.longitude;
 
     if (!riderMarker) {
-      riderMarker = new google.maps.Marker({
-        position: { lat, lng },
-        map,
-        icon: {
-          url: 'https://maps.google.com/mapfiles/ms/icons/motorcycling.png',
-          scaledSize: new google.maps.Size(40, 40),
-        },
-        title: 'You',
-        zIndex: 10,
-      });
+      riderMarker = L.marker([lat, lng], {
+        icon: L.divIcon({ html: '<div class="rider-icon-wrap">🛵</div>', className: '', iconSize: [36, 36], iconAnchor: [18, 18] }),
+        zIndexOffset: 1000,
+      }).addTo(map).bindPopup('You');
+      map.setView([lat, lng], 15);
     } else {
-      riderMarker.setPosition({ lat, lng });
+      riderMarker.setLatLng([lat, lng]);
     }
 
-    // Route to customer
-    const ds = new google.maps.DirectionsService();
-    ds.route({
-      origin:      { lat, lng },
-      destination: { lat: CUSTOMER_LAT, lng: CUSTOMER_LNG },
-      travelMode:  google.maps.TravelMode.DRIVING,
-    }, (result, status) => {
-      if (status === 'OK') {
-        directionsRenderer.setDirections(result);
-        const leg = result.routes[0].legs[0];
-        document.getElementById('eta-text').textContent  = leg.duration.text;
-        document.getElementById('gps-text').textContent  = `${leg.distance.text} away`;
-      }
-    });
+    fetchRoute(lat, lng);
 
     // Throttle backend updates to every 8s
     const now = Date.now();
@@ -259,6 +243,34 @@
 
   function onGpsError(err) {
     document.getElementById('gps-text').textContent = 'GPS unavailable — check permissions';
+  }
+
+  // ── ROUTE (rider → customer) via LocationIQ Directions ──
+  function fetchRoute(lat, lng) {
+    if (!LOCATIONIQ_KEY) return;
+    const url = `https://us1.locationiq.com/v1/directions/driving/${lng},${lat};${CUSTOMER_LNG},${CUSTOMER_LAT}?key=${LOCATIONIQ_KEY}&overview=full&geometries=geojson`;
+
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (data.code !== 'Ok' || !data.routes || !data.routes.length) return;
+        const route = data.routes[0];
+
+        // Draw / update route polyline
+        const coords = route.geometry.coordinates.map(c => [c[1], c[0]]); // flip lon,lat -> lat,lon
+        if (routeLine) {
+          routeLine.setLatLngs(coords);
+        } else {
+          routeLine = L.polyline(coords, { color: '#0F1B2D', weight: 5, opacity: 0.8 }).addTo(map);
+        }
+
+        // Update ETA / distance text
+        const etaMinutes = Math.max(1, Math.round(route.duration / 60));
+        const distanceKm = (route.distance / 1000).toFixed(1);
+        document.getElementById('eta-text').textContent = `${etaMinutes} min`;
+        document.getElementById('gps-text').textContent = `${distanceKm} km away`;
+      })
+      .catch(err => console.error('Route fetch failed:', err));
   }
 
   function sendLocation(lat, lng) {
@@ -276,11 +288,6 @@
   window.addEventListener('beforeunload', () => {
     if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   });
-
-  const script = document.createElement('script');
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&callback=initMap`;
-  script.async = true;
-  script.defer = true;
-  document.head.appendChild(script);
+})();
 </script>
 {% endblock %}
