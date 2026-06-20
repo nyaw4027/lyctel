@@ -755,7 +755,11 @@ def checkout(request):
 @login_required
 def order_track(request, ref):
     order = get_object_or_404(FoodOrder, order_ref=ref, customer=request.user)
-    return render(request, 'food/track.html', {'order': order, 'cart_count': 0})
+    return render(request, 'food/track.html', {
+        'order': order,
+        'cart_count': 0,
+        'locationiq_key': settings.LOCATIONIQ_API_KEY,
+    })
 
 
 @login_required
