@@ -1,238 +1,366 @@
 {% extends "base.html" %}
-{% block title %}Chat — {{ chat_room.vendor.shop_name }} — Lynctel{% endblock %}
+{% block title %}
+{% if room_type == 'support' %}Support Chat — Lynctel{% else %}{% if is_vendor %}{{ chat_room.buyer.get_full_name|default:chat_room.buyer.phone }}{% else %}{{ chat_room.vendor.shop_name }}{% endif %} — Lynctel Chat{% endif %}
+{% endblock %}
 
 {% block extra_head %}
 <style>
-  #msg-list { scroll-behavior: smooth; }
-  .bubble-me    { background:#0F1B2D; color:white; border-radius:18px 18px 4px 18px; }
-  .bubble-them  { background:#F3F4F6; color:#0F1B2D; border-radius:18px 18px 18px 4px; }
-  .bubble-me a, .bubble-them a { text-decoration: underline; }
-  @keyframes msgPop {
-    from { opacity:0; transform:translateY(8px) scale(.97); }
-    to   { opacity:1; transform:translateY(0) scale(1); }
-  }
-  .msg-new { animation: msgPop .25s ease forwards; }
+  .chat-page-wrap { height: calc(100vh - 64px - 64px); }
+  @media (min-width: 768px) { .chat-page-wrap { height: calc(100vh - 64px); } }
+  #messages-scroll { scroll-behavior: smooth; overscroll-behavior: contain; }
+
+  .msg-bubble { max-width: 78%; word-wrap: break-word; animation: msgIn .2s ease forwards; }
+  @keyframes msgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .msg-self  { background:#0F1B2D; color:white; border-radius:18px 18px 4px 18px; margin-left:auto; }
+  .msg-other { background:#f3f4f6; color:#0F1B2D; border-radius:18px 18px 18px 4px; }
+  html.dark .msg-other { background: var(--bg-tertiary); color: var(--text-primary); }
+  .msg-attachment { max-width: 220px; border-radius: 12px; display:block; cursor:pointer; }
+
+  #typing-indicator { display:none; }
+  #typing-indicator.show { display:flex; }
+  .typing-dot { animation: typingBounce 1.2s ease-in-out infinite; }
+  .typing-dot:nth-child(2) { animation-delay:.15s; }
+  .typing-dot:nth-child(3) { animation-delay:.3s; }
+  @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-4px);opacity:1} }
+
+  #chat-input { font-size:16px !important; }
+  @media (min-width:640px) { #chat-input { font-size:14px !important; } }
+
+  #connection-banner { display:none; }
+  #connection-banner.show { display:flex; }
+
+  #attach-preview { display:none; }
+  #attach-preview.show { display:flex; }
+
+  .category-badge { font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; }
+  .cat-order    { background:#dbeafe; color:#1d4ed8; }
+  .cat-payment  { background:#fef3c7; color:#b45309; }
+  .cat-delivery { background:#fce7f3; color:#be185d; }
+  .cat-vendor   { background:#ede9fe; color:#7c3aed; }
+  .cat-account  { background:#dcfce7; color:#15803d; }
+  .cat-other    { background:#f3f4f6; color:#374151; }
+
+  #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:9999; align-items:center; justify-content:center; padding:20px; }
+  #lightbox.show { display:flex; }
+  #lightbox img { max-width:100%; max-height:90vh; border-radius:8px; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto px-0 md:px-6 py-0 md:py-8 flex flex-col"
-     style="height: calc(100vh - 4rem);">
+<div class="max-w-2xl mx-auto flex flex-col chat-page-wrap">
 
-  <!-- ── Header ────────────────────────────────────────── -->
-  <div class="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 flex-shrink-0 md:rounded-t-2xl">
-    <a href="{% url 'chat:inbox' %}"
-       class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-500 flex-shrink-0">
-      ←
+  <!-- Header -->
+  <div class="flex items-center gap-3 px-4 md:px-6 py-3 border-b border-gray-100 bg-white flex-shrink-0">
+    <a href="{% if room_type == 'support' %}{% if is_staff %}{% url 'chat:support_admin_inbox' %}{% else %}{% url 'chat:support_my_inbox' %}{% endif %}{% else %}{% url 'chat:inbox' %}{% endif %}"
+       class="text-gray-400 hover:text-navy transition-colors flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
     </a>
-    <div class="w-10 h-10 rounded-xl bg-navy flex items-center justify-center
-                text-white font-display font-700 overflow-hidden flex-shrink-0">
-      {% if chat_room.vendor.logo %}
-      <img src="{{ chat_room.vendor.logo.url }}" class="w-full h-full object-cover"/>
-      {% else %}
-      🏪
-      {% endif %}
+
+    {% if room_type == 'support' %}
+    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-navy to-navy-500
+                flex items-center justify-center text-white text-lg flex-shrink-0">
+      {% if is_staff %}{{ support_room.customer.first_name|first|upper|default:"U" }}{% else %}🛟{% endif %}
     </div>
     <div class="flex-1 min-w-0">
-      <p class="font-display font-700 text-navy text-sm truncate">
-        {% if is_vendor %}
-          {{ chat_room.buyer.get_full_name|default:chat_room.buyer.phone }}
-        {% else %}
-          {{ chat_room.vendor.shop_name }}
-        {% endif %}
-      </p>
-      <p class="text-xs text-gray-400">
-        {% if not is_vendor %}
-        <a href="{% url 'vendors:shop' chat_room.vendor.slug %}"
-           class="hover:text-gold transition-colors">View Shop →</a>
-        {% else %}
-        Customer
-        {% endif %}
-      </p>
+      <div class="flex items-center gap-2">
+        <p class="font-semibold text-navy text-sm truncate">
+          {% if is_staff %}{{ support_room.customer.get_full_name|default:support_room.customer.phone }}{% else %}Lynctel Support{% endif %}
+        </p>
+        <span class="category-badge cat-{{ support_room.category }}">{{ support_room.get_category_display }}</span>
+      </div>
+      <p id="presence-label" class="text-xs text-gray-400">Connecting…</p>
     </div>
-    <div id="conn-dot"
-         class="w-2.5 h-2.5 rounded-full bg-gray-300 flex-shrink-0 transition-colors"
-         title="Connecting..."></div>
+    {% if is_staff and support_room.status != 'resolved' %}
+    <button onclick="resolveRoom()" class="text-xs bg-green-50 text-green-700 font-semibold px-3 py-2 rounded-xl hover:bg-green-100 transition-colors flex-shrink-0">
+      ✓ Resolve
+    </button>
+    {% endif %}
+    {% else %}
+    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-navy to-navy-500
+                flex items-center justify-center text-white font-display font-700 text-sm flex-shrink-0">
+      {% if is_vendor %}{{ chat_room.buyer.first_name|first|upper|default:"U" }}{% else %}{{ chat_room.vendor.shop_name|first|upper|default:"V" }}{% endif %}
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="font-semibold text-navy text-sm truncate">
+        {% if is_vendor %}{{ chat_room.buyer.get_full_name|default:chat_room.buyer.phone }}{% else %}{{ chat_room.vendor.shop_name }}{% endif %}
+      </p>
+      <p id="presence-label" class="text-xs text-gray-400">Connecting…</p>
+    </div>
+    {% if not is_vendor %}
+    <a href="{% url 'vendors:shop' chat_room.vendor.slug %}" class="text-xs text-gold-dark hover:underline flex-shrink-0">View Shop</a>
+    {% endif %}
+    {% endif %}
   </div>
 
-  <!-- ── Message list ───────────────────────────────────── -->
-  <div id="msg-list"
-       class="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
+  <!-- Connection lost banner -->
+  <div id="connection-banner" class="items-center gap-2 bg-amber-50 text-amber-700 text-xs px-4 py-2 flex-shrink-0">
+    <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+    Reconnecting…
+  </div>
 
+  <!-- Messages -->
+  <div id="messages-scroll" class="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-2 bg-gray-50/50">
     {% for msg in messages %}
-    <div class="flex {% if msg.sender == request.user %}justify-end{% else %}justify-start{% endif %} gap-2">
-      {% if msg.sender != request.user %}
-      <div class="w-7 h-7 rounded-full bg-navy flex items-center justify-center
-                  text-white text-xs font-bold flex-shrink-0 self-end overflow-hidden">
-        {% if msg.sender.profile_pic %}
-        <img src="{{ msg.sender.profile_pic.url }}" class="w-full h-full object-cover"/>
-        {% else %}
-        {{ msg.sender.first_name|first|upper|default:"?" }}
+    <div class="flex {% if msg.sender == user %}justify-end{% else %}justify-start{% endif %}">
+      <div class="msg-bubble {% if msg.sender == user %}msg-self{% else %}msg-other{% endif %} px-4 py-2.5">
+        {% if msg.attachment %}
+        <img src="{{ msg.attachment.url }}" class="msg-attachment mb-1" onclick="openLightbox('{{ msg.attachment.url }}')"/>
         {% endif %}
-      </div>
-      {% endif %}
-      <div class="max-w-xs md:max-w-sm">
-        <div class="px-4 py-2.5 text-sm leading-relaxed
-                    {% if msg.sender == request.user %}bubble-me{% else %}bubble-them{% endif %}">
-          {{ msg.content }}
-        </div>
-        <p class="text-[10px] text-gray-400 mt-1
-                  {% if msg.sender == request.user %}text-right{% endif %}">
-          {{ msg.created_at|time:"H:i" }}
-          {% if msg.sender == request.user %}
-            {% if msg.is_read %}✓✓{% else %}✓{% endif %}
-          {% endif %}
+        {% if msg.content %}<p class="text-sm leading-relaxed">{{ msg.content }}</p>{% endif %}
+        <p class="text-[10px] mt-1 {% if msg.sender == user %}text-white/60{% else %}text-gray-400{% endif %}">
+          {{ msg.created_at|date:"H:i" }}
         </p>
       </div>
     </div>
     {% empty %}
-    <div class="text-center py-12 text-gray-400">
-      <p class="text-4xl mb-3">👋</p>
-      <p class="text-sm">Start the conversation!</p>
-      {% if not is_vendor %}
-      <p class="text-xs mt-1">Ask about products, availability, or delivery.</p>
-      {% endif %}
+    <div class="text-center py-10 text-gray-400">
+      <p class="text-3xl mb-2">{% if room_type == 'support' %}🛟{% else %}👋{% endif %}</p>
+      <p class="text-sm">
+        {% if room_type == 'support' %}
+          {% if is_staff %}No messages yet.{% else %}Tell us what's going on — we usually reply within minutes.{% endif %}
+        {% else %}
+          Say hello to get the conversation started.
+        {% endif %}
+      </p>
     </div>
     {% endfor %}
-
   </div>
 
-  <!-- ── Input bar ─────────────────────────────────────── -->
-  <div class="bg-white border-t border-gray-100 px-4 py-3 flex items-end gap-3
-              flex-shrink-0 md:rounded-b-2xl">
-    <div class="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-2.5
-                flex items-end gap-2">
-      <textarea id="msg-input"
-                rows="1"
-                placeholder="Type a message..."
-                maxlength="2000"
-                class="flex-1 bg-transparent text-sm resize-none outline-none
-                       max-h-32 leading-relaxed text-navy placeholder-gray-400"
-                oninput="autoResize(this)"
-                onkeydown="handleKey(event)"></textarea>
+  <!-- Typing indicator -->
+  <div id="typing-indicator" class="items-center gap-2 px-4 md:px-6 py-2 flex-shrink-0">
+    <div class="msg-other px-3 py-2 flex items-center gap-1">
+      <span class="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+      <span class="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+      <span class="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
     </div>
-    <button onclick="sendMessage()"
-            id="send-btn"
-            class="w-11 h-11 bg-navy hover:bg-gold hover:text-navy text-white
-                   rounded-2xl flex items-center justify-center transition-all
-                   duration-200 btn-press flex-shrink-0 disabled:opacity-40">
+  </div>
+
+  <!-- Attachment preview -->
+  <div id="attach-preview" class="items-center gap-3 px-4 md:px-6 py-2 border-t border-gray-100 bg-white flex-shrink-0">
+    <img id="attach-preview-img" class="w-12 h-12 rounded-xl object-cover border border-gray-200"/>
+    <p class="text-xs text-gray-500 flex-1">Image ready to send</p>
+    <button type="button" onclick="cancelAttachment()" class="text-xs text-red-500 font-semibold">Remove</button>
+  </div>
+
+  <!-- Input -->
+  <form id="chat-form" class="flex items-center gap-2 px-4 md:px-6 py-3 border-t border-gray-100 bg-white flex-shrink-0">
+    <button type="button" onclick="document.getElementById('img-input').click()"
+            class="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-navy transition-colors flex-shrink-0">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
       </svg>
     </button>
-  </div>
+    <input type="file" id="img-input" accept="image/*" class="hidden" onchange="handleAttachmentSelect(this)"/>
+    <input type="text" id="chat-input" autocomplete="off" maxlength="2000"
+           placeholder="{% if room_type == 'support' %}Describe the issue…{% else %}Type a message…{% endif %}"
+           class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm
+                  focus:bg-white transition-all min-h-[44px]"/>
+    <button type="submit" id="send-btn"
+            class="w-11 h-11 bg-navy hover:bg-navy-700 disabled:opacity-40 disabled:cursor-not-allowed
+                   text-white rounded-full flex items-center justify-center transition-colors flex-shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 19l9-7-9-7v14zm0 0L3 12l9 7z" transform="rotate(90 12 12)"/>
+      </svg>
+    </button>
+  </form>
 
 </div>
+
+<!-- Lightbox for attachments -->
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src=""/>
+</div>
+
+<!-- Notification sound -->
+<audio id="notify-sound" preload="auto">
+  <source src="https://cdn.jsdelivr.net/gh/anars/blank-audio@master/250-milliseconds-of-silence.mp3" type="audio/mpeg"/>
+</audio>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  const ROOM_ID   = '{{ chat_room.id }}';
-  const MY_ID     = {{ request.user.pk }};
-  const MY_NAME   = '{{ request.user.get_full_name|default:request.user.phone }}';
-  const MY_PIC    = '{% if request.user.profile_pic %}{{ request.user.profile_pic.url }}{% endif %}';
-  const WS_SCHEME = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  const WS_URL    = `${WS_SCHEME}://${window.location.host}/ws/chat/${ROOM_ID}/`;
+  const ROOM_TYPE  = '{{ room_type }}';
+  const CURRENT_ID = {{ user.pk }};
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl      = `${wsProtocol}//${window.location.host}{{ ws_path }}`;
+  const uploadUrl  = `/chat/upload/${ROOM_TYPE}/{% if room_type == 'support' %}{{ support_room.id }}{% else %}{{ chat_room.id }}{% endif %}/`;
+  const resolveUrl = `/chat/support/{{ support_room.id }}/resolve/`;
 
   let socket = null;
+  let reconnectAttempts = 0;
+  let typingTimeout = null;
+  let pendingAttachmentId = null;
+
+  const scrollEl   = document.getElementById('messages-scroll');
+  const form       = document.getElementById('chat-form');
+  const input      = document.getElementById('chat-input');
+  const sendBtn    = document.getElementById('send-btn');
+  const presenceEl = document.getElementById('presence-label');
+  const bannerEl   = document.getElementById('connection-banner');
+  const typingEl   = document.getElementById('typing-indicator');
+  const attachPrev = document.getElementById('attach-preview');
+  const notifySound = document.getElementById('notify-sound');
+
+  function scrollToBottom() { scrollEl.scrollTop = scrollEl.scrollHeight; }
+  scrollToBottom();
 
   function connect() {
-    socket = new WebSocket(WS_URL);
+    socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
-      document.getElementById('conn-dot').className =
-        'w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0 transition-colors';
-      document.getElementById('conn-dot').title = 'Connected';
-    };
-
-    socket.onclose = () => {
-      document.getElementById('conn-dot').className =
-        'w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0 transition-colors';
-      document.getElementById('conn-dot').title = 'Disconnected — reconnecting...';
-      setTimeout(connect, 3000);
-    };
-
-    socket.onerror = () => {
-      document.getElementById('conn-dot').className =
-        'w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0 transition-colors';
+      reconnectAttempts = 0;
+      presenceEl.textContent = 'Online';
+      bannerEl.classList.remove('show');
+      sendBtn.disabled = false;
+      socket.send(JSON.stringify({ type: 'read' }));
     };
 
     socket.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      appendMessage(data, data.sender_id === MY_ID);
+      if (data.type === 'message') {
+        appendMessage(data);
+        scrollToBottom();
+        if (!data.is_self) {
+          socket.send(JSON.stringify({ type: 'read' }));
+          if (document.hidden) {
+            playNotifySound();
+            showBrowserNotification(data);
+          }
+        }
+      } else if (data.type === 'typing') {
+        typingEl.classList.toggle('show', data.is_typing);
+        if (data.is_typing) scrollToBottom();
+      }
     };
+
+    socket.onclose = () => {
+      presenceEl.textContent = 'Offline';
+      bannerEl.classList.add('show');
+      sendBtn.disabled = true;
+      reconnectAttempts++;
+      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+      setTimeout(connect, delay);
+    };
+
+    socket.onerror = () => socket.close();
   }
+  connect();
 
-  function sendMessage() {
-    const input   = document.getElementById('msg-input');
-    const content = input.value.trim();
-    if (!content || !socket || socket.readyState !== WebSocket.OPEN) return;
-
-    socket.send(JSON.stringify({ message: content }));
-    input.value = '';
-    input.style.height = 'auto';
-    input.rows = 1;
-  }
-
-  function appendMessage(data, isMe) {
-    const list = document.getElementById('msg-list');
-
-    // Remove empty state if present
-    const empty = list.querySelector('.text-center.py-12');
-    if (empty) empty.remove();
-
+  function appendMessage(data) {
     const wrap = document.createElement('div');
-    wrap.className = `flex ${isMe ? 'justify-end' : 'justify-start'} gap-2 msg-new`;
-
-    const avatarHtml = isMe ? '' : `
-      <div class="w-7 h-7 rounded-full bg-navy flex items-center justify-center
-                  text-white text-xs font-bold flex-shrink-0 self-end overflow-hidden">
-        ${data.sender_pic
-          ? `<img src="${data.sender_pic}" class="w-full h-full object-cover"/>`
-          : (data.sender_name[0] || '?').toUpperCase()}
-      </div>`;
-
+    wrap.className = `flex ${data.is_self ? 'justify-end' : 'justify-start'}`;
+    const attachHtml = data.attachment_url
+      ? `<img src="${data.attachment_url}" class="msg-attachment mb-1" onclick="openLightbox('${data.attachment_url}')"/>`
+      : '';
     wrap.innerHTML = `
-      ${avatarHtml}
-      <div class="max-w-xs md:max-w-sm">
-        <div class="px-4 py-2.5 text-sm leading-relaxed ${isMe ? 'bubble-me' : 'bubble-them'}">
-          ${escapeHtml(data.message)}
-        </div>
-        <p class="text-[10px] text-gray-400 mt-1 ${isMe ? 'text-right' : ''}">
-          ${data.timestamp}${isMe ? ' ✓' : ''}
-        </p>
+      <div class="msg-bubble ${data.is_self ? 'msg-self' : 'msg-other'} px-4 py-2.5">
+        ${attachHtml}
+        <p class="text-sm leading-relaxed"></p>
+        <p class="text-[10px] mt-1 ${data.is_self ? 'text-white/60' : 'text-gray-400'}">${data.created_at}</p>
       </div>`;
-
-    list.appendChild(wrap);
-    list.scrollTop = list.scrollHeight;
+    const textEl = wrap.querySelector('p.text-sm');
+    if (data.content) { textEl.textContent = data.content; } else { textEl.remove(); }
+    scrollEl.appendChild(wrap);
   }
 
-  function escapeHtml(str) {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/\n/g, '<br>');
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const content = input.value.trim();
+    if (!content && !pendingAttachmentId) return;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+    socket.send(JSON.stringify({
+      type: 'message',
+      content,
+      attachment_id: pendingAttachmentId,
+    }));
+    input.value = '';
+    cancelAttachment();
+    socket.send(JSON.stringify({ type: 'typing', is_typing: false }));
+  });
+
+  input.addEventListener('input', () => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({ type: 'typing', is_typing: true }));
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.send(JSON.stringify({ type: 'typing', is_typing: false }));
+    }, 2000);
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'read' }));
+    }
+  });
+
+  // ── Attachments ─────────────────────────────────────
+  function handleAttachmentSelect(inputEl) {
+    const file = inputEl.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB.'); return; }
+
+    const fd = new FormData();
+    fd.append('image', file);
+    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+
+    fetch(uploadUrl, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          pendingAttachmentId = d.message_id;
+          document.getElementById('attach-preview-img').src = d.attachment_url;
+          attachPrev.classList.add('show');
+        } else {
+          alert(d.error || 'Upload failed.');
+        }
+      })
+      .catch(() => alert('Upload failed. Please try again.'));
   }
 
-  function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+  function cancelAttachment() {
+    pendingAttachmentId = null;
+    document.getElementById('img-input').value = '';
+    attachPrev.classList.remove('show');
+  }
+
+  // ── Lightbox ─────────────────────────────────────────
+  function openLightbox(url) {
+    document.getElementById('lightbox-img').src = url;
+    document.getElementById('lightbox').classList.add('show');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('show');
+  }
+
+  // ── Notifications ────────────────────────────────────
+  function playNotifySound() {
+    try { notifySound.currentTime = 0; notifySound.play().catch(() => {}); } catch (e) {}
+  }
+
+  function showBrowserNotification(data) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      new Notification(data.sender_name || 'New message', { body: data.content || 'Sent an image', icon: '/static/icons/icon-96x96.png' });
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission();
     }
   }
 
-  function autoResize(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+  {% if room_type == 'support' and is_staff %}
+  function resolveRoom() {
+    if (!confirm('Mark this conversation as resolved?')) return;
+    fetch(resolveUrl, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+    }).then(r => r.json()).then(d => {
+      if (d.success) window.location.href = "{% url 'chat:support_admin_inbox' %}";
+    });
   }
-
-  // Scroll to bottom on load
-  const list = document.getElementById('msg-list');
-  list.scrollTop = list.scrollHeight;
-
-  connect();
+  {% endif %}
 </script>
 {% endblock %}

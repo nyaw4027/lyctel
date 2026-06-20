@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}My Support Requests — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
+
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Support</p>
+      <h1 class="font-display font-700 text-xl md:text-2xl text-navy">My Support Requests</h1>
+    </div>
+    <a href="{% url 'chat:support_start' %}"
+       class="bg-navy text-white text-xs font-semibold px-4 py-2.5 rounded-xl hover:bg-navy-700 transition-colors">
+      + New Request
+    </a>
+  </div>
+
+  {% if room_data %}
+  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+    {% for entry in room_data %}
+    <a href="{% url 'chat:support_room' entry.room.id %}"
+       class="flex items-center gap-3 px-4 md:px-5 py-4 hover:bg-gray-50 transition-colors
+              {% if not forloop.last %}border-b border-gray-50{% endif %}">
+      <div class="w-12 h-12 rounded-full bg-gold-light flex items-center justify-center text-xl flex-shrink-0">🛟</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <p class="font-semibold text-navy text-sm">{{ entry.room.get_category_display }}</p>
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0
+                       {% if entry.room.status == 'resolved' %}bg-green-100 text-green-700
+                       {% elif entry.room.status == 'answered' %}bg-blue-100 text-blue-700
+                       {% else %}bg-amber-100 text-amber-700{% endif %}">
+            {{ entry.room.get_status_display }}
+          </span>
+        </div>
+        <p class="text-xs text-gray-400 truncate mt-0.5">
+          {% if entry.last %}{% if entry.last.sender == user %}You: {% endif %}{{ entry.last.content|default:"📷 Image" }}{% else %}No messages yet{% endif %}
+        </p>
+      </div>
+      {% if entry.unread > 0 %}
+      <span class="bg-gold text-navy text-xs font-bold min-w-[20px] h-5 rounded-full flex items-center justify-center px-1.5 flex-shrink-0">
+        {{ entry.unread }}
+      </span>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-16">
+    <div class="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4">🛟</div>
+    <h2 class="font-display font-700 text-lg text-navy mb-2">No support requests yet</h2>
+    <p class="text-gray-400 text-sm mb-5">Need help with an order, payment, or anything else?</p>
+    <a href="{% url 'chat:support_start' %}"
+       class="inline-flex items-center gap-2 bg-navy text-white font-semibold px-6 py-3 rounded-2xl transition-colors btn-press text-sm">
+      Start a Conversation →
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
