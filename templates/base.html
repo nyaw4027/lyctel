@@ -262,6 +262,15 @@
     .lang-btn { transition: all .2s ease; }
     .lang-btn.active { background: #0F1B2D; color: white; }
     html.dark .lang-btn.active { background: #F5A623; color: #0F1B2D; }
+
+    /* Support / help badge */
+    .support-badge {
+      position: absolute; top: -4px; right: -4px;
+      background: #ef4444; color: white; font-size: 9px; font-weight: 700;
+      min-width: 16px; height: 16px; border-radius: 999px;
+      display: flex; align-items: center; justify-content: center; padding: 0 3px;
+    }
+    .support-badge.hidden { display: none; }
   </style>
 
   {% block extra_head %}{% endblock %}
@@ -342,6 +351,16 @@
                   hover:text-orange-500 px-3 py-2 rounded-lg hover:bg-orange-50 transition-colors">
           🍔 {% trans "Food" %}
         </a>
+
+        {% if user.is_authenticated %}
+        <!-- Get Help (desktop) -->
+        <a href="{% if user.role == 'admin' or user.role == 'staff' %}{% url 'chat:support_admin_inbox' %}{% else %}{% url 'chat:support_start' %}{% endif %}"
+           class="hidden md:flex items-center gap-1.5 text-sm font-medium text-gray-600
+                  hover:text-navy px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors relative">
+          🛟 {% trans "Get Help" %}
+          <span id="support-badge-desktop" class="support-badge hidden">0</span>
+        </a>
+        {% endif %}
 
         {% if user.is_authenticated %}
           {% if user.role == 'vendor' %}
@@ -425,6 +444,22 @@
                 <span class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">📦</span>
                 {% trans "My Orders" %}
               </a>
+
+              {% if user.role == 'admin' or user.role == 'staff' %}
+              <a href="{% url 'chat:support_admin_inbox' %}"
+                 class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors relative">
+                <span class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">🛟</span>
+                {% trans "Support Inbox" %}
+                <span id="support-badge-dropdown" class="support-badge hidden" style="position:static;margin-left:auto;">0</span>
+              </a>
+              {% else %}
+              <a href="{% url 'chat:support_my_inbox' %}"
+                 class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors relative">
+                <span class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">🛟</span>
+                {% trans "Get Help" %}
+                <span id="support-badge-dropdown" class="support-badge hidden" style="position:static;margin-left:auto;">0</span>
+              </a>
+              {% endif %}
 
               {% if user.role == 'admin' %}
               <a href="{% url 'dashboard:home' %}"
@@ -624,6 +659,10 @@
             {% if user.is_authenticated %}
             <li><a href="{% url 'accounts:profile' %}" class="hover:text-gold transition-colors">{% trans "My Profile" %}</a></li>
             <li><a href="{% url 'order:history' %}" class="hover:text-gold transition-colors">{% trans "Order History" %}</a></li>
+            <li>
+              <a href="{% if user.role == 'admin' or user.role == 'staff' %}{% url 'chat:support_admin_inbox' %}{% else %}{% url 'chat:support_my_inbox' %}{% endif %}"
+                 class="hover:text-gold transition-colors">🛟 {% trans "Get Help" %}</a>
+            </li>
             {% else %}
             <li><a href="{% url 'accounts:login' %}" class="hover:text-gold transition-colors">{% trans "Sign In" %}</a></li>
             <li><a href="{% url 'accounts:signup' %}" class="hover:text-gold transition-colors">{% trans "Create Account" %}</a></li>
@@ -690,6 +729,16 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
         <span class="text-[10px] font-medium">{% trans "Products" %}</span>
       </a>
+      {% if user.is_authenticated %}
+      <a href="{% if user.role == 'admin' or user.role == 'staff' %}{% url 'chat:support_admin_inbox' %}{% else %}{% url 'chat:support_start' %}{% endif %}"
+         class="flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-navy transition-colors relative">
+        <div class="relative">
+          <span class="text-xl leading-none">🛟</span>
+          <span id="support-badge-mobile" class="support-badge hidden">0</span>
+        </div>
+        <span class="text-[10px] font-medium">{% trans "Help" %}</span>
+      </a>
+      {% else %}
       <button onclick="openCart()" class="flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-navy transition-colors relative">
         <div class="relative">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
@@ -697,6 +746,7 @@
         </div>
         <span class="text-[10px] font-medium">{% trans "Cart" %}</span>
       </button>
+      {% endif %}
       <a href="{% url 'food:home' %}" class="flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-orange-500 transition-colors">
         <span class="text-xl leading-none">🍔</span>
         <span class="text-[10px] font-medium">{% trans "Food" %}</span>
@@ -1045,6 +1095,26 @@
         else badge.classList.add('hidden');
       });
     }
+
+    // ── SUPPORT / CHAT UNREAD BADGE ────────────────────────
+    {% if user.is_authenticated %}
+    function refreshSupportBadge() {
+      fetch('/chat/unread/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.json())
+        .then(d => {
+          const count = d.unread || 0;
+          ['support-badge-desktop', 'support-badge-dropdown', 'support-badge-mobile'].forEach(id => {
+            const badge = document.getElementById(id);
+            if (!badge) return;
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.classList.toggle('hidden', count === 0);
+          });
+        })
+        .catch(() => {});
+    }
+    refreshSupportBadge();
+    setInterval(refreshSupportBadge, 30000);
+    {% endif %}
 
     // ── PWA ───────────────────────────────────────────────
     let _deferredPrompt = null;
