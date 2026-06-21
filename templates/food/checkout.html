@@ -45,7 +45,7 @@
   <div class="flex items-center gap-2 text-sm text-gray-500 mb-6">
     <a href="{% url 'food:home' %}" class="hover:text-navy">Food</a>
     <span>/</span>
-    <a href="{% url 'food:vendor_menu' vendor.slug %}" class="hover:text-navy">{{ vendor.name }}</a>
+    <a href="{% url 'food:menu' vendor.slug %}" class="hover:text-navy">{{ vendor.name }}</a>
     <span>/</span>
     <span class="text-navy font-medium">Checkout</span>
   </div>
