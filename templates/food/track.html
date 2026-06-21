@@ -4,29 +4,99 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-  #food-map { height: 280px; width: 100%; border-radius: 16px; }
+  #food-map {
+    height: 320px;
+    width: 100%;
+  }
+  @media (min-width: 640px) {
+    #food-map { height: 380px; }
+  }
+  .leaflet-control-attribution { font-size: 8px; opacity: .7; }
+  .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 12px rgba(15,27,45,.15) !important; }
+  .leaflet-control-zoom a { border-radius: 10px !important; }
+
   .pin-customer, .pin-vendor {
     width: 16px; height: 16px;
     border-radius: 50%;
     border: 3px solid white;
-    box-shadow: 0 2px 6px rgba(0,0,0,.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
   }
   .pin-customer { background: #ef4444; }
   .pin-vendor   { background: #F5A623; }
+
+  /* Pulsing accuracy ring under the customer pin, like Bolt/Uber */
+  .pin-customer-wrap { position: relative; width: 22px; height: 22px; }
+  .pulse-ring {
+    position: absolute; inset: -14px;
+    border-radius: 50%;
+    background: rgba(239,68,68,.18);
+    animation: pulseRing 2.2s ease-out infinite;
+  }
+  @keyframes pulseRing {
+    0%   { transform: scale(.4); opacity: .8; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  /* Rider marker — rotates to face direction of travel */
   .rider-icon-wrap {
     background: #0F1B2D;
-    width: 32px; height: 32px;
+    width: 36px; height: 36px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
+    font-size: 18px;
     border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    box-shadow: 0 4px 14px rgba(15,27,45,.4);
+    transition: transform .6s cubic-bezier(.4,0,.2,1);
+    will-change: transform;
   }
+
+  /* Floating "recenter" button, Bolt-style */
+  .map-recenter-btn {
+    position: absolute;
+    bottom: 14px; right: 14px;
+    width: 40px; height: 40px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(15,27,45,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    z-index: 500;
+    cursor: pointer;
+    transition: transform .15s ease;
+  }
+  .map-recenter-btn:active { transform: scale(.92); }
+
+  /* Live ETA pill floating top-left on the map */
+  .map-eta-pill {
+    position: absolute;
+    top: 12px; left: 12px;
+    background: rgba(15,27,45,.92);
+    backdrop-filter: blur(4px);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 999px;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 14px rgba(15,27,45,.25);
+  }
+  .map-eta-pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: dotBlink 1.4s ease-in-out infinite;
+  }
+  @keyframes dotBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  #map-section { position: relative; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-xl mx-auto px-4 md:px-6 py-8">
+<div class="max-w-xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
   <!-- Header -->
   <div class="text-center mb-6">
@@ -68,7 +138,11 @@
       <p class="font-semibold text-navy text-sm">Live Rider Location</p>
       <span id="rider-distance" class="text-xs text-gray-400 ml-auto"></span>
     </div>
-    <div id="food-map"></div>
+    <div class="relative">
+      <div id="food-map"></div>
+      <div class="map-eta-pill"><span class="dot"></span><span id="map-eta-text">Tracking…</span></div>
+      <div class="map-recenter-btn" id="recenter-btn" title="Recenter map">🎯</div>
+    </div>
   </div>
 
   <!-- Rider info -->
@@ -146,11 +220,17 @@
   }
 
   let map, riderMarker, routeLine, mapInitialized = false;
+  let lastRiderPos = null;
+  let userPannedAway = false;
+  let animFrame = null;
 
   function initMap() {
     if (!DROPOFF_LAT || !DROPOFF_LNG) return;
 
-    map = L.map('food-map').setView([DROPOFF_LAT, DROPOFF_LNG], 14);
+    map = L.map('food-map', {
+      zoomControl: true,
+      attributionControl: true,
+    }).setView([DROPOFF_LAT, DROPOFF_LNG], 14);
 
     L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
       attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
@@ -158,9 +238,12 @@
       subdomains: ['a', 'b', 'c'],
     }).addTo(map);
 
-    // Customer marker (red)
+    // Customer marker (red, pulsing accuracy ring)
     L.marker([DROPOFF_LAT, DROPOFF_LNG], {
-      icon: L.divIcon({ html: '<div class="pin-customer"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] }),
+      icon: L.divIcon({
+        html: '<div class="pin-customer-wrap"><div class="pulse-ring"></div><div class="pin-customer"></div></div>',
+        className: '', iconSize: [22, 22], iconAnchor: [11, 11],
+      }),
       zIndexOffset: 500,
     }).addTo(map).bindPopup('Your location');
 
@@ -172,20 +255,90 @@
       }).addTo(map).bindPopup('{{ order.vendor.name|escapejs }}');
     }
 
+    // Track manual user interaction so we don't yank the map away from them
+    map.on('dragstart zoomstart', () => { userPannedAway = true; });
+
+    // Recenter button
+    document.getElementById('recenter-btn').addEventListener('click', () => {
+      userPannedAway = false;
+      fitToRoute();
+    });
+
+    // Responsive resize handling
+    window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
+
     mapInitialized = true;
+  }
+
+  function fitToRoute() {
+    if (!map) return;
+    const pts = [[DROPOFF_LAT, DROPOFF_LNG]];
+    if (lastRiderPos) pts.push(lastRiderPos);
+    if (VENDOR_LAT && VENDOR_LNG && !lastRiderPos) pts.push([VENDOR_LAT, VENDOR_LNG]);
+    if (pts.length > 1) {
+      map.flyToBounds(pts, { padding: [50, 50], maxZoom: 16, duration: 0.8 });
+    } else {
+      map.flyTo(pts[0], 15, { duration: 0.8 });
+    }
+  }
+
+  // Smoothly animate the rider marker between two lat/lng points
+  // instead of a hard jump-cut, similar to Bolt/Uber rider movement.
+  function animateMarkerTo(marker, fromLatLng, toLatLng, durationMs, bearing) {
+    if (animFrame) cancelAnimationFrame(animFrame);
+    const start = performance.now();
+
+    function step(now) {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease-in-out
+      const lat = fromLatLng[0] + (toLatLng[0] - fromLatLng[0]) * eased;
+      const lng = fromLatLng[1] + (toLatLng[1] - fromLatLng[1]) * eased;
+      marker.setLatLng([lat, lng]);
+      if (t < 1) {
+        animFrame = requestAnimationFrame(step);
+      }
+    }
+    animFrame = requestAnimationFrame(step);
+
+    // Rotate the rider icon to face direction of travel
+    if (bearing !== null && marker._icon) {
+      const inner = marker._icon.querySelector('.rider-icon-wrap');
+      if (inner) inner.style.transform = `rotate(${bearing}deg)`;
+    }
+  }
+
+  function calcBearing(from, to) {
+    const toRad = d => d * Math.PI / 180;
+    const toDeg = r => r * 180 / Math.PI;
+    const [lat1, lon1] = from.map(toRad);
+    const [lat2, lon2] = to.map(toRad);
+    const dLon = lon2 - lon1;
+    const y = Math.sin(dLon) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+    return (toDeg(Math.atan2(y, x)) + 360) % 360;
   }
 
   function moveRider(lat, lng) {
     if (!mapInitialized) return;
     document.getElementById('map-section').classList.remove('hidden');
+    if (map) setTimeout(() => map.invalidateSize(), 50);
+
+    const newPos = [lat, lng];
 
     if (!riderMarker) {
-      riderMarker = L.marker([lat, lng], {
-        icon: L.divIcon({ html: '<div class="rider-icon-wrap">🛵</div>', className: '', iconSize: [32, 32], iconAnchor: [16, 16] }),
+      riderMarker = L.marker(newPos, {
+        icon: L.divIcon({ html: '<div class="rider-icon-wrap">🛵</div>', className: '', iconSize: [36, 36], iconAnchor: [18, 18] }),
         zIndexOffset: 1000,
       }).addTo(map).bindPopup('Rider');
+      lastRiderPos = newPos;
+      if (!userPannedAway) fitToRoute();
     } else {
-      riderMarker.setLatLng([lat, lng]);
+      const bearing = lastRiderPos ? calcBearing(lastRiderPos, newPos) : null;
+      animateMarkerTo(riderMarker, lastRiderPos || newPos, newPos, 900, bearing);
+      lastRiderPos = newPos;
+      if (!userPannedAway) {
+        map.panTo(newPos, { animate: true, duration: 0.9, easeLinearity: 0.3 });
+      }
     }
 
     if (DROPOFF_LAT && DROPOFF_LNG && LOCATIONIQ_KEY) {
@@ -200,13 +353,19 @@
           if (routeLine) {
             routeLine.setLatLngs(coords);
           } else {
-            routeLine = L.polyline(coords, { color: '#F5A623', weight: 4, opacity: 0.8 }).addTo(map);
+            routeLine = L.polyline(coords, {
+              color: '#F5A623', weight: 5, opacity: 0.85,
+              lineCap: 'round', lineJoin: 'round',
+            }).addTo(map);
+            // Subtle outline beneath for contrast, Bolt/Uber style
+            routeLine.bringToFront();
           }
 
           const etaMinutes = Math.max(1, Math.round(route.duration / 60));
           const distanceKm = (route.distance / 1000).toFixed(1);
           document.getElementById('rider-distance').textContent = `${distanceKm} km · ETA ${etaMinutes} min`;
           document.getElementById('eta-display').textContent = `${etaMinutes} mins`;
+          document.getElementById('map-eta-text').textContent = `${etaMinutes} min away`;
         })
         .catch(err => console.error('Route fetch failed:', err));
     }
@@ -256,7 +415,7 @@
 
   initMap();
   poll();
-  setInterval(poll, 8000);
+  setInterval(poll, 5000);
 })();
 </script>
 {% endblock %}
