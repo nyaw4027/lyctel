@@ -10,11 +10,6 @@ from django.utils import timezone
 from datetime import timedelta
 from functools import wraps
 
-from requests import request
-
-import delivery
-import delivery
-import order
 from ecommerce.models import User
 from products.models import Product, Category
 from order.models import Order, OrderStatusHistory
@@ -22,7 +17,6 @@ from delivery.models import Delivery, DeliveryZone
 from rider.models import RiderProfile, DeliveryAcceptance
 from vendors.models import Vendor
 from rider.views import notify_rider
-
 
 
 # ── GUARD ─────────────────────────────────────────────────
@@ -157,10 +151,11 @@ def order_detail(request, pk):
                     order.delivered_at = timezone.now()
                 order.save()
                 messages.success(request, f'Order status updated to {new_status}.')
-    elif action == 'assign_rider':
+
+        elif action == 'assign_rider':
             rider_id = request.POST.get('rider_id')
             zone_id  = request.POST.get('zone_id')
-            
+
             if rider_id and zone_id and not delivery:
                 rider = get_object_or_404(RiderProfile, pk=rider_id)
                 zone  = get_object_or_404(DeliveryZone, pk=zone_id)
@@ -196,6 +191,18 @@ def order_detail(request, pk):
                 messages.success(request, f'Rider {rider.rider.get_full_name()} notified.')
             elif delivery:
                 messages.warning(request, 'A rider is already assigned.')
+
+        return redirect('staff:order_detail', pk=pk)
+
+    return render(request, 'staff/orders/detail.html', {
+        'order':      order,
+        'riders':     riders,
+        'zones':      zones,
+        'history':    history,
+        'delivery':   delivery,
+        'cart_count': 0,
+    })
+
 
 # ── PRODUCTS ──────────────────────────────────────────────
 
@@ -411,4 +418,142 @@ def customer_detail(request, pk):
         'orders':      orders,
         'total_spent': total_spent,
         'cart_count':  0,
+    })
+
+
+# ── FOOD VENDORS (RESTAURANTS) ────────────────────────────
+
+@staff_required
+def food_vendor_list(request):
+    from food.models import FoodVendor
+
+    query  = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '')
+
+    vendors = FoodVendor.objects.select_related('owner').order_by('-joined_at')
+
+    if query:
+        vendors = vendors.filter(
+            Q(name__icontains=query) |
+            Q(city__icontains=query) |
+            Q(owner__phone__icontains=query)
+        )
+    if status:
+        vendors = vendors.filter(status=status)
+
+    counts = {
+        'open':      FoodVendor.objects.filter(status='open').count(),
+        'closed':    FoodVendor.objects.filter(status='closed').count(),
+        'busy':      FoodVendor.objects.filter(status='busy').count(),
+        'suspended': FoodVendor.objects.filter(status='suspended').count(),
+    }
+
+    return render(request, 'staff/food/vendor_list.html', {
+        'vendors':       vendors,
+        'query':         query,
+        'filter_status': status,
+        'counts':        counts,
+        'cart_count':    0,
+    })
+
+
+@staff_required
+def food_vendor_detail(request, pk):
+    from food.models import FoodVendor, FoodOrder
+
+    vendor   = get_object_or_404(FoodVendor, pk=pk)
+    menu_items = vendor.food_items.select_related('category').order_by('sort_order', 'name')[:20]
+    recent_orders = FoodOrder.objects.filter(
+        vendor=vendor
+    ).select_related('customer').order_by('-created_at')[:10]
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'suspend':
+            vendor.status = FoodVendor.Status.SUSPENDED
+            vendor.save()
+            messages.warning(request, f'"{vendor.name}" has been suspended.')
+
+        elif action == 'reactivate':
+            vendor.status = FoodVendor.Status.OPEN
+            vendor.save()
+            messages.success(request, f'"{vendor.name}" reactivated.')
+
+        return redirect('staff:food_vendor_detail', pk=pk)
+
+    return render(request, 'staff/food/vendor_detail.html', {
+        'vendor':        vendor,
+        'menu_items':    menu_items,
+        'recent_orders': recent_orders,
+        'cart_count':    0,
+    })
+
+
+# ── FOOD ORDERS ───────────────────────────────────────────
+
+@staff_required
+def food_order_list(request):
+    from food.models import FoodOrder
+
+    status  = request.GET.get('status', '')
+    query   = request.GET.get('q', '').strip()
+    orders  = FoodOrder.objects.select_related(
+        'vendor', 'customer'
+    ).prefetch_related('items').order_by('-created_at')
+
+    if status:
+        orders = orders.filter(status=status)
+    if query:
+        orders = orders.filter(
+            Q(order_ref__icontains=query) |
+            Q(customer__phone__icontains=query) |
+            Q(delivery_address__icontains=query)
+        )
+
+    status_counts = {
+        'pending':   FoodOrder.objects.filter(status='pending').count(),
+        'confirmed': FoodOrder.objects.filter(status='confirmed').count(),
+        'preparing': FoodOrder.objects.filter(status='preparing').count(),
+        'en_route':  FoodOrder.objects.filter(status='en_route').count(),
+        'delivered': FoodOrder.objects.filter(status='delivered').count(),
+        'cancelled': FoodOrder.objects.filter(status='cancelled').count(),
+    }
+
+    return render(request, 'staff/food/order_list.html', {
+        'orders':         orders,
+        'filter_status':  status,
+        'query':          query,
+        'status_counts':  status_counts,
+        'cart_count':     0,
+    })
+
+
+@staff_required
+def food_order_detail(request, ref):
+    from food.models import FoodOrder
+
+    order = get_object_or_404(
+        FoodOrder.objects.select_related('vendor', 'customer').prefetch_related('items'),
+        order_ref=ref,
+    )
+
+    if request.method == 'POST':
+        new_status = request.POST.get('status', '').strip()
+        valid_statuses = [s[0] for s in FoodOrder.Status.choices]
+        if new_status in valid_statuses:
+            order.status = new_status
+            if new_status == 'confirmed':
+                order.confirmed_at = timezone.now()
+            elif new_status == 'delivered':
+                order.delivered_at   = timezone.now()
+                order.payment_status = FoodOrder.PaymentStatus.PAID
+            order.save()
+            messages.success(request, f'Order {ref} → {order.get_status_display()}')
+        return redirect('staff:food_order_detail', ref=ref)
+
+    return render(request, 'staff/food/order_detail.html', {
+        'order':          order,
+        'status_choices': FoodOrder.Status.choices,
+        'cart_count':     0,
     })
