@@ -1,5 +1,6 @@
 import math
 import json
+import importlib
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
@@ -16,14 +17,20 @@ from .models import (
     FoodOrder, FoodOrderItem, FoodCart, FoodCartItem,
 )
 from delivery.models import Delivery, DeliveryZone
-try:
-    from delivery.notifications import notify_food_order_status_change
-except ImportError:
-    notify_food_order_status_change = None
+
+
+def _notify_food_status(order, new_status):
+    try:
+        from delivery.notifications import notify_food_order_status_change
+    except ImportError:
+        notify_food_order_status_change = None
+
+    if notify_food_order_status_change:
+        notify_food_order_status_change(order, new_status)
 
 
 # ─────────────────────────────
-# PRICING ENGINE (Uber-style)
+# PRICING ENGINE
 # ─────────────────────────────
 BASE_FARE    = Decimal('5.00')
 PER_KM_RATE  = Decimal('2.50')
@@ -52,6 +59,15 @@ def haversine_distance(lat1, lng1, lat2, lng2):
 def estimate_eta(distance_km, prep_time=20):
     travel_minutes = int((distance_km / 30) * 60) if distance_km else 15
     return prep_time + travel_minutes
+
+
+def _get_food_cart_count(request):
+    if request.user.is_authenticated:
+        try:
+            return request.user.food_cart.item_count
+        except Exception:
+            pass
+    return 0
 
 
 # ─────────────────────────────
@@ -112,19 +128,12 @@ def food_home(request):
 
     vendor_list.sort(key=lambda x: x['distance'] if x['distance'] is not None else 999)
 
-    food_cart_count = 0
-    if request.user.is_authenticated:
-        try:
-            food_cart_count = request.user.food_cart.item_count
-        except Exception:
-            pass
-
     return render(request, 'food/home.html', {
         'vendor_list':      vendor_list,
         'cuisines':         FoodVendor.CuisineType.choices,
         'selected_cuisine': cuisine,
         'query':            query,
-        'food_cart_count':  food_cart_count,
+        'food_cart_count':  _get_food_cart_count(request),
         'cart_count':       0,
     })
 
@@ -221,7 +230,7 @@ def register_restaurant(request):
         return redirect('food:restaurant_dashboard')
 
     return render(request, 'food/register.html', {
-        'cuisines':  FoodVendor.CuisineType.choices,
+        'cuisines':   FoodVendor.CuisineType.choices,
         'cart_count': 0,
     })
 
@@ -235,7 +244,6 @@ def restaurant_dashboard(request):
     tab           = request.GET.get('tab', 'orders')
     status_filter = request.GET.get('status', '')
 
-    # Stats
     all_orders    = FoodOrder.objects.filter(vendor=restaurant)
     total_orders  = all_orders.count()
     active_orders = all_orders.filter(
@@ -256,23 +264,23 @@ def restaurant_dashboard(request):
     all_items  = restaurant.food_items.select_related('category').order_by('sort_order', 'name')
 
     return render(request, 'food/restaurant_dashboard.html', {
-        'restaurant':    restaurant,
-        'tab':           tab,
-        'total_orders':  total_orders,
-        'active_orders': active_orders,
-        'total_revenue': total_revenue,
-        'today_orders':  today_orders,
-        'orders':        orders[:50],
-        'status_filter': status_filter,
-        'categories':    categories,
-        'all_items':     all_items,
+        'restaurant':     restaurant,
+        'tab':            tab,
+        'total_orders':   total_orders,
+        'active_orders':  active_orders,
+        'total_revenue':  total_revenue,
+        'today_orders':   today_orders,
+        'orders':         orders[:50],
+        'status_filter':  status_filter,
+        'categories':     categories,
+        'all_items':      all_items,
         'status_choices': FoodOrder.Status.choices,
-        'cart_count':    0,
+        'cart_count':     0,
     })
 
 
 # ─────────────────────────────
-# UPDATE ORDER STATUS (restaurant)
+# UPDATE ORDER STATUS
 # ─────────────────────────────
 @restaurant_required
 @require_POST
@@ -291,19 +299,15 @@ def restaurant_update_order(request, ref):
             order.payment_status = FoodOrder.PaymentStatus.PAID
         order.save()
         messages.success(request, f'Order {ref} → {order.get_status_display()}')
-
-        if notify_food_order_status_change:
-            try:
-                notify_food_order_status_change(order, new_status)
-            except Exception:
-                pass
+        _notify_food_status(order, new_status)
     else:
         messages.error(request, 'Invalid status.')
 
-    return redirect(f'/food/dashboard/?tab=orders')
+    return redirect('/food/dashboard/?tab=orders')
+
 
 # ─────────────────────────────
-# ADD MENU ITEM
+# ADD MENU ITEM  ✅ FIXED
 # ─────────────────────────────
 @restaurant_required
 def restaurant_add_item(request):
@@ -311,23 +315,22 @@ def restaurant_add_item(request):
     categories = restaurant.food_categories.all()
 
     if request.method == 'POST':
-        name           = request.POST.get('name', '').strip()
-        description    = request.POST.get('description', '').strip()
-        category_id    = request.POST.get('category_id', '').strip()
-        price_raw      = request.POST.get('price', '').strip()
-        discount_raw   = request.POST.get('discount_price', '').strip()
-        prep_time_raw  = request.POST.get('prep_time', '15').strip()
-        is_available   = request.POST.get('is_available') == 'on'
-        is_featured    = request.POST.get('is_featured') == 'on'
-        is_spicy       = request.POST.get('is_spicy') == 'on'
-        is_vegan       = request.POST.get('is_vegan') == 'on'
+        name          = request.POST.get('name', '').strip()
+        description   = request.POST.get('description', '').strip()
+        category_id   = request.POST.get('category_id', '').strip()
+        price_raw     = request.POST.get('price', '').strip()
+        discount_raw  = request.POST.get('discount_price', '').strip()
+        prep_time_raw = request.POST.get('prep_time', '15').strip()
+        is_available  = request.POST.get('is_available') == 'on'
+        is_featured   = request.POST.get('is_featured') == 'on'
+        is_spicy      = request.POST.get('is_spicy') == 'on'
+        is_vegan      = request.POST.get('is_vegan') == 'on'
 
         errors = {}
 
         if not name:
             errors['name'] = 'Item name is required.'
 
-        # ── Validate price ──────────────────────────────
         price = None
         if not price_raw:
             errors['price'] = 'Price is required.'
@@ -339,7 +342,6 @@ def restaurant_add_item(request):
             except (InvalidOperation, ValueError):
                 errors['price'] = 'Enter a valid price (e.g. 25.00).'
 
-        # ── Validate discount price (optional) ──────────
         discount_price = None
         if discount_raw:
             try:
@@ -349,15 +351,11 @@ def restaurant_add_item(request):
             except (InvalidOperation, ValueError):
                 errors['discount_price'] = 'Enter a valid discount price.'
 
-        # ── Validate prep time ───────────────────────────
         try:
-            prep_time = int(prep_time_raw) if prep_time_raw else 15
-            if prep_time < 0:
-                prep_time = 15
+            prep_time = max(0, int(prep_time_raw)) if prep_time_raw else 15
         except ValueError:
             prep_time = 15
 
-        # ── Validate category belongs to this restaurant ─
         category_obj = None
         if category_id:
             try:
@@ -365,10 +363,15 @@ def restaurant_add_item(request):
             except (FoodCategory.DoesNotExist, ValueError):
                 errors['category_id'] = 'Invalid category selected.'
 
+        # ── Always pass item=None on errors ──────────────
         if errors:
             return render(request, 'food/item_form.html', {
-                'restaurant': restaurant, 'categories': categories,
-                'errors': errors, 'form_data': request.POST, 'action': 'Add',
+                'restaurant': restaurant,
+                'categories': categories,
+                'errors':     errors,
+                'form_data':  request.POST,
+                'action':     'Add',
+                'item':       None,
                 'cart_count': 0,
             })
 
@@ -389,22 +392,31 @@ def restaurant_add_item(request):
             if 'image' in request.FILES:
                 item.image = request.FILES['image']
             item.save()
+            messages.success(request, f'"{name}" added to your menu!')
+            return redirect('/food/dashboard/?tab=menu')
+
         except Exception as e:
             messages.error(request, f'Could not save item: {e}')
             return render(request, 'food/item_form.html', {
-                'restaurant': restaurant, 'categories': categories,
-                'errors': {'name': 'Something went wrong saving this item. Please try again.'},
-                'form_data': request.POST, 'action': 'Add',
+                'restaurant': restaurant,
+                'categories': categories,
+                'errors':     {'name': 'Something went wrong. Please try again.'},
+                'form_data':  request.POST,
+                'action':     'Add',
+                'item':       None,
                 'cart_count': 0,
             })
 
-        messages.success(request, f'"{name}" added to your menu!')
-        return redirect('/food/dashboard/?tab=menu')
-
+    # ── GET: always pass item=None ────────────────────────
     return render(request, 'food/item_form.html', {
-        'restaurant': restaurant, 'categories': categories,
-        'action': 'Add', 'cart_count': 0,
+        'restaurant': restaurant,
+        'categories': categories,
+        'action':     'Add',
+        'item':       None,
+        'cart_count': 0,
     })
+
+
 # ─────────────────────────────
 # EDIT MENU ITEM
 # ─────────────────────────────
@@ -415,17 +427,64 @@ def restaurant_edit_item(request, pk):
     categories = restaurant.food_categories.all()
 
     if request.method == 'POST':
-        item.name          = request.POST.get('name', item.name).strip()
-        item.description   = request.POST.get('description', '').strip()
-        item.category_id   = request.POST.get('category_id') or None
-        item.price         = Decimal(request.POST.get('price', str(item.price)))
-        discount           = request.POST.get('discount_price', '').strip()
-        item.discount_price = Decimal(discount) if discount else None
-        item.prep_time     = int(request.POST.get('prep_time', item.prep_time))
-        item.is_available  = request.POST.get('is_available') == 'on'
-        item.is_featured   = request.POST.get('is_featured') == 'on'
-        item.is_spicy      = request.POST.get('is_spicy') == 'on'
-        item.is_vegan      = request.POST.get('is_vegan') == 'on'
+        name          = request.POST.get('name', item.name).strip()
+        description   = request.POST.get('description', '').strip()
+        category_id   = request.POST.get('category_id') or None
+        price_raw     = request.POST.get('price', str(item.price)).strip()
+        discount_raw  = request.POST.get('discount_price', '').strip()
+        prep_time_raw = request.POST.get('prep_time', str(item.prep_time)).strip()
+        is_available  = request.POST.get('is_available') == 'on'
+        is_featured   = request.POST.get('is_featured') == 'on'
+        is_spicy      = request.POST.get('is_spicy') == 'on'
+        is_vegan      = request.POST.get('is_vegan') == 'on'
+
+        errors = {}
+        if not name:
+            errors['name'] = 'Item name is required.'
+
+        try:
+            price = Decimal(price_raw)
+            if price <= 0:
+                errors['price'] = 'Price must be greater than 0.'
+        except (InvalidOperation, ValueError):
+            price = item.price
+            errors['price'] = 'Enter a valid price.'
+
+        discount_price = None
+        if discount_raw:
+            try:
+                discount_price = Decimal(discount_raw)
+                if discount_price >= price:
+                    errors['discount_price'] = 'Discount must be lower than price.'
+            except (InvalidOperation, ValueError):
+                errors['discount_price'] = 'Enter a valid discount price.'
+
+        try:
+            prep_time = max(0, int(prep_time_raw))
+        except ValueError:
+            prep_time = item.prep_time
+
+        if errors:
+            return render(request, 'food/item_form.html', {
+                'restaurant': restaurant,
+                'categories': categories,
+                'errors':     errors,
+                'form_data':  request.POST,
+                'action':     'Edit',
+                'item':       item,
+                'cart_count': 0,
+            })
+
+        item.name           = name
+        item.description    = description
+        item.category_id    = category_id
+        item.price          = price
+        item.discount_price = discount_price
+        item.prep_time      = prep_time
+        item.is_available   = is_available
+        item.is_featured    = is_featured
+        item.is_spicy       = is_spicy
+        item.is_vegan       = is_vegan
         if 'image' in request.FILES:
             item.image = request.FILES['image']
         item.save()
@@ -433,8 +492,11 @@ def restaurant_edit_item(request, pk):
         return redirect('/food/dashboard/?tab=menu')
 
     return render(request, 'food/item_form.html', {
-        'restaurant': restaurant, 'categories': categories,
-        'item': item, 'action': 'Edit', 'cart_count': 0,
+        'restaurant': restaurant,
+        'categories': categories,
+        'item':       item,
+        'action':     'Edit',
+        'cart_count': 0,
     })
 
 
@@ -481,17 +543,25 @@ def restaurant_settings(request):
         restaurant.whatsapp      = request.POST.get('whatsapp', '').strip()
         restaurant.opening_time  = request.POST.get('opening_time', '08:00')
         restaurant.closing_time  = request.POST.get('closing_time', '22:00')
-        restaurant.min_order     = Decimal(request.POST.get('min_order', str(restaurant.min_order)))
-        restaurant.avg_prep_time = int(request.POST.get('avg_prep_time', str(restaurant.avg_prep_time)))
         restaurant.status        = request.POST.get('status', restaurant.status)
+
+        try:
+            restaurant.min_order = Decimal(request.POST.get('min_order', str(restaurant.min_order)))
+        except InvalidOperation:
+            pass
+        try:
+            restaurant.avg_prep_time = int(request.POST.get('avg_prep_time', str(restaurant.avg_prep_time)))
+        except ValueError:
+            pass
+
         lat = request.POST.get('latitude', '').strip()
         lng = request.POST.get('longitude', '').strip()
         restaurant.latitude  = float(lat) if lat else None
         restaurant.longitude = float(lng) if lng else None
-        if 'logo' in request.FILES:
-            restaurant.logo = request.FILES['logo']
-        if 'banner' in request.FILES:
-            restaurant.banner = request.FILES['banner']
+
+        if 'logo'   in request.FILES: restaurant.logo   = request.FILES['logo']
+        if 'banner' in request.FILES: restaurant.banner = request.FILES['banner']
+
         restaurant.save()
         messages.success(request, 'Restaurant settings saved!')
         return redirect('food:restaurant_settings')
@@ -515,7 +585,7 @@ def cart_add(request, item_id):
         data = json.loads(request.body)
     except Exception:
         data = {}
-    qty  = int(data.get('quantity', 1))
+    qty  = max(1, int(data.get('quantity', 1)))
     note = data.get('note', '')
 
     cart, _ = FoodCart.objects.get_or_create(customer=request.user)
@@ -533,14 +603,14 @@ def cart_add(request, item_id):
     cart.vendor = food.vendor
     cart.save()
 
-    item, created = FoodCartItem.objects.get_or_create(
+    cart_item, created = FoodCartItem.objects.get_or_create(
         cart=cart, food=food,
         defaults={'quantity': qty, 'note': note},
     )
     if not created:
-        item.quantity += qty
-        item.note = note
-        item.save()
+        cart_item.quantity += qty
+        cart_item.note      = note
+        cart_item.save()
 
     return JsonResponse({
         'success':    True,
@@ -558,9 +628,7 @@ def cart_update(request, item_id):
         data = {}
     qty = int(data.get('quantity', 1))
 
-    cart_item = get_object_or_404(
-        FoodCartItem, pk=item_id, cart__customer=request.user
-    )
+    cart_item = get_object_or_404(FoodCartItem, pk=item_id, cart__customer=request.user)
     if qty <= 0:
         cart_item.delete()
     else:
@@ -641,7 +709,6 @@ def price_estimate(request):
     })
 
 
-
 # ─────────────────────────────
 # CHECKOUT
 # ─────────────────────────────
@@ -658,139 +725,123 @@ def checkout(request):
         return redirect('food:home')
 
     vendor = cart.vendor
+    gmaps_key = getattr(settings, 'GOOGLE_MAPS_API_KEY', '')
 
     if request.method == 'POST':
         address     = request.POST.get('delivery_address', '').strip()
         phone       = request.POST.get('delivery_phone', '').strip()
         note        = request.POST.get('delivery_note', '').strip()
         pay_method  = request.POST.get('payment_method', 'cash')
-        dlat        = request.POST.get('delivery_lat')
-        dlng        = request.POST.get('delivery_lng')
+        dlat        = request.POST.get('delivery_lat', '').strip()
+        dlng        = request.POST.get('delivery_lng', '').strip()
         fee_posted  = request.POST.get('delivery_fee', '0')
         dist_posted = request.POST.get('distance_km', '0')
 
         errors = {}
-
-        if not address:
-            errors['address'] = 'Please enter your delivery address.'
-
-        if not phone:
-            errors['phone'] = 'Please enter your phone number.'
+        if not address: errors['address'] = 'Please enter your delivery address.'
+        if not phone:   errors['phone']   = 'Please enter your phone number.'
 
         if errors:
             return render(request, 'food/checkout.html', {
-                'cart': cart,
-                'vendor': vendor,
-                'cart_items': cart.cart_items.select_related('food').all(),
-                'subtotal': cart.total,
-                'default_fee': str(MIN_FARE),
-                'user': request.user,
-                'cart_count': 0,
+                'cart':            cart,
+                'vendor':          vendor,
+                'cart_items':      cart.cart_items.select_related('food').all(),
+                'subtotal':        cart.total,
+                'default_fee':     str(MIN_FARE),
+                'user':            request.user,
+                'cart_count':      0,
                 'payment_methods': FoodOrder.PaymentMethod.choices,
-                'vendor_lat': vendor.latitude or '',
-                'vendor_lng': vendor.longitude or '',
-                'errors': errors,
-                'locationiq_key': settings.LOCATIONIQ_API_KEY,
+                'vendor_lat':      vendor.latitude  or '',
+                'vendor_lng':      vendor.longitude or '',
+                'errors':          errors,
+                'gmaps_key':       gmaps_key,
             })
 
         try:
             delivery_fee = Decimal(fee_posted)
-            distance_km = float(dist_posted) if dist_posted else None
-        except Exception:
+        except (InvalidOperation, ValueError):
             delivery_fee = MIN_FARE
+
+        try:
+            distance_km = float(dist_posted) if dist_posted else None
+        except ValueError:
             distance_km = None
 
-        # Create food order
         order = FoodOrder.objects.create(
-            customer=request.user,
-            vendor=vendor,
-            delivery_address=address,
-            delivery_lat=float(dlat) if dlat else None,
-            delivery_lng=float(dlng) if dlng else None,
-            delivery_phone=phone,
-            delivery_note=note,
-            subtotal=cart.total,
-            delivery_fee=delivery_fee,
-            distance_km=distance_km,
-            payment_method=pay_method,
-            payment_status=FoodOrder.PaymentStatus.UNPAID,
-            estimated_delivery_time=estimate_eta(
-                distance_km or 5,
-                vendor.avg_prep_time
-            ),
+            customer                = request.user,
+            vendor                  = vendor,
+            delivery_address        = address,
+            delivery_lat            = float(dlat) if dlat else None,
+            delivery_lng            = float(dlng) if dlng else None,
+            delivery_phone          = phone,
+            delivery_note           = note,
+            subtotal                = cart.total,
+            delivery_fee            = delivery_fee,
+            distance_km             = distance_km,
+            payment_method          = pay_method,
+            payment_status          = FoodOrder.PaymentStatus.UNPAID,
+            estimated_delivery_time = estimate_eta(distance_km or 5, vendor.avg_prep_time),
         )
 
-        # Create order items
         for ci in cart.cart_items.select_related('food').all():
             FoodOrderItem.objects.create(
-                order=order,
-                food=ci.food,
-                name=ci.food.name,
-                price=ci.food.final_price,
-                quantity=ci.quantity,
-                note=ci.note,
+                order=order, food=ci.food, name=ci.food.name,
+                price=ci.food.final_price, quantity=ci.quantity, note=ci.note,
             )
 
-        # Create delivery record
         zone = DeliveryZone.objects.filter(is_active=True).first()
-
         delivery = Delivery.objects.create(
-            booker=request.user,
-            pickup_location=vendor.address,
-            dropoff_location=address,
-            pickup_lat=vendor.latitude,
-            pickup_lng=vendor.longitude,
-            dropoff_lat=float(dlat) if dlat else None,
-            dropoff_lng=float(dlng) if dlng else None,
-            delivery_fee=delivery_fee,
-            rider_commission=delivery_fee * Decimal('0.5'),
-            distance_km=distance_km,
-            zone=zone,
-            delivery_type=Delivery.DeliveryType.EXPRESS,
-            status=Delivery.Status.PENDING,
-            delivery_note=note,
+            booker           = request.user,
+            pickup_location  = vendor.address,
+            dropoff_location = address,
+            pickup_lat       = vendor.latitude,
+            pickup_lng       = vendor.longitude,
+            dropoff_lat      = float(dlat) if dlat else None,
+            dropoff_lng      = float(dlng) if dlng else None,
+            delivery_fee     = delivery_fee,
+            rider_commission = delivery_fee * Decimal('0.5'),
+            distance_km      = distance_km,
+            zone             = zone,
+            delivery_type    = Delivery.DeliveryType.EXPRESS,
+            status           = Delivery.Status.PENDING,
+            delivery_note    = note,
         )
 
-        # Link delivery to food order
         order.delivery = delivery
         order.save(update_fields=['delivery'])
 
-        # Auto assign rider
         try:
             from delivery.services import auto_assign_for_food_order
             auto_assign_for_food_order(order)
         except Exception as e:
-            print(f"Auto assignment error: {e}")
+            pass
 
-        # Update vendor stats
         vendor.total_orders += 1
         vendor.save(update_fields=['total_orders'])
 
-        # Clear cart
         cart.cart_items.all().delete()
         cart.vendor = None
         cart.save()
 
         messages.success(
             request,
-            f'Order {order.order_ref} placed successfully! '
-            f'Estimated delivery time: {order.estimated_delivery_time} minutes.'
+            f'✅ Order {order.order_ref} placed! '
+            f'Estimated delivery: {order.estimated_delivery_time} mins.'
         )
-
         return redirect('food:order_track', ref=order.order_ref)
 
     return render(request, 'food/checkout.html', {
-        'cart': cart,
-        'vendor': vendor,
-        'cart_items': cart.cart_items.select_related('food').all(),
-        'subtotal': cart.total,
-        'default_fee': str(MIN_FARE),
-        'user': request.user,
-        'cart_count': 0,
+        'cart':            cart,
+        'vendor':          vendor,
+        'cart_items':      cart.cart_items.select_related('food').all(),
+        'subtotal':        cart.total,
+        'default_fee':     str(MIN_FARE),
+        'user':            request.user,
+        'cart_count':      0,
         'payment_methods': FoodOrder.PaymentMethod.choices,
-        'vendor_lat': vendor.latitude or '',
-        'vendor_lng': vendor.longitude or '',
-        'locationiq_key': settings.LOCATIONIQ_API_KEY,
+        'vendor_lat':      vendor.latitude  or '',
+        'vendor_lng':      vendor.longitude or '',
+        'gmaps_key':       gmaps_key,
     })
 
 
@@ -801,9 +852,9 @@ def checkout(request):
 def order_track(request, ref):
     order = get_object_or_404(FoodOrder, order_ref=ref, customer=request.user)
     return render(request, 'food/track.html', {
-        'order': order,
+        'order':      order,
         'cart_count': 0,
-        'locationiq_key': settings.LOCATIONIQ_API_KEY,
+        'gmaps_key':  getattr(settings, 'GOOGLE_MAPS_API_KEY', ''),
     })
 
 
@@ -811,15 +862,18 @@ def order_track(request, ref):
 def order_track_api(request, ref):
     order = get_object_or_404(FoodOrder, order_ref=ref, customer=request.user)
     rider_lat = rider_lng = rider_name = rider_phone = None
+
     if order.delivery and order.delivery.rider:
         try:
             from rider.models import RiderLocation
-            loc = RiderLocation.objects.get(rider=order.delivery.rider.rider, is_active=True)
+            loc = RiderLocation.objects.get(
+                rider=order.delivery.rider.rider, is_active=True
+            )
             rider_lat = float(loc.latitude)
             rider_lng = float(loc.longitude)
         except Exception:
             pass
-        rp = order.delivery.rider
+        rp          = order.delivery.rider
         rider_name  = rp.rider.get_full_name() or rp.rider.phone
         rider_phone = rp.rider.phone
 
@@ -842,4 +896,7 @@ def order_history(request):
     orders = FoodOrder.objects.filter(
         customer=request.user
     ).select_related('vendor').prefetch_related('items').order_by('-created_at')
-    return render(request, 'food/orders.html', {'orders': orders, 'cart_count': 0})
+    return render(request, 'food/orders.html', {
+        'orders':     orders,
+        'cart_count': 0,
+    })
