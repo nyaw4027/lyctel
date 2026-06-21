@@ -1,6 +1,5 @@
 import math
 import json
-import importlib
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
@@ -22,11 +21,9 @@ from delivery.models import Delivery, DeliveryZone
 def _notify_food_status(order, new_status):
     try:
         from delivery.notifications import notify_food_order_status_change
-    except ImportError:
-        notify_food_order_status_change = None
-
-    if notify_food_order_status_change:
         notify_food_order_status_change(order, new_status)
+    except Exception:
+        pass
 
 
 # ─────────────────────────────
