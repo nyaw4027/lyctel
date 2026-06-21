@@ -7,11 +7,17 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   #delivery-map {
-    height: 320px;
+    height: 280px;
     border-radius: 1rem;
     z-index: 1;
   }
-  .leaflet-control-attribution { font-size: 9px; }
+  @media (min-width: 640px) {
+    #delivery-map { height: 360px; }
+  }
+  .leaflet-control-attribution { font-size: 8px; opacity: .7; }
+  .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 12px rgba(15,27,45,.15) !important; }
+  .leaflet-control-zoom a { border-radius: 10px !important; }
+
   #address-suggestions {
     position: absolute;
     top: 100%;
@@ -36,13 +42,72 @@
   }
   .suggestion-item:hover { background: #f9fafb; }
   .suggestion-item:last-child { border-bottom: none; }
+
+  /* Bolt-style delivery pin: drop shadow + soft bounce on drop */
+  .delivery-pin-wrap {
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    filter: drop-shadow(0 4px 8px rgba(15,27,45,.35));
+  }
+  .delivery-pin-wrap svg { width: 30px; height: 30px; }
+  @keyframes pinDrop {
+    0%   { transform: translateY(-14px) scale(.7); opacity: 0; }
+    60%  { transform: translateY(2px) scale(1.05); opacity: 1; }
+    100% { transform: translateY(0) scale(1); }
+  }
+  .pin-drop-anim { animation: pinDrop .35s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+  .vendor-pin-wrap {
+    background: #0F1B2D;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  }
+
+  #map-relative { position: relative; }
+  .map-recenter-btn {
+    position: absolute;
+    bottom: 14px; right: 14px;
+    width: 38px; height: 38px;
+    background: white;
+    border-radius: 11px;
+    box-shadow: 0 4px 14px rgba(15,27,45,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    z-index: 500;
+    cursor: pointer;
+    transition: transform .15s ease;
+  }
+  .map-recenter-btn:active { transform: scale(.92); }
+
+  .map-hint-pill {
+    position: absolute;
+    top: 10px; left: 10px; right: 10px;
+    background: rgba(15,27,45,.92);
+    backdrop-filter: blur(4px);
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 12px;
+    z-index: 500;
+    text-align: center;
+    pointer-events: none;
+    transition: opacity .3s ease;
+  }
+  .map-hint-pill.hide { opacity: 0; }
+
+  #use-location-btn { transition: transform .15s ease, opacity .15s ease; }
+  #use-location-btn:active { transform: scale(.96); }
+  #use-location-btn.loading { opacity: .6; pointer-events: none; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+<div class="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
-  <div class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+  <div class="flex items-center gap-2 text-sm text-gray-500 mb-6 flex-wrap">
     <a href="{% url 'food:home' %}" class="hover:text-navy">Food</a>
     <span>/</span>
     <a href="{% url 'food:menu' vendor.slug %}" class="hover:text-navy">{{ vendor.name }}</a>
@@ -52,11 +117,11 @@
 
   <h1 class="font-display font-800 text-2xl md:text-3xl text-navy mb-6">Checkout</h1>
 
-  <form method="POST" id="checkout-form" class="grid lg:grid-cols-3 gap-8">
+  <form method="POST" id="checkout-form" class="grid lg:grid-cols-3 gap-6 md:gap-8">
     {% csrf_token %}
 
     <!-- LEFT: Delivery details + map -->
-    <div class="lg:col-span-2 space-y-6">
+    <div class="lg:col-span-2 space-y-5 md:space-y-6">
 
       {% if errors %}
       <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl px-4 py-3">
@@ -65,12 +130,18 @@
       {% endif %}
 
       <!-- Delivery address card -->
-      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-        <h2 class="font-display font-700 text-navy text-lg mb-4">📍 Delivery Address</h2>
+      <div class="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
+          <h2 class="font-display font-700 text-navy text-lg">📍 Delivery Address</h2>
+          <button type="button" id="use-location-btn"
+                  class="flex items-center gap-1.5 text-xs font-semibold text-navy bg-gold-light px-3 py-2 rounded-xl">
+            <span>🎯</span> Use My Location
+          </button>
+        </div>
 
         <div class="relative mb-4">
           <label class="block text-sm font-medium text-gray-600 mb-1.5">Search your address</label>
-          <input type="text" id="address-search" autocomplete="off"
+          <input type="text" id="address-search" autocomplete="off" inputmode="search"
                  placeholder="Start typing your street, area, or landmark..."
                  class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"/>
           <div id="address-suggestions"></div>
@@ -78,7 +149,11 @@
 
         <p class="text-xs text-gray-400 mb-3">Or drag the pin on the map below to your exact location 👇</p>
 
-        <div id="delivery-map"></div>
+        <div id="map-relative">
+          <div id="delivery-map"></div>
+          <div class="map-hint-pill" id="map-hint">Tap or drag the pin to set your delivery spot</div>
+          <div class="map-recenter-btn" id="recenter-btn" title="Recenter">🎯</div>
+        </div>
 
         <div class="mt-4">
           <label class="block text-sm font-medium text-gray-600 mb-1.5">Delivery Address <span class="text-red-500">*</span></label>
@@ -90,7 +165,7 @@
         <div class="grid sm:grid-cols-2 gap-4 mt-4">
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1.5">Phone Number <span class="text-red-500">*</span></label>
-            <input type="tel" name="delivery_phone" required
+            <input type="tel" name="delivery_phone" required inputmode="tel"
                    value="{{ form_data.delivery_phone|default:user.phone }}"
                    placeholder="024 xxx xxxx"
                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"/>
@@ -112,7 +187,7 @@
       </div>
 
       <!-- Payment method -->
-      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+      <div class="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
         <h2 class="font-display font-700 text-navy text-lg mb-4">💳 Payment Method</h2>
         <div class="space-y-2">
           {% for value, label in payment_methods %}
@@ -128,7 +203,7 @@
 
     <!-- RIGHT: Order summary -->
     <div class="lg:col-span-1">
-      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm sticky top-24">
+      <div class="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm lg:sticky lg:top-24">
         <h2 class="font-display font-700 text-navy text-lg mb-4">🧾 Order Summary</h2>
 
         <p class="text-sm font-semibold text-navy mb-3">{{ vendor.name }}</p>
@@ -158,7 +233,7 @@
           </div>
         </div>
 
-        <button type="submit"
+        <button type="submit" id="place-order-btn"
                 class="w-full bg-navy hover:bg-navy-700 text-white font-semibold py-3.5 rounded-xl mt-5 transition-colors btn-press text-sm">
           Place Order →
         </button>
@@ -184,7 +259,7 @@
   }
 
   // ── MAP SETUP ─────────────────────────────────────────
-  const map = L.map('delivery-map').setView([VENDOR_LAT, VENDOR_LNG], 14);
+  const map = L.map('delivery-map', { zoomControl: true }).setView([VENDOR_LAT, VENDOR_LNG], 14);
 
   L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
     attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
@@ -192,23 +267,40 @@
     subdomains: ['a', 'b', 'c'],
   }).addTo(map);
 
+  window.addEventListener('resize', () => map.invalidateSize());
+  setTimeout(() => map.invalidateSize(), 100);
+
   // Vendor marker (fixed, not draggable)
-  const vendorIcon = L.divIcon({
-    html: '<div style="background:#0F1B2D;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>',
-    className: '', iconSize: [20, 20], iconAnchor: [10, 10],
-  });
-  L.marker([VENDOR_LAT, VENDOR_LNG], { icon: vendorIcon, interactive: false })
-    .addTo(map)
-    .bindPopup('{{ vendor.name|escapejs }} (pickup point)');
+  L.marker([VENDOR_LAT, VENDOR_LNG], {
+    icon: L.divIcon({
+      html: '<div class="vendor-pin-wrap"></div>',
+      className: '', iconSize: [20, 20], iconAnchor: [10, 10],
+    }),
+    interactive: false,
+  }).addTo(map).bindPopup('{{ vendor.name|escapejs }} (pickup point)');
+
+  // Bolt-style teardrop delivery pin (SVG, drops in with a bounce)
+  const pinSvg = `
+    <div class="delivery-pin-wrap pin-drop-anim">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 0C7.03 0 3 4.03 3 9c0 6.5 9 15 9 15s9-8.5 9-15c0-4.97-4.03-9-9-9z" fill="#F5A623"/>
+        <circle cx="12" cy="9" r="3.5" fill="#0F1B2D"/>
+      </svg>
+    </div>`;
 
   // Delivery marker (draggable)
   let deliveryMarker = null;
+  const hintPill = document.getElementById('map-hint');
 
-  function setDeliveryPin(lat, lng) {
+  function setDeliveryPin(lat, lng, animate) {
+    if (hintPill) hintPill.classList.add('hide');
     if (deliveryMarker) {
       deliveryMarker.setLatLng([lat, lng]);
     } else {
-      deliveryMarker = L.marker([lat, lng], { draggable: true })
+      deliveryMarker = L.marker([lat, lng], {
+        draggable: true,
+        icon: L.divIcon({ html: pinSvg, className: '', iconSize: [30, 30], iconAnchor: [15, 28] }),
+      })
         .addTo(map)
         .bindPopup('Your delivery location')
         .on('dragend', function(e) {
@@ -216,7 +308,11 @@
           onLocationChosen(pos.lat, pos.lng, true);
         });
     }
-    map.setView([lat, lng], 15);
+    if (animate !== false) {
+      map.flyTo([lat, lng], 16, { duration: 0.8 });
+    } else {
+      map.setView([lat, lng], 16);
+    }
     document.getElementById('delivery_lat').value = lat;
     document.getElementById('delivery_lng').value = lng;
   }
@@ -226,15 +322,25 @@
     onLocationChosen(e.latlng.lat, e.latlng.lng, true);
   });
 
+  // Recenter button — flies back to the current pin (or vendor if none set yet)
+  document.getElementById('recenter-btn').addEventListener('click', function() {
+    if (deliveryMarker) {
+      map.flyTo(deliveryMarker.getLatLng(), 16, { duration: 0.8 });
+    } else {
+      map.flyTo([VENDOR_LAT, VENDOR_LNG], 14, { duration: 0.8 });
+    }
+  });
+
   // ── PRICE/DISTANCE ESTIMATE ──────────────────────────
   function onLocationChosen(lat, lng, reverseGeocode) {
-    setDeliveryPin(lat, lng);
+    setDeliveryPin(lat, lng, true);
     fetchPriceEstimate(lat, lng);
     if (reverseGeocode) reverseGeocodeAddress(lat, lng);
   }
 
   function fetchPriceEstimate(lat, lng) {
-    const url = `/food/api/price-estimate/?vlat=${VENDOR_LAT}&vlng=${VENDOR_LNG}&dlat=${lat}&dlng=${lng}&prep=20`;
+    // NOTE: correct path is /food/price-estimate/ (no "api/" segment — matches food/urls.py name='price_estimate')
+    const url = `/food/price-estimate/?vlat=${VENDOR_LAT}&vlng=${VENDOR_LNG}&dlat=${lat}&dlng=${lng}&prep=20`;
     fetch(url)
       .then(r => r.json())
       .then(data => {
@@ -309,14 +415,42 @@
     if (e.target !== searchInput) suggestBox.classList.remove('show');
   });
 
-  // ── TRY BROWSER GEOLOCATION ON LOAD ──────────────────
+  // ── "USE MY LOCATION" BUTTON ──────────────────────────
+  const useLocationBtn = document.getElementById('use-location-btn');
+  useLocationBtn.addEventListener('click', function() {
+    if (!navigator.geolocation) { alert('Geolocation is not supported on this device.'); return; }
+    useLocationBtn.classList.add('loading');
+    useLocationBtn.innerHTML = '<span>⏳</span> Locating…';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        onLocationChosen(pos.coords.latitude, pos.coords.longitude, true);
+        useLocationBtn.classList.remove('loading');
+        useLocationBtn.innerHTML = '<span>🎯</span> Use My Location';
+      },
+      () => {
+        alert('Could not get your location. Please search or tap the map instead.');
+        useLocationBtn.classList.remove('loading');
+        useLocationBtn.innerHTML = '<span>🎯</span> Use My Location';
+      },
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  });
+
+  // ── TRY BROWSER GEOLOCATION ON LOAD (silent — no error popup) ─
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       pos => onLocationChosen(pos.coords.latitude, pos.coords.longitude, true),
-      () => { /* user denied or unavailable — they can search/click instead */ },
+      () => { /* user denied or unavailable — they can search/click/use-my-location instead */ },
       { timeout: 5000 }
     );
   }
+
+  // ── PREVENT DOUBLE SUBMIT ─────────────────────────────
+  document.getElementById('checkout-form').addEventListener('submit', function() {
+    const btn = document.getElementById('place-order-btn');
+    btn.disabled = true;
+    btn.textContent = 'Placing order…';
+  });
 })();
 </script>
 {% endblock %}
