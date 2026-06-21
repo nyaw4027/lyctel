@@ -722,7 +722,7 @@ def checkout(request):
         return redirect('food:home')
 
     vendor = cart.vendor
-    gmaps_key = getattr(settings, 'GOOGLE_MAPS_API_KEY', '')
+    locationiq_key = settings.LOCATIONIQ_API_KEY
 
     if request.method == 'POST':
         address     = request.POST.get('delivery_address', '').strip()
@@ -751,7 +751,7 @@ def checkout(request):
                 'vendor_lat':      vendor.latitude  or '',
                 'vendor_lng':      vendor.longitude or '',
                 'errors':          errors,
-                'gmaps_key':       gmaps_key,
+                'locationiq_key':  locationiq_key,
             })
 
         try:
@@ -838,7 +838,7 @@ def checkout(request):
         'payment_methods': FoodOrder.PaymentMethod.choices,
         'vendor_lat':      vendor.latitude  or '',
         'vendor_lng':      vendor.longitude or '',
-        'gmaps_key':       gmaps_key,
+        'locationiq_key':  locationiq_key,
     })
 
 
@@ -849,9 +849,9 @@ def checkout(request):
 def order_track(request, ref):
     order = get_object_or_404(FoodOrder, order_ref=ref, customer=request.user)
     return render(request, 'food/track.html', {
-        'order':      order,
-        'cart_count': 0,
-        'gmaps_key':  getattr(settings, 'GOOGLE_MAPS_API_KEY', ''),
+        'order':          order,
+        'cart_count':     0,
+        'locationiq_key': settings.LOCATIONIQ_API_KEY,
     })
 
 
