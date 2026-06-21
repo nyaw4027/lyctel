@@ -134,14 +134,19 @@ def food_home(request):
         'cart_count':       0,
     })
 
-
 # ─────────────────────────────
 # PUBLIC: VENDOR MENU
 # ─────────────────────────────
 def vendor_menu(request, slug):
     vendor     = get_object_or_404(FoodVendor, slug=slug)
     categories = vendor.food_categories.prefetch_related('items').all()
-    all_items  = vendor.food_items.filter(is_available=True)
+    all_items  = vendor.food_items.filter(is_available=True).select_related('category')
+
+    # Items with no category assigned — these were previously dropped silently
+    uncategorized_items = all_items.filter(category__isnull=True)
+
+    # Featured/popular items shown in the horizontal strip at the top
+    featured_items = all_items.filter(is_featured=True)[:10]
 
     food_cart_count = 0
     cart_vendor_id  = None
@@ -154,14 +159,15 @@ def vendor_menu(request, slug):
             pass
 
     return render(request, 'food/menu.html', {
-        'vendor':          vendor,
-        'categories':      categories,
-        'all_items':       all_items,
-        'food_cart_count': food_cart_count,
-        'cart_vendor_id':  cart_vendor_id,
-        'cart_count':      0,
+        'vendor':               vendor,
+        'categories':           categories,
+        'all_items':            all_items,
+        'uncategorized_items':  uncategorized_items,
+        'featured_items':       featured_items,
+        'food_cart_count':      food_cart_count,
+        'cart_vendor_id':       cart_vendor_id,
+        'cart_count':           0,
     })
-
 
 # ─────────────────────────────
 # RESTAURANT REGISTRATION
