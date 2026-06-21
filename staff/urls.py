@@ -27,4 +27,12 @@ urlpatterns = [
     # Customers
     path('customers/',                    views.customer_list,   name='customer_list'),
     path('customers/<int:pk>/',           views.customer_detail, name='customer_detail'),
+
+    # Food vendors (restaurants)
+    path('food/vendors/',                 views.food_vendor_list,   name='food_vendor_list'),
+    path('food/vendors/<int:pk>/',        views.food_vendor_detail, name='food_vendor_detail'),
+
+    # Food orders
+    path('food/orders/',                  views.food_order_list,    name='food_order_list'),
+    path('food/orders/<str:ref>/',        views.food_order_detail,  name='food_order_detail'),
 ]
