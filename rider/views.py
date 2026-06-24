@@ -258,9 +258,8 @@ def reject_delivery(request, pk):
     messages.info(request, 'Delivery rejected.')
     return redirect('rider:dashboard')
 
-
 # ─────────────────────────────
-# LIVE MAP
+# LIVE MAP (fixed — LocationIQ geocoding, food order support)
 # ─────────────────────────────
 @rider_required
 def live_map(request, pk):
@@ -271,26 +270,42 @@ def live_map(request, pk):
         rider=profile,
     )
 
-    # Geocode the customer delivery address
-    customer_lat = 5.6037   # Accra fallback
-    customer_lng = -0.1870
-    try:
-        address = (
-            f"{delivery.order.delivery_address}, "
-            f"{delivery.order.delivery_city}, Ghana"
-        )
-        url = (
-            "https://nominatim.openstreetmap.org/search"
-            f"?q={urllib.parse.quote(address)}&format=json&limit=1"
-        )
-        req = urllib.request.Request(url, headers={'User-Agent': 'Lynctel/1.0'})
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read())
-            if data:
-                customer_lat = float(data[0]['lat'])
-                customer_lng = float(data[0]['lon'])
-    except Exception:
-        pass
+    # Prefer stored coordinates — only geocode if missing
+    customer_lat = delivery.dropoff_lat or 5.6037   # Accra fallback
+    customer_lng = delivery.dropoff_lng or -0.1870
+
+    # If dropoff coords aren't stored, try LocationIQ geocoding (not Nominatim)
+    if not delivery.dropoff_lat and settings.LOCATIONIQ_API_KEY:
+        try:
+            address = ''
+            if delivery.order:
+                address = (
+                    f"{delivery.order.delivery_address}, "
+                    f"{getattr(delivery.order, 'delivery_city', '')}, Ghana"
+                )
+            elif delivery.dropoff_location:
+                address = f"{delivery.dropoff_location}, Ghana"
+
+            if address:
+                import urllib.request, urllib.parse, json
+                encoded = urllib.parse.quote(address)
+                url = (
+                    f"https://us1.locationiq.com/v1/search"
+                    f"?key={settings.LOCATIONIQ_API_KEY}"
+                    f"&q={encoded}&format=json&limit=1&countrycodes=gh"
+                )
+                req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read())
+                    if data:
+                        customer_lat = float(data[0]['lat'])
+                        customer_lng = float(data[0]['lon'])
+                        # Cache for future requests
+                        delivery.dropoff_lat = customer_lat
+                        delivery.dropoff_lng = customer_lng
+                        delivery.save(update_fields=['dropoff_lat', 'dropoff_lng'])
+        except Exception:
+            pass  # Keep Accra fallback — never crash the rider's map
 
     return render(request, 'rider/live_map.html', {
         'delivery':       delivery,
@@ -300,7 +315,6 @@ def live_map(request, pk):
         'cart_count':     0,
         'locationiq_key': settings.LOCATIONIQ_API_KEY,
     })
-
 
 # ─────────────────────────────
 # GPS: UPDATE LOCATION

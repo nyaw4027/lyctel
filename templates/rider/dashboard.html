@@ -1,3 +1,4 @@
+cat > /home/claude/rider_dashboard.html << 'DASHEOF'
 {% extends "base.html" %}
 {% block title %}Rider Dashboard — Lynctel{% endblock %}
 
@@ -29,6 +30,9 @@
     to   { opacity: 1; transform: translateY(0) scale(1); }
   }
   #ride-prompt { animation: promptIn .35s cubic-bezier(.22,1,.36,1); }
+
+  /* Countdown bar color transitions */
+  .countdown-bar { transition: width 1s linear, background-color .5s ease; }
 </style>
 {% endblock %}
 
@@ -38,22 +42,15 @@
   <!-- ── HEADER ─────────────────────────────────────────── -->
   <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
     <div class="flex items-center gap-4">
-      <!-- Avatar -->
       <div class="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-navy flex items-center justify-center">
         {% if request.user.profile_pic %}
-          <img src="{{ request.user.profile_pic.url }}"
-               alt="{{ request.user.display_name }}"
-               class="w-full h-full object-cover"/>
+          <img src="{{ request.user.profile_pic.url }}" alt="{{ request.user.display_name }}" class="w-full h-full object-cover"/>
         {% else %}
-          <span class="text-white font-display font-700 text-xl">
-            {{ request.user.first_name|first|upper|default:"R" }}
-          </span>
+          <span class="text-white font-display font-700 text-xl">{{ request.user.first_name|first|upper|default:"R" }}</span>
         {% endif %}
       </div>
       <div>
-        <h1 class="font-display font-700 text-2xl text-navy">
-          {{ request.user.get_full_name|default:request.user.phone }}
-        </h1>
+        <h1 class="font-display font-700 text-2xl text-navy">{{ request.user.get_full_name|default:request.user.phone }}</h1>
         <div class="flex items-center gap-2 mt-1">
           <span class="w-2 h-2 rounded-full pulse-dot
             {% if profile.status == 'available' %}bg-green-500
@@ -67,25 +64,20 @@
             {% elif profile.status == 'on_delivery' %}On Delivery
             {% else %}Offline{% endif %}
           </span>
-          {% if profile.zone %}
-          <span class="text-xs text-gray-400">· {{ profile.zone.name }}</span>
-          {% endif %}
+          {% if profile.zone %}<span class="text-xs text-gray-400">· {{ profile.zone.name }}</span>{% endif %}
         </div>
       </div>
     </div>
 
     <div class="flex items-center gap-3">
-
       <!-- Notification bell -->
       <div class="relative" id="notif-wrapper">
         <button onclick="toggleNotifications()"
                 class="relative w-11 h-11 bg-white border border-gray-200 rounded-xl
                        flex items-center justify-center hover:border-navy transition-colors">
-          <svg id="bell-icon" class="w-5 h-5 text-gray-600"
-               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg id="bell-icon" class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12
-                     0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
           </svg>
           <span id="notif-badge"
                 class="{% if unread_count == 0 %}hidden{% endif %}
@@ -95,40 +87,31 @@
           </span>
         </button>
 
-        <!-- Notifications dropdown -->
         <div id="notif-dropdown"
              class="hidden absolute right-0 top-14 w-80 bg-white rounded-2xl shadow-2xl
                     border border-gray-100 z-50 overflow-hidden">
           <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 class="font-display font-700 text-navy text-sm">Notifications</h3>
-            <button onclick="markAllRead()"
-                    class="text-xs text-gold-dark font-semibold hover:underline">
-              Mark all read
-            </button>
+            <button onclick="markAllRead()" class="text-xs text-gold-dark font-semibold hover:underline">Mark all read</button>
           </div>
           <div id="notif-list" class="max-h-80 overflow-y-auto divide-y divide-gray-50">
             {% for notif in notifications %}
             <div id="notif-{{ notif.pk }}"
-                 class="notif-item px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer
-                        {% if not notif.is_read %}bg-blue-50{% endif %}"
+                 class="notif-item px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer {% if not notif.is_read %}bg-blue-50{% endif %}"
                  onclick="readNotif({{ notif.pk }}, '{{ notif.link|default:'' }}')">
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0
                   {% if notif.notif_type == 'new_delivery' %}bg-green-100
                   {% elif notif.notif_type == 'payment' %}bg-yellow-100
                   {% else %}bg-blue-50{% endif %}">
-                  {% if notif.notif_type == 'new_delivery' %}🛵
-                  {% elif notif.notif_type == 'payment' %}💰
-                  {% else %}📢{% endif %}
+                  {% if notif.notif_type == 'new_delivery' %}🛵{% elif notif.notif_type == 'payment' %}💰{% else %}📢{% endif %}
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-semibold text-navy leading-snug">{{ notif.title }}</p>
                   <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">{{ notif.message }}</p>
                   <p class="text-xs text-gray-300 mt-1">{{ notif.created_at|timesince }} ago</p>
                 </div>
-                {% if not notif.is_read %}
-                <div class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5"></div>
-                {% endif %}
+                {% if not notif.is_read %}<div class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5"></div>{% endif %}
               </div>
             </div>
             {% empty %}
@@ -146,27 +129,21 @@
         {% csrf_token %}
         {% if profile.status == 'on_delivery' %}
         <button type="button" disabled
-                class="flex items-center gap-2 bg-blue-50 text-blue-600
-                       font-semibold text-sm px-5 py-2.5 rounded-xl cursor-not-allowed">
+                class="flex items-center gap-2 bg-blue-50 text-blue-600 font-semibold text-sm px-5 py-2.5 rounded-xl cursor-not-allowed">
           🛵 On Delivery
         </button>
         {% elif profile.status == 'available' %}
         <button type="submit"
-                class="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white
-                       font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors btn-press">
-          <span class="w-2 h-2 bg-white rounded-full"></span>
-          Go Offline
+                class="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors btn-press">
+          <span class="w-2 h-2 bg-white rounded-full"></span> Go Offline
         </button>
         {% else %}
         <button type="submit"
-                class="flex items-center gap-2 bg-navy hover:bg-navy-700 text-white
-                       font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors btn-press">
-          <span class="w-2 h-2 bg-green-400 rounded-full"></span>
-          Go Online
+                class="flex items-center gap-2 bg-navy hover:bg-navy-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors btn-press">
+          <span class="w-2 h-2 bg-green-400 rounded-full"></span> Go Online
         </button>
         {% endif %}
       </form>
-
     </div>
   </div>
 
@@ -177,15 +154,11 @@
       <p class="text-xs text-gray-400 mt-1">Deliveries</p>
     </div>
     <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-      <p class="font-display font-700 text-2xl text-green-600">
-        GHS {{ total_earnings|floatformat:2 }}
-      </p>
+      <p class="font-display font-700 text-2xl text-green-600">GHS {{ total_earnings|floatformat:2 }}</p>
       <p class="text-xs text-gray-400 mt-1">Total Earned</p>
     </div>
     <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-      <p class="font-display font-700 text-2xl text-orange-500">
-        GHS {{ pending_payout|floatformat:2 }}
-      </p>
+      <p class="font-display font-700 text-2xl text-orange-500">GHS {{ pending_payout|floatformat:2 }}</p>
       <p class="text-xs text-gray-400 mt-1">Pending Payout</p>
     </div>
     <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
@@ -194,69 +167,93 @@
     </div>
   </div>
 
-  <!-- ── PENDING RIDE REQUESTS ──────────────────────────── -->
+  <!-- ── PENDING RIDE REQUESTS (Uber-style) ─────────────── -->
   {% if pending_requests %}
-  <div class="mb-8">
-    <h2 class="font-display font-700 text-lg text-navy mb-4 flex items-center gap-2">
-      🔔 Pending Ride Requests
-      <span class="text-xs bg-orange-100 text-orange-700 font-semibold px-2 py-0.5 rounded-full">
-        {{ pending_requests|length }}
+  <div class="mb-8" id="pending-requests-section">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
+      <h2 class="font-display font-700 text-lg text-navy">Incoming Request{{ pending_requests|length|pluralize }}</h2>
+      <span class="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full ml-auto">
+        {{ pending_requests|length }} new
       </span>
-    </h2>
+    </div>
+
     <div class="space-y-4">
-      {% for acceptance in pending_requests %}
-      <div class="bg-white rounded-2xl border-2 border-orange-200 p-5">
-        <div class="flex items-start justify-between gap-3 flex-wrap mb-4">
+    {% for acceptance in pending_requests %}
+    <div class="bg-white border-2 border-amber-400 rounded-2xl overflow-hidden shadow-lg request-card"
+         id="request-card-{{ acceptance.pk }}"
+         data-created="{{ acceptance.created_at.isoformat }}">
+
+      <!-- Countdown progress bar -->
+      <div class="h-1.5 bg-gray-100">
+        <div class="h-full bg-amber-400 countdown-bar" id="bar-{{ acceptance.pk }}" style="width:100%"></div>
+      </div>
+
+      <div class="p-4 md:p-5">
+        <div class="flex items-start justify-between gap-3 mb-4">
           <div>
-            <p class="font-display font-700 text-navy">
-              {% if acceptance.delivery.order %}
-                {{ acceptance.delivery.order.order_ref }}
-              {% else %}
-                Ride #{{ acceptance.delivery.pk }}
-              {% endif %}
-            </p>
-            {% if acceptance.delivery.pickup_location %}
-            <p class="text-xs text-gray-500 mt-1">📍 {{ acceptance.delivery.pickup_location }}</p>
-            {% endif %}
-            {% if acceptance.delivery.order %}
-            <p class="text-xs text-gray-400 mt-0.5">
-              → {{ acceptance.delivery.order.delivery_address }},
-              {{ acceptance.delivery.order.delivery_city }}
-            </p>
-            {% endif %}
-            <p class="text-xs text-orange-500 mt-1 font-semibold">
-              Requested {{ acceptance.created_at|timesince }} ago
-            </p>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-xl">🍔</span>
+              <span class="font-display font-700 text-navy">New Food Delivery</span>
+            </div>
+            <p class="text-xs text-gray-400">Requested <span class="font-semibold">{{ acceptance.created_at|timesince }} ago</span></p>
           </div>
-          <div class="text-right">
-            <p class="font-display font-700 text-green-600 text-xl">
-              GHS {{ acceptance.delivery.rider_commission }}
-            </p>
-            <p class="text-xs text-gray-400">Your cut</p>
+          <div class="text-right flex-shrink-0">
+            <p class="font-display font-700 text-navy text-xl">GHS {{ acceptance.delivery.rider_commission }}</p>
+            <p class="text-xs text-gray-400">Your commission</p>
           </div>
         </div>
-        <div class="flex gap-3">
-          <form method="POST"
-                action="{% url 'rider:accept_delivery' acceptance.pk %}"
-                class="flex-1">
+
+        <!-- Route -->
+        <div class="bg-gray-50 rounded-xl p-3 mb-4 space-y-3">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 bg-gold-light rounded-lg flex items-center justify-center flex-shrink-0">📍</div>
+            <div class="min-w-0">
+              <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Pickup</p>
+              <p class="text-sm font-semibold text-navy truncate">{{ acceptance.delivery.pickup_location }}</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">🏠</div>
+            <div class="min-w-0">
+              <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Drop-off</p>
+              <p class="text-sm font-semibold text-navy truncate">{{ acceptance.delivery.dropoff_location }}</p>
+            </div>
+          </div>
+          {% if acceptance.delivery.distance_km %}
+          <div class="flex items-center gap-3 pt-2 border-t border-gray-100 text-xs text-gray-500">
+            <span>📏 {{ acceptance.delivery.distance_km|floatformat:1 }} km</span>
+            <span class="text-gray-300">·</span>
+            <span>💳 Total: GHS {{ acceptance.delivery.delivery_fee }}</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Countdown text -->
+        <p class="text-center text-xs text-gray-400 mb-4">
+          Auto-declines in <span class="font-bold text-amber-600" id="countdown-{{ acceptance.pk }}">30</span>s
+        </p>
+
+        <!-- Accept / Reject -->
+        <div class="grid grid-cols-2 gap-3">
+          <form method="POST" action="{% url 'rider:reject_delivery' acceptance.pk %}">
             {% csrf_token %}
-            <button class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold
-                           py-3 rounded-xl transition-colors btn-press text-sm">
-              ✓ Accept
+            <button type="submit"
+                    class="w-full py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors">
+              ✕ Decline
             </button>
           </form>
-          <form method="POST"
-                action="{% url 'rider:reject_delivery' acceptance.pk %}"
-                class="flex-1">
+          <form method="POST" action="{% url 'rider:accept_delivery' acceptance.pk %}">
             {% csrf_token %}
-            <button class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold
-                           py-3 rounded-xl transition-colors text-sm">
-              ✗ Reject
+            <button type="submit"
+                    class="w-full py-3.5 rounded-xl bg-navy text-white font-semibold text-sm hover:bg-navy-700 transition-colors">
+              ✓ Accept
             </button>
           </form>
         </div>
       </div>
-      {% endfor %}
+    </div>
+    {% endfor %}
     </div>
   </div>
   {% endif %}
@@ -267,9 +264,7 @@
     <div class="flex items-center gap-2 mb-4">
       <div class="w-2 h-2 bg-blue-500 rounded-full pulse-dot"></div>
       <h2 class="font-display font-700 text-lg text-navy">Active Deliveries</h2>
-      <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">
-        {{ active_deliveries|length }}
-      </span>
+      <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">{{ active_deliveries|length }}</span>
     </div>
     <div class="space-y-4">
       {% for delivery in active_deliveries %}
@@ -277,9 +272,7 @@
         <div class="flex items-center justify-between px-5 py-4 bg-blue-50 flex-wrap gap-3">
           <div>
             <p class="font-display font-700 text-navy">{{ delivery.order.order_ref }}</p>
-            <p class="text-xs text-gray-500 mt-0.5">
-              Assigned {{ delivery.assigned_at|timesince }} ago
-            </p>
+            <p class="text-xs text-gray-500 mt-0.5">Assigned {{ delivery.assigned_at|timesince }} ago</p>
           </div>
           <span class="text-xs font-semibold px-3 py-1.5 rounded-full
             {% if delivery.status == 'assigned' %}bg-yellow-100 text-yellow-700
@@ -294,12 +287,8 @@
         <div class="px-5 py-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                Deliver To
-              </p>
-              <p class="text-sm font-semibold text-navy">
-                {{ delivery.order.delivery_address }}
-              </p>
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Deliver To</p>
+              <p class="text-sm font-semibold text-navy">{{ delivery.order.delivery_address }}</p>
               <p class="text-sm text-gray-500">{{ delivery.order.delivery_city }}</p>
               <a href="tel:{{ delivery.order.delivery_phone }}"
                  class="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-green-600">
@@ -307,21 +296,14 @@
               </a>
             </div>
             <div>
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                Your Cut
-              </p>
-              <p class="font-display font-700 text-2xl text-green-600">
-                GHS {{ delivery.rider_commission }}
-              </p>
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Your Cut</p>
+              <p class="font-display font-700 text-2xl text-green-600">GHS {{ delivery.rider_commission }}</p>
               <p class="text-xs text-gray-400 mt-0.5">{{ delivery.zone.name }}</p>
             </div>
           </div>
 
-          <!-- Items -->
           <div class="bg-gray-50 rounded-xl p-3 mb-4">
-            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-              Items to deliver
-            </p>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Items</p>
             {% for item in delivery.order.items.all %}
             <div class="flex justify-between text-sm text-gray-700">
               <span>{{ item.product_name }} × {{ item.quantity }}</span>
@@ -330,54 +312,31 @@
             {% endfor %}
           </div>
 
-          <!-- Action buttons -->
           <div class="flex gap-3 flex-wrap">
             {% if delivery.status == 'assigned' %}
-            <form method="POST"
-                  action="{% url 'rider:update_delivery' delivery.pk %}"
-                  class="flex-1">
+            <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}" class="flex-1">
               {% csrf_token %}
               <input type="hidden" name="status" value="picked_up"/>
-              <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold
-                             py-3 rounded-xl transition-colors btn-press text-sm">
-                ✓ Mark Picked Up
-              </button>
+              <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors btn-press text-sm">✓ Mark Picked Up</button>
             </form>
             {% elif delivery.status == 'picked_up' %}
-            <form method="POST"
-                  action="{% url 'rider:update_delivery' delivery.pk %}"
-                  class="flex-1">
+            <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}" class="flex-1">
               {% csrf_token %}
               <input type="hidden" name="status" value="en_route"/>
-              <button class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold
-                             py-3 rounded-xl transition-colors btn-press text-sm">
-                🛵 Mark En Route
-              </button>
+              <button class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-xl transition-colors btn-press text-sm">🛵 Mark En Route</button>
             </form>
             {% elif delivery.status == 'en_route' %}
-            <form method="POST"
-                  action="{% url 'rider:update_delivery' delivery.pk %}"
-                  class="flex-1">
+            <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}" class="flex-1">
               {% csrf_token %}
               <input type="hidden" name="status" value="delivered"/>
-              <button class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold
-                             py-3 rounded-xl transition-colors btn-press text-sm">
-                🎉 Mark Delivered
-              </button>
+              <button class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors btn-press text-sm">🎉 Mark Delivered</button>
             </form>
             {% endif %}
-
             <a href="https://wa.me/233{{ delivery.order.delivery_phone|slice:'1:' }}?text=Hi!+I'm+your+Lynctel+rider+for+order+{{ delivery.order.order_ref }}.+I'm+on+my+way."
                target="_blank"
-               class="bg-green-500 hover:bg-green-600 text-white font-semibold
-                      py-3 px-4 rounded-xl transition-colors text-sm">
-              💬
-            </a>
+               class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm">💬</a>
             <a href="{% url 'rider:live_map' delivery.pk %}"
-               class="bg-navy hover:bg-navy-700 text-white font-semibold
-                      py-3 px-4 rounded-xl transition-colors text-sm">
-              🗺️
-            </a>
+               class="bg-navy hover:bg-navy-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm">🗺️ Navigate</a>
           </div>
         </div>
       </div>
@@ -386,16 +345,12 @@
   </div>
 
   {% else %}
-  <!-- Empty state -->
   <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center mb-8">
     <p class="text-5xl mb-3">🛵</p>
     <p class="font-display font-700 text-navy mb-1">No active deliveries</p>
     <p class="text-sm text-gray-400">
-      {% if profile.status == 'available' %}
-        You're online. You'll be notified when a delivery is assigned.
-      {% else %}
-        Go online to start receiving deliveries.
-      {% endif %}
+      {% if profile.status == 'available' %}You're online. You'll be notified when a delivery is assigned.
+      {% else %}Go online to start receiving deliveries.{% endif %}
     </p>
   </div>
   {% endif %}
@@ -421,22 +376,13 @@
         <tbody class="divide-y divide-gray-50">
           {% for earning in recent_earnings %}
           <tr class="hover:bg-gray-50">
-            <td class="px-5 py-3 font-bold text-gold-dark">
-              {{ earning.delivery.order.order_ref }}
-            </td>
-            <td class="px-5 py-3 text-gray-400 hidden md:table-cell">
-              {{ earning.created_at|date:"M d, Y" }}
-            </td>
-            <td class="px-5 py-3 text-gray-500 hidden md:table-cell">
-              {{ earning.delivery.zone.name|default:"—" }}
-            </td>
-            <td class="px-5 py-3 text-right font-display font-700 text-green-600">
-              +GHS {{ earning.amount }}
-            </td>
+            <td class="px-5 py-3 font-bold text-gold-dark">{{ earning.delivery.order.order_ref }}</td>
+            <td class="px-5 py-3 text-gray-400 hidden md:table-cell">{{ earning.created_at|date:"M d, Y" }}</td>
+            <td class="px-5 py-3 text-gray-500 hidden md:table-cell">{{ earning.delivery.zone.name|default:"—" }}</td>
+            <td class="px-5 py-3 text-right font-display font-700 text-green-600">+GHS {{ earning.amount }}</td>
             <td class="px-5 py-3 text-right">
               <span class="text-xs font-semibold px-2.5 py-1 rounded-full
-                {% if earning.status == 'paid' %}bg-green-100 text-green-700
-                {% else %}bg-orange-100 text-orange-700{% endif %}">
+                {% if earning.status == 'paid' %}bg-green-100 text-green-700{% else %}bg-orange-100 text-orange-700{% endif %}">
                 {{ earning.get_status_display }}
               </span>
             </td>
@@ -455,7 +401,7 @@
 
 </div>
 
-<!-- ── REAL-TIME RIDE REQUEST PROMPT ──────────────────── -->
+<!-- ── FLOATING RIDE REQUEST PROMPT (WebSocket-triggered) ── -->
 <div id="ride-prompt"
      class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50
             w-[calc(100%-2rem)] max-w-md bg-white rounded-3xl shadow-2xl
@@ -463,12 +409,8 @@
   <div class="bg-gold px-5 py-3 flex items-center gap-3">
     <span class="text-2xl">🛵</span>
     <div>
-      <p class="font-display font-700 text-navy text-base leading-tight">
-        New Ride Request!
-      </p>
-      <p class="text-xs text-navy/70">
-        Respond within <span id="prompt-timer" class="font-bold">60</span>s
-      </p>
+      <p class="font-display font-700 text-navy text-base leading-tight">New Ride Request!</p>
+      <p class="text-xs text-navy/70">Respond within <span id="prompt-timer" class="font-bold">60</span>s</p>
     </div>
     <div class="ml-auto">
       <div class="w-3 h-3 bg-navy rounded-full pulse-dot"></div>
@@ -476,41 +418,26 @@
   </div>
   <div class="px-5 py-4 space-y-2">
     <div class="flex items-start gap-2">
-      <span class="w-5 h-5 bg-green-100 text-green-600 rounded-full text-xs
-                   flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">A</span>
+      <span class="w-5 h-5 bg-green-100 text-green-600 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">A</span>
       <p class="text-sm text-navy font-medium" id="prompt-pickup">—</p>
     </div>
     <div class="flex items-start gap-2">
-      <span class="w-5 h-5 bg-red-100 text-red-600 rounded-full text-xs
-                   flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">B</span>
+      <span class="w-5 h-5 bg-red-100 text-red-600 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">B</span>
       <p class="text-sm text-navy font-medium" id="prompt-dropoff">—</p>
     </div>
     <div class="flex items-center gap-4 pt-1">
-      <div class="text-xs text-gray-500">
-        Total fee: <span id="prompt-fee" class="font-semibold text-navy">—</span>
-      </div>
-      <div class="text-xs text-gray-500">
-        Your cut:
-        <span id="prompt-commission" class="font-bold text-green-600 text-sm">—</span>
-      </div>
+      <span class="text-xs text-gray-500">Fee: <span id="prompt-fee" class="font-semibold text-navy">—</span></span>
+      <span class="text-xs text-gray-500">Your cut: <span id="prompt-commission" class="font-bold text-green-600 text-sm">—</span></span>
     </div>
   </div>
   <div class="flex gap-3 px-5 pb-5">
     <form id="accept-form" method="POST" class="flex-1">
       {% csrf_token %}
-      <button type="submit"
-              class="w-full bg-green-500 hover:bg-green-600 text-white font-display font-700
-                     py-3.5 rounded-2xl transition-colors btn-press text-sm">
-        ✓ Accept
-      </button>
+      <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-display font-700 py-3.5 rounded-2xl transition-colors btn-press text-sm">✓ Accept</button>
     </form>
     <form id="reject-form" method="POST" class="flex-1">
       {% csrf_token %}
-      <button type="submit"
-              class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold
-                     py-3.5 rounded-2xl transition-colors text-sm">
-        ✗ Reject
-      </button>
+      <button type="submit" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3.5 rounded-2xl transition-colors text-sm">✗ Reject</button>
     </form>
   </div>
 </div>
@@ -518,29 +445,56 @@
 
 {% block extra_js %}
 <script>
-  // ── WebSocket — real-time ride request prompts ─────────
-  const wsProto  = location.protocol === 'https:' ? 'wss' : 'ws';
-  const riderWs  = new WebSocket(`${wsProto}://${location.host}/ws/rider/`);
+  // ── COUNTDOWN TIMERS for pending request cards ─────────
+  document.querySelectorAll('.request-card').forEach(card => {
+    const pk      = card.id.replace('request-card-', '');
+    const created = new Date(card.dataset.created);
+    const timeoutMs = 30000; // 30 seconds
+
+    function tick() {
+      const elapsed   = Date.now() - created.getTime();
+      const remaining = Math.max(0, Math.ceil((timeoutMs - elapsed) / 1000));
+      const pct       = Math.max(0, ((timeoutMs - elapsed) / timeoutMs) * 100);
+
+      const countdownEl = document.getElementById(`countdown-${pk}`);
+      const barEl       = document.getElementById(`bar-${pk}`);
+
+      if (countdownEl) countdownEl.textContent = remaining;
+      if (barEl) {
+        barEl.style.width = pct + '%';
+        barEl.style.backgroundColor =
+          pct > 60 ? '#f59e0b' : pct > 30 ? '#ef4444' : '#dc2626';
+      }
+
+      if (remaining <= 0) {
+        const rejectForm = card.querySelector('form:first-of-type');
+        if (rejectForm) rejectForm.submit();
+      }
+    }
+    tick();
+    setInterval(tick, 1000);
+  });
+
+  // ── WebSocket — real-time ride request prompt ───────────
+  const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const riderWs = new WebSocket(`${wsProto}://${location.host}/ws/rider/`);
   let promptTimer = null;
 
   riderWs.onmessage = e => {
-    const msg = JSON.parse(e.data);
-    if (msg.type === 'ride_request') showPrompt(msg);
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'ride_request') showPrompt(msg);
+    } catch {}
   };
-
-  riderWs.onerror = () => {};  // suppress console noise when WS not yet set up
+  riderWs.onerror = () => {}; // suppress noise if WS not yet wired
 
   function showPrompt(msg) {
     document.getElementById('prompt-pickup').textContent     = msg.pickup     || 'N/A';
     document.getElementById('prompt-dropoff').textContent    = msg.dropoff    || 'N/A';
-    document.getElementById('prompt-fee').textContent        = 'GHS ' + msg.fee;
-    document.getElementById('prompt-commission').textContent = 'GHS ' + msg.commission;
-
-    document.getElementById('accept-form').action =
-      `/rider/accept/${msg.acceptance_id}/`;
-    document.getElementById('reject-form').action =
-      `/rider/reject/${msg.acceptance_id}/`;
-
+    document.getElementById('prompt-fee').textContent        = 'GHS ' + (msg.fee        || '0');
+    document.getElementById('prompt-commission').textContent = 'GHS ' + (msg.commission || '0');
+    document.getElementById('accept-form').action = `/rider/accept/${msg.acceptance_id}/`;
+    document.getElementById('reject-form').action = `/rider/reject/${msg.acceptance_id}/`;
     document.getElementById('ride-prompt').classList.remove('hidden');
 
     let remaining = 60;
@@ -553,10 +507,10 @@
         document.getElementById('ride-prompt').classList.add('hidden');
       }
     }, 1000);
-
     ringBell();
   }
 
+  // ── NOTIFICATIONS ──────────────────────────────────────
   function ringBell() {
     const bell = document.getElementById('bell-icon');
     bell.classList.add('bell-ring');
@@ -576,10 +530,7 @@
   function readNotif(id, link) {
     fetch(`/rider/notifications/${id}/read/`, {
       method: 'POST',
-      headers: {
-        'X-CSRFToken': CSRF_TOKEN,
-        'X-Requested-With': 'XMLHttpRequest',
-      }
+      headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(r => r.json())
     .then(d => {
@@ -597,10 +548,7 @@
   function markAllRead() {
     fetch('/rider/notifications/read-all/', {
       method: 'POST',
-      headers: {
-        'X-CSRFToken': CSRF_TOKEN,
-        'X-Requested-With': 'XMLHttpRequest',
-      }
+      headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(r => r.json())
     .then(() => {
@@ -620,23 +568,26 @@
     count > 0 ? b.classList.remove('hidden') : b.classList.add('hidden');
   }
 
-  // Poll every 30s for new notifications
+  // ── POLL for new requests (fallback when WS not connected) ─
+  {% if not pending_requests %}
   setInterval(() => {
     fetch('/rider/notifications/count/', {
       headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(r => r.json())
     .then(d => {
-      const old = parseInt(
-        document.getElementById('notif-badge').textContent || 0
-      );
-      if (d.count > old) {
+      const oldCount = parseInt(document.getElementById('notif-badge').textContent || 0);
+      if (d.count > oldCount) {
         ringBell();
         updateBadge(d.count);
-        if (d.has_new_delivery) location.reload();
+      }
+      if (d.has_new_delivery) {
+        // New delivery appeared — reload so the countdown card shows
+        window.location.reload();
       }
     })
     .catch(() => {});
-  }, 30000);
+  }, 8000);
+  {% endif %}
 </script>
 {% endblock %}

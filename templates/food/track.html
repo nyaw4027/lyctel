@@ -381,41 +381,50 @@
       if (el) el.className = `flex-1 h-2 rounded-full transition-all duration-500 ${i <= idx ? 'bg-navy' : 'bg-gray-200'}`;
     });
 
-    // Rider info
-    if (data.rider_name) {
-      const card = document.getElementById('rider-card');
-      card.classList.remove('hidden');
-      document.getElementById('rider-name').textContent   = data.rider_name;
-      document.getElementById('rider-avatar').textContent = data.rider_name[0].toUpperCase();
-      if (data.rider_phone) {
-        document.getElementById('rider-call').href = 'tel:' + data.rider_phone;
-        const wa = data.rider_phone.replace(/^0/, '233');
-        document.getElementById('rider-wa').href = `https://wa.me/${wa}`;
-      }
-    }
-
-    // Rider GPS
-    if (data.rider_lat && data.rider_lng) {
-      moveRider(parseFloat(data.rider_lat), parseFloat(data.rider_lng));
-    }
-
-    // Delivered
+    // Delivered — hide map, show celebration card
     if (data.status === 'delivered') {
       document.getElementById('delivered-card').classList.remove('hidden');
       document.getElementById('map-section').classList.add('hidden');
     }
   }
 
-  function poll() {
+  // Poll order status from food API
+  function pollStatus() {
     fetch('{% url "food:order_track_api" order.order_ref %}')
       .then(r => r.json())
       .then(updateUI)
       .catch(console.error);
   }
 
+  // Poll rider GPS from rider location API (separate, more frequent)
+  function pollRiderGPS() {
+    fetch('{% url "rider:location_api" order.order_ref %}')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.lat && d.lng) {
+          moveRider(parseFloat(d.lat), parseFloat(d.lng));
+          // Show rider info if not already shown
+          if (d.rider) {
+            const card = document.getElementById('rider-card');
+            card.classList.remove('hidden');
+            document.getElementById('rider-name').textContent = d.rider;
+            document.getElementById('rider-avatar').textContent = d.rider[0].toUpperCase();
+            if (d.phone) {
+              document.getElementById('rider-call').href = 'tel:' + d.phone;
+              const wa = d.phone.replace(/^0/, '233');
+              document.getElementById('rider-wa').href = `https://wa.me/${wa}`;
+            }
+          }
+        }
+      })
+      .catch(() => {});
+  }
+
   initMap();
-  poll();
-  setInterval(poll, 5000);
+  pollStatus();
+  pollRiderGPS();
+  setInterval(pollStatus, 8000);   // order status every 8s
+  setInterval(pollRiderGPS, 4000); // rider GPS every 4s — smoother updates
 })();
 </script>
 {% endblock %}
