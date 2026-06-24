@@ -384,3 +384,60 @@ class FoodCartItem(models.Model):
 
     def __str__(self):
         return f'{self.quantity}x {self.food.name}'
+
+
+# ── Add these models to food/models.py ──────────────────────────────────────
+# Paste at the bottom of food/models.py, after FoodCartItem
+
+class FoodPayment(models.Model):
+    """Tracks payment for a FoodOrder — mirrors Payment model for product orders."""
+
+    class Status(models.TextChoices):
+        PENDING   = 'pending',   'Pending'
+        SUCCESS   = 'success',   'Success'
+        FAILED    = 'failed',    'Failed'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    food_order     = models.OneToOneField(
+        FoodOrder, on_delete=models.CASCADE, related_name='payment'
+    )
+    amount         = models.DecimalField(max_digits=10, decimal_places=2)
+    transaction_id = models.CharField(max_length=100, unique=True)
+    gateway_ref    = models.CharField(max_length=100, blank=True)
+    gateway_response = models.JSONField(default=dict, blank=True)
+    momo_number    = models.CharField(max_length=20, blank=True)
+    provider       = models.CharField(max_length=20, default='paystack')
+    status         = models.CharField(
+        max_length=15, choices=Status.choices, default=Status.PENDING
+    )
+    paid_at        = models.DateTimeField(null=True, blank=True)
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.food_order.order_ref} — {self.status} — GHS {self.amount}'
+
+
+class FoodVendorEarning(models.Model):
+    """96/4 commission split for food orders."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PAID    = 'paid',    'Paid Out'
+
+    food_order    = models.OneToOneField(
+        FoodOrder, on_delete=models.CASCADE, related_name='vendor_earning'
+    )
+    vendor        = models.ForeignKey(
+        FoodVendor, on_delete=models.CASCADE, related_name='food_earnings'
+    )
+    gross_amount  = models.DecimalField(max_digits=10, decimal_places=2)  # full subtotal
+    app_commission = models.DecimalField(max_digits=10, decimal_places=2)  # 4%
+    vendor_payout = models.DecimalField(max_digits=10, decimal_places=2)  # 96%
+    status        = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.PENDING
+    )
+    paid_at    = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.vendor.name} — GHS {self.vendor_payout} ({self.status})'

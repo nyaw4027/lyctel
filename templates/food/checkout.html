@@ -190,13 +190,34 @@
       <div class="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
         <h2 class="font-display font-700 text-navy text-lg mb-4">💳 Payment Method</h2>
         <div class="space-y-2">
-          {% for value, label in payment_methods %}
-          <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-gold has-[:checked]:bg-gold-light transition-colors">
-            <input type="radio" name="payment_method" value="{{ value }}" {% if forloop.first %}checked{% endif %} class="accent-gold w-4 h-4">
-            <span class="text-sm font-medium text-navy">{{ label }}</span>
+
+          <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-gold has-[:checked]:bg-gold-light transition-colors">
+            <input type="radio" name="payment_method" value="momo_prepaid" class="accent-gold w-4 h-4">
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-navy">📱 MoMo — Pay Now</p>
+              <p class="text-xs text-gray-400 mt-0.5">MTN, Vodafone or AirtelTigo · Secure via Paystack</p>
+            </div>
+            <span class="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full flex-shrink-0">Recommended</span>
           </label>
-          {% endfor %}
+
+          <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-gold has-[:checked]:bg-gold-light transition-colors">
+            <input type="radio" name="payment_method" value="momo_on_delivery" class="accent-gold w-4 h-4">
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-navy">📲 MoMo on Delivery</p>
+              <p class="text-xs text-gray-400 mt-0.5">Pay via MoMo when rider arrives</p>
+            </div>
+          </label>
+
+          <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-gold has-[:checked]:bg-gold-light transition-colors">
+            <input type="radio" name="payment_method" value="cash" class="accent-gold w-4 h-4">
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-navy">💵 Cash on Delivery</p>
+              <p class="text-xs text-gray-400 mt-0.5">Pay cash when rider arrives</p>
+            </div>
+          </label>
+
         </div>
+        <p class="text-xs text-gray-400 mt-3 text-center">🔒 Payments secured by Paystack · Ghana MoMo supported</p>
       </div>
 
     </div>
