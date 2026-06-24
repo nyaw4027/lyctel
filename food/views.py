@@ -1,21 +1,36 @@
+
 import math
 import json
+import uuid
+import hmac
+import hashlib
+import requests
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from django.db import transaction
 from django.db.models import Q, Sum
 
 from .models import (
     FoodVendor, FoodCategory, FoodItem,
     FoodOrder, FoodOrderItem, FoodCart, FoodCartItem,
+    FoodPayment, FoodVendorEarning,
 )
 from delivery.models import Delivery, DeliveryZone
+
+
+# ─────────────────────────────
+# COMMISSION RATES
+# ─────────────────────────────
+FOOD_VENDOR_SHARE = Decimal('0.96')   # 96% to vendor
+FOOD_APP_SHARE    = Decimal('0.04')   # 4%  to Lynctel
 
 
 def _notify_food_status(order, new_status):
@@ -134,6 +149,7 @@ def food_home(request):
         'cart_count':       0,
     })
 
+
 # ─────────────────────────────
 # PUBLIC: VENDOR MENU
 # ─────────────────────────────
@@ -142,11 +158,8 @@ def vendor_menu(request, slug):
     categories = vendor.food_categories.prefetch_related('items').all()
     all_items  = vendor.food_items.filter(is_available=True).select_related('category')
 
-    # Items with no category assigned — these were previously dropped silently
     uncategorized_items = all_items.filter(category__isnull=True)
-
-    # Featured/popular items shown in the horizontal strip at the top
-    featured_items = all_items.filter(is_featured=True)[:10]
+    featured_items      = all_items.filter(is_featured=True)[:10]
 
     food_cart_count = 0
     cart_vendor_id  = None
@@ -159,15 +172,16 @@ def vendor_menu(request, slug):
             pass
 
     return render(request, 'food/menu.html', {
-        'vendor':               vendor,
-        'categories':           categories,
-        'all_items':            all_items,
-        'uncategorized_items':  uncategorized_items,
-        'featured_items':       featured_items,
-        'food_cart_count':      food_cart_count,
-        'cart_vendor_id':       cart_vendor_id,
-        'cart_count':           0,
+        'vendor':              vendor,
+        'categories':          categories,
+        'all_items':           all_items,
+        'uncategorized_items': uncategorized_items,
+        'featured_items':      featured_items,
+        'food_cart_count':     food_cart_count,
+        'cart_vendor_id':      cart_vendor_id,
+        'cart_count':          0,
     })
+
 
 # ─────────────────────────────
 # RESTAURANT REGISTRATION
@@ -200,9 +214,9 @@ def register_restaurant(request):
 
         if errors:
             return render(request, 'food/register.html', {
-                'errors':    errors,
-                'form_data': request.POST,
-                'cuisines':  FoodVendor.CuisineType.choices,
+                'errors':     errors,
+                'form_data':  request.POST,
+                'cuisines':   FoodVendor.CuisineType.choices,
                 'cart_count': 0,
             })
 
@@ -223,10 +237,8 @@ def register_restaurant(request):
             longitude     = float(longitude) if longitude else None,
             status        = FoodVendor.Status.OPEN,
         )
-        if 'logo' in request.FILES:
-            restaurant.logo = request.FILES['logo']
-        if 'banner' in request.FILES:
-            restaurant.banner = request.FILES['banner']
+        if 'logo'   in request.FILES: restaurant.logo   = request.FILES['logo']
+        if 'banner' in request.FILES: restaurant.banner = request.FILES['banner']
         restaurant.save()
 
         messages.success(request, f'🎉 "{name}" is now live on Lynctel Food!')
@@ -310,7 +322,7 @@ def restaurant_update_order(request, ref):
 
 
 # ─────────────────────────────
-# ADD MENU ITEM  ✅ FIXED
+# ADD MENU ITEM
 # ─────────────────────────────
 @restaurant_required
 def restaurant_add_item(request):
@@ -330,7 +342,6 @@ def restaurant_add_item(request):
         is_vegan      = request.POST.get('is_vegan') == 'on'
 
         errors = {}
-
         if not name:
             errors['name'] = 'Item name is required.'
 
@@ -366,57 +377,37 @@ def restaurant_add_item(request):
             except (FoodCategory.DoesNotExist, ValueError):
                 errors['category_id'] = 'Invalid category selected.'
 
-        # ── Always pass item=None on errors ──────────────
         if errors:
             return render(request, 'food/item_form.html', {
-                'restaurant': restaurant,
-                'categories': categories,
-                'errors':     errors,
-                'form_data':  request.POST,
-                'action':     'Add',
-                'item':       None,
-                'cart_count': 0,
+                'restaurant': restaurant, 'categories': categories,
+                'errors': errors, 'form_data': request.POST,
+                'action': 'Add', 'item': None, 'cart_count': 0,
             })
 
         try:
             item = FoodItem(
-                vendor         = restaurant,
-                name           = name,
-                description    = description,
-                category       = category_obj,
-                price          = price,
-                discount_price = discount_price,
-                prep_time      = prep_time,
-                is_available   = is_available,
-                is_featured    = is_featured,
-                is_spicy       = is_spicy,
-                is_vegan       = is_vegan,
+                vendor=restaurant, name=name, description=description,
+                category=category_obj, price=price, discount_price=discount_price,
+                prep_time=prep_time, is_available=is_available,
+                is_featured=is_featured, is_spicy=is_spicy, is_vegan=is_vegan,
             )
             if 'image' in request.FILES:
                 item.image = request.FILES['image']
             item.save()
             messages.success(request, f'"{name}" added to your menu!')
             return redirect('/food/dashboard/?tab=menu')
-
         except Exception as e:
             messages.error(request, f'Could not save item: {e}')
             return render(request, 'food/item_form.html', {
-                'restaurant': restaurant,
-                'categories': categories,
-                'errors':     {'name': 'Something went wrong. Please try again.'},
-                'form_data':  request.POST,
-                'action':     'Add',
-                'item':       None,
-                'cart_count': 0,
+                'restaurant': restaurant, 'categories': categories,
+                'errors': {'name': 'Something went wrong. Please try again.'},
+                'form_data': request.POST, 'action': 'Add',
+                'item': None, 'cart_count': 0,
             })
 
-    # ── GET: always pass item=None ────────────────────────
     return render(request, 'food/item_form.html', {
-        'restaurant': restaurant,
-        'categories': categories,
-        'action':     'Add',
-        'item':       None,
-        'cart_count': 0,
+        'restaurant': restaurant, 'categories': categories,
+        'action': 'Add', 'item': None, 'cart_count': 0,
     })
 
 
@@ -469,25 +460,16 @@ def restaurant_edit_item(request, pk):
 
         if errors:
             return render(request, 'food/item_form.html', {
-                'restaurant': restaurant,
-                'categories': categories,
-                'errors':     errors,
-                'form_data':  request.POST,
-                'action':     'Edit',
-                'item':       item,
-                'cart_count': 0,
+                'restaurant': restaurant, 'categories': categories,
+                'errors': errors, 'form_data': request.POST,
+                'action': 'Edit', 'item': item, 'cart_count': 0,
             })
 
-        item.name           = name
-        item.description    = description
-        item.category_id    = category_id
-        item.price          = price
-        item.discount_price = discount_price
-        item.prep_time      = prep_time
-        item.is_available   = is_available
-        item.is_featured    = is_featured
-        item.is_spicy       = is_spicy
-        item.is_vegan       = is_vegan
+        item.name = name; item.description = description
+        item.category_id = category_id; item.price = price
+        item.discount_price = discount_price; item.prep_time = prep_time
+        item.is_available = is_available; item.is_featured = is_featured
+        item.is_spicy = is_spicy; item.is_vegan = is_vegan
         if 'image' in request.FILES:
             item.image = request.FILES['image']
         item.save()
@@ -495,11 +477,8 @@ def restaurant_edit_item(request, pk):
         return redirect('/food/dashboard/?tab=menu')
 
     return render(request, 'food/item_form.html', {
-        'restaurant': restaurant,
-        'categories': categories,
-        'item':       item,
-        'action':     'Edit',
-        'cart_count': 0,
+        'restaurant': restaurant, 'categories': categories,
+        'item': item, 'action': 'Edit', 'cart_count': 0,
     })
 
 
@@ -537,16 +516,16 @@ def restaurant_settings(request):
     restaurant = request.restaurant
 
     if request.method == 'POST':
-        restaurant.name          = request.POST.get('name', restaurant.name).strip()
-        restaurant.description   = request.POST.get('description', '').strip()
-        restaurant.cuisine       = request.POST.get('cuisine', restaurant.cuisine)
-        restaurant.address       = request.POST.get('address', restaurant.address).strip()
-        restaurant.city          = request.POST.get('city', restaurant.city).strip()
-        restaurant.phone         = request.POST.get('phone', restaurant.phone).strip()
-        restaurant.whatsapp      = request.POST.get('whatsapp', '').strip()
-        restaurant.opening_time  = request.POST.get('opening_time', '08:00')
-        restaurant.closing_time  = request.POST.get('closing_time', '22:00')
-        restaurant.status        = request.POST.get('status', restaurant.status)
+        restaurant.name        = request.POST.get('name', restaurant.name).strip()
+        restaurant.description = request.POST.get('description', '').strip()
+        restaurant.cuisine     = request.POST.get('cuisine', restaurant.cuisine)
+        restaurant.address     = request.POST.get('address', restaurant.address).strip()
+        restaurant.city        = request.POST.get('city', restaurant.city).strip()
+        restaurant.phone       = request.POST.get('phone', restaurant.phone).strip()
+        restaurant.whatsapp    = request.POST.get('whatsapp', '').strip()
+        restaurant.opening_time = request.POST.get('opening_time', '08:00')
+        restaurant.closing_time = request.POST.get('closing_time', '22:00')
+        restaurant.status      = request.POST.get('status', restaurant.status)
 
         try:
             restaurant.min_order = Decimal(request.POST.get('min_order', str(restaurant.min_order)))
@@ -727,17 +706,17 @@ def checkout(request):
         messages.error(request, 'Your cart is empty.')
         return redirect('food:home')
 
-    vendor = cart.vendor
+    vendor         = cart.vendor
     locationiq_key = settings.LOCATIONIQ_API_KEY
 
     if request.method == 'POST':
-        address     = request.POST.get('delivery_address', '').strip()
-        phone       = request.POST.get('delivery_phone', '').strip()
-        note        = request.POST.get('delivery_note', '').strip()
-        pay_method  = request.POST.get('payment_method', 'cash')
-        dlat        = request.POST.get('delivery_lat', '').strip()
-        dlng        = request.POST.get('delivery_lng', '').strip()
-        fee_posted  = request.POST.get('delivery_fee', '0')
+        address    = request.POST.get('delivery_address', '').strip()
+        phone      = request.POST.get('delivery_phone', '').strip()
+        note       = request.POST.get('delivery_note', '').strip()
+        pay_method = request.POST.get('payment_method', 'cash')
+        dlat       = request.POST.get('delivery_lat', '').strip()
+        dlng       = request.POST.get('delivery_lng', '').strip()
+        fee_posted = request.POST.get('delivery_fee', '0')
         dist_posted = request.POST.get('distance_km', '0')
 
         errors = {}
@@ -793,7 +772,7 @@ def checkout(request):
             )
 
         zone = DeliveryZone.objects.filter(is_active=True).first()
-        delivery = Delivery.objects.create(
+        delivery_record = Delivery.objects.create(
             booker           = request.user,
             pickup_location  = vendor.address,
             dropoff_location = address,
@@ -809,15 +788,8 @@ def checkout(request):
             status           = Delivery.Status.PENDING,
             delivery_note    = note,
         )
-
-        order.delivery = delivery
+        order.delivery = delivery_record
         order.save(update_fields=['delivery'])
-
-        try:
-            from delivery.services import auto_assign_for_food_order
-            auto_assign_for_food_order(order)
-        except Exception as e:
-            pass
 
         vendor.total_orders += 1
         vendor.save(update_fields=['total_orders'])
@@ -826,9 +798,26 @@ def checkout(request):
         cart.vendor = None
         cart.save()
 
+        # ── Route by payment method ──────────────────────────────────────────
+        if pay_method == FoodOrder.PaymentMethod.MOMO_PREPAID:
+            # Redirect to Paystack — rider assigned AFTER payment confirmed
+            return food_payment_initiate(request, order.order_ref)
+
+        # Cash or MoMo on delivery — assign rider now
+        try:
+            from delivery.services import auto_assign_for_food_order
+            auto_assign_for_food_order(order)
+        except Exception:
+            pass
+
+        pay_msg = {
+            'cash':             'Pay the rider cash on delivery.',
+            'momo_on_delivery': 'Have your MoMo ready for the rider.',
+        }.get(pay_method, '')
+
         messages.success(
             request,
-            f'✅ Order {order.order_ref} placed! '
+            f'✅ Order {order.order_ref} placed! {pay_msg} '
             f'Estimated delivery: {order.estimated_delivery_time} mins.'
         )
         return redirect('food:order_track', ref=order.order_ref)
@@ -903,3 +892,227 @@ def order_history(request):
         'orders':     orders,
         'cart_count': 0,
     })
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAYMENT VIEWS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@login_required
+def food_payment_initiate(request, order_ref):
+    """Initiate Paystack MoMo payment for a food order."""
+    food_order = get_object_or_404(
+        FoodOrder,
+        order_ref=order_ref,
+        customer=request.user,
+        payment_status=FoodOrder.PaymentStatus.UNPAID,
+    )
+
+    # Don't allow double-payment
+    if hasattr(food_order, 'payment') and food_order.payment.status == FoodPayment.Status.SUCCESS:
+        return redirect('food:order_track', ref=order_ref)
+
+    tx_ref = f"FOOD-{order_ref}-{uuid.uuid4().hex[:6].upper()}"
+    email  = request.user.email or f"{request.user.phone}@lynctel.app"
+    callback_url = request.build_absolute_uri(f'/food/payment/callback/{tx_ref}/')
+
+    fp, created = FoodPayment.objects.get_or_create(
+        food_order=food_order,
+        defaults={
+            'amount':         food_order.total_amount,
+            'transaction_id': tx_ref,
+            'momo_number':    food_order.delivery_phone,
+            'provider':       'paystack',
+            'status':         FoodPayment.Status.PENDING,
+        }
+    )
+    if not created:
+        tx_ref = fp.transaction_id  # reuse existing pending record
+
+    payload = {
+        'email':        email,
+        'amount':       int(float(food_order.total_amount) * 100),
+        'currency':     'GHS',
+        'reference':    tx_ref,
+        'callback_url': callback_url,
+        'channels':     ['mobile_money', 'card'],
+        'metadata': {
+            'food_order_ref': order_ref,
+            'food_order_id':  food_order.id,
+            'vendor':         food_order.vendor.name if food_order.vendor else '',
+            'customer':       request.user.get_full_name() or request.user.phone,
+            'phone':          food_order.delivery_phone,
+        },
+    }
+
+    try:
+        resp = requests.post(
+            'https://api.paystack.co/transaction/initialize',
+            headers={
+                'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
+                'Content-Type':  'application/json',
+            },
+            json=payload,
+            timeout=15,
+        )
+        data = resp.json()
+    except Exception:
+        messages.error(request, 'Could not connect to payment gateway. Please try again.')
+        return redirect('food:order_track', ref=order_ref)
+
+    if data.get('status'):
+        return redirect(data['data']['authorization_url'])
+    else:
+        messages.error(request, f"Payment error: {data.get('message', 'Please try again.')}")
+        return redirect('food:order_track', ref=order_ref)
+
+
+@login_required
+def food_payment_callback(request, tx_ref):
+    """Paystack redirects here after the customer pays."""
+    try:
+        fp = FoodPayment.objects.select_related('food_order').get(transaction_id=tx_ref)
+        food_order = fp.food_order
+    except FoodPayment.DoesNotExist:
+        messages.error(request, 'Payment record not found.')
+        return redirect('food:home')
+
+    if fp.status == FoodPayment.Status.SUCCESS:
+        messages.success(request, f'✅ Order {food_order.order_ref} confirmed!')
+        return redirect('food:order_track', ref=food_order.order_ref)
+
+    try:
+        resp = requests.get(
+            f'https://api.paystack.co/transaction/verify/{tx_ref}',
+            headers={'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}'},
+            timeout=15,
+        )
+        data = resp.json()
+    except Exception:
+        messages.error(request, 'Could not verify payment. Contact support.')
+        return redirect('food:order_track', ref=food_order.order_ref)
+
+    if (
+        data.get('status')
+        and data['data']['status'] == 'success'
+        and data['data']['currency'] == 'GHS'
+        and float(data['data']['amount']) >= float(food_order.total_amount) * 100
+    ):
+        _mark_food_paid(fp, food_order, str(data['data']['id']), {
+            'verified_via':     'paystack_callback',
+            'channel':          data['data'].get('channel', ''),
+            'gateway_response': data['data'].get('gateway_response', ''),
+        })
+        messages.success(request, f'🎉 Payment confirmed! Order {food_order.order_ref} is being prepared.')
+        return redirect('food:order_track', ref=food_order.order_ref)
+    else:
+        fp.status = FoodPayment.Status.FAILED
+        fp.save(update_fields=['status'])
+        messages.error(request, '❌ Payment was not completed. Please try again.')
+        return redirect('food:order_track', ref=food_order.order_ref)
+
+
+@csrf_exempt
+@require_POST
+def food_payment_webhook(request):
+    """Paystack webhook — backup in case customer closes browser before redirect."""
+    signature = request.headers.get('X-Paystack-Signature', '')
+    payload   = request.body
+
+    secret   = settings.PAYSTACK_SECRET_KEY.encode('utf-8')
+    computed = hmac.new(secret, payload, hashlib.sha512).hexdigest()
+    if not hmac.compare_digest(computed, signature):
+        return HttpResponse(status=400)
+
+    try:
+        event = json.loads(payload)
+    except Exception:
+        return HttpResponse(status=400)
+
+    if event.get('event') == 'charge.success':
+        data      = event.get('data', {})
+        reference = data.get('reference', '')
+        metadata  = data.get('metadata', {})
+
+        if not reference.startswith('FOOD-') and 'food_order_ref' not in metadata:
+            return HttpResponse(status=200)
+
+        try:
+            fp = FoodPayment.objects.select_related('food_order').get(transaction_id=reference)
+            food_order = fp.food_order
+            if fp.status != FoodPayment.Status.SUCCESS:
+                amount_ghs = float(data.get('amount', 0)) / 100
+                if amount_ghs >= float(food_order.total_amount):
+                    _mark_food_paid(fp, food_order, str(data.get('id', '')), {
+                        'verified_via':     'paystack_webhook',
+                        'channel':          data.get('channel', ''),
+                        'gateway_response': data.get('gateway_response', ''),
+                    })
+        except FoodPayment.DoesNotExist:
+            pass
+
+    return HttpResponse(status=200)
+
+
+@login_required
+def food_payment_status(request, order_ref):
+    """AJAX endpoint — tracking page polls this to detect when MoMo payment clears."""
+    food_order = get_object_or_404(FoodOrder, order_ref=order_ref, customer=request.user)
+    return JsonResponse({
+        'payment_status': food_order.payment_status,
+        'order_status':   food_order.status,
+        'paid':           food_order.payment_status == FoodOrder.PaymentStatus.PAID,
+    })
+
+
+# ─────────────────────────────
+# PAYMENT HELPERS
+# ─────────────────────────────
+def _mark_food_paid(fp, food_order, gateway_ref, gateway_data):
+    """Confirm payment, split commission, assign rider — all atomically safe."""
+    with transaction.atomic():
+        fp.status           = FoodPayment.Status.SUCCESS
+        fp.gateway_ref      = gateway_ref
+        fp.gateway_response = gateway_data
+        fp.paid_at          = timezone.now()
+        fp.save()
+
+        food_order.payment_status = FoodOrder.PaymentStatus.PAID
+        food_order.status         = FoodOrder.Status.CONFIRMED
+        food_order.confirmed_at   = timezone.now()
+        food_order.save(update_fields=['payment_status', 'status', 'confirmed_at'])
+
+        _split_food_commission(food_order)
+
+    # Assign rider outside the atomic block — rider assignment failure must never
+    # roll back a confirmed payment
+    try:
+        from delivery.services import auto_assign_for_food_order
+        auto_assign_for_food_order(food_order)
+    except Exception:
+        pass
+
+
+def _split_food_commission(food_order):
+    """
+    96% of the food subtotal goes to the vendor.
+    4% stays with Lynctel as app commission.
+    Delivery fee is separate — goes to the rider via RiderEarning.
+    """
+    if not food_order.vendor:
+        return
+
+    gross          = Decimal(str(food_order.subtotal))
+    app_commission = (gross * FOOD_APP_SHARE).quantize(Decimal('0.01'))
+    vendor_payout  = (gross * FOOD_VENDOR_SHARE).quantize(Decimal('0.01'))
+
+    FoodVendorEarning.objects.get_or_create(
+        food_order=food_order,
+        defaults={
+            'vendor':         food_order.vendor,
+            'gross_amount':   gross,
+            'app_commission': app_commission,
+            'vendor_payout':  vendor_payout,
+            'status':         'pending',
+        }
+    )
