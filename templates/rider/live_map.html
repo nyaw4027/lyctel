@@ -1,165 +1,238 @@
 {% extends "base.html" %}
-{% block title %}Live Map — {{ delivery.order.order_ref }} · Lynctel{% endblock %}
+{% block title %}Delivery Navigation — Lynctel{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  #map {
+  /* Full-screen map layout, Uber-style */
+  body { overflow: hidden; }
+  #rider-map {
     position: fixed;
-    top: 64px; left: 0; right: 0; bottom: 0;
-    z-index: 1;
+    inset: 0;
+    z-index: 0;
   }
+
+  /* Bottom sheet slides up over the map */
   #bottom-sheet {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    z-index: 50;
-    background: white;
-    border-radius: 22px 22px 0 0;
-    padding: 16px 16px 36px;
-    box-shadow: 0 -10px 40px rgba(0,0,0,.18);
-    max-width: 520px;
-    margin: 0 auto;
+    z-index: 100;
+    background: var(--card-bg, white);
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -8px 40px rgba(15,27,45,.18);
+    padding: 0 0 env(safe-area-inset-bottom);
+    transition: transform .35s cubic-bezier(.4,0,.2,1);
   }
-  .drag-handle {
-    width: 40px; height: 4px;
+  #bottom-sheet.collapsed { transform: translateY(calc(100% - 100px)); }
+
+  #sheet-handle {
+    width: 36px; height: 4px;
     background: #e5e7eb;
-    border-radius: 999px;
-    margin: 0 auto 14px;
+    border-radius: 2px;
+    margin: 12px auto 0;
+    cursor: pointer;
   }
-  .fab {
-    position: fixed; right: 16px; z-index: 60;
-    width: 50px; height: 50px;
+
+  /* Phase indicator pill */
+  .phase-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .phase-pickup   { background: #fef3c7; color: #92400e; }
+  .phase-dropoff  { background: #dcfce7; color: #15803d; }
+
+  /* Rider marker */
+  .rider-marker {
+    width: 42px; height: 42px;
+    background: #0F1B2D;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 20px;
-    box-shadow: 0 6px 20px rgba(0,0,0,.2);
-    color: white; text-decoration: none;
-    transition: transform .15s;
-  }
-  .fab:active { transform: scale(.92); }
-  .fab-call { bottom: 310px; background: #0ea5e9; }
-  .fab-wa   { bottom: 248px; background: #22c55e; }
-  .fab-nav  { bottom: 186px; background: #0F1B2D; }
-  @keyframes gps-pulse {
-    0%   { transform: scale(1); opacity: 1; }
-    100% { transform: scale(3); opacity: 0; }
-  }
-  .gps-ring {
-    position: absolute; inset: 0; border-radius: 50%;
-    background: #22c55e;
-    animation: gps-pulse 1.5s infinite ease-out;
-  }
-  .rider-icon-wrap {
-    background: #0F1B2D;
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
     border: 3px solid white;
+    box-shadow: 0 4px 16px rgba(15,27,45,.4);
+    will-change: transform;
+  }
+
+  /* Pickup / dropoff markers */
+  .pickup-pin {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #F5A623; border: 3px solid white;
     box-shadow: 0 2px 8px rgba(0,0,0,.3);
   }
-  .pin-customer, .pin-pickup {
-    width: 16px; height: 16px;
-    border-radius: 50%;
-    border: 3px solid white;
-    box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  .dropoff-pin {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #ef4444; border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
   }
-  .pin-customer { background: #ef4444; }
-  .pin-pickup   { background: #22c55e; }
+  .dropoff-pulse { position: relative; width: 22px; height: 22px; }
+  .dropoff-pulse::before {
+    content: '';
+    position: absolute; inset: -8px;
+    border-radius: 50%;
+    background: rgba(239,68,68,.2);
+    animation: pulseRing 2s ease-out infinite;
+  }
+  @keyframes pulseRing {
+    0% { transform:scale(.4); opacity:.8; }
+    100% { transform:scale(1.6); opacity:0; }
+  }
+
+  /* ETA pill floating on map */
+  #map-eta {
+    position: fixed;
+    top: 70px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 90;
+    background: rgba(15,27,45,.92);
+    backdrop-filter: blur(8px);
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    box-shadow: 0 4px 20px rgba(15,27,45,.3);
+    display: flex; align-items: center; gap: 8px;
+    white-space: nowrap;
+  }
+  #map-eta .live-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #4ade80;
+    animation: dotBlink 1.4s ease-in-out infinite;
+  }
+  @keyframes dotBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* Recenter button */
+  #recenter-btn {
+    position: fixed;
+    bottom: 130px; right: 16px;
+    z-index: 90;
+    width: 44px; height: 44px;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(15,27,45,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform .15s;
+  }
+  #recenter-btn:active { transform: scale(.92); }
+
+  .leaflet-control-attribution { font-size: 8px; opacity: .6; }
+  .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 12px rgba(15,27,45,.15) !important; }
+  .leaflet-control-zoom a { border-radius: 10px !important; }
+
+  .action-btn {
+    width: 100%; padding: 14px; border-radius: 16px;
+    font-weight: 700; font-size: 15px;
+    cursor: pointer; transition: all .15s ease;
+    border: none; outline: none;
+  }
+  .action-btn:active { transform: scale(.98); }
+  .action-btn-primary { background: #0F1B2D; color: white; }
+  .action-btn-primary:hover { background: #1a2d47; }
+  .action-btn-success { background: #16a34a; color: white; }
+  .action-btn-success:hover { background: #15803d; }
+  .action-btn-danger  { background: #ef4444; color: white; }
+
+  html.dark #bottom-sheet { background: #111827; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div id="map"></div>
+<!-- Full-screen map -->
+<div id="rider-map"></div>
 
-<!-- FABs -->
-<a class="fab fab-call" href="tel:{{ delivery.order.delivery_phone }}" title="Call customer">📞</a>
-<a class="fab fab-wa"
-   href="https://wa.me/233{{ delivery.order.delivery_phone|slice:'1:' }}?text=Hi!+I%27m+your+Lynctel+rider+for+order+{{ delivery.order.order_ref }}.+I%27m+on+my+way."
-   target="_blank" title="WhatsApp customer">💬</a>
-<a class="fab fab-nav"
-   href="https://www.google.com/maps/dir/?api=1&destination={{ delivery.dropoff_lat }},{{ delivery.dropoff_lng }}&travelmode=driving"
-   target="_blank" title="Open in Google Maps">🧭</a>
+<!-- Floating ETA pill -->
+<div id="map-eta">
+  <span class="live-dot"></span>
+  <span id="eta-text">Calculating route…</span>
+</div>
 
-<!-- BOTTOM SHEET -->
+<!-- Recenter button -->
+<div id="recenter-btn" title="Recenter">🎯</div>
+
+<!-- Bottom sheet -->
 <div id="bottom-sheet">
-  <div class="drag-handle"></div>
+  <div id="sheet-handle" onclick="toggleSheet()"></div>
 
-  <!-- ETA bar -->
-  <div class="flex items-center justify-between bg-blue-50 rounded-xl px-4 py-2.5 mb-3">
-    <span class="text-sm text-gray-600 font-medium">Estimated arrival</span>
-    <span id="eta-text" class="font-display font-700 text-navy">Calculating…</span>
-  </div>
+  <div class="px-5 py-4">
 
-  <!-- GPS status -->
-  <div class="flex items-center gap-2.5 bg-gray-50 rounded-xl px-4 py-2.5 mb-3 text-sm">
-    <div class="relative w-3 h-3 flex-shrink-0">
-      <div class="gps-ring"></div>
-      <div class="relative w-3 h-3 bg-green-500 rounded-full"></div>
+    <!-- Phase indicator + order ref -->
+    <div class="flex items-center justify-between mb-4">
+      <span id="phase-pill" class="phase-pill phase-pickup">📍 Go to Restaurant</span>
+      <span class="text-xs font-semibold text-gray-400">#{{ delivery.pk }}</span>
     </div>
-    <span id="gps-text" class="text-gray-600 font-medium">Acquiring GPS…</span>
-  </div>
 
-  <!-- Info grid -->
-  <div class="grid grid-cols-2 gap-3 mb-3">
-    <div class="bg-gray-50 rounded-xl p-3">
-      <p class="text-xs text-gray-400 mb-0.5">Order</p>
-      <p class="font-bold text-navy text-sm">{{ delivery.order.order_ref }}</p>
+    <!-- Destination info -->
+    <div id="destination-card" class="bg-gray-50 rounded-2xl p-4 mb-4">
+      <p class="text-xs text-gray-400 uppercase tracking-wider mb-1" id="dest-label">Pickup</p>
+      <p class="font-semibold text-navy text-sm" id="dest-address">{{ delivery.pickup_location }}</p>
+      <p class="text-xs text-gray-400 mt-1" id="dest-sublabel">{{ delivery.pickup_lat|default:"" }}{% if delivery.pickup_lat %}, {{ delivery.pickup_lng }}{% endif %}</p>
     </div>
-    <div class="bg-green-50 rounded-xl p-3">
-      <p class="text-xs text-gray-400 mb-0.5">Your commission</p>
-      <p class="font-bold text-green-600 text-sm">GHS {{ delivery.rider_commission }}</p>
-    </div>
-    <div class="bg-gray-50 rounded-xl p-3 col-span-2">
-      <p class="text-xs text-gray-400 mb-0.5">Deliver to</p>
-      <p class="font-bold text-navy text-sm">{{ delivery.order.delivery_address }}, {{ delivery.order.delivery_city }}</p>
-    </div>
-  </div>
 
-  <!-- Status + action -->
-  <div class="flex items-center justify-between mb-3">
-    <span class="text-xs font-semibold px-3 py-1.5 rounded-full
-      {% if delivery.status == 'assigned' %}bg-yellow-100 text-yellow-700
-      {% elif delivery.status == 'picked_up' %}bg-blue-100 text-blue-700
-      {% elif delivery.status == 'en_route' %}bg-purple-100 text-purple-700
-      {% elif delivery.status == 'delivered' %}bg-green-100 text-green-700
-      {% endif %}">
-      {% if delivery.status == 'assigned' %}📦 Assigned
-      {% elif delivery.status == 'picked_up' %}🛵 Picked Up
-      {% elif delivery.status == 'en_route' %}🚀 En Route
-      {% elif delivery.status == 'delivered' %}✅ Delivered{% endif %}
-    </span>
-    <a href="{% url 'rider:dashboard' %}"
-       class="text-xs text-gray-400 hover:text-navy transition-colors font-medium">← Dashboard</a>
-  </div>
+    <!-- Customer info (shown during dropoff phase) -->
+    <div id="customer-card" class="bg-gray-50 rounded-2xl p-4 mb-4 hidden">
+      <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Customer</p>
+      {% if delivery.order %}
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="font-semibold text-navy text-sm">{{ delivery.order.customer.get_full_name|default:delivery.order.customer.phone }}</p>
+          <p class="text-xs text-gray-400 mt-0.5">{{ delivery.dropoff_location }}</p>
+        </div>
+        <div class="flex gap-2">
+          <a href="tel:{{ delivery.order.delivery_phone|default:delivery.order.customer.phone }}"
+             class="w-10 h-10 bg-navy rounded-xl flex items-center justify-center text-white text-base">📞</a>
+          <a href="https://wa.me/{{ delivery.order.delivery_phone|default:delivery.order.customer.phone|slice:'1:' }}?phone=233" target="_blank"
+             class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-white text-base">💬</a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
 
-  {% if delivery.status == 'assigned' %}
-  <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
-    {% csrf_token %}<input type="hidden" name="status" value="picked_up">
-    <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl transition-colors btn-press text-sm">
-      📦 Mark as Picked Up
-    </button>
-  </form>
-  {% elif delivery.status == 'picked_up' %}
-  <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
-    {% csrf_token %}<input type="hidden" name="status" value="en_route">
-    <button class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3.5 rounded-2xl transition-colors btn-press text-sm">
-      🛵 Mark En Route
-    </button>
-  </form>
-  {% elif delivery.status == 'en_route' %}
-  <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
-    {% csrf_token %}<input type="hidden" name="status" value="delivered">
-    <button class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3.5 rounded-2xl transition-colors btn-press text-sm">
-      🎉 Mark as Delivered
-    </button>
-  </form>
-  {% elif delivery.status == 'delivered' %}
-  <div class="text-center py-2">
-    <p class="text-green-600 font-semibold text-sm">✅ Delivery complete! Great work.</p>
-    <a href="{% url 'rider:dashboard' %}" class="text-xs text-gold-dark hover:underline mt-1 inline-block">Back to dashboard →</a>
+    <!-- Delivery fee -->
+    <div class="flex items-center justify-between text-sm mb-5">
+      <span class="text-gray-500">Your commission</span>
+      <span class="font-display font-700 text-navy text-base">GHS {{ delivery.rider_commission }}</span>
+    </div>
+
+    <!-- Action buttons -->
+    <div id="action-area">
+      {% with status=delivery.status %}
+      {% if status == 'assigned' %}
+      <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="picked_up"/>
+        <button type="submit" class="action-btn action-btn-primary">
+          ✅ Confirm Picked Up
+        </button>
+      </form>
+      {% elif status == 'picked_up' %}
+      <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="en_route"/>
+        <button type="submit" class="action-btn action-btn-primary">
+          🛵 I'm En Route
+        </button>
+      </form>
+      {% elif status == 'en_route' %}
+      <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="delivered"/>
+        <button type="submit" class="action-btn action-btn-success">
+          🎉 Confirm Delivered
+        </button>
+      </form>
+      {% endif %}
+      {% endwith %}
+
+      <button class="action-btn mt-3" style="background:#f3f4f6;color:#374151;"
+              onclick="toggleSheet()">
+        ↑ View Details
+      </button>
+    </div>
+
   </div>
-  {% endif %}
 </div>
 {% endblock %}
 
@@ -167,127 +240,195 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function() {
-  const CUSTOMER_LAT  = parseFloat("{{ customer_lat|default:'5.6037' }}");
-  const CUSTOMER_LNG  = parseFloat("{{ customer_lng|default:'-0.1870' }}");
-  const PICKUP_LAT    = parseFloat("{{ delivery.pickup_lat|default:'5.6037' }}");
-  const PICKUP_LNG    = parseFloat("{{ delivery.pickup_lng|default:'-0.1870' }}");
-  const ORDER_REF     = "{{ delivery.order.order_ref|escapejs }}";
-  const DELIVERY_ID   = {{ delivery.pk }};
   const LOCATIONIQ_KEY = "{{ locationiq_key|default:'' }}";
+  const PICKUP_LAT  = {{ delivery.pickup_lat|default:"5.6037" }};
+  const PICKUP_LNG  = {{ delivery.pickup_lng|default:"-0.1870" }};
+  const DROPOFF_LAT = {{ customer_lat }};
+  const DROPOFF_LNG = {{ customer_lng }};
+  const DELIVERY_STATUS = '{{ delivery.status }}';
 
-  if (!LOCATIONIQ_KEY) {
-    console.warn('LocationIQ key missing — map will not load. Check that the live_map view passes locationiq_key into context.');
-  }
+  // Determine navigation phase from current delivery status
+  let phase = (DELIVERY_STATUS === 'en_route' || DELIVERY_STATUS === 'picked_up') ? 'dropoff' : 'pickup';
+  let myLat = null, myLng = null;
+  let riderMarker = null, routeLine = null;
+  let userPanned = false;
+  let animFrame  = null;
+  let lastPos    = null;
+  let gpsInterval = null;
+  let sheetCollapsed = false;
 
-  let map, riderMarker, routeLine, watchId, lastSent = 0;
+  if (!LOCATIONIQ_KEY) console.warn('LocationIQ key missing — routing will not work.');
 
-  // ── MAP SETUP ─────────────────────────────────────────
-  map = L.map('map').setView([PICKUP_LAT, PICKUP_LNG], 14);
-
+  // ── MAP INIT ──────────────────────────────────────────
+  const map = L.map('rider-map', { zoomControl: false }).setView([PICKUP_LAT, PICKUP_LNG], 15);
   L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
-    attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
-    maxZoom: 19,
+    attribution: '&copy; LocationIQ &copy; OpenStreetMap contributors',
+    maxZoom: 20,
     subdomains: ['a', 'b', 'c'],
   }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
 
-  // Customer / destination marker (red)
-  L.marker([CUSTOMER_LAT, CUSTOMER_LNG], {
-    icon: L.divIcon({ html: '<div class="pin-customer"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] }),
-    zIndexOffset: 500,
-  }).addTo(map).bindPopup('Customer');
-
-  // Pickup marker (green)
+  // Pickup marker (gold)
   L.marker([PICKUP_LAT, PICKUP_LNG], {
-    icon: L.divIcon({ html: '<div class="pin-pickup"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] }),
-    zIndexOffset: 400,
-  }).addTo(map).bindPopup('Pickup');
+    icon: L.divIcon({ html: '<div class="pickup-pin"></div>', className: '', iconSize: [20,20], iconAnchor: [10,10] }),
+    interactive: false,
+  }).addTo(map).bindPopup('📍 Restaurant / Pickup');
 
-  startGPS();
+  // Dropoff marker (red, pulsing)
+  L.marker([DROPOFF_LAT, DROPOFF_LNG], {
+    icon: L.divIcon({ html: '<div class="dropoff-pulse"><div class="dropoff-pin" style="position:absolute;top:4px;left:4px"></div></div>', className: '', iconSize: [22,22], iconAnchor: [11,11] }),
+    interactive: false,
+  }).addTo(map).bindPopup('🏠 Customer');
 
-  // ── GPS TRACKING ──────────────────────────────────────
-  function startGPS() {
-    if (!navigator.geolocation) {
-      document.getElementById('gps-text').textContent = 'GPS not available on this device';
-      return;
+  window.addEventListener('resize', () => map.invalidateSize());
+  map.on('dragstart', () => { userPanned = true; });
+
+  document.getElementById('recenter-btn').addEventListener('click', () => {
+    userPanned = false;
+    if (myLat && myLng) map.flyTo([myLat, myLng], 16, { duration: .8 });
+  });
+
+  // ── PHASE UI ──────────────────────────────────────────
+  function applyPhase(p) {
+    phase = p;
+    const pill    = document.getElementById('phase-pill');
+    const destLbl = document.getElementById('dest-label');
+    const destAddr = document.getElementById('dest-address');
+    const custCard = document.getElementById('customer-card');
+
+    if (p === 'pickup') {
+      pill.className   = 'phase-pill phase-pickup';
+      pill.textContent = '📍 Go to Restaurant';
+      destLbl.textContent  = 'Pickup';
+      destAddr.textContent = '{{ delivery.pickup_location|escapejs }}';
+      custCard.classList.add('hidden');
+    } else {
+      pill.className   = 'phase-pill phase-dropoff';
+      pill.textContent = '🏠 Deliver to Customer';
+      destLbl.textContent  = 'Drop-off';
+      destAddr.textContent = '{{ delivery.dropoff_location|escapejs }}';
+      custCard.classList.remove('hidden');
     }
-    watchId = navigator.geolocation.watchPosition(onPosition, onGpsError, {
-      enableHighAccuracy: true,
-      maximumAge: 5000,
-      timeout: 12000,
-    });
+    if (myLat && myLng) drawRoute(myLat, myLng);
   }
 
-  function onPosition(pos) {
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
+  applyPhase(phase);
+
+  // ── SMOOTH MARKER ANIMATION ────────────────────────────
+  function calcBearing(from, to) {
+    const toR = d => d * Math.PI / 180;
+    const [la1, lo1] = from.map(toR);
+    const [la2, lo2] = to.map(toR);
+    const y = Math.sin(lo2-lo1)*Math.cos(la2);
+    const x = Math.cos(la1)*Math.sin(la2) - Math.sin(la1)*Math.cos(la2)*Math.cos(lo2-lo1);
+    return (Math.atan2(y,x)*180/Math.PI+360)%360;
+  }
+
+  function animateMarker(from, to, ms) {
+    if (animFrame) cancelAnimationFrame(animFrame);
+    const start = performance.now();
+    function step(now) {
+      const t = Math.min(1,(now-start)/ms);
+      const e = t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+      riderMarker.setLatLng([from[0]+(to[0]-from[0])*e, from[1]+(to[1]-from[1])*e]);
+      if (t<1) animFrame = requestAnimationFrame(step);
+    }
+    animFrame = requestAnimationFrame(step);
+    // Rotate rider icon toward bearing
+    const bearing = calcBearing(from, to);
+    const icon = riderMarker._icon;
+    if (icon) {
+      const inner = icon.querySelector('.rider-marker');
+      if (inner) inner.style.transform = `rotate(${bearing - 90}deg)`;
+    }
+  }
+
+  // ── GPS BROADCAST + MAP UPDATE ────────────────────────
+  function onGpsUpdate(lat, lng) {
+    myLat = lat; myLng = lng;
+
+    // Broadcast to server
+    fetch('{% url "rider:update_location" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ latitude: lat, longitude: lng }),
+    }).catch(() => {});
 
     if (!riderMarker) {
       riderMarker = L.marker([lat, lng], {
-        icon: L.divIcon({ html: '<div class="rider-icon-wrap">🛵</div>', className: '', iconSize: [36, 36], iconAnchor: [18, 18] }),
+        icon: L.divIcon({ html: '<div class="rider-marker">🛵</div>', className: '', iconSize: [42,42], iconAnchor: [21,21] }),
         zIndexOffset: 1000,
-      }).addTo(map).bindPopup('You');
-      map.setView([lat, lng], 15);
+      }).addTo(map);
+      map.setView([lat, lng], 16);
+      lastPos = [lat, lng];
+      drawRoute(lat, lng);
     } else {
-      riderMarker.setLatLng([lat, lng]);
-    }
-
-    fetchRoute(lat, lng);
-
-    // Throttle backend updates to every 8s
-    const now = Date.now();
-    if (now - lastSent >= 8000) {
-      lastSent = now;
-      sendLocation(lat, lng);
+      const from = lastPos || [lat, lng];
+      animateMarker(from, [lat, lng], 800);
+      lastPos = [lat, lng];
+      if (!userPanned) map.panTo([lat, lng], { animate: true, duration: .8 });
+      drawRoute(lat, lng);
     }
   }
 
-  function onGpsError(err) {
-    document.getElementById('gps-text').textContent = 'GPS unavailable — check permissions';
-  }
-
-  // ── ROUTE (rider → customer) via LocationIQ Directions ──
-  function fetchRoute(lat, lng) {
+  // ── ROUTE DRAWING (LocationIQ Directions) ─────────────
+  function drawRoute(fromLat, fromLng) {
     if (!LOCATIONIQ_KEY) return;
-    const url = `https://us1.locationiq.com/v1/directions/driving/${lng},${lat};${CUSTOMER_LNG},${CUSTOMER_LAT}?key=${LOCATIONIQ_KEY}&overview=full&geometries=geojson`;
+    const toLat = phase === 'pickup' ? PICKUP_LAT : DROPOFF_LAT;
+    const toLng = phase === 'pickup' ? PICKUP_LNG : DROPOFF_LNG;
+    const url = `https://us1.locationiq.com/v1/directions/driving/${fromLng},${fromLat};${toLng},${toLat}?key=${LOCATIONIQ_KEY}&overview=full&geometries=geojson`;
 
     fetch(url)
       .then(r => r.json())
       .then(data => {
-        if (data.code !== 'Ok' || !data.routes || !data.routes.length) return;
+        if (data.code !== 'Ok' || !data.routes?.length) return;
         const route = data.routes[0];
+        const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
 
-        // Draw / update route polyline
-        const coords = route.geometry.coordinates.map(c => [c[1], c[0]]); // flip lon,lat -> lat,lon
-        if (routeLine) {
-          routeLine.setLatLngs(coords);
-        } else {
-          routeLine = L.polyline(coords, { color: '#0F1B2D', weight: 5, opacity: 0.8 }).addTo(map);
+        if (routeLine) { routeLine.setLatLngs(coords); }
+        else {
+          routeLine = L.polyline(coords, {
+            color: '#F5A623', weight: 5, opacity: .9,
+            lineCap: 'round', lineJoin: 'round',
+          }).addTo(map);
+          routeLine.bringToFront();
         }
 
-        // Update ETA / distance text
-        const etaMinutes = Math.max(1, Math.round(route.duration / 60));
-        const distanceKm = (route.distance / 1000).toFixed(1);
-        document.getElementById('eta-text').textContent = `${etaMinutes} min`;
-        document.getElementById('gps-text').textContent = `${distanceKm} km away`;
+        const etaMin = Math.max(1, Math.round(route.duration / 60));
+        const distKm = (route.distance / 1000).toFixed(1);
+        document.getElementById('eta-text').textContent =
+          `${etaMin} min · ${distKm} km${phase === 'pickup' ? ' to pickup' : ' to customer'}`;
       })
-      .catch(err => console.error('Route fetch failed:', err));
+      .catch(() => {});
   }
 
-  function sendLocation(lat, lng) {
-    fetch('/rider/location/update/', {
-      method: 'POST',
-      headers: {
-        'Content-Type':      'application/json',
-        'X-CSRFToken':       CSRF_TOKEN,
-        'X-Requested-With':  'XMLHttpRequest',
-      },
-      body: JSON.stringify({ latitude: lat, longitude: lng, delivery_id: DELIVERY_ID }),
-    }).catch(() => {});
+  // ── START GPS ─────────────────────────────────────────
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(
+      pos => onGpsUpdate(pos.coords.latitude, pos.coords.longitude),
+      err => console.warn('GPS error:', err),
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+    );
+  } else {
+    document.getElementById('eta-text').textContent = 'GPS not available on this device';
   }
 
-  window.addEventListener('beforeunload', () => {
-    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  // ── PHASE TRANSITION: auto-switch on status change ────
+  // If the rider confirms "picked up", switch to dropoff phase
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+      const input = this.querySelector('input[name="status"]');
+      if (input?.value === 'picked_up' || input?.value === 'en_route') {
+        // Will redirect server-side back to this map; phase is re-derived from status
+      }
+    });
   });
+
+  // ── BOTTOM SHEET TOGGLE ───────────────────────────────
+  window.toggleSheet = function() {
+    sheetCollapsed = !sheetCollapsed;
+    document.getElementById('bottom-sheet').classList.toggle('collapsed', sheetCollapsed);
+  };
 })();
 </script>
 {% endblock %}
