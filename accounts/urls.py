@@ -17,4 +17,8 @@ urlpatterns = [
     path('forget-password/',         views.forget_password,  name='forget_password'),
     path('forget-password/verify/',  views.verify_otp,       name='verify_otp'),
     path('forget-password/reset/',   views.reset_password,   name='reset_password'),
+
+    # ── Push notifications ────────────────────────────────
+    path('push/subscribe/',          views.save_push_subscription,   name='push_subscribe'),
+    path('push/unsubscribe/',        views.delete_push_subscription, name='push_unsubscribe'),
 ]

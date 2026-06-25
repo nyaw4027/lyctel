@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 from accounts.managers import UserManager
@@ -263,3 +264,36 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.display_name} ({self.role})"
+
+
+
+
+class PushSubscription(models.Model):
+    """Stores browser push subscription info per user per device."""
+    user       = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='push_subscriptions',
+    )
+    endpoint   = models.TextField(unique=True)
+    p256dh     = models.TextField()
+    auth       = models.TextField()
+    is_active  = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def to_dict(self):
+        """Returns subscription info dict for pywebpush."""
+        return {
+            'endpoint': self.endpoint,
+            'keys': {
+                'p256dh': self.p256dh,
+                'auth':   self.auth,
+            },
+        }
+
+    def __str__(self):
+        return f"{self.user.username} - {self.endpoint[:50]}"

@@ -1,11 +1,14 @@
 import logging
+import json
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.core.cache import cache
 from django.db.models import Sum
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.utils.crypto import get_random_string
 
@@ -392,3 +395,50 @@ def delete_account(request):
         messages.success(request, 'Your account has been deleted.')
         return redirect('frontend:home')
     return render(request, 'accounts/delete_confirm.html', {})
+
+
+
+@login_required
+@require_POST
+def save_push_subscription(request):
+    """Save or update a push subscription for the current user."""
+    try:
+        data     = json.loads(request.body)
+        endpoint = data.get('endpoint', '').strip()
+        p256dh   = data.get('keys', {}).get('p256dh', '').strip()
+        auth     = data.get('keys', {}).get('auth', '').strip()
+
+        if not endpoint or not p256dh or not auth:
+            return JsonResponse({'success': False, 'error': 'Missing subscription data'}, status=400)
+
+        from ecommerce.models import PushSubscription
+        sub, created = PushSubscription.objects.update_or_create(
+            endpoint  = endpoint,
+            defaults  = {
+                'user':      request.user,
+                'p256dh':    p256dh,
+                'auth':      auth,
+                'is_active': True,
+            },
+        )
+        return JsonResponse({'success': True, 'created': created})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def delete_push_subscription(request):
+    """Remove a push subscription (user unsubscribed)."""
+    try:
+        data     = json.loads(request.body)
+        endpoint = data.get('endpoint', '').strip()
+        if endpoint:
+            from ecommerce.models import PushSubscription
+            PushSubscription.objects.filter(
+                user=request.user, endpoint=endpoint
+            ).update(is_active=False)
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
