@@ -201,19 +201,25 @@
     #pwa-banner {
       display: none;
       position: fixed;
-      bottom: 20px; left: 50%;
-      transform: translateX(-50%);
+      bottom: 80px; left: 16px; right: 16px;
       z-index: 9999;
       background: #0F1B2D;
       color: white;
-      padding: 14px 18px;
+      padding: 14px 16px;
       border-radius: 20px;
       box-shadow: 0 8px 40px rgba(15,27,45,.5);
       align-items: center;
       gap: 12px;
-      max-width: calc(100vw - 32px);
-      width: max-content;
       animation: fadeUp .4s ease forwards;
+    }
+    @media (min-width: 640px) {
+      #pwa-banner {
+        left: 50%; right: auto;
+        transform: translateX(-50%);
+        width: max-content;
+        max-width: calc(100vw - 32px);
+        bottom: 24px;
+      }
     }
     #pwa-banner.show { display: flex; }
 
@@ -352,15 +358,7 @@
           🍔 {% trans "Food" %}
         </a>
 
-        {% if user.is_authenticated %}
-        <!-- Get Help (desktop) -->
-        <a href="{% if user.role == 'admin' or user.role == 'staff' %}{% url 'chat:support_admin_inbox' %}{% else %}{% url 'chat:support_start' %}{% endif %}"
-           class="hidden md:flex items-center gap-1.5 text-sm font-medium text-gray-600
-                  hover:text-navy px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors relative">
-          🛟 {% trans "Get Help" %}
-          <span id="support-badge-desktop" class="support-badge hidden">0</span>
-        </a>
-        {% endif %}
+
 
         {% if user.is_authenticated %}
           {% if user.role == 'vendor' %}
@@ -730,14 +728,13 @@
         <span class="text-[10px] font-medium">{% trans "Products" %}</span>
       </a>
       {% if user.is_authenticated %}
-      <a href="{% if user.role == 'admin' or user.role == 'staff' %}{% url 'chat:support_admin_inbox' %}{% else %}{% url 'chat:support_start' %}{% endif %}"
-         class="flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-navy transition-colors relative">
+      <button onclick="openCart()" class="flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-navy transition-colors relative">
         <div class="relative">
-          <span class="text-xl leading-none">🛟</span>
-          <span id="support-badge-mobile" class="support-badge hidden">0</span>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          <span id="mobile-cart-count" class="{% if not cart_count or cart_count == 0 %}hidden{% endif %} absolute -top-1.5 -right-1.5 bg-gold text-navy text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{{ cart_count|default:0 }}</span>
         </div>
-        <span class="text-[10px] font-medium">{% trans "Help" %}</span>
-      </a>
+        <span class="text-[10px] font-medium">{% trans "Cart" %}</span>
+      </button>
       {% else %}
       <button onclick="openCart()" class="flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-navy transition-colors relative">
         <div class="relative">
@@ -1103,7 +1100,7 @@
         .then(r => r.json())
         .then(d => {
           const count = d.unread || 0;
-          ['support-badge-desktop', 'support-badge-dropdown', 'support-badge-mobile'].forEach(id => {
+          ['support-badge-dropdown'].forEach(id => {
             const badge = document.getElementById(id);
             if (!badge) return;
             badge.textContent = count > 9 ? '9+' : count;
@@ -1123,8 +1120,10 @@
 
     window.addEventListener('beforeinstallprompt', e => {
       e.preventDefault(); _deferredPrompt = e;
-      if (!localStorage.getItem('pwa-dismissed') && !_isStandalone)
-        setTimeout(()=>document.getElementById('pwa-banner').classList.add('show'), 4000);
+      if (!localStorage.getItem('pwa-dismissed') && !_isStandalone) {
+        const delay = window.innerWidth < 640 ? 2000 : 4000;
+        setTimeout(()=>document.getElementById('pwa-banner').classList.add('show'), delay);
+      }
     });
 
     document.getElementById('pwa-install-btn').addEventListener('click', async () => {
