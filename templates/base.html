@@ -843,6 +843,64 @@
     const LOGIN_URL        = "{% url 'accounts:login' %}";
     const LOCATIONIQ_KEY   = '{{ LOCATIONIQ_API_KEY|default:"" }}';
 
+
+    // ── PWA PUSH NOTIFICATIONS ────────────────────────────────────────────────────
+const VAPID_PUBLIC_KEY = 'BAEw351eT-whUPpELa7PRDNEM0E_qzbKy6V9pI2jMjjHIS_JQx6cUj9hPahI9k86eCuG1QntOHnGi_1Yi_fWVwM';
+ 
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw     = window.atob(base64);
+  const output  = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+  return output;
+}
+ 
+async function subscribeToPush() {
+  if (!IS_AUTHENTICATED) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+ 
+  try {
+    const reg = await navigator.serviceWorker.ready;
+ 
+    // Check if already subscribed
+    let sub = await reg.pushManager.getSubscription();
+ 
+    if (!sub) {
+      // Request permission first
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+ 
+      // Subscribe
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly:      true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+ 
+    // Save subscription to server
+    await fetch('/push/subscribe/', {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken':  CSRF_TOKEN,
+      },
+      body: JSON.stringify(sub.toJSON()),
+    });
+ 
+  } catch (err) {
+    // Silently fail — never crash the page
+    console.warn('[Push] Subscription failed:', err);
+  }
+}
+ 
+// Auto-subscribe authenticated users after 3 seconds
+// (delay avoids asking on first page load — less intrusive)
+if (IS_AUTHENTICATED) {
+  setTimeout(subscribeToPush, 3000);
+}
+
+
     // ── DARK MODE ─────────────────────────────────────────
     const THEME_KEY = 'lynctel-theme';
 

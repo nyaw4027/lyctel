@@ -3,7 +3,7 @@ from django.urls import include, path, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
-
+from ecommerce import push_views
 from ecommerce.pwa_views import (
     service_worker,
     web_manifest,
@@ -40,7 +40,12 @@ urlpatterns = [
     path('manifest.json', web_manifest,   name='web-manifest'),
     path('offline/',      offline_page,   name='offline'),
 
-    path('chat/', include('chat.urls'))
+    path('chat/', include('chat.urls')),
+
+   
+# Inside urlpatterns list:
+    path('push/subscribe/',   push_views.save_push_subscription,   name='push_subscribe'),
+    path('push/unsubscribe/', push_views.delete_push_subscription, name='push_unsubscribe'),
 ]
 
 
