@@ -391,6 +391,14 @@ def _mark_paid(order, payment, gateway_ref, gateway_data):
         pass  # Never crash payment confirmation due to rider assignment
 
 
+    try:
+        from delivery.services import push_order_confirmed, push_new_order_to_vendor
+        push_order_confirmed(order)
+        push_new_order_to_vendor(order)
+    except Exception:
+        pass
+
+
 # ── Also add this function for food order payment (call it from food payment flow) ──
 
 def _mark_food_order_paid(food_order):

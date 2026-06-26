@@ -251,6 +251,18 @@ def order_detail(request, pk):
                 except Exception:
                     pass
 
+                try:
+                    import importlib
+                    push_module = importlib.import_module('push_notifications')
+                    push_order_dispatched = getattr(push_module, 'push_order_dispatched', None)
+                    push_order_delivered = getattr(push_module, 'push_order_delivered', None)
+                    if new_status == 'dispatched' and push_order_dispatched:
+                        push_order_dispatched(order)
+                    elif new_status == 'delivered' and push_order_delivered:
+                        push_order_delivered(order)
+                except Exception:
+                    pass
+
         elif action == 'update_payment':
             order.payment_status = request.POST.get('payment_status')
             order.save()

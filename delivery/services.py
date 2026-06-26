@@ -111,6 +111,12 @@ def assign_rider_to_delivery(delivery, notify=True):
 
     return rider
 
+    try:
+        from push_notifications import push_rider_assigned
+        push_rider_assigned(delivery)
+    except Exception:
+        pass
+
 
 def _notify_rider(rider, delivery):
     """Send in-app notification to rider — never crashes order flow."""
