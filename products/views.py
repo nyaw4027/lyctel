@@ -1,8 +1,12 @@
-from django.shortcuts import render, get_object_or_404
-from django.db.models import Q, Avg, Count
-from .models import Product, Category
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Q, Avg, Count, F
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+
+from .models import Product, Category, ProductVideo
 from cart.models import Cart
-from django.db.models import F
 from rest_framework.decorators import api_view
 
 
@@ -67,7 +71,10 @@ def product_detail(request, slug):
     cart    = get_or_create_cart(request)
     related = Product.objects.filter(
         category=product.category, status='active'
-    ).exclude(pk=product.pk)[:4]
+    ).exclude(pk=product.pk).prefetch_related('images')[:4]
+
+    # Videos
+    videos = product.videos.all().order_by('order', 'uploaded_at')
 
     # Reviews & stats
     reviews      = product.reviews.filter(is_visible=True).select_related('customer')
@@ -91,9 +98,13 @@ def product_detail(request, slug):
             from reviews.views import can_review
             user_can_review = can_review(request.user, product)
 
+    # Increment view count
+    Product.objects.filter(pk=product.pk).update(views=F('views') + 1)
+
     return render(request, 'products/product_detail.html', {
         'product':          product,
         'images':           product.images.all(),
+        'videos':           videos,
         'related':          related,
         'in_cart':          cart.items.filter(product=product).exists(),
         'cart_count':       cart.total_items,
@@ -105,20 +116,39 @@ def product_detail(request, slug):
         'user_can_review':  user_can_review,
     })
 
+
 def deals_page(request):
     deals = Product.objects.filter(
         discount_price__isnull=False,
         discount_price__lt=F("selling_price")
-    )
+    ).prefetch_related('images')
 
     return render(request, "products/deals.html", {
         "deals": deals
     })
 
 
+# ── VIDEO DELETE (vendor only) ─────────────────────────────
+@login_required
+@require_POST
+def video_delete(request, pk):
+    """Vendor deletes one of their product videos."""
+    video = get_object_or_404(ProductVideo, pk=pk)
+
+    # Security: only the product's vendor owner can delete
+    if video.product.vendor and video.product.vendor.owner != request.user:
+        messages.error(request, 'Permission denied.')
+        return redirect('vendors:dashboard')
+
+    product_slug = video.product.slug
+    video.delete()
+    messages.success(request, 'Video removed.')
+    return redirect('vendors:product_edit', pk=video.product.pk)
+
 
 @api_view(['GET'])
 def product_list_api(request):
+    from rest_framework.response import Response
     products = Product.objects.all()
-    serializer = ProductSerializer(products, many=True)
-    return Response(serializer.data)
+    # Serializer would go here
+    return Response({'detail': 'Product list API'})
