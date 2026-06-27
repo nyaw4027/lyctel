@@ -76,8 +76,6 @@
           Set a deal price lower than the selling price. The product will appear in
           <strong>Deals & Offers</strong> and show a discount badge on the listing.
         </p>
-
-        <!-- Live savings preview -->
         <div id="savings-preview" class="hidden mt-3 flex items-center gap-3 flex-wrap">
           <span class="text-xs bg-red-100 text-red-600 font-bold px-2.5 py-1 rounded-full" id="discount-badge">-0%</span>
           <span class="text-xs text-green-600 font-semibold" id="savings-text">Customer saves GHS 0</span>
@@ -131,6 +129,69 @@
       <div id="img-preview" class="flex gap-2 flex-wrap mt-3"></div>
     </div>
 
+    <!-- VIDEOS -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <h2 class="font-bold text-navy text-base mb-1">Product Videos</h2>
+      <p class="text-xs text-gray-400 mb-4">Upload a short demo or showcase video. Max 50MB. MP4 recommended.</p>
+
+      {% if product and product.videos.all %}
+      <div class="space-y-3 mb-4">
+        {% for vid in product.videos.all %}
+        <div class="flex items-center gap-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
+          <div class="w-16 h-14 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0 flex items-center justify-center">
+            {% if vid.thumbnail %}
+              <img src="{{ vid.thumbnail.url }}" class="w-full h-full object-cover"/>
+            {% else %}
+              <span class="text-2xl">🎬</span>
+            {% endif %}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-navy truncate">
+              {% if vid.title %}{{ vid.title }}{% else %}Product Video{% endif %}
+            </p>
+            <p class="text-xs text-gray-400 mt-0.5">Uploaded {{ vid.uploaded_at|date:"d M Y" }}</p>
+            <video class="mt-2 w-full max-w-xs rounded-lg" controls preload="none"
+                   style="max-height:120px">
+              <source src="{{ vid.video.url }}" type="video/mp4">
+            </video>
+          </div>
+          <form method="POST" action="{% url 'products:video_delete' vid.pk %}"
+                onsubmit="return confirm('Remove this video?')"
+                class="flex-shrink-0">
+            {% csrf_token %}
+            <button type="submit"
+                    class="text-xs text-red-500 hover:text-red-700 font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
+              🗑 Remove
+            </button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Video upload -->
+      <div class="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center hover:border-navy transition-colors cursor-pointer"
+           onclick="document.getElementById('video-input').click()">
+        <p class="text-3xl mb-2">🎬</p>
+        <p class="text-sm font-semibold text-navy">Click to upload a video</p>
+        <p class="text-xs text-gray-400 mt-1">MP4, MOV or WebM · Max 50MB</p>
+        <input type="file" id="video-input" name="video" accept="video/*"
+               class="hidden" onchange="previewVideo(this)"/>
+      </div>
+
+      <!-- Video preview before upload -->
+      <div id="video-preview-wrap" class="hidden mt-4">
+        <p class="text-xs font-semibold text-gray-500 mb-2">Preview:</p>
+        <video id="video-preview" controls class="w-full rounded-xl max-h-48 bg-black"></video>
+        <div class="mt-3">
+          <label class="block text-xs font-medium text-gray-600 mb-1">Video title (optional)</label>
+          <input type="text" name="video_title" placeholder="e.g. Product demo"
+                 class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+        </div>
+      </div>
+
+    </div>
+
     <!-- ACTIONS -->
     <div class="flex items-center gap-4">
       <button type="submit"
@@ -150,22 +211,19 @@
 
 {% block extra_js %}
 <script>
-  const sellingInput  = document.getElementById('selling-price');
-  const discountInput = document.getElementById('discount-price');
-  const commissionBox = document.getElementById('commission-box');
-  const vendorEarn    = document.getElementById('vendor-earn');
+  const sellingInput   = document.getElementById('selling-price');
+  const discountInput  = document.getElementById('discount-price');
+  const commissionBox  = document.getElementById('commission-box');
+  const vendorEarn     = document.getElementById('vendor-earn');
   const savingsPreview = document.getElementById('savings-preview');
   const discountBadge  = document.getElementById('discount-badge');
   const savingsText    = document.getElementById('savings-text');
   const youEarnText    = document.getElementById('you-earn-text');
-
-  const COMMISSION = {{ vendor.commission_rate|default:10 }} / 100;
+  const COMMISSION     = {{ vendor.commission_rate|default:10 }} / 100;
 
   function updatePreviews() {
     const selling  = parseFloat(sellingInput.value)  || 0;
     const discount = parseFloat(discountInput.value) || 0;
-
-    // Commission box
     if (selling > 0) {
       const effectivePrice = (discount > 0 && discount < selling) ? discount : selling;
       vendorEarn.textContent = `GHS ${(effectivePrice * (1 - COMMISSION)).toFixed(2)}`;
@@ -173,8 +231,6 @@
     } else {
       commissionBox.classList.add('hidden');
     }
-
-    // Savings preview
     if (discount > 0 && selling > 0 && discount < selling) {
       const pct     = Math.round(((selling - discount) / selling) * 100);
       const savings = (selling - discount).toFixed(2);
@@ -186,11 +242,8 @@
       savingsPreview.classList.add('hidden');
     }
   }
-
   sellingInput.addEventListener('input', updatePreviews);
   discountInput.addEventListener('input', updatePreviews);
-
-  // Trigger on load if editing existing product
   updatePreviews();
 
   // Image preview
@@ -208,5 +261,22 @@
       reader.readAsDataURL(file);
     });
   });
+
+  // Video preview before upload
+  function previewVideo(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      alert('Video file is too large. Maximum size is 50MB.');
+      input.value = '';
+      return;
+    }
+    const wrap    = document.getElementById('video-preview-wrap');
+    const preview = document.getElementById('video-preview');
+    const url     = URL.createObjectURL(file);
+    preview.src   = url;
+    wrap.classList.remove('hidden');
+    preview.load();
+  }
 </script>
 {% endblock %}
