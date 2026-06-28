@@ -118,7 +118,11 @@ def product_detail(request, slug):
 
 
 def deals_page(request):
+    # FIXED: previously had no status filter at all, so hidden and
+    # out-of-stock products with a discount_price could still show up on
+    # the public Deals page.
     deals = Product.objects.filter(
+        status='active',
         discount_price__isnull=False,
         discount_price__lt=F("selling_price")
     ).prefetch_related('images')
@@ -135,33 +139,11 @@ def video_delete(request, pk):
     """Vendor deletes one of their product videos."""
     video = get_object_or_404(ProductVideo, pk=pk)
 
-    # Security: only the product's vendor owner can delete
-    if video.product.vendor and video.product.vendor.owner != request.user:
-        messages.error(request, 'Permission denied.')
-        return redirect('vendors:dashboard')
-
-    product_slug = video.product.slug
-    video.delete()
-    messages.success(request, 'Video removed.')
-    return redirect('vendors:product_edit', pk=video.product.pk)
-
-
-@api_view(['GET'])
-def product_list_api(request):
-    from rest_framework.response import Response
-    products = Product.objects.all()
-    # Serializer would go here
-    return Response({'detail': 'Product list API'})
-
-
-@login_required
-@require_POST
-def video_delete(request, pk):
-    """Vendor deletes one of their product videos."""
-    video = get_object_or_404(ProductVideo, pk=pk)
-
-    # Security: only the product's vendor owner can delete.
-    # (Previously: a product with no vendor let ANY logged-in user delete its videos.)
+    # FIXED: `if video.product.vendor and video.product.vendor.owner != request.user`
+    # short-circuited to a falsy `None` whenever the product had no vendor at
+    # all, which SKIPPED the permission check entirely — letting any logged-in
+    # user delete that video. The check now explicitly requires a vendor AND
+    # ownership before allowing the delete.
     if not (video.product.vendor and video.product.vendor.owner == request.user):
         messages.error(request, 'Permission denied.')
         return redirect('vendors:dashboard')
@@ -170,3 +152,11 @@ def video_delete(request, pk):
     video.delete()
     messages.success(request, 'Video removed.')
     return redirect('vendors:product_edit', pk=product_pk)
+
+
+@api_view(['GET'])
+def product_list_api(request):
+    from rest_framework.response import Response
+    products = Product.objects.all()
+    # Serializer would go here
+    return Response({'detail': 'Product list API'})
