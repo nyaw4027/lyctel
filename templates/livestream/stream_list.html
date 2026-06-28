@@ -1,0 +1,128 @@
+{# ── stream_list.html ───────────────────────────────────── #}
+{% extends "base.html" %}
+{% block title %}Live Shopping — Lynctel{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 md:px-6 py-10">
+
+  <!-- Header -->
+  <div class="flex items-end justify-between mb-8">
+    <div>
+      <p class="text-red-500 text-xs font-semibold uppercase tracking-widest mb-1
+                flex items-center gap-1.5">
+        <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+        Live Now
+      </p>
+      <h1 class="font-display font-700 text-2xl md:text-3xl text-navy">Live Shopping</h1>
+    </div>
+    {% if user.is_authenticated and user.is_vendor %}
+    <a href="{% url 'livestream:go_live' %}"
+       class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white
+              font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">
+      🔴 Go Live
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Live streams -->
+  {% if live_streams %}
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-12">
+    {% for stream in live_streams %}
+    <a href="{% url 'livestream:watch' stream.id %}"
+       class="group relative rounded-2xl overflow-hidden bg-gray-900 block">
+      {% if stream.thumbnail %}
+      <img src="{{ stream.thumbnail.url }}"
+           class="w-full aspect-[9/16] object-cover group-hover:scale-105 transition-transform duration-300"/>
+      {% else %}
+      <div class="w-full aspect-[9/16] bg-gradient-to-b from-navy to-gray-900
+                  flex items-center justify-center">
+        <span class="text-4xl">📺</span>
+      </div>
+      {% endif %}
+
+      <!-- Overlay -->
+      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+
+      <!-- Live badge -->
+      <div class="absolute top-2 left-2 flex items-center gap-1.5 bg-red-600
+                  text-white text-[10px] font-bold px-2 py-1 rounded-full">
+        <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+        LIVE
+      </div>
+
+      <!-- Viewer count -->
+      <div class="absolute top-2 right-2 bg-black/50 text-white text-[10px]
+                  font-semibold px-2 py-1 rounded-full backdrop-blur-sm">
+        👁 {{ stream.current_viewers }}
+      </div>
+
+      <!-- Info -->
+      <div class="absolute bottom-0 left-0 right-0 p-3">
+        <div class="flex items-center gap-2 mb-1">
+          {% if stream.vendor.logo %}
+          <img src="{{ stream.vendor.logo.url }}"
+               class="w-6 h-6 rounded-full object-cover flex-shrink-0 border border-white/20"/>
+          {% endif %}
+          <p class="text-white text-[11px] font-semibold truncate">
+            {{ stream.vendor.shop_name }}
+          </p>
+        </div>
+        <p class="text-gray-300 text-[10px] line-clamp-2 leading-tight">
+          {{ stream.title }}
+        </p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-20 mb-12">
+    <p class="text-5xl mb-4">📺</p>
+    <p class="font-display font-700 text-navy text-xl mb-2">No streams live right now</p>
+    <p class="text-gray-400 text-sm">Check back soon — vendors go live daily.</p>
+    {% if user.is_authenticated and user.is_vendor %}
+    <a href="{% url 'livestream:go_live' %}"
+       class="inline-flex items-center gap-2 mt-5 bg-red-600 hover:bg-red-700
+              text-white font-bold px-6 py-3 rounded-xl transition-colors">
+      🔴 Be the first to go live
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Recent streams -->
+  {% if recent_streams %}
+  <div>
+    <h2 class="font-display font-700 text-navy text-xl mb-5">Recent Streams</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      {% for stream in recent_streams %}
+      <a href="{% url 'livestream:stats' stream.id %}"
+         class="group relative rounded-2xl overflow-hidden bg-gray-100 block opacity-80
+                hover:opacity-100 transition-opacity">
+        {% if stream.thumbnail %}
+        <img src="{{ stream.thumbnail.url }}"
+             class="w-full aspect-[9/16] object-cover grayscale group-hover:grayscale-0
+                    transition-all duration-300"/>
+        {% else %}
+        <div class="w-full aspect-[9/16] bg-gray-200 flex items-center justify-center">
+          <span class="text-3xl">📺</span>
+        </div>
+        {% endif %}
+        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+        <div class="absolute top-2 left-2 bg-gray-700 text-white text-[9px]
+                    font-bold px-2 py-0.5 rounded-full">ENDED</div>
+        <div class="absolute bottom-0 left-0 right-0 p-2">
+          <p class="text-white text-[10px] font-semibold truncate">
+            {{ stream.vendor.shop_name }}
+          </p>
+          <p class="text-gray-400 text-[9px]">
+            👁 {{ stream.total_viewers }} · {{ stream.ended_at|timesince }} ago
+          </p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

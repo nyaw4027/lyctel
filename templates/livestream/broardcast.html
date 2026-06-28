@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% block title %}🔴 Live — {{ stream.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  body { background: #0a0a0a; }
+  #local-video { width:100%; aspect-ratio:9/16; max-height:75vh;
+                 object-fit:cover; border-radius:16px; background:#111; }
+  .chat-box    { height:300px; overflow-y:auto; scroll-behavior:smooth; }
+  .gift-anim   { position:fixed; pointer-events:none; z-index:999;
+                 font-size:2.5rem; animation:floatUp 2s ease forwards; }
+  @keyframes floatUp {
+    0%   { opacity:1; transform:translateY(0) scale(1); }
+    100% { opacity:0; transform:translateY(-200px) scale(1.6); }
+  }
+  .pin-card { cursor:pointer; transition:all .2s; }
+  .pin-card:hover { transform:translateY(-2px); }
+  .pin-card.highlighted { border-color:#F5A623 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-950 text-white">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <span class="flex items-center gap-1.5 bg-red-600 text-white text-xs font-bold
+                     px-3 py-1.5 rounded-full animate-pulse">
+          🔴 LIVE
+        </span>
+        <h1 class="font-display font-700 text-white text-lg truncate max-w-xs">
+          {{ stream.title }}
+        </h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="viewer-count"
+              class="flex items-center gap-1.5 bg-white/10 text-white text-sm
+                     font-semibold px-3 py-1.5 rounded-full">
+          👁 0 watching
+        </span>
+        <button onclick="endStream()"
+                class="bg-red-600 hover:bg-red-700 text-white text-sm font-bold
+                       px-4 py-2 rounded-xl transition-colors">
+          End Stream
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+      <!-- Camera feed -->
+      <div class="lg:col-span-2 space-y-4">
+        <div class="relative">
+          <video id="local-video" autoplay muted playsinline></video>
+          <div id="cam-placeholder"
+               class="absolute inset-0 flex flex-col items-center justify-center
+                      bg-gray-900 rounded-2xl">
+            <p class="text-5xl mb-3">📸</p>
+            <p class="text-white font-semibold mb-3">Camera not started</p>
+            <button onclick="startCamera()"
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold
+                           px-6 py-3 rounded-xl transition-colors">
+              🔴 Start Camera
+            </button>
+          </div>
+        </div>
+
+        <!-- Camera controls -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <button onclick="toggleCamera()"
+                  id="cam-btn"
+                  class="hidden bg-white/10 hover:bg-white/20 text-white text-sm
+                         font-semibold px-4 py-2 rounded-xl transition-colors">
+            📷 Camera On
+          </button>
+          <button onclick="toggleMic()"
+                  id="mic-btn"
+                  class="hidden bg-white/10 hover:bg-white/20 text-white text-sm
+                         font-semibold px-4 py-2 rounded-xl transition-colors">
+            🎙 Mic On
+          </button>
+          <button onclick="switchCamera()"
+                  class="hidden bg-white/10 hover:bg-white/20 text-white text-sm
+                         font-semibold px-4 py-2 rounded-xl transition-colors"
+                  id="switch-cam-btn">
+            🔄 Flip Camera
+          </button>
+        </div>
+
+        <!-- Gift stats -->
+        <div class="bg-white/5 rounded-2xl p-4 grid grid-cols-3 gap-3 text-center">
+          <div>
+            <p class="text-2xl font-display font-700 text-gold" id="stat-viewers">0</p>
+            <p class="text-xs text-gray-400 mt-0.5">Total Viewers</p>
+          </div>
+          <div>
+            <p class="text-2xl font-display font-700 text-green-400" id="stat-gifts">GHS 0</p>
+            <p class="text-xs text-gray-400 mt-0.5">Gifts Received</p>
+          </div>
+          <div>
+            <p class="text-2xl font-display font-700 text-blue-400" id="stat-sales">GHS 0</p>
+            <p class="text-xs text-gray-400 mt-0.5">Stream Sales</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel: products + chat -->
+      <div class="flex flex-col gap-4">
+
+        <!-- Pin products -->
+        <div class="bg-gray-900 rounded-2xl p-4">
+          <p class="text-sm font-semibold text-white mb-3">📦 Pin a Product</p>
+          <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+            {% for product in products %}
+            <div class="pin-card flex items-center gap-3 bg-white/5 hover:bg-white/10
+                        border border-white/10 rounded-xl p-2.5 transition-all"
+                 id="pin-{{ product.pk }}"
+                 onclick="togglePin({{ product.pk }})">
+              {% with product.images.first as img %}
+              {% if img %}
+              <img src="{{ img.image.url }}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0"/>
+              {% else %}
+              <div class="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-lg flex-shrink-0">📦</div>
+              {% endif %}
+              {% endwith %}
+              <div class="flex-1 min-w-0">
+                <p class="text-white text-xs font-semibold truncate">{{ product.name }}</p>
+                <p class="text-gold text-xs">GHS {{ product.final_price }}</p>
+              </div>
+              <span class="text-xs text-gray-500 pin-label" id="label-{{ product.pk }}">Pin</span>
+            </div>
+            {% empty %}
+            <p class="text-gray-500 text-xs text-center py-4">No active products.</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Live chat -->
+        <div class="bg-gray-900 rounded-2xl p-4 flex-1 flex flex-col">
+          <p class="text-sm font-semibold text-white mb-3">💬 Live Chat</p>
+          <div id="chat-box" class="chat-box flex-1 space-y-2 mb-3">
+            <p class="text-gray-600 text-xs text-center">Chat will appear here...</p>
+          </div>
+          <div class="flex gap-2">
+            <input id="chat-input" type="text" maxlength="300"
+                   placeholder="Say something..."
+                   class="flex-1 bg-white/10 text-white text-sm px-3 py-2
+                          rounded-xl border border-white/10 outline-none
+                          focus:border-gold/50 placeholder-gray-500"/>
+            <button onclick="sendChat()"
+                    class="bg-gold hover:bg-gold-dark text-navy text-sm
+                           font-bold px-4 py-2 rounded-xl transition-colors">
+              Send
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const STREAM_ID   = '{{ stream.id }}';
+const CSRF_TOKEN  = '{{ csrf_token }}';
+const WS_SCHEME   = location.protocol === 'https:' ? 'wss' : 'ws';
+const wsUrl       = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
+
+let ws, localStream, peerConnections = {};
+let camOn = false, micOn = false;
+let facingMode = 'user';
+let totalGifts = 0;
+
+// ── WebSocket ──────────────────────────────────────────
+function connectWS() {
+  ws = new WebSocket(wsUrl);
+
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    switch (data.type) {
+      case 'viewer_count':
+        document.getElementById('viewer-count').textContent = `👁 ${data.count} watching`;
+        document.getElementById('stat-viewers').textContent  = data.count;
+        break;
+      case 'chat':
+        appendChat(data);
+        break;
+      case 'gift':
+        showGiftAnim(data.emoji, data.username);
+        totalGifts += parseFloat(data.total_value);
+        document.getElementById('stat-gifts').textContent = 'GHS ' + totalGifts.toFixed(2);
+        break;
+      case 'offer':
+        handleViewerOffer(data.sdp, data.sender);
+        break;
+      case 'answer':
+        if (peerConnections[data.sender]) {
+          peerConnections[data.sender].setRemoteDescription(
+            new RTCSessionDescription({ type: 'answer', sdp: data.sdp })
+          );
+        }
+        break;
+      case 'ice':
+        if (data.peer_id === null && peerConnections[data.sender]) {
+          peerConnections[data.sender].addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
+        }
+        break;
+    }
+  };
+
+  ws.onclose = () => setTimeout(connectWS, 3000);
+}
+
+// ── Camera ─────────────────────────────────────────────
+async function startCamera() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: true,
+    });
+    const vid = document.getElementById('local-video');
+    vid.srcObject = localStream;
+    document.getElementById('cam-placeholder').classList.add('hidden');
+    document.getElementById('cam-btn').classList.remove('hidden');
+    document.getElementById('mic-btn').classList.remove('hidden');
+    document.getElementById('switch-cam-btn').classList.remove('hidden');
+    camOn = true; micOn = true;
+    connectWS();
+  } catch (err) {
+    alert('Could not access camera: ' + err.message);
+  }
+}
+
+function toggleCamera() {
+  if (!localStream) return;
+  localStream.getVideoTracks().forEach(t => { t.enabled = !t.enabled; camOn = t.enabled; });
+  document.getElementById('cam-btn').textContent = camOn ? '📷 Camera On' : '📷 Camera Off';
+}
+
+function toggleMic() {
+  if (!localStream) return;
+  localStream.getAudioTracks().forEach(t => { t.enabled = !t.enabled; micOn = t.enabled; });
+  document.getElementById('mic-btn').textContent = micOn ? '🎙 Mic On' : '🎙 Mic Off';
+}
+
+async function switchCamera() {
+  facingMode = facingMode === 'user' ? 'environment' : 'user';
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    await startCamera();
+  }
+}
+
+// ── WebRTC: answer viewer offers ──────────────────────
+async function handleViewerOffer(sdp, viewerChannel) {
+  if (!localStream) return;
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  peerConnections[viewerChannel] = pc;
+
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate, peer_id: viewerChannel }));
+    }
+  };
+
+  await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+
+  ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp, peer_id: viewerChannel }));
+}
+
+// ── Pin product ────────────────────────────────────────
+const pinnedSet = new Set();
+
+function togglePin(productId) {
+  const action = pinnedSet.has(productId) ? 'unpin' : 'pin';
+  ws.send(JSON.stringify({ type: 'pin_product', product_id: productId, action }));
+
+  const card  = document.getElementById(`pin-${productId}`);
+  const label = document.getElementById(`label-${productId}`);
+  if (action === 'pin') {
+    pinnedSet.add(productId);
+    card.classList.add('highlighted');
+    label.textContent = '✓ Pinned';
+    label.classList.add('text-gold');
+  } else {
+    pinnedSet.delete(productId);
+    card.classList.remove('highlighted');
+    label.textContent = 'Pin';
+    label.classList.remove('text-gold');
+  }
+}
+
+// ── Chat ───────────────────────────────────────────────
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg   = input.value.trim();
+  if (!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'chat', message: msg }));
+  input.value = '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('chat-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendChat();
+  });
+});
+
+function appendChat(data) {
+  const box = document.getElementById('chat-box');
+  const div = document.createElement('div');
+  div.className = 'flex items-start gap-2';
+  const badge = data.is_vendor
+    ? '<span class="text-[10px] bg-gold text-navy font-bold px-1.5 py-0.5 rounded-full ml-1">VENDOR</span>'
+    : '';
+  div.innerHTML = `
+    <div class="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center
+                text-[10px] font-bold text-white flex-shrink-0">
+      ${data.initials || '?'}
+    </div>
+    <div>
+      <span class="text-xs font-semibold text-gold">${data.username}${badge}</span>
+      <p class="text-xs text-gray-300 leading-relaxed">${data.message}</p>
+    </div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ── Gift animation ─────────────────────────────────────
+function showGiftAnim(emoji, username) {
+  const el = document.createElement('div');
+  el.className = 'gift-anim';
+  el.style.cssText = `left:${20 + Math.random()*60}%;bottom:20%;`;
+  el.textContent = emoji;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2000);
+}
+
+// ── End stream ─────────────────────────────────────────
+async function endStream() {
+  if (!confirm('End this live stream?')) return;
+
+  if (ws) ws.send(JSON.stringify({ type: 'end_stream' }));
+
+  const res = await fetch(`/live/${STREAM_ID}/end/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF_TOKEN },
+  });
+  const data = await res.json();
+
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+
+  alert(`Stream ended!\nViewers: ${data.total_viewers}\nGifts: GHS ${data.gifts_value}\nDuration: ${data.duration} mins`);
+  window.location.href = '/live/';
+}
+</script>
+{% endblock %}

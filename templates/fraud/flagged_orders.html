@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Fraud Review — Lynctel Staff{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+
+  <div class="mb-6">
+    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Staff</p>
+    <h1 class="font-display font-700 text-2xl text-navy">Flagged Orders</h1>
+    <p class="text-gray-400 text-sm mt-1">
+      {{ flags|length }} unresolved flag{{ flags|length|pluralize }} awaiting review.
+      Vendor payouts on these orders are held until cleared.
+    </p>
+  </div>
+
+  {% if flags %}
+  <div class="space-y-4">
+    {% for flag in flags %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div class="flex items-start justify-between gap-4 flex-wrap mb-3">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-bold px-2.5 py-1 rounded-full
+            {% if flag.severity == 'high' %}bg-red-100 text-red-700
+            {% elif flag.severity == 'medium' %}bg-orange-100 text-orange-700
+            {% else %}bg-gray-100 text-gray-600{% endif %}">
+            {{ flag.get_severity_display }}
+          </span>
+          <span class="text-xs font-semibold bg-navy/5 text-navy px-2.5 py-1 rounded-full">
+            {{ flag.get_flag_type_display }}
+          </span>
+          <span class="text-xs text-gray-400">{{ flag.created_at|date:"M d, Y H:i" }}</span>
+        </div>
+        <span class="text-xs font-bold text-gold-dark whitespace-nowrap">
+          {{ flag.order.order_ref }}
+        </span>
+        <!-- TODO: link this to your order confirmation/admin detail view once
+             I can see order/urls.py to confirm the correct URL name —
+             e.g. {% url 'order:order_confirmation' flag.order.order_ref %} -->
+      </div>
+
+      <p class="text-sm text-gray-700 leading-relaxed mb-4">{{ flag.reason }}</p>
+
+      <div class="flex items-center gap-4 text-xs text-gray-500 mb-4 flex-wrap">
+        <span>👤 {{ flag.order.customer.get_full_name|default:flag.order.customer.phone|default:"Unknown" }}</span>
+        <span>📍 {{ flag.order.delivery_address }}, {{ flag.order.delivery_city }}</span>
+        <span>💰 GHS {{ flag.order.total_amount }}</span>
+      </div>
+
+      <form method="POST" action="{% url 'fraud:resolve_flag' flag.pk %}" class="flex items-center gap-2">
+        {% csrf_token %}
+        <input type="text" name="note" placeholder="Resolution note (optional)"
+               class="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-xs"/>
+        <button type="submit"
+                class="text-xs bg-navy hover:bg-navy-700 text-white font-semibold px-4 py-2 rounded-xl transition-colors whitespace-nowrap">
+          ✓ Clear & Release Payout
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
+    <p class="text-5xl mb-4">✅</p>
+    <p class="font-display font-700 text-navy mb-1">No flagged orders</p>
+    <p class="text-gray-400 text-sm">Everything's clean right now.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

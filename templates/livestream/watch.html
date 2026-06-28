@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% block title %}{{ stream.vendor.shop_name }} is Live — {{ stream.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  body { background:#0a0a0a; }
+  #remote-video { width:100%; aspect-ratio:9/16; max-height:80vh;
+                  object-fit:cover; border-radius:16px; background:#111; }
+  .chat-box     { height:280px; overflow-y:auto; scroll-behavior:smooth; }
+
+  /* Gift animation */
+  .gift-anim { position:fixed; pointer-events:none; z-index:999;
+               font-size:3rem; animation:floatUp 2.5s ease forwards; }
+  @keyframes floatUp {
+    0%   { opacity:1; transform:translateY(0) scale(1); }
+    60%  { opacity:1; transform:translateY(-140px) scale(1.4); }
+    100% { opacity:0; transform:translateY(-220px) scale(.8); }
+  }
+
+  /* Product buy card */
+  .product-card-live { animation:slideUp .3s ease forwards; }
+  @keyframes slideUp {
+    from { opacity:0; transform:translateY(20px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  /* Gift picker */
+  .gift-btn { transition:all .2s; }
+  .gift-btn:hover { transform:scale(1.15); }
+  .gift-btn:active { transform:scale(.9); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-950 text-white">
+  <div class="max-w-5xl mx-auto px-3 py-4">
+
+    <!-- Live badge + title -->
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+      {% if stream.is_live %}
+      <span class="flex items-center gap-1.5 bg-red-600 text-white text-xs font-bold
+                   px-3 py-1.5 rounded-full animate-pulse">🔴 LIVE</span>
+      {% endif %}
+      <div class="flex items-center gap-2">
+        {% if stream.vendor.logo %}
+        <img src="{{ stream.vendor.logo.url }}" class="w-7 h-7 rounded-full object-cover"/>
+        {% endif %}
+        <span class="text-sm font-semibold text-white">{{ stream.vendor.shop_name }}</span>
+      </div>
+      <h1 class="text-sm text-gray-300 truncate">{{ stream.title }}</h1>
+      <span id="viewer-count"
+            class="ml-auto text-xs text-gray-400 bg-white/10 px-3 py-1 rounded-full">
+        👁 —
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+      <!-- Video -->
+      <div class="lg:col-span-2 space-y-3">
+        <div class="relative">
+          <video id="remote-video" autoplay playsinline></video>
+          <div id="connecting-overlay"
+               class="absolute inset-0 flex flex-col items-center justify-center
+                      bg-gray-900/90 rounded-2xl">
+            <div class="w-12 h-12 border-4 border-red-600 border-t-transparent
+                        rounded-full animate-spin mb-4"></div>
+            <p class="text-white font-semibold">Connecting to stream...</p>
+          </div>
+        </div>
+
+        <!-- Pinned product cards -->
+        <div id="pinned-products" class="flex gap-3 overflow-x-auto pb-1"></div>
+      </div>
+
+      <!-- Right: chat + gifts -->
+      <div class="flex flex-col gap-3">
+
+        <!-- Chat -->
+        <div class="bg-gray-900 rounded-2xl p-4 flex-1 flex flex-col">
+          <p class="text-sm font-semibold text-white mb-2">💬 Live Chat</p>
+          <div id="chat-box" class="chat-box flex-1 space-y-2 mb-3">
+            <p class="text-gray-600 text-xs text-center pt-4">Joining chat...</p>
+          </div>
+          {% if user.is_authenticated %}
+          <div class="flex gap-2">
+            <input id="chat-input" type="text" maxlength="300"
+                   placeholder="Say something..."
+                   class="flex-1 bg-white/10 text-white text-sm px-3 py-2 rounded-xl
+                          border border-white/10 outline-none focus:border-gold/50
+                          placeholder-gray-500"/>
+            <button onclick="sendChat()"
+                    class="bg-gold hover:bg-gold-dark text-navy text-sm
+                           font-bold px-3 py-2 rounded-xl">↑</button>
+          </div>
+          {% else %}
+          <a href="{% url 'accounts:login' %}?next={{ request.path }}"
+             class="text-center text-xs text-gold hover:underline">
+            Sign in to chat
+          </a>
+          {% endif %}
+        </div>
+
+        <!-- Gift panel -->
+        {% if user.is_authenticated %}
+        <div class="bg-gray-900 rounded-2xl p-4">
+          <p class="text-sm font-semibold text-white mb-3">🎁 Send a Gift</p>
+          <div class="grid grid-cols-5 gap-2">
+            {% for gift in gifts %}
+            <button class="gift-btn flex flex-col items-center gap-1 bg-white/5
+                           hover:bg-white/15 rounded-xl p-2 transition-all"
+                    onclick="sendGift('{{ gift.type }}')">
+              <span class="text-2xl">{{ gift.emoji }}</span>
+              <span class="text-[10px] text-gray-400">GHS {{ gift.value }}</span>
+            </button>
+            {% endfor %}
+          </div>
+          <p class="text-[10px] text-gray-600 text-center mt-2">
+            Vendor earns 80% · Lynctel 20%
+          </p>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const STREAM_ID  = '{{ stream.id }}';
+const CSRF_TOKEN = '{{ csrf_token }}';
+const IS_AUTH    = {{ user.is_authenticated|yesno:'true,false' }};
+const WS_SCHEME  = location.protocol === 'https:' ? 'wss' : 'ws';
+const wsUrl      = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
+
+let ws, pc;
+
+// ── WebSocket ──────────────────────────────────────────
+function connectWS() {
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    // Send WebRTC offer to get the stream
+    startViewing();
+  };
+
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    switch (data.type) {
+      case 'offer':
+        handleOffer(data.sdp);
+        break;
+      case 'ice':
+        if (pc && data.peer_id === null) {
+          pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {});
+        }
+        break;
+      case 'viewer_count':
+        document.getElementById('viewer-count').textContent = `👁 ${data.count} watching`;
+        break;
+      case 'chat':
+        appendChat(data);
+        break;
+      case 'gift':
+        showGiftAnim(data.emoji, data.username);
+        break;
+      case 'pinned_products':
+        renderPinnedProducts(data.products);
+        break;
+      case 'product_pinned':
+        upsertPinnedProduct(data.product);
+        break;
+      case 'product_unpinned':
+        removePinnedProduct(data.product_id);
+        break;
+      case 'stream_ended':
+        showStreamEnded();
+        break;
+    }
+  };
+
+  ws.onclose = () => setTimeout(connectWS, 4000);
+}
+
+// ── WebRTC viewer ──────────────────────────────────────
+async function startViewing() {
+  pc = new RTCPeerConnection({
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  });
+
+  pc.ontrack = (e) => {
+    const vid = document.getElementById('remote-video');
+    vid.srcObject = e.streams[0];
+    document.getElementById('connecting-overlay').classList.add('hidden');
+  };
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate, peer_id: null }));
+    }
+  };
+
+  // Add receive-only transceivers
+  pc.addTransceiver('video', { direction: 'recvonly' });
+  pc.addTransceiver('audio', { direction: 'recvonly' });
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+}
+
+async function handleOffer(sdp) {
+  // Viewer receives re-offer from vendor (e.g. after camera switch)
+  await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp }));
+}
+
+// ── Chat ───────────────────────────────────────────────
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg   = input.value.trim();
+  if (!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'chat', message: msg }));
+  input.value = '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('chat-input');
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+  connectWS();
+});
+
+function appendChat(data) {
+  const box  = document.getElementById('chat-box');
+  const first = box.querySelector('.text-center');
+  if (first) first.remove();
+
+  const div = document.createElement('div');
+  div.className = 'flex items-start gap-2';
+  const badge = data.is_vendor
+    ? '<span class="text-[9px] bg-gold text-navy font-bold px-1.5 py-0.5 rounded-full ml-1">VENDOR</span>'
+    : '';
+  div.innerHTML = `
+    <div class="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center
+                text-[10px] font-bold text-white flex-shrink-0">${data.initials||'?'}</div>
+    <div>
+      <span class="text-xs font-semibold text-gold">${data.username}${badge}</span>
+      <p class="text-xs text-gray-300 leading-relaxed break-words">${data.message}</p>
+    </div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ── Gifts ──────────────────────────────────────────────
+async function sendGift(giftType) {
+  if (!IS_AUTH) { location.href = '/accounts/login/'; return; }
+  const res = await fetch(`/live/${STREAM_ID}/send-gift/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken':      CSRF_TOKEN,
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    body: new URLSearchParams({ gift_type: giftType, quantity: 1 }),
+  });
+  const data = await res.json();
+  if (data.success) {
+    ws.send(JSON.stringify({
+      type:      'gift',
+      gift_type: giftType,
+      quantity:  1,
+    }));
+  }
+}
+
+function showGiftAnim(emoji, username) {
+  const el = document.createElement('div');
+  el.className = 'gift-anim';
+  el.style.cssText = `left:${15 + Math.random()*70}%;bottom:15%;`;
+  el.textContent   = emoji;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+// ── Pinned products ────────────────────────────────────
+function renderPinnedProducts(products) {
+  const container = document.getElementById('pinned-products');
+  container.innerHTML = '';
+  products.forEach(p => upsertPinnedProduct(p));
+}
+
+function upsertPinnedProduct(p) {
+  const existing = document.getElementById(`live-product-${p.id}`);
+  if (existing) existing.remove();
+
+  const container = document.getElementById('pinned-products');
+  const div = document.createElement('a');
+  div.id        = `live-product-${p.id}`;
+  div.href      = `/products/${p.slug}/`;
+  div.className = 'product-card-live flex-shrink-0 w-36 bg-gray-900 border rounded-2xl overflow-hidden '
+                + (p.is_highlighted ? 'border-gold shadow-lg shadow-gold/20' : 'border-white/10');
+  div.innerHTML = `
+    ${p.is_highlighted ? '<div class="bg-gold text-navy text-[9px] font-bold text-center py-0.5">🔥 Featured Now</div>' : ''}
+    <img src="${p.image || ''}" onerror="this.style.display='none'"
+         class="w-full h-20 object-cover"/>
+    <div class="p-2">
+      <p class="text-white text-xs font-semibold leading-tight line-clamp-2">${p.name}</p>
+      <p class="text-gold text-xs font-bold mt-1">GHS ${p.price}</p>
+      ${p.in_stock
+        ? '<span class="text-[10px] text-green-400">✓ In stock</span>'
+        : '<span class="text-[10px] text-red-400">Out of stock</span>'}
+    </div>`;
+
+  // Highlighted products go first
+  if (p.is_highlighted) {
+    container.prepend(div);
+  } else {
+    container.appendChild(div);
+  }
+}
+
+function removePinnedProduct(productId) {
+  const el = document.getElementById(`live-product-${productId}`);
+  if (el) el.remove();
+}
+
+// ── Stream ended ───────────────────────────────────────
+function showStreamEnded() {
+  document.getElementById('connecting-overlay').classList.remove('hidden');
+  document.getElementById('connecting-overlay').innerHTML = `
+    <p class="text-4xl mb-3">📺</p>
+    <p class="text-white font-semibold text-lg">Stream has ended</p>
+    <a href="/live/" class="mt-4 text-gold hover:underline text-sm">Browse other streams →</a>`;
+}
+</script>
+{% endblock %}
