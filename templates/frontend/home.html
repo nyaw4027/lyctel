@@ -177,40 +177,28 @@
           </div>
 
           <!-- SLIDE 2: Hot products -->
-          <div class="slide">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5">
-              <div class="flex items-center justify-between mb-4">
-                <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
-                            px-3 py-1.5 rounded-full">🔥 Most Purchased</div>
-                <a href="{% url 'products:list' %}" class="text-gray-400 hover:text-gold text-xs transition-colors">View all →</a>
-              </div>
-              {% if hot_products %}
-              <div class="grid grid-cols-2 gap-2.5">
-                {% for p in hot_products %}
-                <a href="{% url 'products:detail' p.slug %}"
-                   class="slide-card bg-white/5 hover:bg-white/10 border border-white/10
-                          hover:border-gold/30 rounded-2xl overflow-hidden transition-all">
-                  <div class="overflow-hidden h-20 relative">
-                    {% with p.images.first as img %}
-                    {% if img %}<img src="{{ img.image.url }}" alt="{{ p.name }}" class="slide-card-img w-full h-20 object-cover"/>
-                    {% else %}<div class="w-full h-20 bg-white/5 flex items-center justify-center text-2xl">📦</div>{% endif %}
-                    {% endwith %}
-                    <span class="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">🔥</span>
-                  </div>
-                  <div class="p-2">
-                    <p class="text-white text-xs font-medium truncate">{{ p.name }}</p>
-                    <p class="text-gold text-xs font-bold">GHS {{ p.selling_price }}</p>
-                  </div>
-                </a>
-                {% endfor %}
-              </div>
-              {% else %}
-              <div class="grid grid-cols-2 gap-2.5">
-                {% for i in "1234" %}<div class="skeleton h-32"></div>{% endfor %}
-              </div>
-              {% endif %}
-            </div>
-          </div>
+          <a href="{% url 'products:detail' p.slug %}"
+   class="slide-card bg-white/5 hover:bg-white/10 border border-white/10
+          hover:border-gold/30 rounded-2xl overflow-hidden transition-all">
+  <div class="overflow-hidden h-20 relative">
+    {% if p.primary_image %}
+    <img src="{{ p.primary_image }}" alt="{{ p.name }}" class="slide-card-img w-full h-20 object-cover"/>
+    {% else %}
+    <div class="w-full h-20 bg-white/5 flex items-center justify-center text-2xl">📦</div>
+    {% endif %}
+    <span class="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">🔥</span>
+    {% if p.has_discount %}
+    <span class="absolute top-1.5 right-1.5 bg-gold text-navy text-[9px] font-bold px-1.5 py-0.5 rounded-full">-{{ p.discount_percent }}%</span>
+    {% endif %}
+  </div>
+  <div class="p-2">
+    <p class="text-white text-xs font-medium truncate">{{ p.name }}</p>
+    <p class="text-gold text-xs font-bold">
+      GHS {{ p.final_price }}
+      {% if p.has_discount %}<span class="text-gray-500 line-through text-[10px] ml-1">{{ p.selling_price }}</span>{% endif %}
+    </p>
+  </div>
+</a>
 
           <!-- SLIDE 3: Food -->
           <div class="slide">
