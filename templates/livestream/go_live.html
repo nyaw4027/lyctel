@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Go Live — {{ vendor.shop_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-10">
+
+  <div class="flex items-center gap-3 mb-8">
+    <div class="w-12 h-12 bg-red-600 rounded-2xl flex items-center justify-center text-2xl">🔴</div>
+    <div>
+      <h1 class="font-display font-700 text-2xl text-navy">Go Live</h1>
+      <p class="text-sm text-gray-500">Start a live shopping stream from {{ vendor.shop_name }}</p>
+    </div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" class="space-y-5">
+    {% csrf_token %}
+
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+          Stream Title *
+        </label>
+        <input type="text" name="title" maxlength="200" required
+               placeholder="e.g. New Arrivals Flash Sale 🔥, Electronics Unboxing..."
+               class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm
+                      focus:border-navy focus:outline-none"/>
+        <p class="text-xs text-gray-400 mt-1">
+          A good title gets more viewers. Be specific about what you're selling.
+        </p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+          Description <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <textarea name="description" rows="3"
+                  placeholder="Tell viewers what to expect — products, deals, prizes..."
+                  class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm
+                         resize-none focus:border-navy focus:outline-none"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+          Cover Image <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <div id="thumb-preview"
+             class="w-full h-32 bg-gray-50 border-2 border-dashed border-gray-200
+                    rounded-xl flex flex-col items-center justify-center cursor-pointer
+                    hover:border-navy transition-colors"
+             onclick="document.getElementById('thumb-input').click()">
+          <span class="text-3xl mb-1">🖼</span>
+          <p class="text-xs text-gray-400">Click to upload cover image</p>
+        </div>
+        <input type="file" name="thumbnail" id="thumb-input"
+               accept="image/*" class="hidden"
+               onchange="previewThumb(this)"/>
+      </div>
+
+    </div>
+
+    <!-- Products that will be available to pin -->
+    {% if products %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <h2 class="font-display font-700 text-navy mb-1">Your Products</h2>
+      <p class="text-xs text-gray-400 mb-4">
+        You can pin products during the stream — viewers can buy without leaving.
+      </p>
+      <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+        {% for product in products %}
+        <div class="flex flex-col items-center text-center bg-gray-50 rounded-xl p-2">
+          {% with product.images.first as img %}
+          {% if img %}
+          <img src="{{ img.image.url }}" class="w-10 h-10 rounded-lg object-cover mb-1"/>
+          {% else %}
+          <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-lg mb-1">📦</div>
+          {% endif %}
+          {% endwith %}
+          <p class="text-[10px] text-navy font-semibold line-clamp-2 leading-tight">
+            {{ product.name }}
+          </p>
+          <p class="text-[10px] text-gold font-bold">GHS {{ product.final_price }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Tips -->
+    <div class="bg-navy/5 rounded-2xl p-5 space-y-2">
+      <p class="text-sm font-semibold text-navy mb-3">💡 Tips for a great stream</p>
+      {% for tip in "1234" %}
+      <div class="flex items-start gap-2 text-xs text-gray-600">
+        {% if forloop.first %}
+        <span>📶</span><span>Good lighting and a stable internet connection matter most.</span>
+        {% elif forloop.counter == 2 %}
+        <span>🎯</span><span>Show products close-up. Demonstrate how they work.</span>
+        {% elif forloop.counter == 3 %}
+        <span>🗣️</span><span>Talk to your viewers. Answer chat questions in real time.</span>
+        {% else %}
+        <span>🎁</span><span>Offer stream-only deals or giveaways to keep viewers engaged.</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <button type="submit"
+            class="w-full bg-red-600 hover:bg-red-700 text-white font-bold
+                   py-4 rounded-xl transition-colors flex items-center justify-center gap-2">
+      🔴 Start Live Stream
+    </button>
+    <p class="text-center text-xs text-gray-400">
+      Your camera will start on the next page after you tap the button.
+    </p>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewThumb(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('thumb-preview');
+    preview.innerHTML = `
+      <img src="${e.target.result}"
+           class="w-full h-full object-cover rounded-xl"/>`;
+  };
+  reader.readAsDataURL(file);
+}
+</script>
+{% endblock %}
