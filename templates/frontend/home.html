@@ -48,8 +48,6 @@
     }
   }
 
-
-
   /* ── Skeleton loaders ───────────────────── */
   .skeleton {
     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
@@ -65,12 +63,101 @@
   /* ── Dark mode product cards ────────────── */
   html.dark .product-card { background: var(--card-bg); border-color: var(--border-color); }
   html.dark .category-card:hover { background: var(--bg-tertiary); }
+
+  /* ── Product Videos ─────────────────────── */
+  .video-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .video-scroll::-webkit-scrollbar { display: none; }
+
+  .video-card {
+    flex: 0 0 160px;
+    scroll-snap-align: start;
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    background: #0f172a;
+  }
+  @media (min-width: 640px) { .video-card { flex: 0 0 200px; } }
+  @media (min-width: 1024px) { .video-card { flex: 0 0 220px; } }
+
+  .video-card video {
+    width: 100%;
+    height: 280px;
+    object-fit: cover;
+    display: block;
+    transition: transform .3s ease;
+  }
+  @media (min-width: 640px) { .video-card video { height: 320px; } }
+
+  .video-card:hover video { transform: scale(1.03); }
+
+  .video-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,.75) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .video-play-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    background: rgba(255,255,255,.2);
+    backdrop-filter: blur(4px);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s ease;
+    pointer-events: none;
+  }
+  .video-card:hover .video-play-btn,
+  .video-card.playing .video-play-btn { background: rgba(245,166,35,.9); }
+  .video-card.playing .video-play-btn svg { display: none; }
+  .video-card.playing .pause-icon { display: block !important; }
+
+  .video-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+  }
+
+  .video-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(245,166,35,.2);
+    backdrop-filter: blur(4px);
+    color: #F5A623;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 999px;
+    margin-bottom: 6px;
+    border: 1px solid rgba(245,166,35,.3);
+  }
+
+  /* Modal */
+  #video-modal { transition: opacity .2s ease; }
+  #video-modal.hidden { pointer-events: none; }
+  #modal-video { max-height: 80vh; border-radius: 16px; }
 </style>
 {% endblock %}
 
 {% block content %}
-
-
 
 <!-- ── HERO ───────────────────────────────── -->
 <section class="relative overflow-hidden bg-navy">
@@ -100,7 +187,6 @@
           Browse electronics, fashion, gadgets and more — delivered straight to your door anywhere in Ghana.
         </p>
 
-        <!-- CTA buttons — full width on mobile -->
         <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start fade-up fade-up-3 mb-8">
           <a href="{% url 'products:list' %}"
              class="hero-btn bg-gold hover:bg-gold-dark text-navy font-semibold px-8 py-3.5
@@ -135,7 +221,7 @@
         </div>
       </div>
 
-      <!-- RIGHT: Slideshow — touch/swipe enabled -->
+      <!-- RIGHT: Slideshow -->
       <div class="flex-1 w-full max-w-md mx-auto lg:mx-0 fade-up fade-up-2">
         <div id="hero-slideshow" class="relative select-none">
 
@@ -176,29 +262,47 @@
             </div>
           </div>
 
-          <!-- SLIDE 2: Hot products -->
-          <a href="{% url 'products:detail' p.slug %}"
-   class="slide-card bg-white/5 hover:bg-white/10 border border-white/10
-          hover:border-gold/30 rounded-2xl overflow-hidden transition-all">
-  <div class="overflow-hidden h-20 relative">
-    {% if p.primary_image %}
-    <img src="{{ p.primary_image }}" alt="{{ p.name }}" class="slide-card-img w-full h-20 object-cover"/>
-    {% else %}
-    <div class="w-full h-20 bg-white/5 flex items-center justify-center text-2xl">📦</div>
-    {% endif %}
-    <span class="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">🔥</span>
-    {% if p.has_discount %}
-    <span class="absolute top-1.5 right-1.5 bg-gold text-navy text-[9px] font-bold px-1.5 py-0.5 rounded-full">-{{ p.discount_percent }}%</span>
-    {% endif %}
-  </div>
-  <div class="p-2">
-    <p class="text-white text-xs font-medium truncate">{{ p.name }}</p>
-    <p class="text-gold text-xs font-bold">
-      GHS {{ p.final_price }}
-      {% if p.has_discount %}<span class="text-gray-500 line-through text-[10px] ml-1">{{ p.selling_price }}</span>{% endif %}
-    </p>
-  </div>
-</a>
+          <!-- SLIDE 2: Hot products (FIXED — properly wrapped in .slide) -->
+          <div class="slide">
+            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
+              <div class="inline-flex items-center gap-2 bg-red-400/20 text-red-300 text-xs font-bold
+                          px-3 py-1.5 rounded-full mb-4">🔥 Hot Right Now</div>
+              <h3 class="font-display font-700 text-white text-lg mb-3">Trending Products</h3>
+              <div class="grid grid-cols-2 gap-2.5">
+                {% for p in hot_products %}
+                <a href="{% url 'products:detail' p.slug %}"
+                   class="slide-card bg-white/5 hover:bg-white/10 border border-white/10
+                          hover:border-gold/30 rounded-2xl overflow-hidden transition-all">
+                  <div class="overflow-hidden h-20 relative">
+                    {% if p.primary_image %}
+                    <img src="{{ p.primary_image }}" alt="{{ p.name }}" class="slide-card-img w-full h-20 object-cover"/>
+                    {% else %}
+                    <div class="w-full h-20 bg-white/5 flex items-center justify-center text-2xl">📦</div>
+                    {% endif %}
+                    <span class="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">🔥</span>
+                    {% if p.has_discount %}
+                    <span class="absolute top-1.5 right-1.5 bg-gold text-navy text-[9px] font-bold px-1.5 py-0.5 rounded-full">-{{ p.discount_percent }}%</span>
+                    {% endif %}
+                  </div>
+                  <div class="p-2">
+                    <p class="text-white text-xs font-medium truncate">{{ p.name }}</p>
+                    <p class="text-gold text-xs font-bold">
+                      GHS {{ p.final_price }}
+                      {% if p.has_discount %}<span class="text-gray-500 line-through text-[10px] ml-1">{{ p.selling_price }}</span>{% endif %}
+                    </p>
+                  </div>
+                </a>
+                {% empty %}
+                <div class="col-span-2 text-center py-6 text-gray-400 text-xs">No trending products yet.</div>
+                {% endfor %}
+              </div>
+              <a href="{% url 'products:list' %}"
+                 class="mt-4 flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark
+                        text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full touch-target">
+                View All →
+              </a>
+            </div>
+          </div>
 
           <!-- SLIDE 3: Food -->
           <div class="slide">
@@ -373,7 +477,6 @@
       <a href="{% url 'products:list' %}" class="text-sm font-semibold text-navy hover:text-gold transition-colors">See all →</a>
     </div>
 
-    <!-- Horizontal scroll on mobile, grid on desktop -->
     <div class="product-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
       {% for product in new_products %}
       <div class="product-card group bg-cream rounded-2xl overflow-hidden card-hover border border-gray-100 flex flex-col">
@@ -419,6 +522,108 @@
     </div>
   </div>
 </section>
+
+<!-- ── PRODUCT VIDEOS ─────────────────────── -->
+{% if product_videos %}
+<section class="py-10 md:py-14 bg-navy overflow-hidden">
+  <div class="max-w-7xl mx-auto px-4 md:px-6">
+    <div class="flex items-end justify-between mb-6">
+      <div>
+        <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">See them in action</p>
+        <h2 class="font-display font-700 text-xl md:text-3xl text-white">Product Videos</h2>
+      </div>
+      <span class="text-gray-400 text-xs hidden sm:block">Tap to play · Swipe to browse</span>
+    </div>
+
+    <div class="video-scroll" id="video-scroll">
+      {% for v in product_videos %}
+      <div class="video-card" onclick="openVideoModal('{{ v.video.url }}', '{{ v.product.name|escapejs }}', '{% url 'products:detail' v.product.slug %}')">
+
+        <!-- Thumbnail or video poster -->
+        {% if v.thumbnail %}
+        <img src="{{ v.thumbnail.url }}" alt="{{ v.title|default:v.product.name }}"
+             class="w-full h-[280px] sm:h-[320px] object-cover"/>
+        {% else %}
+        <video
+          src="{{ v.video.url }}"
+          class="w-full"
+          preload="none"
+          muted
+          playsinline
+          poster=""
+          onmouseenter="previewVideo(this)"
+          onmouseleave="stopPreview(this)">
+        </video>
+        {% endif %}
+
+        <div class="video-overlay"></div>
+
+        <!-- Play button -->
+        <div class="video-play-btn">
+          <svg class="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          <svg class="pause-icon hidden w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+          </svg>
+        </div>
+
+        <!-- Info overlay -->
+        <div class="video-info">
+          {% if v.title %}
+          <div class="video-badge">
+            <span class="w-1 h-1 bg-gold rounded-full"></span>
+            {{ v.title }}
+          </div>
+          {% endif %}
+          <p class="text-white font-semibold text-sm leading-tight truncate">{{ v.product.name }}</p>
+          <p class="text-gold text-xs font-bold mt-0.5">GHS {{ v.product.final_price }}</p>
+          {% if v.product.vendor %}
+          <p class="text-gray-400 text-[10px] mt-0.5 truncate">by {{ v.product.vendor.shop_name }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Scroll hint dots (decorative) -->
+    <div class="flex items-center gap-1 mt-4 justify-center">
+      <div class="w-6 h-1 bg-gold rounded-full"></div>
+      <div class="w-1 h-1 bg-white/20 rounded-full"></div>
+      <div class="w-1 h-1 bg-white/20 rounded-full"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Video Modal -->
+<div id="video-modal"
+     class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+     onclick="closeVideoModal(event)">
+  <div class="relative w-full max-w-2xl" onclick="event.stopPropagation()">
+    <button onclick="closeVideoModal()"
+            class="absolute -top-10 right-0 text-white/70 hover:text-white text-sm font-semibold flex items-center gap-1.5 touch-target">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+      Close
+    </button>
+    <video id="modal-video"
+           class="w-full rounded-2xl bg-black"
+           controls
+           playsinline
+           autoplay>
+    </video>
+    <div id="modal-product-info" class="mt-3 flex items-center justify-between">
+      <p id="modal-product-name" class="text-white font-semibold text-sm truncate pr-4"></p>
+      <a id="modal-product-link" href="#"
+         class="bg-gold hover:bg-gold-dark text-navy font-semibold text-xs px-4 py-2 rounded-xl
+                whitespace-nowrap transition-colors flex-shrink-0">
+        View Product →
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- ── FOOD BANNER ───────────────────────── -->
 <section class="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-14">
@@ -486,7 +691,7 @@
 
 {% block extra_js %}
 <script>
-  // ── Slideshow with touch/swipe ─────────────────────
+  // ── Slideshow ──────────────────────────────────────
   let currentSlide = 0;
   const totalSlides = 5;
   let autoTimer = null;
@@ -523,7 +728,6 @@
   }
   resetAutoPlay();
 
-  // Touch swipe support
   const slideshow = document.getElementById('hero-slideshow');
   slideshow.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
@@ -541,7 +745,7 @@
   slideshow.addEventListener('mouseenter', () => clearInterval(autoTimer));
   slideshow.addEventListener('mouseleave', resetAutoPlay);
 
-  // ── Quick add ─────────────────────────────────────
+  // ── Quick add ──────────────────────────────────────
   function quickAdd(productId, btn) {
     const orig = btn.innerHTML;
     btn.disabled = true; btn.innerHTML = '...';
@@ -565,9 +769,44 @@
     });
   }
 
-  // ── Pull to refresh ───────────────────────────────
+  // ── Video hover preview (desktop only) ────────────
+  function previewVideo(el) {
+    if (window.innerWidth < 768) return;
+    el.currentTime = 0;
+    el.muted = true;
+    el.play().catch(() => {});
+  }
+  function stopPreview(el) {
+    el.pause();
+    el.currentTime = 0;
+  }
 
+  // ── Video modal ────────────────────────────────────
+  const modal      = document.getElementById('video-modal');
+  const modalVideo = document.getElementById('modal-video');
+  const modalName  = document.getElementById('modal-product-name');
+  const modalLink  = document.getElementById('modal-product-link');
 
+  function openVideoModal(src, name, link) {
+    if (!modal) return;
+    modalVideo.src = src;
+    modalName.textContent = name;
+    modalLink.href = link;
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    modalVideo.play().catch(() => {});
+  }
 
+  function closeVideoModal(e) {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modalVideo.pause();
+    modalVideo.src = '';
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeVideoModal();
+  });
 </script>
 {% endblock %}

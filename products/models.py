@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.text import slugify
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, FileExtensionValidator
+from django.core.exceptions import ValidationError
 
 
 # ============================================================
@@ -212,7 +213,7 @@ class Product(models.Model):
 
 
 # ============================================================
-# PRODUCT IMAGE MODEL (CLEAN — NO FIREBASE)
+# PRODUCT IMAGE MODEL
 # ============================================================
 class ProductImage(models.Model):
 
@@ -245,42 +246,8 @@ class ProductImage(models.Model):
 
 
 # ============================================================
-# PRODUCT VIDEO MODEL (CLEAN — NO FIREBASE)
+# PRODUCT VIDEO MODEL
 # ============================================================
-class ProductVideo(models.Model):
-
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name='videos'
-    )
-
-    video = models.FileField(upload_to='product_videos/')
-
-    thumbnail = models.ImageField(
-        upload_to='product_video_thumbs/',
-        blank=True,
-        null=True
-    )
-
-    title = models.CharField(max_length=100, blank=True)
-    order = models.PositiveSmallIntegerField(default=0)
-
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['order', 'uploaded_at']
-
-    def __str__(self):
-        return f"Video - {self.product.name}"
-
-
-
-
-from django.core.validators import MinValueValidator, FileExtensionValidator
-from django.core.exceptions import ValidationError
-
-
 def validate_video_file_size(value):
     max_mb = 50
     if value.size > max_mb * 1024 * 1024:

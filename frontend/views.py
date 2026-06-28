@@ -1,14 +1,29 @@
 from django.shortcuts import render
 from django.db.models import Sum
-from products.models import Product, Category
+from products.models import Product, Category, ProductVideo
 from order.models import OrderItem
 
+
+# ── HELPER ────────────────────────────────────────────────
+
+def _cart_count(request):
+    if request.user.is_authenticated:
+        try:
+            return request.user.cart.total_items
+        except Exception:
+            pass
+    return 0
+
+
+# ── HOME ──────────────────────────────────────────────────
 
 def home(request):
     valid_products = Product.objects.exclude(slug__isnull=True).exclude(slug='')
 
-    # Top 4 most purchased products
-    top_ids = (
+    # Top 4 most-purchased products (paid orders only)
+    # NOTE: evaluating the queryset with list() before slicing avoids a subquery
+    # that can silently drop the ORDER BY in some databases when used as __in lookup.
+    top_ids = list(
         OrderItem.objects
         .filter(order__payment_status='paid', product__isnull=False)
         .values('product')
@@ -35,19 +50,32 @@ def home(request):
     new_products = valid_products.filter(status='active').prefetch_related('images').order_by('-created_at')[:10]
     categories   = Category.objects.filter(is_active=True)
 
+    # Videos from active products, respecting vendor-set order
+    product_videos = (
+        ProductVideo.objects
+        .select_related('product', 'product__vendor')
+        .filter(product__status='active')
+        .exclude(product__slug__isnull=True)
+        .exclude(product__slug='')
+        .order_by('order', '-uploaded_at')[:12]
+    )
+
     return render(request, 'frontend/home.html', {
-        'hot_products': hot_products,
-        'featured':     featured,
-        'new_products': new_products,
-        'categories':   categories,
-        'cart_count':   0,
+        'hot_products':   hot_products,
+        'featured':       featured,
+        'new_products':   new_products,
+        'categories':     categories,
+        'product_videos': product_videos,
+        'cart_count':     _cart_count(request),
     })
 
 
+# ── ABOUT ─────────────────────────────────────────────────
+
 def about(request):
     """
-    About page — gracefully handles missing AboutPage table
-    (e.g. migrations not yet run) so it never crashes with a 500.
+    Gracefully handles a missing AboutPage table (e.g. migrations not yet run)
+    so it never crashes with a 500.
     """
     try:
         from .models import AboutPage
@@ -57,28 +85,30 @@ def about(request):
 
     return render(request, 'frontend/about.html', {
         'page':         page,
-        'stats':        page.stats.all()    if page else [],
-        'features':     page.features.all() if page else [],
-        'team_members': page.team.filter(is_active=True) if page else [],
-        'cart_count':   0,
+        'stats':        page.stats.all()                  if page else [],
+        'features':     page.features.all()               if page else [],
+        'team_members': page.team.filter(is_active=True)  if page else [],
+        'cart_count':   _cart_count(request),
     })
 
 
+# ── STATIC PAGES ──────────────────────────────────────────
+
 def contact(request):
-    return render(request, 'frontend/contact.html', {'cart_count': 0})
+    return render(request, 'frontend/contact.html', {'cart_count': _cart_count(request)})
 
 
 def how_it_works(request):
-    return render(request, 'frontend/how_it_works.html', {'cart_count': 0})
+    return render(request, 'frontend/how_it_works.html', {'cart_count': _cart_count(request)})
 
 
 def privacy_policy(request):
-    return render(request, 'frontend/privacy_policy.html', {'cart_count': 0})
+    return render(request, 'frontend/privacy_policy.html', {'cart_count': _cart_count(request)})
 
 
 def terms(request):
-    return render(request, 'frontend/terms.html', {'cart_count': 0})
+    return render(request, 'frontend/terms.html', {'cart_count': _cart_count(request)})
 
 
 def cookies(request):
-    return render(request, 'frontend/cookies.html', {'cart_count': 0})
+    return render(request, 'frontend/cookies.html', {'cart_count': _cart_count(request)})
