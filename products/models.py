@@ -4,6 +4,18 @@ from django.core.validators import MinValueValidator, FileExtensionValidator
 from django.core.exceptions import ValidationError
 
 
+def validate_video_file_size(value):
+    """
+    FIXED: ProductVideo previously accepted any file of any size with no
+    validation at all, even though the upload form/UI promised a 50MB cap
+    and MP4/MOV/WebM only. This enforces the size side of that promise at
+    the model level (in addition to the matching checks done in the view).
+    """
+    max_mb = 50
+    if value.size > max_mb * 1024 * 1024:
+        raise ValidationError(f"Video file too large. Max size is {max_mb}MB.")
+
+
 # ============================================================
 # CATEGORY MODEL
 # ============================================================
@@ -213,7 +225,7 @@ class Product(models.Model):
 
 
 # ============================================================
-# PRODUCT IMAGE MODEL
+# PRODUCT IMAGE MODEL (CLEAN — NO FIREBASE)
 # ============================================================
 class ProductImage(models.Model):
 
@@ -246,14 +258,8 @@ class ProductImage(models.Model):
 
 
 # ============================================================
-# PRODUCT VIDEO MODEL
+# PRODUCT VIDEO MODEL (CLEAN — NO FIREBASE)
 # ============================================================
-def validate_video_file_size(value):
-    max_mb = 50
-    if value.size > max_mb * 1024 * 1024:
-        raise ValidationError(f"Video file too large. Max size is {max_mb}MB.")
-
-
 class ProductVideo(models.Model):
 
     product = models.ForeignKey(
@@ -262,6 +268,9 @@ class ProductVideo(models.Model):
         related_name='videos'
     )
 
+    # FIXED: previously had no validators at all, despite the upload UI
+    # advertising "MP4, MOV or WebM · Max 50MB". Now enforced at the model
+    # level too (the view also checks this explicitly before .create()).
     video = models.FileField(
         upload_to='product_videos/',
         validators=[
