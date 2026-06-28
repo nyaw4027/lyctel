@@ -9,6 +9,14 @@ from delivery.models import Delivery, DeliveryZone
 from delivery.services import assign_rider_to_delivery
 from .models import Order
 
+import json
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from delivery.services import estimate_fee_for_request, ACCRA_CENTER
+ 
+ 
+
 
 # ── CART HELPER ───────────────────────────────────────────
 
@@ -296,3 +304,50 @@ def create_delivery_for_order(order):
         print(f'[order {order.order_ref}] No available rider found.')
 
     return delivery
+
+
+
+ 
+@login_required
+def estimate_delivery_fee(request):
+    """
+    AJAX endpoint called from checkout when customer shares their location.
+    POST body: { dropoff_lat, dropoff_lng, vendor_id (optional) }
+    Returns: { distance_km, delivery_fee, fee_display }
+    """
+    try:
+        data        = json.loads(request.body)
+        dropoff_lat = float(data.get('dropoff_lat', 0))
+        dropoff_lng = float(data.get('dropoff_lng', 0))
+        vendor_id   = data.get('vendor_id')
+ 
+        if not dropoff_lat or not dropoff_lng:
+            return JsonResponse({'error': 'Missing coordinates.'}, status=400)
+ 
+        # Get pickup coords from vendor if provided
+        pickup_lat = pickup_lng = None
+        if vendor_id:
+            try:
+                from vendors.models import Vendor
+                vendor     = Vendor.objects.get(pk=vendor_id)
+                pickup_lat = getattr(vendor, 'latitude',  None)
+                pickup_lng = getattr(vendor, 'longitude', None)
+            except Exception:
+                pass
+ 
+        pickup_lat = pickup_lat or ACCRA_CENTER[0]
+        pickup_lng = pickup_lng or ACCRA_CENTER[1]
+ 
+        distance_km, fee = estimate_fee_for_request(
+            pickup_lat, pickup_lng, dropoff_lat, dropoff_lng
+        )
+ 
+        return JsonResponse({
+            'distance_km':  distance_km,
+            'delivery_fee': float(fee),
+            'fee_display':  f'GHS {fee}',
+            'distance_display': f'{distance_km} km',
+        })
+ 
+    except (ValueError, TypeError) as e:
+        return JsonResponse({'error': str(e)}, status=400)
