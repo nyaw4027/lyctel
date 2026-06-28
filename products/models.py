@@ -273,3 +273,49 @@ class ProductVideo(models.Model):
 
     def __str__(self):
         return f"Video - {self.product.name}"
+
+
+
+
+from django.core.validators import MinValueValidator, FileExtensionValidator
+from django.core.exceptions import ValidationError
+
+
+def validate_video_file_size(value):
+    max_mb = 50
+    if value.size > max_mb * 1024 * 1024:
+        raise ValidationError(f"Video file too large. Max size is {max_mb}MB.")
+
+
+class ProductVideo(models.Model):
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='videos'
+    )
+
+    video = models.FileField(
+        upload_to='product_videos/',
+        validators=[
+            FileExtensionValidator(allowed_extensions=['mp4', 'mov', 'webm']),
+            validate_video_file_size,
+        ],
+    )
+
+    thumbnail = models.ImageField(
+        upload_to='product_video_thumbs/',
+        blank=True,
+        null=True
+    )
+
+    title = models.CharField(max_length=100, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'uploaded_at']
+
+    def __str__(self):
+        return f"Video - {self.product.name}"

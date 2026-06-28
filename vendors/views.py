@@ -1,14 +1,15 @@
+import os
 from datetime import timedelta
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, F
 from django.db.models.functions import TruncDay
 from django.utils import timezone
 from django.utils.text import slugify
 
-from products.models import Product, Category, ProductImage
+from products.models import Product, Category, ProductImage, ProductVideo
 from order.models import Order, OrderItem
 from .models import Vendor, VendorEarning
 # ... your existing imports and decorators remain unchanged ...
@@ -62,10 +63,10 @@ def directory(request):
 def shop_page(request, slug):
     # Using select_related to optimize fetching profile data
     vendor = get_object_or_404(
-    Vendor.objects.select_related('owner'),
-    slug=slug,
-    status=Vendor.Status.ACTIVE
-)
+        Vendor.objects.select_related('owner'),
+        slug=slug,
+        status=Vendor.Status.ACTIVE
+    )
 
     products = (
         vendor.products
@@ -93,11 +94,21 @@ def shop_page(request, slug):
     }
     products = products.order_by(sort_map.get(sort, '-created_at'))
 
+    # FIXED: previously chained .filter(products__vendor=vendor, products__status='active')
+    # then .annotate(Count('products')) on the SAME relation, which caused Django to
+    # build a multi-row join and count ALL of the category's products (every vendor),
+    # not just this vendor's active ones. Using a conditional Count avoids the
+    # double-join and gives the correct per-vendor count.
     categories = (
         Category.objects
-        .filter(products__vendor=vendor, products__status='active', is_active=True)
-        .annotate(total_items=Count('products'))
-        .distinct()
+        .filter(is_active=True)
+        .annotate(
+            total_items=Count(
+                'products',
+                filter=Q(products__vendor=vendor, products__status='active')
+            )
+        )
+        .filter(total_items__gt=0)
     )
 
     return render(request, 'vendors/shop.html', {
@@ -198,12 +209,13 @@ def pending(request):
     except Vendor.DoesNotExist:
         return redirect('vendors:apply')
     return render(request, 'vendors/pending.html', {'vendor': vendor})
-    
-#DASHBOARD VIEWS
+
+
+# DASHBOARD VIEWS
 @vendor_required
 def dashboard(request):
     vendor = request.vendor
-    
+
     # 1. Determine which tab or sub-pane the user wants to look at
     current_tab = request.GET.get('tab', 'products')  # defaults to products list
     pane = request.GET.get('pane', '')               # detects sub-panels like social configuration
@@ -220,12 +232,12 @@ def dashboard(request):
             vendor.tiktok    = request.POST.get('tiktok', '').strip()
             vendor.twitter   = request.POST.get('twitter', '').strip()   # Fixed: Was missing
             vendor.youtube   = request.POST.get('youtube', '').strip()   # Fixed: Was missing
-            
+
             vendor.save()
             messages.success(request, "Social configurations updated successfully.")
             # Bounces them clean back onto the core settings panel view context
             return redirect(f"{reverse('vendors:dashboard')}?tab=settings")
-            
+
         # If GET request, render your dedicated standalone form file with clear vendor context
         return render(request, 'vendors/socials_form.html', {
             'vendor': vendor,
@@ -268,7 +280,13 @@ def dashboard(request):
     pending_payout  = earnings.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
     paid_out        = earnings.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
     total_orders    = earnings.count()
-    low_stock_count = products.filter(status='active', stock_qty__lte=5).count()
+
+    # FIXED: previously hardcoded stock_qty__lte=5, ignoring each product's own
+    # low_stock_alert threshold (the field that already exists on the model and
+    # backs Product.is_low_stock). Now uses F() to compare against that field.
+    low_stock_count = products.filter(
+        status='active', stock_qty__lte=F('low_stock_alert')
+    ).count()
 
     # Timezone-Aware range extraction for "Today" analytics
     today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -279,7 +297,7 @@ def dashboard(request):
         order__created_at__range=(today_start, today_end),
         order__payment_status='paid',
     ).count()
-    
+
     revenue_today = earnings.filter(
         created_at__range=(today_start, today_end)
     ).aggregate(t=Sum('net_amount'))['t'] or 0
@@ -303,8 +321,22 @@ def dashboard(request):
     ]
 
     # Product insights
-    top_product = vendor.products.annotate(total_sold=Sum('orderitem__quantity')).order_by('-total_sold').first()
-    low_stock_products = vendor.products.filter(status='active', stock_qty__lte=5)[:5]
+    # FIXED: previously summed orderitem__quantity across ALL order items regardless
+    # of payment status, which could rank an unpaid/cancelled order's product as
+    # "top product." Now restricted to paid orders, consistent with orders_today /
+    # revenue_today / recent_orders below.
+    top_product = vendor.products.annotate(
+        total_sold=Sum(
+            'orderitem__quantity',
+            filter=Q(orderitem__order__payment_status='paid')
+        )
+    ).order_by('-total_sold').first()
+
+    # FIXED: same low_stock_alert issue as low_stock_count above.
+    low_stock_products = vendor.products.filter(
+        status='active', stock_qty__lte=F('low_stock_alert')
+    )[:5]
+
     recent_orders = (
         OrderItem.objects
         .filter(product__vendor=vendor, order__payment_status='paid')
@@ -344,7 +376,35 @@ def dashboard(request):
         'low_stock_products':  low_stock_products,
         'cart_count':          0,
     })
+
+
 # ── VENDOR PRODUCT MANAGEMENT ─────────────────────────────
+
+ALLOWED_VIDEO_EXTENSIONS = ('.mp4', '.mov', '.webm')
+MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024  # 50MB
+
+
+def _validate_video_upload(video_file, errors):
+    """Shared validation for product video uploads. Mutates `errors` in place."""
+    if not video_file:
+        return
+    ext = os.path.splitext(video_file.name)[1].lower()
+    if ext not in ALLOWED_VIDEO_EXTENSIONS:
+        errors['video'] = 'Unsupported video format. Use MP4, MOV, or WebM.'
+    elif video_file.size > MAX_VIDEO_SIZE_BYTES:
+        errors['video'] = 'Video file is too large. Maximum size is 50MB.'
+
+
+def _validate_discount_price(discount_price, selling_price, errors):
+    """Shared validation for the discount/deal price field. Mutates `errors` in place."""
+    if not discount_price:
+        return
+    try:
+        if float(discount_price) >= float(selling_price):
+            errors['discount_price'] = 'Discount price must be lower than the selling price.'
+    except (TypeError, ValueError):
+        errors['discount_price'] = 'Enter a valid discount price.'
+
 
 @vendor_required
 def product_add(request):
@@ -352,16 +412,29 @@ def product_add(request):
     categories = Category.objects.filter(is_active=True)
 
     if request.method == 'POST':
-        name          = request.POST.get('name', '').strip()
-        description   = request.POST.get('description', '').strip()
-        category_id   = request.POST.get('category_id')
-        selling_price = request.POST.get('selling_price')
-        stock_qty     = request.POST.get('stock_qty', 0)
-        status        = request.POST.get('status', 'active')
+        name           = request.POST.get('name', '').strip()
+        description    = request.POST.get('description', '').strip()
+        category_id    = request.POST.get('category_id')
+        selling_price  = request.POST.get('selling_price')
+        discount_price = request.POST.get('discount_price', '').strip()
+        stock_qty      = request.POST.get('stock_qty', 0)
+        status         = request.POST.get('status', 'active')
+
+        # FIXED: video upload fields were read nowhere in this view, so the
+        # ProductVideo row was never created even though the form/template
+        # already supported uploading one.
+        video_file  = request.FILES.get('video')
+        video_title = request.POST.get('video_title', '').strip()
+        video_thumb = request.FILES.get('video_thumbnail')
 
         errors = {}
         if not name:          errors['name']          = 'Product name is required.'
         if not selling_price: errors['selling_price'] = 'Selling price is required.'
+
+        # FIXED: discount_price was accepted by the template but never read/validated
+        # here, so deal pricing could never actually be set from this form.
+        _validate_discount_price(discount_price, selling_price, errors)
+        _validate_video_upload(video_file, errors)
 
         if errors:
             return render(request, 'vendors/product_form.html', {
@@ -377,11 +450,20 @@ def product_add(request):
         product = Product.objects.create(
             vendor=vendor, name=name, slug=slug, description=description,
             category_id=category_id or None, selling_price=selling_price,
+            discount_price=discount_price or None,
             cost_price=selling_price, stock_qty=stock_qty, status=status,
         )
         for i, img in enumerate(request.FILES.getlist('images')):
             ProductImage.objects.create(
                 product=product, image=img, is_primary=(i == 0), order=i
+            )
+
+        if video_file:
+            ProductVideo.objects.create(
+                product=product,
+                video=video_file,
+                thumbnail=video_thumb,
+                title=video_title,
             )
 
         messages.success(request, f'"{product.name}" added to your shop!')
@@ -399,18 +481,44 @@ def product_edit(request, pk):
     categories = Category.objects.filter(is_active=True)
 
     if request.method == 'POST':
-        product.name          = request.POST.get('name', product.name).strip()
-        product.description   = request.POST.get('description', '').strip()
-        product.category_id   = request.POST.get('category_id') or None
-        product.selling_price = request.POST.get('selling_price', product.selling_price)
-        product.cost_price    = product.selling_price
-        product.stock_qty     = request.POST.get('stock_qty', product.stock_qty)
-        product.status        = request.POST.get('status', product.status)
+        selling_price  = request.POST.get('selling_price', product.selling_price)
+        discount_price = request.POST.get('discount_price', '').strip()
+
+        video_file  = request.FILES.get('video')
+        video_title = request.POST.get('video_title', '').strip()
+        video_thumb = request.FILES.get('video_thumbnail')
+
+        errors = {}
+        _validate_discount_price(discount_price, selling_price, errors)
+        _validate_video_upload(video_file, errors)
+
+        if errors:
+            return render(request, 'vendors/product_form.html', {
+                'vendor': vendor, 'product': product, 'categories': categories,
+                'errors': errors, 'form_data': request.POST, 'action': 'Edit',
+            })
+
+        product.name           = request.POST.get('name', product.name).strip()
+        product.description    = request.POST.get('description', '').strip()
+        product.category_id    = request.POST.get('category_id') or None
+        product.selling_price  = selling_price
+        product.discount_price = discount_price or None
+        product.cost_price     = product.selling_price
+        product.stock_qty      = request.POST.get('stock_qty', product.stock_qty)
+        product.status         = request.POST.get('status', product.status)
         product.save()
 
         for i, img in enumerate(request.FILES.getlist('images')):
             ProductImage.objects.create(
                 product=product, image=img, order=product.images.count() + i
+            )
+
+        if video_file:
+            ProductVideo.objects.create(
+                product=product,
+                video=video_file,
+                thumbnail=video_thumb,
+                title=video_title,
             )
 
         messages.success(request, f'"{product.name}" updated!')
