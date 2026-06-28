@@ -152,3 +152,21 @@ def product_list_api(request):
     products = Product.objects.all()
     # Serializer would go here
     return Response({'detail': 'Product list API'})
+
+
+@login_required
+@require_POST
+def video_delete(request, pk):
+    """Vendor deletes one of their product videos."""
+    video = get_object_or_404(ProductVideo, pk=pk)
+
+    # Security: only the product's vendor owner can delete.
+    # (Previously: a product with no vendor let ANY logged-in user delete its videos.)
+    if not (video.product.vendor and video.product.vendor.owner == request.user):
+        messages.error(request, 'Permission denied.')
+        return redirect('vendors:dashboard')
+
+    product_pk = video.product.pk
+    video.delete()
+    messages.success(request, 'Video removed.')
+    return redirect('vendors:product_edit', pk=product_pk)
