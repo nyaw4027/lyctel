@@ -12,9 +12,7 @@ from django.utils.text import slugify
 from products.models import Product, Category, ProductImage, ProductVideo
 from order.models import Order, OrderItem
 from .models import Vendor, VendorEarning
-# ... your existing imports and decorators remain unchanged ...
 from django.urls import reverse
-
 
 # ── GUARD DECORATOR ───────────────────────────────────────
 
@@ -405,7 +403,6 @@ def _validate_discount_price(discount_price, selling_price, errors):
     except (TypeError, ValueError):
         errors['discount_price'] = 'Enter a valid discount price.'
 
-
 @vendor_required
 def product_add(request):
     vendor     = request.vendor
@@ -419,22 +416,27 @@ def product_add(request):
         discount_price = request.POST.get('discount_price', '').strip()
         stock_qty      = request.POST.get('stock_qty', 0)
         status         = request.POST.get('status', 'active')
-
-        # FIXED: video upload fields were read nowhere in this view, so the
-        # ProductVideo row was never created even though the form/template
-        # already supported uploading one.
-        video_file  = request.FILES.get('video')
-        video_title = request.POST.get('video_title', '').strip()
-        video_thumb = request.FILES.get('video_thumbnail')
+        video_file     = request.FILES.get('video')
+        video_title    = request.POST.get('video_title', '').strip()
+        video_thumb    = request.FILES.get('video_thumbnail')
 
         errors = {}
         if not name:          errors['name']          = 'Product name is required.'
         if not selling_price: errors['selling_price'] = 'Selling price is required.'
 
-        # FIXED: discount_price was accepted by the template but never read/validated
-        # here, so deal pricing could never actually be set from this form.
-        _validate_discount_price(discount_price, selling_price, errors)
-        _validate_video_upload(video_file, errors)
+        if discount_price:
+            try:
+                if float(discount_price) >= float(selling_price):
+                    errors['discount_price'] = 'Discount price must be lower than the selling price.'
+            except (TypeError, ValueError):
+                errors['discount_price'] = 'Enter a valid discount price.'
+
+        if video_file:
+            ext = os.path.splitext(video_file.name)[1].lower()
+            if ext not in ('.mp4', '.mov', '.webm'):
+                errors['video'] = 'Unsupported video format. Use MP4, MOV, or WebM.'
+            elif video_file.size > 50 * 1024 * 1024:
+                errors['video'] = 'Video file is too large. Maximum size is 50MB.'
 
         if errors:
             return render(request, 'vendors/product_form.html', {
@@ -472,8 +474,6 @@ def product_add(request):
     return render(request, 'vendors/product_form.html', {
         'vendor': vendor, 'categories': categories, 'action': 'Add',
     })
-
-
 @vendor_required
 def product_edit(request, pk):
     vendor     = request.vendor
@@ -483,14 +483,24 @@ def product_edit(request, pk):
     if request.method == 'POST':
         selling_price  = request.POST.get('selling_price', product.selling_price)
         discount_price = request.POST.get('discount_price', '').strip()
-
-        video_file  = request.FILES.get('video')
-        video_title = request.POST.get('video_title', '').strip()
-        video_thumb = request.FILES.get('video_thumbnail')
+        video_file     = request.FILES.get('video')
+        video_title    = request.POST.get('video_title', '').strip()
+        video_thumb    = request.FILES.get('video_thumbnail')
 
         errors = {}
-        _validate_discount_price(discount_price, selling_price, errors)
-        _validate_video_upload(video_file, errors)
+        if discount_price:
+            try:
+                if float(discount_price) >= float(selling_price):
+                    errors['discount_price'] = 'Discount price must be lower than the selling price.'
+            except (TypeError, ValueError):
+                errors['discount_price'] = 'Enter a valid discount price.'
+
+        if video_file:
+            ext = os.path.splitext(video_file.name)[1].lower()
+            if ext not in ('.mp4', '.mov', '.webm'):
+                errors['video'] = 'Unsupported video format. Use MP4, MOV, or WebM.'
+            elif video_file.size > 50 * 1024 * 1024:
+                errors['video'] = 'Video file is too large. Maximum size is 50MB.'
 
         if errors:
             return render(request, 'vendors/product_form.html', {
@@ -527,7 +537,6 @@ def product_edit(request, pk):
     return render(request, 'vendors/product_form.html', {
         'vendor': vendor, 'product': product, 'categories': categories, 'action': 'Edit',
     })
-
 
 @vendor_required
 def product_delete(request, pk):
