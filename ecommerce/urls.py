@@ -27,6 +27,8 @@ urlpatterns = [
     path('dashboard/', include('dashboard.urls')),
     path('rider/',     include('rider.urls')),
     path('delivery/',  include(('delivery.urls', 'delivery'), namespace='delivery')),
+    path('livestream/', include(('livestream.urls', 'livestream'), namespace='livestream')),
+    path('fraud/',      include(('fraud.urls', 'fraud'), namespace='fraud')),
 
     # APIs
     path('api/order/', include('order.api.urls')),

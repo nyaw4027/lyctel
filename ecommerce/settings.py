@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     'staff',
     'food',
     'chat',
+    'livestream',
+    'fraud',
 ]
 
 # ── Middleware ─────────────────────────────────────────────

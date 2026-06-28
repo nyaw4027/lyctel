@@ -97,7 +97,6 @@ class Vendor(models.Model):
             order__payment_status='paid'
         ).aggregate(total=Sum('subtotal'))['total'] or 0
 
-    # ✅ FIXED: NOW INSIDE CLASS
     @property
     def whatsapp_link(self):
         if self.whatsapp:
@@ -112,7 +111,13 @@ class VendorEarning(models.Model):
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
-        PAID    = 'paid', 'Paid Out'
+        # NEW: added for fraud protection. When an order trips a fraud rule
+        # (fraud.services.run_fraud_checks), the matching VendorEarning rows
+        # get moved from PENDING to HELD — they're excluded from payout
+        # calculations until a staff member clears the flag and a separate
+        # process (your payout job) moves them back to PENDING or PAID.
+        HELD    = 'held',    'Held (Fraud Review)'
+        PAID    = 'paid',    'Paid Out'
 
     vendor       = models.ForeignKey(
         Vendor,

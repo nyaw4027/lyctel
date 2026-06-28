@@ -278,6 +278,10 @@ def dashboard(request):
     # Core statistical aggregates
     total_revenue   = earnings.aggregate(t=Sum('net_amount'))['t'] or 0
     pending_payout  = earnings.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
+    # NEW: earnings held by fraud.services.run_fraud_checks() when an order
+    # trips a fraud rule — surfaced separately so a vendor can see WHY money
+    # they expected isn't showing up in pending_payout yet.
+    held_payout     = earnings.filter(status='held').aggregate(t=Sum('net_amount'))['t'] or 0
     paid_out        = earnings.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
     total_orders    = earnings.count()
 
@@ -363,6 +367,7 @@ def dashboard(request):
         # Numeric Stats
         'total_revenue':       total_revenue,
         'pending_payout':      pending_payout,
+        'held_payout':         held_payout,
         'paid_out':            paid_out,
         'total_orders':        total_orders,
         'low_stock_count':     low_stock_count,
@@ -571,6 +576,7 @@ def earnings(request):
 
     total    = earnings.aggregate(t=Sum('net_amount'))['t'] or 0
     pending  = earnings.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
+    held     = earnings.filter(status='held').aggregate(t=Sum('net_amount'))['t'] or 0
     paid_out = earnings.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
 
     return render(request, 'vendors/earnings.html', {
@@ -578,6 +584,7 @@ def earnings(request):
         'earnings': earnings,
         'total':    total,
         'pending':  pending,
+        'held':     held,
         'paid_out': paid_out,
     })
 
