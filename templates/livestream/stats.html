@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Stream Stats — {{ stream.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-10">
+
+  <div class="flex items-center gap-3 mb-8">
+    <a href="{% url 'vendors:dashboard' %}?tab=products"
+       class="text-sm text-gray-400 hover:text-navy transition-colors">← Dashboard</a>
+    <span class="text-gray-300">/</span>
+    <h1 class="font-display font-700 text-xl text-navy">Stream Stats</h1>
+  </div>
+
+  <!-- Stream header -->
+  <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-6 flex items-center gap-4">
+    {% if stream.thumbnail %}
+    <img src="{{ stream.thumbnail.url }}" class="w-16 h-20 object-cover rounded-xl flex-shrink-0"/>
+    {% else %}
+    <div class="w-16 h-20 bg-gray-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">📺</div>
+    {% endif %}
+    <div class="flex-1">
+      <h2 class="font-display font-700 text-navy">{{ stream.title }}</h2>
+      <p class="text-xs text-gray-400 mt-0.5">
+        {{ stream.started_at|date:"M d, Y · g:i A" }}
+        {% if stream.duration_minutes %}· {{ stream.duration_minutes }} mins{% endif %}
+      </p>
+      <span class="inline-block mt-2 text-xs font-semibold px-2.5 py-1 rounded-full
+        {% if stream.is_live %}bg-red-100 text-red-700
+        {% else %}bg-gray-100 text-gray-600{% endif %}">
+        {% if stream.is_live %}🔴 Live{% else %}✓ Ended{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <!-- Stats grid -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+      <p class="text-3xl font-display font-700 text-navy">{{ stream.total_viewers }}</p>
+      <p class="text-xs text-gray-400 mt-1">Total Viewers</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+      <p class="text-3xl font-display font-700 text-navy">{{ stream.peak_viewers }}</p>
+      <p class="text-xs text-gray-400 mt-1">Peak Concurrent</p>
+    </div>
+    <div class="bg-green-50 rounded-2xl border border-green-100 p-5 text-center">
+      <p class="text-2xl font-display font-700 text-green-700">
+        GHS {{ stream.total_gifts_value|floatformat:2 }}
+      </p>
+      <p class="text-xs text-green-600 mt-1">Gifts Received</p>
+    </div>
+    <div class="bg-blue-50 rounded-2xl border border-blue-100 p-5 text-center">
+      <p class="text-2xl font-display font-700 text-blue-700">
+        GHS {{ stream.total_sales_value|floatformat:2 }}
+      </p>
+      <p class="text-xs text-blue-600 mt-1">Sales During Stream</p>
+    </div>
+  </div>
+
+  <!-- Gift breakdown -->
+  {% if gifts %}
+  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
+    <div class="px-5 py-4 border-b border-gray-50">
+      <h2 class="font-display font-700 text-navy">🎁 Gift History</h2>
+    </div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+          <th class="px-5 py-3 text-left font-semibold">From</th>
+          <th class="px-5 py-3 text-center font-semibold">Gift</th>
+          <th class="px-5 py-3 text-right font-semibold">Value</th>
+          <th class="px-5 py-3 text-right font-semibold">You Earn</th>
+          <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Time</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for gift in gifts %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-5 py-3.5 font-semibold text-navy">
+            {{ gift.sender.display_name|default:"Anonymous" }}
+          </td>
+          <td class="px-5 py-3.5 text-center text-xl">
+            {{ gift.get_gift_type_display }}
+          </td>
+          <td class="px-5 py-3.5 text-right text-gray-600">
+            GHS {{ gift.total_value }}
+          </td>
+          <td class="px-5 py-3.5 text-right font-semibold text-green-600">
+            GHS {{ gift.vendor_earnings }}
+          </td>
+          <td class="px-5 py-3.5 text-right text-xs text-gray-400 hidden md:table-cell">
+            {{ gift.sent_at|date:"g:i A" }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-2xl border border-gray-100 py-12 text-center mb-6">
+    <p class="text-3xl mb-2">🎁</p>
+    <p class="text-gray-400 text-sm">No gifts received during this stream.</p>
+  </div>
+  {% endif %}
+
+  <!-- Earnings note -->
+  <div class="bg-gold/5 border border-gold/20 rounded-xl px-4 py-3 text-xs text-gray-600">
+    💡 You earn <strong>80%</strong> of all gifts. Lynctel retains 20% as a platform fee.
+    Gift earnings are credited to your vendor wallet within 24 hours of stream end.
+  </div>
+
+</div>
+{% endblock %}

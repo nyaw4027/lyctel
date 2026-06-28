@@ -1,0 +1,26 @@
+{# ── ended.html ────────────────────────────────────────── #}
+{% extends "base.html" %}
+{% block title %}Stream Ended — {{ stream.vendor.shop_name }}{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto px-4 py-20 text-center">
+  <p class="text-6xl mb-5">📺</p>
+  <h1 class="font-display font-700 text-2xl text-navy mb-2">This stream has ended</h1>
+  <p class="text-gray-500 text-sm mb-2">
+    {{ stream.vendor.shop_name }} streamed for
+    {% if stream.duration_minutes %}{{ stream.duration_minutes }} minutes{% else %}a while{% endif %}.
+  </p>
+  <p class="text-gray-400 text-xs mb-8">{{ stream.total_viewers }} people watched this stream.</p>
+  <div class="flex flex-col sm:flex-row gap-3 justify-center">
+    <a href="{% url 'livestream:list' %}"
+       class="bg-navy text-white font-semibold px-6 py-3 rounded-xl
+              hover:bg-navy/90 transition-colors">
+      Browse Live Streams →
+    </a>
+    <a href="{% url 'vendors:shop' stream.vendor.slug %}"
+       class="bg-white border border-gray-200 text-navy font-semibold px-6 py-3
+              rounded-xl hover:border-navy transition-colors">
+      Visit {{ stream.vendor.shop_name }}
+    </a>
+  </div>
+</div>
+{% endblock %}
