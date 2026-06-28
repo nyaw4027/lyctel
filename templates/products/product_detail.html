@@ -56,8 +56,8 @@
     <div class="lg:w-5/12 flex-shrink-0 fade-in">
       <div id="main-image-wrap"
            class="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-3 shadow-sm cursor-zoom-in relative">
-        {% if product.images.first %}
-        <img id="main-image" src="{{ product.images.first.image.url }}" alt="{{ product.name }}"
+        {% if product.primary_image %}
+        <img id="main-image" src="{{ product.primary_image }}" alt="{{ product.name }}"
              class="w-full h-80 md:h-96 object-contain p-4"/>
         {% else %}
         <div class="w-full h-80 flex items-center justify-center text-7xl opacity-20">📦</div>
@@ -78,7 +78,7 @@
       {% if product.images.count > 1 %}
       <div class="flex gap-2 overflow-x-auto pb-1">
         {% for img in product.images.all %}
-        <div class="thumb flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-white border"
+        <div class="thumb flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-white border {% if img.image.url == product.primary_image %}active{% endif %}"
              onclick="switchImage('{{ img.image.url }}', this)">
           <img src="{{ img.image.url }}" class="w-full h-full object-cover"/>
         </div>
@@ -555,14 +555,12 @@
       {% for p in related %}
       <div class="group bg-white rounded-2xl overflow-hidden border border-gray-100 card-hover flex flex-col">
         <a href="{% url 'products:detail' p.slug %}" class="relative block overflow-hidden bg-cream">
-          {% with p.images.first as img %}
-          {% if img %}
-          <img src="{{ img.image.url }}" alt="{{ p.name }}"
+          {% if p.primary_image %}
+          <img src="{{ p.primary_image }}" alt="{{ p.name }}"
                class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-500"/>
           {% else %}
           <div class="w-full h-40 flex items-center justify-center"><span class="text-4xl opacity-20">📦</span></div>
           {% endif %}
-          {% endwith %}
           {% if p.has_discount %}
           <span class="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">-{{ p.discount_percent }}%</span>
           {% endif %}
