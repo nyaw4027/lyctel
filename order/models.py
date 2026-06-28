@@ -11,6 +11,7 @@ class Order(models.Model):
         PENDING    = 'pending',    'Pending'
         CONFIRMED  = 'confirmed',  'Confirmed'
         PROCESSING = 'processing', 'Processing'
+        READY      = 'ready',      'Ready for Pickup'
         DISPATCHED = 'dispatched', 'Dispatched'
         DELIVERED  = 'delivered',  'Delivered'
         CANCELLED  = 'cancelled',  'Cancelled'
@@ -21,6 +22,11 @@ class Order(models.Model):
         PAID     = 'paid',     'Paid'
         FAILED   = 'failed',   'Failed'
         REFUNDED = 'refunded', 'Refunded'
+
+    class DeliveryChoice(models.TextChoices):
+        RIDER  = 'rider',  'Rider Delivery'
+        PICKUP = 'pickup', 'Self Pickup'
+        PARCEL = 'parcel', 'Bus / Parcel'
 
     order_ref = models.CharField(
         max_length=20,
@@ -36,10 +42,29 @@ class Order(models.Model):
         related_name='orders'
     )
 
-    delivery_address = models.TextField()
-    delivery_city    = models.CharField(max_length=100)
-    delivery_phone   = models.CharField(max_length=20)
+    # ── Delivery choice ───────────────────────────────────
+    delivery_choice = models.CharField(
+        max_length=10,
+        choices=DeliveryChoice.choices,
+        default=DeliveryChoice.RIDER,
+    )
 
+    # Used for rider mode
+    delivery_address = models.TextField(blank=True)
+    delivery_city    = models.CharField(max_length=100, blank=True)
+    delivery_phone   = models.CharField(max_length=20, blank=True)
+
+    # Used for parcel/bus mode
+    parcel_bus_station     = models.CharField(max_length=255, blank=True)
+    parcel_recipient_phone = models.CharField(max_length=20, blank=True)
+    parcel_notes           = models.TextField(blank=True)
+    parcel_waybill         = models.CharField(max_length=100, blank=True)
+    parcel_dispatched_at   = models.DateTimeField(null=True, blank=True)
+
+    # Used for pickup mode
+    pickup_confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    # ── Financials ────────────────────────────────────────
     subtotal     = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -57,25 +82,38 @@ class Order(models.Model):
     class Meta:
         ordering = ['-created_at']
 
-    # ─────────────────────────────
-    # AUTO ORDER REF
-    # ─────────────────────────────
     def save(self, *args, **kwargs):
         if not self.order_ref:
             self.order_ref = f"ORD-{uuid.uuid4().hex[:6].upper()}"
         super().save(*args, **kwargs)
 
-    # ─────────────────────────────
-    # AUTO TOTAL CALCULATION
-    # ─────────────────────────────
     def calculate_totals(self):
-        self.subtotal = sum(item.subtotal for item in self.items.all())
+        self.subtotal    = sum(item.subtotal for item in self.items.all())
         self.total_amount = Decimal(self.subtotal) + Decimal(self.delivery_fee)
         self.save(update_fields=['subtotal', 'total_amount'])
 
-    # ─────────────────────────────
-    # HELPERS
-    # ─────────────────────────────
+    # ── Delivery-mode helpers ─────────────────────────────
+
+    @property
+    def is_rider_delivery(self):
+        return self.delivery_choice == self.DeliveryChoice.RIDER
+
+    @property
+    def is_pickup(self):
+        return self.delivery_choice == self.DeliveryChoice.PICKUP
+
+    @property
+    def is_parcel(self):
+        return self.delivery_choice == self.DeliveryChoice.PARCEL
+
+    @property
+    def delivery_choice_label(self):
+        return {
+            'rider':  '🛵 Rider Delivery',
+            'pickup': '🏪 Self Pickup',
+            'parcel': '🚌 Bus / Parcel',
+        }.get(self.delivery_choice, self.delivery_choice)
+
     @property
     def is_paid(self):
         return self.payment_status == self.PaymentStatus.PAID
@@ -86,7 +124,6 @@ class Order(models.Model):
 
     def __str__(self):
         return f"{self.order_ref} — {self.status}"
-
 
 
 class OrderItem(models.Model):
@@ -110,26 +147,19 @@ class OrderItem(models.Model):
     class Meta:
         unique_together = ('order', 'product')
 
-    # ─────────────────────────────
-    # SUBTOTAL
-    # ─────────────────────────────
     @property
     def subtotal(self):
         return self.unit_price * self.quantity
 
     def save(self, *args, **kwargs):
-        # auto-fill product name + price snapshot
         if self.product and not self.product_name:
             self.product_name = self.product.name
-
         if self.product and not self.unit_price:
             self.unit_price = self.product.selling_price
-
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.quantity}x {self.product_name}"
-
 
 
 class OrderStatusHistory(models.Model):
@@ -158,5 +188,3 @@ class OrderStatusHistory(models.Model):
 
     def __str__(self):
         return f"{self.order.order_ref}: {self.old_status} → {self.new_status}"
-
-

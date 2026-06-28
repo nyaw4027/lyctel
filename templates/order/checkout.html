@@ -1,12 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Checkout — Lynctel{% endblock %}
 
+{% block extra_head %}
+<style>
+  .mode-card input[type=radio]:checked ~ .card-inner {
+    border-color: var(--active-color, #0F1B2D);
+    background: var(--active-bg, rgba(15,27,45,.04));
+    box-shadow: 0 4px 20px rgba(0,0,0,.08);
+  }
+  .mode-card .radio-dot { transition: all .15s; }
+  .mode-card input[type=radio]:checked ~ .card-inner .radio-dot {
+    background: var(--active-color, #0F1B2D);
+    transform: scale(1);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
 
-  <!-- Progress steps -->
+  <!-- Progress -->
   <div class="flex items-center gap-2 mb-8 text-sm overflow-x-auto pb-1">
-    <a href="{% url 'cart:detail' %}" class="text-gold-dark font-semibold hover:underline whitespace-nowrap flex items-center gap-1">← Cart</a>
+    <a href="{% url 'cart:detail' %}" class="text-gold-dark font-semibold hover:underline whitespace-nowrap">← Cart</a>
     <span class="text-gray-300">›</span>
     <span class="font-semibold text-navy whitespace-nowrap flex items-center gap-1.5">
       <span class="w-5 h-5 bg-navy text-white rounded-full text-xs flex items-center justify-center font-bold">1</span>
@@ -26,104 +41,266 @@
 
   <div class="flex flex-col lg:flex-row gap-6">
 
-    <!-- DELIVERY FORM -->
+    <!-- ── FORM ─────────────────────────────────────────── -->
     <div class="flex-1">
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h2 class="font-display font-700 text-xl text-navy mb-6">Delivery Details</h2>
+      <form method="POST" id="checkout-form" class="space-y-5">
+        {% csrf_token %}
 
-        <form method="POST" class="space-y-5" id="checkout-form">
-          {% csrf_token %}
-
-          <!-- Phone -->
+        <!-- ── STEP 1: Contact phone (all modes) ── -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <h2 class="font-display font-700 text-xl text-navy mb-5">Contact Details</h2>
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Delivery Phone Number *</label>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              Phone Number *
+            </label>
             <input type="tel" name="delivery_phone"
                    value="{{ form_data.delivery_phone|default:user.phone }}"
                    placeholder="0241234567"
-                   class="w-full px-4 py-3 border rounded-xl text-sm transition-all
+                   class="w-full px-4 py-3 border rounded-xl text-sm
                           {% if errors.delivery_phone %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
             {% if errors.delivery_phone %}
             <p class="text-red-500 text-xs mt-1">⚠ {{ errors.delivery_phone }}</p>
             {% endif %}
-            <p class="text-xs text-gray-400 mt-1">📞 Rider will call this number on arrival</p>
+            <p class="text-xs text-gray-400 mt-1">We'll use this to update you about your order.</p>
+          </div>
+        </div>
+
+        <!-- ── STEP 2: Delivery mode selector ── -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <h2 class="font-display font-700 text-xl text-navy mb-2">How would you like to receive it?</h2>
+          <p class="text-sm text-gray-500 mb-5">Choose the option that works best for your location.</p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6" id="mode-grid">
+
+            <!-- RIDER -->
+            <label class="mode-card cursor-pointer block"
+                   style="--active-color:#0F1B2D; --active-bg:rgba(15,27,45,.04)">
+              <input type="radio" name="delivery_choice" value="rider"
+                     class="sr-only"
+                     {% if form_data.delivery_choice != 'pickup' and form_data.delivery_choice != 'parcel' %}checked{% endif %}>
+              <div class="card-inner border-2 border-gray-200 rounded-2xl p-4 h-full flex flex-col gap-3 transition-all">
+                <div class="flex items-start justify-between">
+                  <div class="w-11 h-11 bg-navy/10 rounded-xl flex items-center justify-center text-2xl">🛵</div>
+                  <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <div class="radio-dot w-2.5 h-2.5 rounded-full bg-transparent scale-0"></div>
+                  </div>
+                </div>
+                <div>
+                  <p class="font-semibold text-navy text-sm">Rider Delivery</p>
+                  <p class="text-xs text-gray-500 mt-1 leading-relaxed">
+                    A Lynctel rider picks up from the vendor and delivers to your door.
+                  </p>
+                </div>
+                <p class="text-xs text-green-600 font-semibold mt-auto pt-1 border-t border-gray-100">
+                  Fastest · zone fee applies
+                </p>
+              </div>
+            </label>
+
+            <!-- PICKUP -->
+            <label class="mode-card cursor-pointer block"
+                   style="--active-color:#d97706; --active-bg:rgba(245,166,35,.05)">
+              <input type="radio" name="delivery_choice" value="pickup"
+                     class="sr-only"
+                     {% if form_data.delivery_choice == 'pickup' %}checked{% endif %}>
+              <div class="card-inner border-2 border-gray-200 rounded-2xl p-4 h-full flex flex-col gap-3 transition-all">
+                <div class="flex items-start justify-between">
+                  <div class="w-11 h-11 bg-gold/15 rounded-xl flex items-center justify-center text-2xl">🏪</div>
+                  <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <div class="radio-dot w-2.5 h-2.5 rounded-full bg-transparent scale-0"></div>
+                  </div>
+                </div>
+                <div>
+                  <p class="font-semibold text-navy text-sm">Self Pickup</p>
+                  <p class="text-xs text-gray-500 mt-1 leading-relaxed">
+                    Come collect your order directly from the vendor's location.
+                  </p>
+                </div>
+                <p class="text-xs text-gold-dark font-semibold mt-auto pt-1 border-t border-gray-100">
+                  Free · no delivery fee
+                </p>
+              </div>
+            </label>
+
+            <!-- PARCEL -->
+            <label class="mode-card cursor-pointer block"
+                   style="--active-color:#2563eb; --active-bg:rgba(37,99,235,.04)">
+              <input type="radio" name="delivery_choice" value="parcel"
+                     class="sr-only"
+                     {% if form_data.delivery_choice == 'parcel' %}checked{% endif %}>
+              <div class="card-inner border-2 border-gray-200 rounded-2xl p-4 h-full flex flex-col gap-3 transition-all">
+                <div class="flex items-start justify-between">
+                  <div class="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center text-2xl">🚌</div>
+                  <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <div class="radio-dot w-2.5 h-2.5 rounded-full bg-transparent scale-0"></div>
+                  </div>
+                </div>
+                <div>
+                  <p class="font-semibold text-navy text-sm">Bus / Parcel</p>
+                  <p class="text-xs text-gray-500 mt-1 leading-relaxed">
+                    Vendor parcels your items and sends via bus station. Best for upcountry.
+                  </p>
+                </div>
+                <p class="text-xs text-blue-600 font-semibold mt-auto pt-1 border-t border-gray-100">
+                  Free · arrange with vendor
+                </p>
+              </div>
+            </label>
+
           </div>
 
-          <!-- Address -->
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Delivery Address *</label>
-            <input type="text" name="delivery_address"
-                   value="{{ form_data.delivery_address|default:'' }}"
-                   placeholder="House no., street name, nearby landmark..."
-                   class="w-full px-4 py-3 border rounded-xl text-sm transition-all
-                          {% if errors.delivery_address %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-            {% if errors.delivery_address %}
-            <p class="text-red-500 text-xs mt-1">⚠ {{ errors.delivery_address }}</p>
-            {% endif %}
-          </div>
+          <!-- ── RIDER FIELDS ── -->
+          <div id="section-rider" class="space-y-4">
 
-          <!-- City -->
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">City *</label>
-            <input type="text" name="delivery_city"
-                   value="{{ form_data.delivery_city|default:'' }}"
-                   placeholder="e.g. Accra, Kumasi, Tema..."
-                   class="w-full px-4 py-3 border rounded-xl text-sm transition-all
-                          {% if errors.delivery_city %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-            {% if errors.delivery_city %}
-            <p class="text-red-500 text-xs mt-1">⚠ {{ errors.delivery_city }}</p>
-            {% endif %}
-          </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">Delivery Address *</label>
+              <input type="text" name="delivery_address"
+                     value="{{ form_data.delivery_address|default:'' }}"
+                     placeholder="House no., street name, nearby landmark..."
+                     class="w-full px-4 py-3 border rounded-xl text-sm
+                            {% if errors.delivery_address %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+              {% if errors.delivery_address %}
+              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.delivery_address }}</p>
+              {% endif %}
+            </div>
 
-          <!-- Delivery Zone -->
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Delivery Zone *</label>
-            <select name="zone_id" id="zone-select"
-                    class="w-full px-4 py-3 border rounded-xl text-sm bg-white cursor-pointer transition-all
-                           {% if errors.zone_id %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}">
-              <option value="">— Select your delivery area —</option>
-              {% for zone in zones %}
-              <option value="{{ zone.pk }}" data-fee="{{ zone.delivery_fee }}"
-                      {% if form_data.zone_id == zone.pk|stringformat:"s" %}selected{% endif %}>
-                {{ zone.name }} — GHS {{ zone.delivery_fee }}
-              </option>
-              {% endfor %}
-            </select>
-            {% if errors.zone_id %}
-            <p class="text-red-500 text-xs mt-1">⚠ {{ errors.zone_id }}</p>
-            {% endif %}
-            <div id="fee-preview" class="hidden mt-2 bg-gold-light border border-gold/30 rounded-xl px-4 py-2.5 flex items-center justify-between text-sm">
-              <span class="text-gray-600">Delivery fee for this zone</span>
-              <span id="fee-preview-amount" class="font-display font-700 text-navy"></span>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">City *</label>
+              <input type="text" name="delivery_city"
+                     value="{{ form_data.delivery_city|default:'' }}"
+                     placeholder="e.g. Accra, Kumasi, Tema..."
+                     class="w-full px-4 py-3 border rounded-xl text-sm
+                            {% if errors.delivery_city %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+              {% if errors.delivery_city %}
+              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.delivery_city }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">Delivery Zone *</label>
+              <select name="zone_id" id="zone-select"
+                      class="w-full px-4 py-3 border rounded-xl text-sm bg-white cursor-pointer
+                             {% if errors.zone_id %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}">
+                <option value="">— Select your delivery area —</option>
+                {% for zone in zones %}
+                <option value="{{ zone.pk }}"
+                        data-fee="{{ zone.delivery_fee }}"
+                        {% if form_data.zone_id == zone.pk|stringformat:"s" %}selected{% endif %}>
+                  {{ zone.name }} — GHS {{ zone.delivery_fee }}
+                </option>
+                {% endfor %}
+              </select>
+              {% if errors.zone_id %}
+              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.zone_id }}</p>
+              {% endif %}
+              <div id="fee-preview"
+                   class="hidden mt-2 bg-gold-light border border-gold/30 rounded-xl
+                          px-4 py-2.5 flex items-center justify-between text-sm">
+                <span class="text-gray-600">Delivery fee for this zone</span>
+                <span id="fee-preview-amount" class="font-display font-700 text-navy"></span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                Special Notes <span class="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <textarea name="special_notes" rows="2"
+                        placeholder="Gate colour, nearest landmark, best time to deliver..."
+                        class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.special_notes|default:'' }}</textarea>
             </div>
           </div>
 
-          <!-- Special notes -->
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-              Special Notes <span class="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <textarea name="special_notes" rows="2"
-                      placeholder="Gate colour, nearest landmark, best time to deliver..."
-                      class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.special_notes|default:'' }}</textarea>
+          <!-- ── PICKUP FIELDS ── -->
+          <div id="section-pickup" class="hidden">
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+              <p class="text-sm font-semibold text-amber-800">📍 Pickup Instructions</p>
+              <p class="text-sm text-amber-700 leading-relaxed">
+                After payment, the vendor will prepare your order and notify you when it's ready.
+                You'll then arrange to collect it at their location.
+              </p>
+              <p class="text-xs text-amber-600 mt-2">
+                💡 Check the vendor's shop page or WhatsApp them for their exact address.
+              </p>
+            </div>
+            <div class="mt-4">
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                Notes for vendor <span class="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <textarea name="special_notes" rows="2"
+                        placeholder="e.g. Preferred pickup time, any special instructions..."
+                        class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.special_notes|default:'' }}</textarea>
+            </div>
           </div>
 
-          <button type="submit" id="submit-btn"
-                  class="w-full bg-navy text-white font-semibold py-4 rounded-xl transition-all btn-press
-                         flex items-center justify-center gap-2 opacity-50 cursor-not-allowed">
-            <span id="btn-text">Continue to Payment →</span>
-            <span id="btn-loader" class="hidden">
-              <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-              </svg>
-            </span>
-          </button>
-          <p class="text-center text-xs text-gray-400">🔒 Your information is secure and encrypted</p>
-        </form>
-      </div>
+          <!-- ── PARCEL / BUS FIELDS ── -->
+          <div id="section-parcel" class="hidden space-y-4">
+            <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700">
+              🚌 Fill in your bus station details. The vendor will parcel your items and send them there.
+              You'll receive a notification with the waybill number once it's dispatched.
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                Bus Station / Terminal *
+              </label>
+              <input type="text" name="parcel_bus_station"
+                     value="{{ form_data.parcel_bus_station|default:'' }}"
+                     placeholder="e.g. VIP Kumasi Terminal, STC Cape Coast Station"
+                     class="w-full px-4 py-3 border rounded-xl text-sm
+                            {% if errors.parcel_bus_station %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+              {% if errors.parcel_bus_station %}
+              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.parcel_bus_station }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                Recipient Phone at Station *
+              </label>
+              <input type="tel" name="parcel_recipient_phone"
+                     value="{{ form_data.parcel_recipient_phone|default:'' }}"
+                     placeholder="Phone number to call at the station"
+                     class="w-full px-4 py-3 border rounded-xl text-sm
+                            {% if errors.parcel_recipient_phone %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+              {% if errors.parcel_recipient_phone %}
+              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.parcel_recipient_phone }}</p>
+              {% endif %}
+              <p class="text-xs text-gray-400 mt-1">
+                The vendor will write this on the parcel and the bus company will call it.
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                Additional Notes <span class="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <textarea name="parcel_notes" rows="2"
+                        placeholder="e.g. Recipient name, preferred bus company, station landmark..."
+                        class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.parcel_notes|default:'' }}</textarea>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── SUBMIT ── -->
+        <button type="submit" id="submit-btn"
+                class="w-full bg-navy text-white font-semibold py-4 rounded-xl transition-all btn-press
+                       flex items-center justify-center gap-2">
+          <span id="btn-text">Continue to Payment →</span>
+          <span id="btn-loader" class="hidden">
+            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+          </span>
+        </button>
+        <p class="text-center text-xs text-gray-400">🔒 Your information is secure and encrypted</p>
+
+      </form>
     </div>
 
-    <!-- ORDER SUMMARY -->
+    <!-- ── ORDER SUMMARY SIDEBAR ─────────────────────────── -->
     <div class="w-full lg:w-80 flex-shrink-0">
       <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-20">
         <h2 class="font-display font-700 text-navy text-base mb-4">Order Summary</h2>
@@ -161,8 +338,16 @@
           </div>
           <div class="flex justify-between pt-2 border-t border-gray-100">
             <span class="font-display font-700 text-navy">Total</span>
-            <span id="sidebar-total" class="font-display font-700 text-navy text-lg">GHS {{ cart.total_price }}</span>
+            <span id="sidebar-total" class="font-display font-700 text-navy text-lg">
+              GHS {{ cart.total_price }}
+            </span>
           </div>
+        </div>
+
+        <!-- Delivery mode summary (updates dynamically) -->
+        <div id="mode-summary" class="mt-4 rounded-xl px-3 py-2.5 text-xs text-center font-medium
+                                      bg-navy/5 text-navy">
+          🛵 Rider Delivery selected
         </div>
 
         <div class="mt-4 border-t border-gray-100 pt-4">
@@ -179,46 +364,122 @@
         </div>
       </div>
     </div>
+
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  const subtotal   = parseFloat("{{ cart.total_price|floatformat:2 }}") || 0;
-  const zoneSelect = document.getElementById('zone-select');
-  const sidebarFee = document.getElementById('sidebar-fee');
-  const sidebarTot = document.getElementById('sidebar-total');
-  const feePreview = document.getElementById('fee-preview');
-  const feeAmount  = document.getElementById('fee-preview-amount');
-  const submitBtn  = document.getElementById('submit-btn');
+(function () {
+  const subtotal    = parseFloat("{{ cart.total_price|floatformat:2 }}") || 0;
+  const zoneSelect  = document.getElementById('zone-select');
+  const sidebarFee  = document.getElementById('sidebar-fee');
+  const sidebarTot  = document.getElementById('sidebar-total');
+  const feePreview  = document.getElementById('fee-preview');
+  const feeAmount   = document.getElementById('fee-preview-amount');
+  const modeSummary = document.getElementById('mode-summary');
+  const submitBtn   = document.getElementById('submit-btn');
 
-  function updateFee() {
+  const sections = {
+    rider:  document.getElementById('section-rider'),
+    pickup: document.getElementById('section-pickup'),
+    parcel: document.getElementById('section-parcel'),
+  };
+
+  const modeMeta = {
+    rider:  { label: '🛵 Rider Delivery selected',  fee: null  },
+    pickup: { label: '🏪 Self Pickup — no delivery fee', fee: 0 },
+    parcel: { label: '🚌 Bus/Parcel — no platform fee', fee: 0 },
+  };
+
+  // ── Show/hide sections + sync sidebar ─────────────────
+  function switchMode(mode) {
+    Object.entries(sections).forEach(([key, el]) => {
+      if (!el) return;
+      el.classList.toggle('hidden', key !== mode);
+    });
+
+    const meta = modeMeta[mode];
+    modeSummary.textContent = meta.label;
+
+    if (meta.fee === 0) {
+      // Free delivery
+      sidebarFee.textContent = 'GHS 0.00';
+      sidebarTot.textContent = 'GHS ' + subtotal.toFixed(2);
+      feePreview.classList.add('hidden');
+      enableSubmit();
+    } else {
+      // Rider — driven by zone select
+      syncZoneFee();
+    }
+
+    // Update radio dot colours via CSS variable on mode-card
+    syncRadioDots();
+  }
+
+  function syncZoneFee() {
+    if (!zoneSelect) return;
     const opt = zoneSelect.options[zoneSelect.selectedIndex];
-    const fee = parseFloat(opt?.dataset.fee || 0);
-    if (zoneSelect.value && fee >= 0) {
+    const fee = parseFloat(opt?.dataset.fee ?? NaN);
+
+    if (zoneSelect.value && !isNaN(fee)) {
       sidebarFee.textContent = 'GHS ' + fee.toFixed(2);
       sidebarTot.textContent = 'GHS ' + (subtotal + fee).toFixed(2);
       feePreview.classList.remove('hidden');
       feeAmount.textContent  = 'GHS ' + fee.toFixed(2);
-      submitBtn.disabled     = false;
-      submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      enableSubmit();
     } else {
       sidebarFee.textContent = '—';
       sidebarTot.textContent = 'GHS ' + subtotal.toFixed(2);
       feePreview.classList.add('hidden');
-      submitBtn.disabled     = true;
-      submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      disableSubmit();
     }
   }
 
-  updateFee();
-  zoneSelect.addEventListener('change', updateFee);
+  function syncRadioDots() {
+    document.querySelectorAll('.mode-card').forEach(label => {
+      const radio = label.querySelector('input[type=radio]');
+      const dot   = label.querySelector('.radio-dot');
+      if (!dot) return;
+      if (radio.checked) {
+        dot.style.background  = getComputedStyle(label).getPropertyValue('--active-color').trim();
+        dot.style.transform   = 'scale(1)';
+      } else {
+        dot.style.background  = 'transparent';
+        dot.style.transform   = 'scale(0)';
+      }
+    });
+  }
 
+  function enableSubmit() {
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+  }
+  function disableSubmit() {
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+  }
+
+  // ── Bind radio changes ─────────────────────────────────
+  document.querySelectorAll('input[name="delivery_choice"]').forEach(radio => {
+    radio.addEventListener('change', () => switchMode(radio.value));
+  });
+
+  if (zoneSelect) {
+    zoneSelect.addEventListener('change', syncZoneFee);
+  }
+
+  // ── Init on load ───────────────────────────────────────
+  const checked = document.querySelector('input[name="delivery_choice"]:checked');
+  switchMode(checked ? checked.value : 'rider');
+
+  // ── Submit loader ──────────────────────────────────────
   document.getElementById('checkout-form').addEventListener('submit', function () {
     document.getElementById('btn-text').textContent = 'Processing...';
     document.getElementById('btn-loader').classList.remove('hidden');
     submitBtn.disabled = true;
   });
+})();
 </script>
 {% endblock %}
