@@ -347,6 +347,7 @@ def dashboard(request):
     tabs = [
         ('products', 'Products'),
         ('orders',   'Orders'),
+        ('videos',   'Videos'),
         ('earnings', 'Earnings'),
         ('settings', 'Settings'),
     ]
@@ -481,6 +482,19 @@ def product_edit(request, pk):
     categories = Category.objects.filter(is_active=True)
 
     if request.method == 'POST':
+        # FIXED: the dashboard's Videos tab posts only csrf + delete_videos
+        # to this exact view (no name/description/category_id/etc). Letting
+        # that fall through into the full save logic below silently wiped
+        # the product's description (defaulted to '') and unset its
+        # category (defaulted to None) as a side effect of removing a video.
+        # Handle it as its own action and return immediately.
+        delete_video_ids = request.POST.getlist('delete_videos')
+        if delete_video_ids and 'name' not in request.POST:
+            ProductVideo.objects.filter(product=product, pk__in=delete_video_ids).delete()
+            messages.success(request, 'Video removed.')
+            return redirect('vendors:dashboard')
+
+        name           = request.POST.get('name', product.name).strip()
         selling_price  = request.POST.get('selling_price', product.selling_price)
         discount_price = request.POST.get('discount_price', '').strip()
 
@@ -488,7 +502,13 @@ def product_edit(request, pk):
         video_title = request.POST.get('video_title', '').strip()
         video_thumb = request.FILES.get('video_thumbnail')
 
+        # FIXED: product_edit previously had NO required-field checks at all
+        # (product_add does). If name or selling_price ever came through
+        # blank, product.save() would raise an unhandled exception instead
+        # of re-rendering the form with a friendly error.
         errors = {}
+        if not name:          errors['name']          = 'Product name is required.'
+        if not selling_price: errors['selling_price'] = 'Selling price is required.'
         _validate_discount_price(discount_price, selling_price, errors)
         _validate_video_upload(video_file, errors)
 
@@ -498,7 +518,7 @@ def product_edit(request, pk):
                 'errors': errors, 'form_data': request.POST, 'action': 'Edit',
             })
 
-        product.name           = request.POST.get('name', product.name).strip()
+        product.name           = name
         product.description    = request.POST.get('description', '').strip()
         product.category_id    = request.POST.get('category_id') or None
         product.selling_price  = selling_price
