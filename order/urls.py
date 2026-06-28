@@ -10,4 +10,5 @@ urlpatterns = [
     path('<str:order_ref>/track/',             views.order_tracking,         name='tracking'),
     path('confirm-pickup/<str:order_ref>/',    views.vendor_confirm_pickup,  name='confirm_pickup'),
     path('dispatch-parcel/<str:order_ref>/',   views.vendor_dispatch_parcel, name='dispatch_parcel'),
+    path('estimate-fee/', views.estimate_delivery_fee, name='estimate_fee'),
 ]
