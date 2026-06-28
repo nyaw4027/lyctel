@@ -374,8 +374,12 @@
             <td class="px-5 py-3.5 text-right text-gray-500 hidden md:table-cell">
               GHS {{ earning.gross_amount }}
             </td>
+            <!-- FIXED: VendorEarning's field is `commission`, not
+                 `commission_amount` — the old name silently rendered blank
+                 instead of erroring, since Django template lookups fail
+                 quietly. -->
             <td class="px-5 py-3.5 text-right text-red-400 hidden md:table-cell">
-              -GHS {{ earning.commission_amount }}
+              -GHS {{ earning.commission }}
             </td>
             <td class="px-5 py-3.5 text-right font-display font-700 text-navy">
               GHS {{ earning.net_amount }}
@@ -462,7 +466,10 @@
               <p class="text-white text-xs font-semibold truncate">{{ product.name }}</p>
               <p class="text-gold text-xs font-bold">GHS {{ product.final_price }}</p>
             </div>
-            {# Delete a single video via product edit (posts delete_videos=[video.pk]) #}
+            {# FIXED (in vendors/views.py product_edit): this delete_videos
+               POST is now handled as its own action — it no longer falls
+               through into the full product-save logic, which previously
+               wiped the product's description/category as a side effect. #}
             <form method="POST" action="{% url 'vendors:product_edit' product.pk %}"
                   onsubmit="return confirm('Remove this video?')">
               {% csrf_token %}
@@ -515,7 +522,7 @@
   {% elif current_tab == 'settings' %}
   <div class="fade-in">
 
-    <!-- Social links banner — FIXED URL (was 'vendors:settings', which doesn't exist) -->
+    <!-- Social links banner -->
     <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 rounded-2xl p-6 mb-6
                 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-700">
       <div class="flex items-center gap-4">
@@ -529,7 +536,6 @@
           </p>
         </div>
       </div>
-      {# FIXED: was linking to 'vendors:settings' — correct name is 'vendors:dashboard' #}
       <a href="{% url 'vendors:dashboard' %}?tab=settings&pane=social"
          class="inline-flex items-center justify-center bg-white hover:bg-gray-100 text-slate-900
                 font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-sm whitespace-nowrap">
