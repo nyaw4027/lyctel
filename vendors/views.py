@@ -14,6 +14,7 @@ from order.models import Order, OrderItem
 from .models import Vendor, VendorEarning
 from django.urls import reverse
 
+
 # ── GUARD DECORATOR ───────────────────────────────────────
 
 def vendor_required(view_func):
@@ -36,7 +37,6 @@ def vendor_required(view_func):
 # ── PUBLIC: VENDOR DIRECTORY ──────────────────────────────
 
 def directory(request):
-    # Changed annotation alias to 'total_products' to avoid potential property clashes
     vendors = Vendor.objects.filter(
         status=Vendor.Status.ACTIVE
     ).annotate(total_products=Count('products')).order_by('-joined_at')
@@ -59,7 +59,6 @@ def directory(request):
 # ── PUBLIC: VENDOR SHOP PAGE ──────────────────────────────
 
 def shop_page(request, slug):
-    # Using select_related to optimize fetching profile data
     vendor = get_object_or_404(
         Vendor.objects.select_related('owner'),
         slug=slug,
@@ -73,9 +72,9 @@ def shop_page(request, slug):
         .prefetch_related('images')
     )
 
-    search = request.GET.get('q', '').strip()
+    search     = request.GET.get('q', '').strip()
     filter_cat = request.GET.get('category', '').strip()
-    sort = request.GET.get('sort', 'newest')
+    sort       = request.GET.get('sort', 'newest')
 
     if search:
         products = products.filter(
@@ -85,18 +84,13 @@ def shop_page(request, slug):
         products = products.filter(category__slug=filter_cat)
 
     sort_map = {
-        'newest': '-created_at',
-        'price_low': 'selling_price',
+        'newest':     '-created_at',
+        'price_low':  'selling_price',
         'price_high': '-selling_price',
-        'name': 'name',
+        'name':       'name',
     }
     products = products.order_by(sort_map.get(sort, '-created_at'))
 
-    # FIXED: previously chained .filter(products__vendor=vendor, products__status='active')
-    # then .annotate(Count('products')) on the SAME relation, which caused Django to
-    # build a multi-row join and count ALL of the category's products (every vendor),
-    # not just this vendor's active ones. Using a conditional Count avoids the
-    # double-join and gives the correct per-vendor count.
     categories = (
         Category.objects
         .filter(is_active=True)
@@ -110,18 +104,19 @@ def shop_page(request, slug):
     )
 
     return render(request, 'vendors/shop.html', {
-        'vendor': vendor,
-        'products': products,
-        'categories': categories,
+        'vendor':         vendor,
+        'products':       products,
+        'categories':     categories,
         'total_products': vendor.products.filter(status='active').count(),
-        'search': search,
-        'filter_cat': filter_cat,
-        'sort': sort,
-        'cart_count': _get_cart_count(request),
+        'search':         search,
+        'filter_cat':     filter_cat,
+        'sort':           sort,
+        'cart_count':     _get_cart_count(request),
     })
 
 
 # ── APPLY TO BECOME A VENDOR ──────────────────────────────
+
 def apply(request):
     if request.user.is_authenticated:
         try:
@@ -177,7 +172,6 @@ def apply(request):
             auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         else:
             user = request.user
-            # Update role to vendor if they were a customer
             if user.role == 'customer':
                 user.role = 'vendor'
                 user.save(update_fields=['role'])
@@ -209,44 +203,35 @@ def pending(request):
     return render(request, 'vendors/pending.html', {'vendor': vendor})
 
 
-# DASHBOARD VIEWS
+# ── DASHBOARD ─────────────────────────────────────────────
+
 @vendor_required
 def dashboard(request):
-    vendor = request.vendor
+    vendor      = request.vendor
+    current_tab = request.GET.get('tab', 'products')
+    pane        = request.GET.get('pane', '')
 
-    # 1. Determine which tab or sub-pane the user wants to look at
-    current_tab = request.GET.get('tab', 'products')  # defaults to products list
-    pane = request.GET.get('pane', '')               # detects sub-panels like social configuration
-
-    # ═══════════════════════════════════════════════════
-    #  SUB-PANE: RENDER & SAVE STANDALONE SOCIALS FORM
-    # ═══════════════════════════════════════════════════
+    # ── Socials sub-pane ──
     if current_tab == 'settings' and pane == 'social':
         if request.method == 'POST':
-            # Extract and update ALL 6 input values matching socials_form.html exactly
             vendor.whatsapp  = request.POST.get('whatsapp', '').strip()
             vendor.instagram = request.POST.get('instagram', '').strip()
             vendor.facebook  = request.POST.get('facebook', '').strip()
             vendor.tiktok    = request.POST.get('tiktok', '').strip()
-            vendor.twitter   = request.POST.get('twitter', '').strip()   # Fixed: Was missing
-            vendor.youtube   = request.POST.get('youtube', '').strip()   # Fixed: Was missing
-
+            vendor.twitter   = request.POST.get('twitter', '').strip()
+            vendor.youtube   = request.POST.get('youtube', '').strip()
             vendor.save()
-            messages.success(request, "Social configurations updated successfully.")
-            # Bounces them clean back onto the core settings panel view context
+            messages.success(request, 'Social configurations updated successfully.')
             return redirect(f"{reverse('vendors:dashboard')}?tab=settings")
 
-        # If GET request, render your dedicated standalone form file with clear vendor context
         return render(request, 'vendors/socials_form.html', {
-            'vendor': vendor,
-            'cart_count': 0,
+            'vendor':      vendor,
+            'cart_count':  0,
             'current_tab': current_tab,
-            'pane': pane
+            'pane':        pane,
         })
 
-    # ═══════════════════════════════════════════════════
-    #  STANDARD SETTINGS TAB SUBMISSION (Shop Profile)
-    # ═══════════════════════════════════════════════════
+    # ── Settings tab (shop profile) ──
     if current_tab == 'settings' and request.method == 'POST':
         vendor.shop_name    = request.POST.get('shop_name', vendor.shop_name).strip()
         vendor.description  = request.POST.get('description', '').strip()
@@ -264,73 +249,52 @@ def dashboard(request):
         messages.success(request, 'Shop settings saved!')
         return redirect(f"{reverse('vendors:dashboard')}?tab=settings")
 
-    # 3. Base Dashboard Querysets
+    # ── Querysets ──
     products = (
         vendor.products
-        .prefetch_related('images')
+        .prefetch_related('images', 'videos')
         .select_related('category')
         .order_by('-created_at')
     )
     earnings = VendorEarning.objects.filter(vendor=vendor).select_related('order')
 
-    # Core statistical aggregates
-    total_revenue   = earnings.aggregate(t=Sum('net_amount'))['t'] or 0
-    pending_payout  = earnings.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
-    paid_out        = earnings.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
-    total_orders    = earnings.count()
+    total_revenue  = earnings.aggregate(t=Sum('net_amount'))['t'] or 0
+    pending_payout = earnings.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
+    paid_out       = earnings.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
+    total_orders   = earnings.count()
 
-    # FIXED: previously hardcoded stock_qty__lte=5, ignoring each product's own
-    # low_stock_alert threshold (the field that already exists on the model and
-    # backs Product.is_low_stock). Now uses F() to compare against that field.
     low_stock_count = products.filter(
         status='active', stock_qty__lte=F('low_stock_alert')
     ).count()
 
-    # Timezone-Aware range extraction for "Today" analytics
-    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = today_start + timedelta(days=1)
-
-    orders_today = OrderItem.objects.filter(
+    today_start   = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end     = today_start + timedelta(days=1)
+    orders_today  = OrderItem.objects.filter(
         product__vendor=vendor,
         order__created_at__range=(today_start, today_end),
         order__payment_status='paid',
     ).count()
-
     revenue_today = earnings.filter(
         created_at__range=(today_start, today_end)
     ).aggregate(t=Sum('net_amount'))['t'] or 0
 
-    # Weekly timeline charting data serialization
-    seven_days_ago = timezone.now() - timedelta(days=7)
-    daily_sales_qs = (
+    seven_days_ago  = timezone.now() - timedelta(days=7)
+    daily_sales_qs  = (
         earnings.filter(created_at__gte=seven_days_ago)
         .annotate(day=TruncDay('created_at'))
         .values('day')
         .annotate(total=Sum('net_amount'))
         .order_by('day')
     )
-
     daily_sales_list = [
-        {
-            'day': item['day'].strftime('%Y-%m-%d') if item['day'] else '',
-            'total': float(item['total'] or 0)
-        }
+        {'day': item['day'].strftime('%Y-%m-%d') if item['day'] else '', 'total': float(item['total'] or 0)}
         for item in daily_sales_qs
     ]
 
-    # Product insights
-    # FIXED: previously summed orderitem__quantity across ALL order items regardless
-    # of payment status, which could rank an unpaid/cancelled order's product as
-    # "top product." Now restricted to paid orders, consistent with orders_today /
-    # revenue_today / recent_orders below.
     top_product = vendor.products.annotate(
-        total_sold=Sum(
-            'orderitem__quantity',
-            filter=Q(orderitem__order__payment_status='paid')
-        )
+        total_sold=Sum('orderitem__quantity', filter=Q(orderitem__order__payment_status='paid'))
     ).order_by('-total_sold').first()
 
-    # FIXED: same low_stock_alert issue as low_stock_count above.
     low_stock_products = vendor.products.filter(
         status='active', stock_qty__lte=F('low_stock_alert')
     )[:5]
@@ -350,51 +314,45 @@ def dashboard(request):
     ]
 
     return render(request, 'vendors/dashboard.html', {
-        'vendor':              vendor,
-        'products':            products,
-        'earnings':            earnings.order_by('-created_at'),
-        'recent_orders':       recent_orders,
-        'tabs':                tabs,
-        'current_tab':         current_tab,
-
-        # Numeric Stats
-        'total_revenue':       total_revenue,
-        'pending_payout':      pending_payout,
-        'paid_out':            paid_out,
-        'total_orders':        total_orders,
-        'low_stock_count':     low_stock_count,
-
-        # Periodic Metrics
-        'orders_today':        orders_today,
-        'revenue_today':       revenue_today,
-        'daily_sales':         daily_sales_list,
-
-        # Product insights
-        'top_product':         top_product,
-        'low_stock_products':  low_stock_products,
-        'cart_count':          0,
+        'vendor':             vendor,
+        'products':           products,
+        'earnings':           earnings.order_by('-created_at'),
+        'recent_orders':      recent_orders,
+        'tabs':               tabs,
+        'current_tab':        current_tab,
+        'total_revenue':      total_revenue,
+        'pending_payout':     pending_payout,
+        'paid_out':           paid_out,
+        'total_orders':       total_orders,
+        'low_stock_count':    low_stock_count,
+        'orders_today':       orders_today,
+        'revenue_today':      revenue_today,
+        'daily_sales':        daily_sales_list,
+        'top_product':        top_product,
+        'low_stock_products': low_stock_products,
+        'cart_count':         0,
     })
 
 
-# ── VENDOR PRODUCT MANAGEMENT ─────────────────────────────
+# ── SHARED VALIDATION HELPERS ─────────────────────────────
 
 ALLOWED_VIDEO_EXTENSIONS = ('.mp4', '.mov', '.webm')
-MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024  # 50MB
+MAX_VIDEO_SIZE_BYTES      = 50 * 1024 * 1024  # 50 MB
 
 
 def _validate_video_upload(video_file, errors):
-    """Shared validation for product video uploads. Mutates `errors` in place."""
+    """Validate an uploaded video file. Mutates `errors` in place."""
     if not video_file:
         return
     ext = os.path.splitext(video_file.name)[1].lower()
     if ext not in ALLOWED_VIDEO_EXTENSIONS:
-        errors['video'] = 'Unsupported video format. Use MP4, MOV, or WebM.'
+        errors['video'] = 'Unsupported format. Use MP4, MOV, or WebM.'
     elif video_file.size > MAX_VIDEO_SIZE_BYTES:
-        errors['video'] = 'Video file is too large. Maximum size is 50MB.'
+        errors['video'] = 'Video too large. Maximum size is 50 MB.'
 
 
 def _validate_discount_price(discount_price, selling_price, errors):
-    """Shared validation for the discount/deal price field. Mutates `errors` in place."""
+    """Validate the discount price against selling price. Mutates `errors` in place."""
     if not discount_price:
         return
     try:
@@ -402,6 +360,22 @@ def _validate_discount_price(discount_price, selling_price, errors):
             errors['discount_price'] = 'Discount price must be lower than the selling price.'
     except (TypeError, ValueError):
         errors['discount_price'] = 'Enter a valid discount price.'
+
+
+def _unique_product_slug(name, exclude_pk=None):
+    """Generate a unique slug for a product name."""
+    base = slugify(name)
+    slug, n = base, 1
+    qs = Product.objects.all()
+    if exclude_pk:
+        qs = qs.exclude(pk=exclude_pk)
+    while qs.filter(slug=slug).exists():
+        slug = f"{base}-{n}"
+        n   += 1
+    return slug
+
+
+# ── PRODUCT ADD ───────────────────────────────────────────
 
 @vendor_required
 def product_add(request):
@@ -423,20 +397,8 @@ def product_add(request):
         errors = {}
         if not name:          errors['name']          = 'Product name is required.'
         if not selling_price: errors['selling_price'] = 'Selling price is required.'
-
-        if discount_price:
-            try:
-                if float(discount_price) >= float(selling_price):
-                    errors['discount_price'] = 'Discount price must be lower than the selling price.'
-            except (TypeError, ValueError):
-                errors['discount_price'] = 'Enter a valid discount price.'
-
-        if video_file:
-            ext = os.path.splitext(video_file.name)[1].lower()
-            if ext not in ('.mp4', '.mov', '.webm'):
-                errors['video'] = 'Unsupported video format. Use MP4, MOV, or WebM.'
-            elif video_file.size > 50 * 1024 * 1024:
-                errors['video'] = 'Video file is too large. Maximum size is 50MB.'
+        _validate_discount_price(discount_price, selling_price, errors)
+        _validate_video_upload(video_file, errors)
 
         if errors:
             return render(request, 'vendors/product_form.html', {
@@ -444,17 +406,19 @@ def product_add(request):
                 'errors': errors, 'form_data': request.POST, 'action': 'Add',
             })
 
-        base_slug = slugify(name)
-        slug, n = base_slug, 1
-        while Product.objects.filter(slug=slug).exists():
-            slug = f"{base_slug}-{n}"; n += 1
-
         product = Product.objects.create(
-            vendor=vendor, name=name, slug=slug, description=description,
-            category_id=category_id or None, selling_price=selling_price,
-            discount_price=discount_price or None,
-            cost_price=selling_price, stock_qty=stock_qty, status=status,
+            vendor         = vendor,
+            name           = name,
+            slug           = _unique_product_slug(name),
+            description    = description,
+            category_id    = category_id or None,
+            selling_price  = selling_price,
+            discount_price = discount_price or None,
+            cost_price     = selling_price,
+            stock_qty      = stock_qty,
+            status         = status,
         )
+
         for i, img in enumerate(request.FILES.getlist('images')):
             ProductImage.objects.create(
                 product=product, image=img, is_primary=(i == 0), order=i
@@ -462,10 +426,8 @@ def product_add(request):
 
         if video_file:
             ProductVideo.objects.create(
-                product=product,
-                video=video_file,
-                thumbnail=video_thumb,
-                title=video_title,
+                product=product, video=video_file,
+                thumbnail=video_thumb, title=video_title,
             )
 
         messages.success(request, f'"{product.name}" added to your shop!')
@@ -474,6 +436,10 @@ def product_add(request):
     return render(request, 'vendors/product_form.html', {
         'vendor': vendor, 'categories': categories, 'action': 'Add',
     })
+
+
+# ── PRODUCT EDIT ──────────────────────────────────────────
+
 @vendor_required
 def product_edit(request, pk):
     vendor     = request.vendor
@@ -487,27 +453,43 @@ def product_edit(request, pk):
         video_title    = request.POST.get('video_title', '').strip()
         video_thumb    = request.FILES.get('video_thumbnail')
 
-        errors = {}
-        if discount_price:
-            try:
-                if float(discount_price) >= float(selling_price):
-                    errors['discount_price'] = 'Discount price must be lower than the selling price.'
-            except (TypeError, ValueError):
-                errors['discount_price'] = 'Enter a valid discount price.'
+        # IDs of images/videos the vendor wants removed
+        delete_image_ids = request.POST.getlist('delete_images')
+        delete_video_ids = request.POST.getlist('delete_videos')
 
-        if video_file:
-            ext = os.path.splitext(video_file.name)[1].lower()
-            if ext not in ('.mp4', '.mov', '.webm'):
-                errors['video'] = 'Unsupported video format. Use MP4, MOV, or WebM.'
-            elif video_file.size > 50 * 1024 * 1024:
-                errors['video'] = 'Video file is too large. Maximum size is 50MB.'
+        errors = {}
+        _validate_discount_price(discount_price, selling_price, errors)
+        _validate_video_upload(video_file, errors)
 
         if errors:
             return render(request, 'vendors/product_form.html', {
-                'vendor': vendor, 'product': product, 'categories': categories,
-                'errors': errors, 'form_data': request.POST, 'action': 'Edit',
+                'vendor':     vendor,
+                'product':    product,
+                'categories': categories,
+                'errors':     errors,
+                'form_data':  request.POST,
+                'action':     'Edit',
             })
 
+        # ── Delete requested images (only those belonging to this product) ──
+        if delete_image_ids:
+            ProductImage.objects.filter(
+                pk__in=delete_image_ids, product=product
+            ).delete()
+            # If the primary was deleted, promote the next one
+            if not product.images.filter(is_primary=True).exists():
+                first = product.images.first()
+                if first:
+                    first.is_primary = True
+                    first.save(update_fields=['is_primary'])
+
+        # ── Delete requested videos (only those belonging to this product) ──
+        if delete_video_ids:
+            ProductVideo.objects.filter(
+                pk__in=delete_video_ids, product=product
+            ).delete()
+
+        # ── Save core fields ──
         product.name           = request.POST.get('name', product.name).strip()
         product.description    = request.POST.get('description', '').strip()
         product.category_id    = request.POST.get('category_id') or None
@@ -518,25 +500,32 @@ def product_edit(request, pk):
         product.status         = request.POST.get('status', product.status)
         product.save()
 
+        # ── Add new images ──
+        existing_count = product.images.count()
         for i, img in enumerate(request.FILES.getlist('images')):
             ProductImage.objects.create(
-                product=product, image=img, order=product.images.count() + i
+                product=product, image=img, order=existing_count + i
             )
 
+        # ── Add new video ──
         if video_file:
             ProductVideo.objects.create(
-                product=product,
-                video=video_file,
-                thumbnail=video_thumb,
-                title=video_title,
+                product=product, video=video_file,
+                thumbnail=video_thumb, title=video_title,
             )
 
         messages.success(request, f'"{product.name}" updated!')
         return redirect('vendors:dashboard')
 
     return render(request, 'vendors/product_form.html', {
-        'vendor': vendor, 'product': product, 'categories': categories, 'action': 'Edit',
+        'vendor':     vendor,
+        'product':    product,
+        'categories': categories,
+        'action':     'Edit',
     })
+
+
+# ── PRODUCT DELETE ────────────────────────────────────────
 
 @vendor_required
 def product_delete(request, pk):
@@ -571,18 +560,7 @@ def earnings(request):
     })
 
 
-# ── HELPER ────────────────────────────────────────────────
-
-def _get_cart_count(request):
-    if request.user.is_authenticated:
-        try:
-            return request.user.cart.total_items
-        except Exception:
-            return 0
-    return 0
-
-
-# ── VENDOR DISPATCH (manual rider assignment) ──────────────
+# ── VENDOR DISPATCH ───────────────────────────────────────
 
 @vendor_required
 def dispatch_ride(request):
@@ -599,26 +577,26 @@ def dispatch_ride(request):
             order__items__product__vendor=vendor,
             status=Delivery.Status.PENDING,
         )
-        .select_related("order", "zone")
+        .select_related('order', 'zone')
         .distinct()
     )
 
     available_riders = (
         RiderProfile.objects
         .filter(status=RiderProfile.Status.AVAILABLE)
-        .select_related("rider", "zone")
+        .select_related('rider', 'zone')
     )
 
-    if request.method == "POST":
-        delivery_id = request.POST.get("delivery_id")
-        rider_id    = request.POST.get("rider_id")
+    if request.method == 'POST':
+        delivery_id = request.POST.get('delivery_id')
+        rider_id    = request.POST.get('rider_id')
 
         delivery = get_object_or_404(Delivery, pk=delivery_id)
         rider    = get_object_or_404(RiderProfile, pk=rider_id)
 
         acceptance, created = DeliveryAcceptance.objects.get_or_create(
             delivery=delivery,
-            defaults={"rider": rider, "status": DeliveryAcceptance.Status.PENDING},
+            defaults={'rider': rider, 'status': DeliveryAcceptance.Status.PENDING},
         )
         if not created:
             acceptance.rider        = rider
@@ -627,13 +605,12 @@ def dispatch_ride(request):
             acceptance.save()
 
         _push_prompt_to_rider(rider, delivery, acceptance)
-
         notify_rider(
             rider.rider,
-            "New Delivery Request",
-            f"Vendor dispatch — Pickup: {delivery.pickup_location or delivery.order.delivery_address}",
-            notif_type="new_delivery",
-            link="/rider/",
+            'New Delivery Request',
+            f'Vendor dispatch — Pickup: {delivery.pickup_location or delivery.order.delivery_address}',
+            notif_type='new_delivery',
+            link='/rider/',
         )
 
         messages.success(
@@ -641,9 +618,20 @@ def dispatch_ride(request):
             f"Request sent to {rider.rider.get_full_name() or rider.rider.phone}. "
             "They'll accept or reject shortly."
         )
-        return redirect("vendors:dispatch")
+        return redirect('vendors:dispatch')
 
-    return render(request, "vendors/dispatch.html", {
-        "pending_deliveries": pending_deliveries,
-        "available_riders":   available_riders,
+    return render(request, 'vendors/dispatch.html', {
+        'pending_deliveries': pending_deliveries,
+        'available_riders':   available_riders,
     })
+
+
+# ── HELPER ────────────────────────────────────────────────
+
+def _get_cart_count(request):
+    if request.user.is_authenticated:
+        try:
+            return request.user.cart.total_items
+        except Exception:
+            return 0
+    return 0
