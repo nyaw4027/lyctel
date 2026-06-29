@@ -33,6 +33,14 @@ class FraudFlag(models.Model):
     reason    = models.TextField(help_text="Human-readable explanation of what triggered this flag.")
 
     resolved        = models.BooleanField(default=False)
+    # NEW: distinguishes "reviewed and it was nothing — release the payout"
+    # from "reviewed and it WAS fraud — keep the payout held". Resolving a
+    # flag isn't automatically the same as clearing it.
+    is_confirmed_fraud = models.BooleanField(
+        default=False,
+        help_text="True if staff confirmed this was real fraud (payout stays held permanently). "
+                   "False means cleared as a false positive (payout gets released, if no other open flags remain)."
+    )
     resolved_by     = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
