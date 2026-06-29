@@ -114,8 +114,15 @@
           <p class="text-sm font-semibold text-white mb-3">📦 Pin a Product</p>
           <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
             {% for product in products %}
+            {% comment %}
+              FIXED: initial highlighted/label state now reflects pinned_ids
+              from the view (server-side), instead of always rendering as
+              "not pinned" — previously a page refresh during a stream
+              silently lost which product was marked as pinned for viewers.
+            {% endcomment %}
             <div class="pin-card flex items-center gap-3 bg-white/5 hover:bg-white/10
-                        border border-white/10 rounded-xl p-2.5 transition-all"
+                        border border-white/10 rounded-xl p-2.5 transition-all
+                        {% if product.pk in pinned_ids %}highlighted{% endif %}"
                  id="pin-{{ product.pk }}"
                  onclick="togglePin({{ product.pk }})">
               {% with product.images.first as img %}
@@ -129,7 +136,10 @@
                 <p class="text-white text-xs font-semibold truncate">{{ product.name }}</p>
                 <p class="text-gold text-xs">GHS {{ product.final_price }}</p>
               </div>
-              <span class="text-xs text-gray-500 pin-label" id="label-{{ product.pk }}">Pin</span>
+              <span class="text-xs pin-label {% if product.pk in pinned_ids %}text-gold{% else %}text-gray-500{% endif %}"
+                    id="label-{{ product.pk }}">
+                {% if product.pk in pinned_ids %}✓ Pinned{% else %}Pin{% endif %}
+              </span>
             </div>
             {% empty %}
             <p class="text-gray-500 text-xs text-center py-4">No active products.</p>
@@ -170,10 +180,23 @@ const CSRF_TOKEN  = '{{ csrf_token }}';
 const WS_SCHEME   = location.protocol === 'https:' ? 'wss' : 'ws';
 const wsUrl       = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
 
+// FIXED: these were hardcoded as "/live/..." while the app is actually
+// mounted at "/livestream/" (confirmed by the server's own error log) —
+// End Stream and the post-end redirect were both 404ing. Using {% url %}
+// here means this can never drift out of sync with urls.py again.
+const END_STREAM_URL   = '{% url "livestream:end_stream" stream.id %}';
+const STREAM_LIST_URL  = '{% url "livestream:list" %}';
+const PIN_PRODUCT_URL  = '{% url "livestream:pin_product" stream.id %}';
+
 let ws, localStream, peerConnections = {};
 let camOn = false, micOn = false;
 let facingMode = 'user';
 let totalGifts = 0;
+
+// FIXED: pinnedSet now seeds from the server-rendered pinned_ids instead of
+// always starting empty, so it matches the highlighted state already drawn
+// into the page above.
+const pinnedSet = new Set({{ pinned_ids|default:"[]"|safe }});
 
 // ── WebSocket ──────────────────────────────────────────
 function connectWS() {
@@ -279,24 +302,58 @@ async function handleViewerOffer(sdp, viewerChannel) {
 }
 
 // ── Pin product ────────────────────────────────────────
-const pinnedSet = new Set();
-
-function togglePin(productId) {
+// FIXED: previously sent { type: 'pin_product', ... } over the WebSocket,
+// relying on a Channels consumer handler that wasn't verified to exist.
+// This calls the real, already-working Django view (views.pin_product)
+// directly over HTTP instead. NOTE: if you want already-connected VIEWERS
+// to see a pin change live (not just the broadcaster's own browser), that
+// still needs views.pin_product to push a channel_layer.group_send to the
+// stream's WS group — happy to wire that in once I can see
+// consumers.py/routing.py.
+async function togglePin(productId) {
   const action = pinnedSet.has(productId) ? 'unpin' : 'pin';
-  ws.send(JSON.stringify({ type: 'pin_product', product_id: productId, action }));
+
+  let data;
+  try {
+    const res = await fetch(PIN_PRODUCT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN,
+      },
+      body: JSON.stringify({ product_id: productId, action }),
+    });
+    data = await res.json();
+  } catch (err) {
+    console.error('Pin request failed:', err);
+    return;
+  }
+  if (!data.success) return;
 
   const card  = document.getElementById(`pin-${productId}`);
   const label = document.getElementById(`label-${productId}`);
-  if (action === 'pin') {
+
+  if (data.action === 'pinned') {
+    // Server enforces only one is_highlighted=True per stream — mirror
+    // that mutual exclusivity client-side too.
+    document.querySelectorAll('.pin-card.highlighted').forEach(el => el.classList.remove('highlighted'));
+    document.querySelectorAll('.pin-label').forEach(el => {
+      el.textContent = 'Pin';
+      el.classList.remove('text-gold');
+      el.classList.add('text-gray-500');
+    });
+    pinnedSet.clear();
     pinnedSet.add(productId);
     card.classList.add('highlighted');
     label.textContent = '✓ Pinned';
+    label.classList.remove('text-gray-500');
     label.classList.add('text-gold');
   } else {
     pinnedSet.delete(productId);
     card.classList.remove('highlighted');
     label.textContent = 'Pin';
     label.classList.remove('text-gold');
+    label.classList.add('text-gray-500');
   }
 }
 
@@ -351,16 +408,21 @@ async function endStream() {
 
   if (ws) ws.send(JSON.stringify({ type: 'end_stream' }));
 
-  const res = await fetch(`/live/${STREAM_ID}/end/`, {
-    method: 'POST',
-    headers: { 'X-CSRFToken': CSRF_TOKEN },
-  });
-  const data = await res.json();
+  try {
+    const res = await fetch(END_STREAM_URL, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN },
+    });
+    const data = await res.json();
 
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
 
-  alert(`Stream ended!\nViewers: ${data.total_viewers}\nGifts: GHS ${data.gifts_value}\nDuration: ${data.duration} mins`);
-  window.location.href = '/live/';
+    alert(`Stream ended!\nViewers: ${data.total_viewers}\nGifts: GHS ${data.gifts_value}\nDuration: ${data.duration} mins`);
+  } catch (err) {
+    console.error('End stream request failed:', err);
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+  }
+  window.location.href = STREAM_LIST_URL;
 }
 </script>
 {% endblock %}

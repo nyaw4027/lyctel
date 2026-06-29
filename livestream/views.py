@@ -109,11 +109,19 @@ def broadcast(request, stream_id):
         'product'
     ).prefetch_related('product__images')
 
+    # NEW: lets the template restore which product is currently highlighted
+    # on page load/refresh, instead of always starting from an empty
+    # client-side pin set (which made a refresh silently lose pin state).
+    pinned_ids = list(
+        stream.pinned_products.filter(is_highlighted=True).values_list('product_id', flat=True)
+    )
+
     return render(request, 'livestream/broadcast.html', {
         'stream':       stream,
         'vendor':       vendor,
         'products':     vendor.products.filter(status='active').prefetch_related('images'),
         'pinned':       pinned,
+        'pinned_ids':   pinned_ids,
         'cart_count':   0,
     })
 
