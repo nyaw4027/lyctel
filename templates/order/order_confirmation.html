@@ -6,7 +6,8 @@
 
   <!-- Success animation -->
   <div class="text-center mb-8">
-    <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+    <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5
+                animate-[pop_.4s_ease]">
       <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
       </svg>
@@ -20,6 +21,8 @@
 
   <!-- Order card -->
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+
+    <!-- Ref + status -->
     <div class="px-5 py-4 border-b border-gray-50 flex items-center justify-between flex-wrap gap-3">
       <div>
         <p class="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Order Reference</p>
@@ -38,24 +41,136 @@
       </div>
     </div>
 
-    <!-- Delivery info -->
+    <!-- ── DELIVERY MODE ── -->
+    <div class="px-5 py-4 border-b border-gray-50">
+      {% with mode=order.delivery_choice %}
+
+      {% if mode == 'rider' or not mode %}
+      <!-- Rider delivery -->
+      <div class="flex items-start gap-4">
+        <div class="w-11 h-11 bg-navy/10 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🛵</div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-navy text-sm">Rider Delivery</p>
+          <p class="text-xs text-gray-500 mt-0.5">{{ order.delivery_address }}{% if order.delivery_city %}, {{ order.delivery_city }}{% endif %}</p>
+          {% if order.customer_note %}
+          <p class="text-xs text-gray-400 mt-1">Note: {{ order.customer_note }}</p>
+          {% endif %}
+          <div class="mt-2">
+            {% if order.status == 'pending' %}
+            <span class="text-xs bg-yellow-100 text-yellow-700 font-semibold px-2.5 py-1 rounded-full">
+              ⏳ Assigning rider
+            </span>
+            {% elif order.status == 'dispatched' %}
+            <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-full">
+              🛵 Rider on the way
+            </span>
+            {% elif order.status == 'delivered' %}
+            <span class="text-xs bg-green-100 text-green-700 font-semibold px-2.5 py-1 rounded-full">
+              ✓ Delivered
+            </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% elif mode == 'pickup' %}
+      <!-- Self pickup -->
+      <div class="flex items-start gap-4">
+        <div class="w-11 h-11 bg-gold/15 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🏪</div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-navy text-sm">Self Pickup</p>
+          <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">
+            The vendor will notify you when your order is ready to collect.
+          </p>
+          {% for item in items %}
+          {% if item.product.vendor and forloop.first %}
+          <div class="mt-2 bg-gold/5 border border-gold/20 rounded-xl px-3 py-2">
+            <p class="text-xs font-semibold text-navy">{{ item.product.vendor.shop_name }}</p>
+            {% if item.product.vendor.location %}
+            <p class="text-xs text-gray-500 mt-0.5">📍 {{ item.product.vendor.location }}</p>
+            {% endif %}
+            {% if item.product.vendor.phone %}
+            <p class="text-xs text-gray-500 mt-0.5">📞 {{ item.product.vendor.phone }}</p>
+            {% endif %}
+            {% if item.product.vendor.whatsapp %}
+            <a href="{{ item.product.vendor.whatsapp_link }}" target="_blank"
+               class="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold
+                      bg-green-500 text-white px-2 py-1 rounded-lg">
+              💬 WhatsApp Vendor
+            </a>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% endfor %}
+          <div class="mt-2">
+            {% if order.pickup_confirmed_at %}
+            <span class="text-xs bg-green-100 text-green-700 font-semibold px-2.5 py-1 rounded-full">
+              ✅ Ready for pickup since {{ order.pickup_confirmed_at|date:"M d, g:i A" }}
+            </span>
+            {% else %}
+            <span class="text-xs bg-yellow-100 text-yellow-700 font-semibold px-2.5 py-1 rounded-full">
+              ⏳ Vendor preparing your order
+            </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% elif mode == 'parcel' %}
+      <!-- Bus / Parcel -->
+      <div class="flex items-start gap-4">
+        <div class="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🚌</div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-navy text-sm">Bus / Parcel Delivery</p>
+          <div class="mt-1.5 space-y-0.5 text-xs text-gray-500">
+            <p>📍 Station: <span class="font-semibold text-navy">{{ order.parcel_bus_station|default:"—" }}</span></p>
+            <p>📞 Recipient: <span class="font-semibold text-navy">{{ order.parcel_recipient_phone|default:"—" }}</span></p>
+            {% if order.parcel_notes %}
+            <p class="text-gray-400 mt-1">Notes: {{ order.parcel_notes }}</p>
+            {% endif %}
+          </div>
+          <div class="mt-2">
+            {% if order.parcel_dispatched_at %}
+            <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-full">
+              🚌 Sent on {{ order.parcel_dispatched_at|date:"M d, g:i A" }}
+            </span>
+            {% if order.parcel_waybill %}
+            <p class="text-xs text-gray-500 mt-1.5">
+              Waybill: <strong class="text-navy">{{ order.parcel_waybill }}</strong>
+            </p>
+            {% endif %}
+            {% else %}
+            <span class="text-xs bg-yellow-100 text-yellow-700 font-semibold px-2.5 py-1 rounded-full">
+              ⏳ Vendor preparing parcel
+            </span>
+            {% endif %}
+          </div>
+          <div class="mt-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-xs text-blue-700">
+            💡 Contact the bus station or call the recipient number once dispatched.
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% endwith %}
+    </div>
+
+    <!-- Basic delivery info (phone + date) -->
     <div class="px-5 py-4 border-b border-gray-50 space-y-2 text-sm">
       <div class="flex justify-between">
-        <span class="text-gray-400">Deliver to</span>
-        <span class="font-semibold text-navy">{{ order.delivery_city }}</span>
-      </div>
-      <div class="flex justify-between">
-        <span class="text-gray-400">Address</span>
-        <span class="font-semibold text-navy text-right max-w-[200px]">{{ order.delivery_address }}</span>
-      </div>
-      <div class="flex justify-between">
-        <span class="text-gray-400">Phone</span>
+        <span class="text-gray-400">Contact phone</span>
         <span class="font-semibold text-navy">{{ order.delivery_phone }}</span>
       </div>
       <div class="flex justify-between">
         <span class="text-gray-400">Date</span>
         <span class="font-semibold text-navy">{{ order.created_at|date:"d M Y, H:i" }}</span>
       </div>
+      {% if order.distance_km %}
+      <div class="flex justify-between">
+        <span class="text-gray-400">Distance</span>
+        <span class="font-semibold text-navy">{{ order.distance_km|floatformat:1 }} km</span>
+      </div>
+      {% endif %}
     </div>
 
     <!-- Items -->
@@ -84,9 +199,14 @@
       </div>
       <div class="flex justify-between text-gray-500">
         <span>Delivery fee</span>
+        {% if order.delivery_choice == 'pickup' or order.delivery_choice == 'parcel' %}
+        <span class="text-green-600 font-semibold">Free</span>
+        {% else %}
         <span>GHS {{ order.delivery_fee }}</span>
+        {% endif %}
       </div>
-      <div class="flex justify-between font-display font-700 text-navy text-base pt-2 border-t border-gray-100">
+      <div class="flex justify-between font-display font-700 text-navy text-base
+                  pt-2 border-t border-gray-100">
         <span>Total Paid</span>
         <span>GHS {{ order.total_amount }}</span>
       </div>
