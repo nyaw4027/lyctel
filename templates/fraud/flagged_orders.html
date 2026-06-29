@@ -46,13 +46,17 @@
         <span>💰 GHS {{ flag.order.total_amount }}</span>
       </div>
 
-      <form method="POST" action="{% url 'fraud:resolve_flag' flag.pk %}" class="flex items-center gap-2">
+      <form method="POST" action="{% url 'fraud:resolve_flag' flag.pk %}" class="flex items-center gap-2 flex-wrap">
         {% csrf_token %}
         <input type="text" name="note" placeholder="Resolution note (optional)"
-               class="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-xs"/>
-        <button type="submit"
+               class="flex-1 min-w-[140px] px-3 py-2 border border-gray-200 rounded-xl text-xs"/>
+        <button type="submit" name="resolution" value="clear"
                 class="text-xs bg-navy hover:bg-navy-700 text-white font-semibold px-4 py-2 rounded-xl transition-colors whitespace-nowrap">
           ✓ Clear & Release Payout
+        </button>
+        <button type="submit" name="resolution" value="confirm"
+                class="text-xs bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-xl transition-colors whitespace-nowrap">
+          🚫 Confirm Fraud
         </button>
       </form>
     </div>
