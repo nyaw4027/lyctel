@@ -18,7 +18,6 @@
   .slide-card:hover .slide-card-img { transform:scale(1.06); }
   .slide-card-img { transition:transform .4s ease; }
 
-  /* ── Mobile touch improvements ─────────── */
   @media (max-width: 768px) {
     .touch-target { min-height: 44px; min-width: 44px; }
     .hero-btn { font-size: 1rem; padding: 14px 24px; width: 100%; }
@@ -28,17 +27,12 @@
     .stat-num { font-size: 1.4rem; }
   }
 
-  /* ── Swipe hint on mobile ───────────────── */
   @media (max-width: 640px) {
     #hero-slideshow::after {
       content: '';
-      position: absolute;
-      bottom: 48px;
-      right: 16px;
-      width: 32px;
-      height: 32px;
-      background: rgba(245,166,35,.2);
-      border-radius: 50%;
+      position: absolute; bottom: 48px; right: 16px;
+      width: 32px; height: 32px;
+      background: rgba(245,166,35,.2); border-radius: 50%;
       animation: swipeHint 2s ease-in-out 3s forwards;
     }
     @keyframes swipeHint {
@@ -48,9 +42,6 @@
     }
   }
 
-
-
-  /* ── Skeleton loaders ───────────────────── */
   .skeleton {
     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
     background-size: 200% 100%;
@@ -62,28 +53,43 @@
     100% { background-position: -200% 0; }
   }
 
-  /* ── Dark mode product cards ────────────── */
   html.dark .product-card { background: var(--card-bg); border-color: var(--border-color); }
   html.dark .category-card:hover { background: var(--bg-tertiary); }
+
+  /* ── Live stream cards ──────────────────── */
+  .live-stream-card { flex: 0 0 160px; scroll-snap-align: start; }
+  @media (min-width: 640px) { .live-stream-card { flex: 0 0 190px; } }
+  @media (min-width: 1024px) { .live-stream-card { flex: 0 0 210px; } }
+
+  .live-scroll {
+    display: flex; gap: 12px;
+    overflow-x: auto; scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; padding-bottom: 4px;
+  }
+  .live-scroll::-webkit-scrollbar { display: none; }
+
+  @keyframes liveRingPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
+    50%       { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+  }
+  .live-ring { animation: liveRingPulse 1.5s ease-in-out infinite; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-
-
 <!-- ── HERO ───────────────────────────────── -->
 <section class="relative overflow-hidden bg-navy">
   <div class="absolute inset-0 opacity-5"
-       style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);
-              background-size:32px 32px;"></div>
+       style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);background-size:32px 32px;"></div>
   <div class="absolute top-0 right-0 w-96 h-96 bg-gold opacity-10 rounded-full
               translate-x-1/3 -translate-y-1/4 blur-3xl pointer-events-none"></div>
 
   <div class="relative max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-24">
     <div class="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
 
-      <!-- LEFT: copy -->
+      <!-- LEFT -->
       <div class="flex-1 text-center lg:text-left">
         <div class="inline-flex items-center gap-2 bg-white/10 text-gold text-xs font-semibold
                     px-4 py-2 rounded-full mb-4 fade-up fade-up-1">
@@ -99,24 +105,16 @@
                   fade-up fade-up-3 leading-relaxed">
           Browse electronics, fashion, gadgets and more — delivered straight to your door anywhere in Ghana.
         </p>
-
-        <!-- CTA buttons — full width on mobile -->
         <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start fade-up fade-up-3 mb-8">
           <a href="{% url 'products:list' %}"
              class="hero-btn bg-gold hover:bg-gold-dark text-navy font-semibold px-8 py-3.5
                     rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/30
-                    touch-target flex items-center justify-center gap-2">
-            Shop Now →
-          </a>
+                    touch-target flex items-center justify-center gap-2">Shop Now →</a>
           <a href="{% url 'food:home' %}"
              class="hero-btn bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5
                     rounded-2xl transition-colors btn-press text-center touch-target
-                    flex items-center justify-center gap-2">
-            🍔 Order Food
-          </a>
+                    flex items-center justify-center gap-2">🍔 Order Food</a>
         </div>
-
-        <!-- Stats -->
         <div class="flex items-center gap-5 justify-center lg:justify-start fade-up fade-up-3">
           <div class="text-center lg:text-left">
             <p class="font-display font-700 text-xl md:text-2xl text-white stat-num">500+</p>
@@ -135,23 +133,23 @@
         </div>
       </div>
 
-      <!-- RIGHT: Slideshow — touch/swipe enabled -->
+      <!-- RIGHT: Slideshow -->
       <div class="flex-1 w-full max-w-md mx-auto lg:mx-0 fade-up fade-up-2">
         <div id="hero-slideshow" class="relative select-none">
 
           <!-- SLIDE 1: How it works -->
           <div class="slide active">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
-              <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
-                          px-3 py-1.5 rounded-full mb-4">✨ How Lynctel Works</div>
+              <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full mb-4">✨ How Lynctel Works</div>
               <div class="space-y-4">
                 {% for step in "123" %}
                 <div class="flex items-start gap-4 group">
                   <div class="w-10 h-10 {% if forloop.first %}bg-gold{% else %}bg-white/10 border border-white/20{% endif %}
                               rounded-xl flex items-center justify-center
                               {% if forloop.first %}text-navy{% else %}text-gold{% endif %}
-                              font-display font-700 text-sm flex-shrink-0
-                              group-hover:scale-110 transition-transform">{{ forloop.counter }}</div>
+                              font-display font-700 text-sm flex-shrink-0 group-hover:scale-110 transition-transform">
+                    {{ forloop.counter }}
+                  </div>
                   <div>
                     {% if forloop.first %}
                     <p class="text-white font-semibold text-sm">Browse & Add to Cart</p>
@@ -180,8 +178,7 @@
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5">
               <div class="flex items-center justify-between mb-4">
-                <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
-                            px-3 py-1.5 rounded-full">🔥 Most Purchased</div>
+                <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full">🔥 Most Purchased</div>
                 <a href="{% url 'products:list' %}" class="text-gray-400 hover:text-gold text-xs transition-colors">View all →</a>
               </div>
               {% if hot_products %}
@@ -191,27 +188,19 @@
                    class="slide-card bg-white/5 hover:bg-white/10 border border-white/10
                           hover:border-gold/30 rounded-2xl overflow-hidden transition-all">
                   <div class="overflow-hidden h-20 relative">
-                    <!-- FIXED: used p.images.first (respects `order`, not `is_primary`)
-                         instead of the model's primary_image property, so a vendor's
-                         chosen main image could be ignored on the homepage. -->
                     {% if p.primary_image %}
                     <img src="{{ p.primary_image }}" alt="{{ p.name }}" class="slide-card-img w-full h-20 object-cover"/>
                     {% else %}
                     <div class="w-full h-20 bg-white/5 flex items-center justify-center text-2xl">📦</div>
                     {% endif %}
                     <span class="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">🔥</span>
-                    <!-- FIXED: discount badge was missing here entirely, so a
-                         discounted hot product looked identical to a full-price one. -->
                     {% if p.has_discount %}
                     <span class="absolute top-1.5 right-1.5 bg-gold text-navy text-[9px] font-bold px-1.5 py-0.5 rounded-full">-{{ p.discount_percent }}%</span>
                     {% endif %}
                   </div>
                   <div class="p-2">
                     <p class="text-white text-xs font-medium truncate">{{ p.name }}</p>
-                    <!-- FIXED: previously always showed p.selling_price, ignoring
-                         any active discount_price. -->
-                    <p class="text-gold text-xs font-bold">
-                      GHS {{ p.final_price }}
+                    <p class="text-gold text-xs font-bold">GHS {{ p.final_price }}
                       {% if p.has_discount %}<span class="text-gray-500 line-through text-[10px] ml-1">{{ p.selling_price }}</span>{% endif %}
                     </p>
                   </div>
@@ -219,9 +208,7 @@
                 {% endfor %}
               </div>
               {% else %}
-              <div class="grid grid-cols-2 gap-2.5">
-                {% for i in "1234" %}<div class="skeleton h-32"></div>{% endfor %}
-              </div>
+              <div class="grid grid-cols-2 gap-2.5">{% for i in "1234" %}<div class="skeleton h-32"></div>{% endfor %}</div>
               {% endif %}
             </div>
           </div>
@@ -229,8 +216,7 @@
           <!-- SLIDE 3: Food -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
-              <div class="inline-flex items-center gap-2 bg-orange-400/20 text-orange-300 text-xs font-bold
-                          px-3 py-1.5 rounded-full mb-4">🍔 Food Delivery</div>
+              <div class="inline-flex items-center gap-2 bg-orange-400/20 text-orange-300 text-xs font-bold px-3 py-1.5 rounded-full mb-4">🍔 Food Delivery</div>
               <h3 class="font-display font-700 text-white text-lg mb-2">Hungry? Order Now</h3>
               <p class="text-gray-400 text-sm mb-4 leading-relaxed">From local restaurants straight to your door in 30–45 minutes.</p>
               <div class="space-y-2 mb-4">
@@ -255,8 +241,7 @@
           <!-- SLIDE 4: Sell -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
-              <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
-                          px-3 py-1.5 rounded-full mb-4">🏪 Become a Vendor</div>
+              <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full mb-4">🏪 Become a Vendor</div>
               <h3 class="font-display font-700 text-white text-lg mb-2">Sell to Thousands</h3>
               <div class="space-y-2 mb-4">
                 <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5"><span>💰</span><p class="text-white text-sm">Keep <span class="text-gold font-bold">96%</span> of every sale</p></div>
@@ -272,11 +257,10 @@
             </div>
           </div>
 
-          <!-- SLIDE 5: Delivery zones -->
+          <!-- SLIDE 5: Delivery -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
-              <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold
-                          px-3 py-1.5 rounded-full mb-4">🛵 Fast Delivery</div>
+              <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full mb-4">🛵 Fast Delivery</div>
               <h3 class="font-display font-700 text-white text-lg mb-2">We Bring It To You</h3>
               <div class="bg-white/5 rounded-2xl p-4 mb-4 space-y-3">
                 <div class="flex items-center justify-between">
@@ -304,7 +288,6 @@
           <div class="mt-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
             <div id="slide-progress" class="h-full bg-gold slide-progress-bar"></div>
           </div>
-
           <!-- Dots + arrows -->
           <div class="mt-3 flex items-center justify-between">
             <div class="flex items-center gap-1.5" id="slide-dots">
@@ -315,12 +298,8 @@
               <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full touch-target" onclick="goToSlide(4)"></button>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="prevSlide()"
-                      class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center
-                             justify-center text-white transition-colors touch-target">‹</button>
-              <button onclick="nextSlide()"
-                      class="w-9 h-9 rounded-xl bg-gold hover:bg-gold-dark flex items-center
-                             justify-center text-navy transition-colors font-bold touch-target">›</button>
+              <button onclick="prevSlide()" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors touch-target">‹</button>
+              <button onclick="nextSlide()" class="w-9 h-9 rounded-xl bg-gold hover:bg-gold-dark flex items-center justify-center text-navy transition-colors font-bold touch-target">›</button>
             </div>
           </div>
         </div>
@@ -346,13 +325,110 @@
         <div><p class="font-semibold text-navy text-xs md:text-sm">Quality Assured</p><p class="text-gray-400 text-xs">Verified vendors</p></div>
       </div>
       <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center text-lg flex-shrink-0">🍔</div>
-        <div><p class="font-semibold text-navy text-xs md:text-sm">Food Delivery</p>
-          <a href="{% url 'food:home' %}" class="text-xs text-orange-500">Order now →</a></div>
+        <div class="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center text-lg flex-shrink-0">📺</div>
+        <div>
+          <p class="font-semibold text-navy text-xs md:text-sm">Live Shopping</p>
+          <a href="{% url 'livestream:list' %}" class="text-xs text-red-500 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Watch now →
+          </a>
+        </div>
       </div>
     </div>
   </div>
 </section>
+
+<!-- ── LIVE NOW ────────────────────────────── -->
+{% if live_streams %}
+<section class="bg-gray-950 py-8 md:py-12 overflow-hidden">
+  <div class="max-w-7xl mx-auto px-4 md:px-6">
+    <div class="flex items-end justify-between mb-5">
+      <div>
+        <p class="flex items-center gap-2 text-red-500 text-xs font-bold uppercase tracking-widest mb-1">
+          <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+          Live Right Now
+        </p>
+        <h2 class="font-display font-700 text-xl md:text-2xl text-white">Watch & Shop Live</h2>
+      </div>
+      <a href="{% url 'livestream:list' %}"
+         class="text-xs font-semibold text-red-400 hover:text-red-300 transition-colors whitespace-nowrap">
+        See all →
+      </a>
+    </div>
+
+    <div class="live-scroll">
+      {% for stream in live_streams %}
+      <a href="{% url 'livestream:watch' stream.id %}"
+         class="live-stream-card group relative rounded-2xl overflow-hidden bg-gray-900 block flex-shrink-0">
+
+        {% if stream.thumbnail %}
+        <img src="{{ stream.thumbnail.url }}" alt="{{ stream.title }}"
+             class="w-full aspect-[9/16] object-cover group-hover:scale-105 transition-transform duration-300"/>
+        {% else %}
+        <div class="w-full aspect-[9/16] bg-gradient-to-b from-navy to-gray-900
+                    flex items-center justify-center">
+          <span class="text-4xl">📺</span>
+        </div>
+        {% endif %}
+
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
+
+        <!-- Live badge -->
+        <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-red-600
+                    text-white text-[10px] font-bold px-2 py-1 rounded-full live-ring">
+          <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+          LIVE
+        </div>
+
+        <!-- Viewer count -->
+        <div class="absolute top-2.5 right-2.5 bg-black/50 text-white text-[10px]
+                    font-semibold px-2 py-1 rounded-full backdrop-blur-sm">
+          👁 {{ stream.current_viewers }}
+        </div>
+
+        <!-- Info -->
+        <div class="absolute bottom-0 left-0 right-0 p-3">
+          <div class="flex items-center gap-2 mb-1">
+            {% if stream.vendor.logo %}
+            <img src="{{ stream.vendor.logo.url }}"
+                 class="w-6 h-6 rounded-full object-cover border border-white/20 flex-shrink-0"/>
+            {% else %}
+            <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center
+                        text-white text-[10px] font-bold flex-shrink-0">
+              {{ stream.vendor.shop_name|first|upper }}
+            </div>
+            {% endif %}
+            <p class="text-white text-[11px] font-semibold truncate">
+              {{ stream.vendor.shop_name }}
+            </p>
+          </div>
+          <p class="text-gray-300 text-[10px] line-clamp-2 leading-tight">
+            {{ stream.title }}
+          </p>
+        </div>
+      </a>
+      {% endfor %}
+
+      <!-- Go Live CTA card (for vendors) -->
+      {% if user.is_authenticated and user.role == 'vendor' %}
+      <a href="{% url 'livestream:go_live' %}"
+         class="live-stream-card flex-shrink-0 rounded-2xl border-2 border-dashed border-red-600/40
+                hover:border-red-600 bg-gray-900 flex flex-col items-center justify-center gap-3
+                transition-all group p-4 text-center aspect-[9/16]">
+        <div class="w-14 h-14 bg-red-600/20 group-hover:bg-red-600 rounded-2xl flex items-center
+                    justify-center transition-colors">
+          <span class="text-2xl">🔴</span>
+        </div>
+        <div>
+          <p class="text-white text-xs font-bold">Start Streaming</p>
+          <p class="text-gray-500 text-[10px] mt-0.5">Go live now</p>
+        </div>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
 
 <!-- ── CATEGORIES ─────────────────────────── -->
 {% if categories %}
@@ -398,15 +474,10 @@
       </div>
       <a href="{% url 'products:list' %}" class="text-sm font-semibold text-navy hover:text-gold transition-colors">See all →</a>
     </div>
-
-    <!-- Horizontal scroll on mobile, grid on desktop -->
     <div class="product-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
       {% for product in new_products %}
       <div class="product-card group bg-cream rounded-2xl overflow-hidden card-hover border border-gray-100 flex flex-col">
         <a href="{% url 'products:detail' product.slug %}" class="relative block overflow-hidden">
-          <!-- FIXED: used product.images.first (order field) instead of
-               product.primary_image, so the vendor's chosen main image could
-               be skipped on the homepage. -->
           {% if product.primary_image %}
           <img src="{{ product.primary_image }}" alt="{{ product.name }}"
                class="product-img w-full h-36 md:h-44 object-cover group-hover:scale-105 transition-transform duration-500"/>
@@ -418,18 +489,16 @@
           {% if product.is_featured %}
           <span class="absolute top-2 right-2 bg-gold text-navy text-[9px] font-bold px-1.5 py-0.5 rounded-full">⭐</span>
           {% endif %}
-          <!-- FIXED: discount badge was missing here entirely. -->
           {% if product.has_discount %}
           <span class="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">-{{ product.discount_percent }}%</span>
           {% endif %}
         </a>
         <div class="p-3 flex flex-col flex-1">
           <a href="{% url 'products:detail' product.slug %}"
-             class="text-xs md:text-sm font-semibold text-navy hover:text-gold transition-colors
-                    line-clamp-2 mb-2 leading-snug">{{ product.name }}</a>
+             class="text-xs md:text-sm font-semibold text-navy hover:text-gold transition-colors line-clamp-2 mb-2 leading-snug">
+            {{ product.name }}
+          </a>
           <div class="mt-auto flex items-center justify-between gap-1">
-            <!-- FIXED: previously always showed product.selling_price,
-                 ignoring any active discount_price. -->
             <div class="flex flex-col">
               <span class="font-display font-700 text-navy text-sm md:text-base">GHS {{ product.final_price }}</span>
               {% if product.has_discount %}
@@ -505,8 +574,7 @@
         <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           <a href="{% url 'vendors:apply' %}"
              class="bg-gold hover:bg-gold-dark text-navy font-semibold px-6 py-3.5
-                    rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/20
-                    whitespace-nowrap touch-target">
+                    rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/20 whitespace-nowrap touch-target">
             Open Your Shop
           </a>
           <a href="{% url 'vendors:directory' %}"
@@ -524,88 +592,55 @@
 
 {% block extra_js %}
 <script>
-  // ── Slideshow with touch/swipe ─────────────────────
   let currentSlide = 0;
   const totalSlides = 5;
   let autoTimer = null;
-  let touchStartX = 0;
-  let touchStartY = 0;
+  let touchStartX = 0, touchStartY = 0;
 
   function goToSlide(n) {
     const slides = document.querySelectorAll('.slide');
     const dots   = document.querySelectorAll('.slide-dot');
     const bar    = document.getElementById('slide-progress');
-
     slides[currentSlide].classList.remove('active');
     dots[currentSlide].classList.remove('active','w-6','bg-gold');
     dots[currentSlide].classList.add('w-1.5','bg-white/30');
-
     currentSlide = (n + totalSlides) % totalSlides;
-
     slides[currentSlide].classList.add('active');
     dots[currentSlide].classList.add('active','w-6','bg-gold');
     dots[currentSlide].classList.remove('w-1.5','bg-white/30');
-
-    bar.style.animation = 'none';
-    bar.offsetHeight;
+    bar.style.animation = 'none'; bar.offsetHeight;
     bar.style.animation = 'progressFill 5s linear forwards';
     resetAutoPlay();
   }
-
   function nextSlide() { goToSlide(currentSlide + 1); }
   function prevSlide() { goToSlide(currentSlide - 1); }
-
-  function resetAutoPlay() {
-    clearInterval(autoTimer);
-    autoTimer = setInterval(nextSlide, 5000);
-  }
+  function resetAutoPlay() { clearInterval(autoTimer); autoTimer = setInterval(nextSlide, 5000); }
   resetAutoPlay();
 
-  // Touch swipe support
   const slideshow = document.getElementById('hero-slideshow');
-  slideshow.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
-  }, { passive: true });
-
+  slideshow.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; }, { passive: true });
   slideshow.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].screenX - touchStartX;
     const dy = e.changedTouches[0].screenY - touchStartY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-      dx < 0 ? nextSlide() : prevSlide();
-    }
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) { dx < 0 ? nextSlide() : prevSlide(); }
   }, { passive: true });
-
   slideshow.addEventListener('mouseenter', () => clearInterval(autoTimer));
   slideshow.addEventListener('mouseleave', resetAutoPlay);
 
-  // ── Quick add ─────────────────────────────────────
   function quickAdd(productId, btn) {
-    const orig = btn.innerHTML;
-    btn.disabled = true; btn.innerHTML = '...';
+    const orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '...';
     const fd = new FormData();
-    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
-    fd.append('quantity', 1);
-    fetch(`/cart/add/${productId}/`, {
-      method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd
-    })
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        btn.innerHTML = '✓';
-        btn.classList.add('bg-gold','text-navy'); btn.classList.remove('bg-navy','text-white');
-        updateCartBadge(d.cart_count);
-        setTimeout(() => {
-          btn.innerHTML = orig; btn.disabled = false;
-          btn.classList.remove('bg-gold','text-navy'); btn.classList.add('bg-navy','text-white');
-        }, 2000);
-      }
-    });
+    fd.append('csrfmiddlewaretoken', CSRF_TOKEN); fd.append('quantity', 1);
+    fetch(`/cart/add/${productId}/`, { method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          btn.innerHTML = '✓';
+          btn.classList.add('bg-gold','text-navy'); btn.classList.remove('bg-navy','text-white');
+          updateCartBadge(d.cart_count);
+          setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; btn.classList.remove('bg-gold','text-navy'); btn.classList.add('bg-navy','text-white'); }, 2000);
+        }
+      });
   }
-
-  // ── Pull to refresh ───────────────────────────────
-
-
-
 </script>
 {% endblock %}
