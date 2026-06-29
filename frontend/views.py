@@ -47,7 +47,7 @@ def home(request):
         hot_products = hot_products + list(fallback)
 
     featured     = valid_products.filter(is_featured=True, status='active').prefetch_related('images')[:4]
-    new_products = valid_products.filter(status='active').prefetch_related('images').order_by('-created_at')[:10]
+    new_products = valid_products.filter(status='active').prefetch_related('images', 'videos').order_by('-created_at')[:10]
     categories   = Category.objects.filter(is_active=True)
 
     # Videos from active products, respecting vendor-set order

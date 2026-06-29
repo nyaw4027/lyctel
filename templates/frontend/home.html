@@ -60,7 +60,6 @@
   .live-stream-card { flex: 0 0 160px; scroll-snap-align: start; }
   @media (min-width: 640px) { .live-stream-card { flex: 0 0 190px; } }
   @media (min-width: 1024px) { .live-stream-card { flex: 0 0 210px; } }
-
   .live-scroll {
     display: flex; gap: 12px;
     overflow-x: auto; scroll-snap-type: x mandatory;
@@ -68,12 +67,47 @@
     scrollbar-width: none; padding-bottom: 4px;
   }
   .live-scroll::-webkit-scrollbar { display: none; }
-
   @keyframes liveRingPulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
     50%       { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
   }
   .live-ring { animation: liveRingPulse 1.5s ease-in-out infinite; }
+
+  /* ── Video hover preview ────────────────── */
+  .video-card-wrap { position: relative; display: block; }
+  .video-card-img-wrap { transition: opacity .25s ease; }
+  .video-card-player {
+    position: absolute; inset: 0; z-index: 2;
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s ease;
+    background: #000;
+    overflow: hidden;
+  }
+  .video-card-player video,
+  .video-card-player iframe { width: 100%; height: 100%; object-fit: cover; border: 0; }
+
+  /* Desktop: activate on hover */
+  @media (hover: hover) {
+    .video-card-wrap:hover .video-card-player { opacity: 1; pointer-events: auto; }
+    .video-card-wrap:hover .video-card-img-wrap { opacity: 0; }
+  }
+
+  /* Mobile: activate on tap (JS adds .playing class) */
+  .video-card-wrap.playing .video-card-player { opacity: 1; pointer-events: auto; }
+  .video-card-wrap.playing .video-card-img-wrap { opacity: 0; }
+
+  .video-badge {
+    position: absolute; bottom: 6px; left: 6px; z-index: 3;
+    display: flex; align-items: center; gap: 3px;
+    background: rgba(0,0,0,.65); color: white;
+    font-size: 9px; font-weight: 700;
+    padding: 2px 6px; border-radius: 999px;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+  }
+  /* Hide video badge when video is playing */
+  .video-card-wrap:hover .video-badge,
+  .video-card-wrap.playing .video-badge { opacity: 0; }
 </style>
 {% endblock %}
 
@@ -137,7 +171,7 @@
       <div class="flex-1 w-full max-w-md mx-auto lg:mx-0 fade-up fade-up-2">
         <div id="hero-slideshow" class="relative select-none">
 
-          <!-- SLIDE 1: How it works -->
+          <!-- SLIDE 1 -->
           <div class="slide active">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
               <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full mb-4">✨ How Lynctel Works</div>
@@ -147,9 +181,7 @@
                   <div class="w-10 h-10 {% if forloop.first %}bg-gold{% else %}bg-white/10 border border-white/20{% endif %}
                               rounded-xl flex items-center justify-center
                               {% if forloop.first %}text-navy{% else %}text-gold{% endif %}
-                              font-display font-700 text-sm flex-shrink-0 group-hover:scale-110 transition-transform">
-                    {{ forloop.counter }}
-                  </div>
+                              font-display font-700 text-sm flex-shrink-0 group-hover:scale-110 transition-transform">{{ forloop.counter }}</div>
                   <div>
                     {% if forloop.first %}
                     <p class="text-white font-semibold text-sm">Browse & Add to Cart</p>
@@ -174,7 +206,7 @@
             </div>
           </div>
 
-          <!-- SLIDE 2: Hot products -->
+          <!-- SLIDE 2 -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5">
               <div class="flex items-center justify-between mb-4">
@@ -185,8 +217,7 @@
               <div class="grid grid-cols-2 gap-2.5">
                 {% for p in hot_products %}
                 <a href="{% url 'products:detail' p.slug %}"
-                   class="slide-card bg-white/5 hover:bg-white/10 border border-white/10
-                          hover:border-gold/30 rounded-2xl overflow-hidden transition-all">
+                   class="slide-card bg-white/5 hover:bg-white/10 border border-white/10 hover:border-gold/30 rounded-2xl overflow-hidden transition-all">
                   <div class="overflow-hidden h-20 relative">
                     {% if p.primary_image %}
                     <img src="{{ p.primary_image }}" alt="{{ p.name }}" class="slide-card-img w-full h-20 object-cover"/>
@@ -213,7 +244,7 @@
             </div>
           </div>
 
-          <!-- SLIDE 3: Food -->
+          <!-- SLIDE 3 -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
               <div class="inline-flex items-center gap-2 bg-orange-400/20 text-orange-300 text-xs font-bold px-3 py-1.5 rounded-full mb-4">🍔 Food Delivery</div>
@@ -238,7 +269,7 @@
             </div>
           </div>
 
-          <!-- SLIDE 4: Sell -->
+          <!-- SLIDE 4 -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
               <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full mb-4">🏪 Become a Vendor</div>
@@ -257,7 +288,7 @@
             </div>
           </div>
 
-          <!-- SLIDE 5: Delivery -->
+          <!-- SLIDE 5 -->
           <div class="slide">
             <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
               <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full mb-4">🛵 Fast Delivery</div>
@@ -284,11 +315,10 @@
             </div>
           </div>
 
-          <!-- Progress bar -->
+          <!-- Progress bar + dots -->
           <div class="mt-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
             <div id="slide-progress" class="h-full bg-gold slide-progress-bar"></div>
           </div>
-          <!-- Dots + arrows -->
           <div class="mt-3 flex items-center justify-between">
             <div class="flex items-center gap-1.5" id="slide-dots">
               <button class="slide-dot active h-1.5 w-6 bg-gold rounded-full touch-target" onclick="goToSlide(0)"></button>
@@ -344,79 +374,50 @@
     <div class="flex items-end justify-between mb-5">
       <div>
         <p class="flex items-center gap-2 text-red-500 text-xs font-bold uppercase tracking-widest mb-1">
-          <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-          Live Right Now
+          <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span> Live Right Now
         </p>
         <h2 class="font-display font-700 text-xl md:text-2xl text-white">Watch & Shop Live</h2>
       </div>
-      <a href="{% url 'livestream:list' %}"
-         class="text-xs font-semibold text-red-400 hover:text-red-300 transition-colors whitespace-nowrap">
-        See all →
-      </a>
+      <a href="{% url 'livestream:list' %}" class="text-xs font-semibold text-red-400 hover:text-red-300 transition-colors whitespace-nowrap">See all →</a>
     </div>
-
     <div class="live-scroll">
       {% for stream in live_streams %}
       <a href="{% url 'livestream:watch' stream.id %}"
          class="live-stream-card group relative rounded-2xl overflow-hidden bg-gray-900 block flex-shrink-0">
-
         {% if stream.thumbnail %}
         <img src="{{ stream.thumbnail.url }}" alt="{{ stream.title }}"
              class="w-full aspect-[9/16] object-cover group-hover:scale-105 transition-transform duration-300"/>
         {% else %}
-        <div class="w-full aspect-[9/16] bg-gradient-to-b from-navy to-gray-900
-                    flex items-center justify-center">
+        <div class="w-full aspect-[9/16] bg-gradient-to-b from-navy to-gray-900 flex items-center justify-center">
           <span class="text-4xl">📺</span>
         </div>
         {% endif %}
-
-        <!-- Overlay -->
         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
-
-        <!-- Live badge -->
-        <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-red-600
-                    text-white text-[10px] font-bold px-2 py-1 rounded-full live-ring">
-          <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
-          LIVE
+        <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full live-ring">
+          <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> LIVE
         </div>
-
-        <!-- Viewer count -->
-        <div class="absolute top-2.5 right-2.5 bg-black/50 text-white text-[10px]
-                    font-semibold px-2 py-1 rounded-full backdrop-blur-sm">
+        <div class="absolute top-2.5 right-2.5 bg-black/50 text-white text-[10px] font-semibold px-2 py-1 rounded-full backdrop-blur-sm">
           👁 {{ stream.current_viewers }}
         </div>
-
-        <!-- Info -->
         <div class="absolute bottom-0 left-0 right-0 p-3">
           <div class="flex items-center gap-2 mb-1">
             {% if stream.vendor.logo %}
-            <img src="{{ stream.vendor.logo.url }}"
-                 class="w-6 h-6 rounded-full object-cover border border-white/20 flex-shrink-0"/>
+            <img src="{{ stream.vendor.logo.url }}" class="w-6 h-6 rounded-full object-cover border border-white/20 flex-shrink-0"/>
             {% else %}
-            <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center
-                        text-white text-[10px] font-bold flex-shrink-0">
-              {{ stream.vendor.shop_name|first|upper }}
-            </div>
+            <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">{{ stream.vendor.shop_name|first|upper }}</div>
             {% endif %}
-            <p class="text-white text-[11px] font-semibold truncate">
-              {{ stream.vendor.shop_name }}
-            </p>
+            <p class="text-white text-[11px] font-semibold truncate">{{ stream.vendor.shop_name }}</p>
           </div>
-          <p class="text-gray-300 text-[10px] line-clamp-2 leading-tight">
-            {{ stream.title }}
-          </p>
+          <p class="text-gray-300 text-[10px] line-clamp-2 leading-tight">{{ stream.title }}</p>
         </div>
       </a>
       {% endfor %}
-
-      <!-- Go Live CTA card (for vendors) -->
       {% if user.is_authenticated and user.role == 'vendor' %}
       <a href="{% url 'livestream:go_live' %}"
          class="live-stream-card flex-shrink-0 rounded-2xl border-2 border-dashed border-red-600/40
                 hover:border-red-600 bg-gray-900 flex flex-col items-center justify-center gap-3
                 transition-all group p-4 text-center aspect-[9/16]">
-        <div class="w-14 h-14 bg-red-600/20 group-hover:bg-red-600 rounded-2xl flex items-center
-                    justify-center transition-colors">
+        <div class="w-14 h-14 bg-red-600/20 group-hover:bg-red-600 rounded-2xl flex items-center justify-center transition-colors">
           <span class="text-2xl">🔴</span>
         </div>
         <div>
@@ -455,9 +456,7 @@
         </svg>
       </div>
       {% endif %}
-      <span class="text-xs font-semibold text-center text-navy group-hover:text-white transition-colors leading-tight">
-        {{ category.name }}
-      </span>
+      <span class="text-xs font-semibold text-center text-navy group-hover:text-white transition-colors leading-tight">{{ category.name }}</span>
     </a>
     {% endfor %}
   </div>
@@ -474,25 +473,57 @@
       </div>
       <a href="{% url 'products:list' %}" class="text-sm font-semibold text-navy hover:text-gold transition-colors">See all →</a>
     </div>
+
     <div class="product-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
       {% for product in new_products %}
+      {% with product.videos.all as vids %}
+      {% with vids.0 as first_vid %}
       <div class="product-card group bg-cream rounded-2xl overflow-hidden card-hover border border-gray-100 flex flex-col">
-        <a href="{% url 'products:detail' product.slug %}" class="relative block overflow-hidden">
-          {% if product.primary_image %}
-          <img src="{{ product.primary_image }}" alt="{{ product.name }}"
-               class="product-img w-full h-36 md:h-44 object-cover group-hover:scale-105 transition-transform duration-500"/>
-          {% else %}
-          <div class="product-img w-full h-36 md:h-44 bg-gray-100 flex items-center justify-center">
-            <span class="text-4xl opacity-20">📦</span>
+
+        <!-- ── Media block (image + optional video hover) ── -->
+        <div class="video-card-wrap{% if first_vid %} has-video{% endif %} relative overflow-hidden h-36 md:h-44">
+
+          <!-- Static image -->
+          <div class="video-card-img-wrap absolute inset-0">
+            <a href="{% url 'products:detail' product.slug %}">
+              {% if product.primary_image %}
+              <img src="{{ product.primary_image }}" alt="{{ product.name }}"
+                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+              {% else %}
+              <div class="w-full h-full bg-gray-100 flex items-center justify-center">
+                <span class="text-4xl opacity-20">📦</span>
+              </div>
+              {% endif %}
+            </a>
           </div>
+
+          <!-- Video layer (only rendered if product has a video) -->
+          {% if first_vid %}
+          <div class="video-card-player">
+            {% if first_vid.embed_url %}
+            <iframe frameborder="0" allowfullscreen allow="autoplay"
+                    data-src="{{ first_vid.embed_iframe_src }}?autoplay=1&mute=1&controls=0&loop=1&playsinline=1"></iframe>
+            {% else %}
+            <video muted loop playsinline preload="none" src="{{ first_vid.video.url }}"></video>
+            {% endif %}
+          </div>
+          <!-- Video badge -->
+          <span class="video-badge">
+            <svg class="w-2.5 h-2.5 fill-white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            Video
+          </span>
           {% endif %}
+
+          <!-- Badges -->
           {% if product.is_featured %}
-          <span class="absolute top-2 right-2 bg-gold text-navy text-[9px] font-bold px-1.5 py-0.5 rounded-full">⭐</span>
+          <span class="absolute top-2 right-2 z-10 bg-gold text-navy text-[9px] font-bold px-1.5 py-0.5 rounded-full">⭐</span>
           {% endif %}
           {% if product.has_discount %}
-          <span class="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">-{{ product.discount_percent }}%</span>
+          <span class="absolute top-2 left-2 z-10 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">-{{ product.discount_percent }}%</span>
           {% endif %}
-        </a>
+        </div>
+
+        <!-- Product info -->
         <div class="p-3 flex flex-col flex-1">
           <a href="{% url 'products:detail' product.slug %}"
              class="text-xs md:text-sm font-semibold text-navy hover:text-gold transition-colors line-clamp-2 mb-2 leading-snug">
@@ -516,7 +547,10 @@
             {% endif %}
           </div>
         </div>
+
       </div>
+      {% endwith %}
+      {% endwith %}
       {% empty %}
       <div class="col-span-full text-center py-12 text-gray-400">
         <p class="text-4xl mb-2">📦</p>
@@ -592,6 +626,7 @@
 
 {% block extra_js %}
 <script>
+  // ── Slideshow ──────────────────────────────────────────
   let currentSlide = 0;
   const totalSlides = 5;
   let autoTimer = null;
@@ -627,6 +662,7 @@
   slideshow.addEventListener('mouseenter', () => clearInterval(autoTimer));
   slideshow.addEventListener('mouseleave', resetAutoPlay);
 
+  // ── Quick add to cart ──────────────────────────────────
   function quickAdd(productId, btn) {
     const orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '...';
     const fd = new FormData();
@@ -638,9 +674,67 @@
           btn.innerHTML = '✓';
           btn.classList.add('bg-gold','text-navy'); btn.classList.remove('bg-navy','text-white');
           updateCartBadge(d.cart_count);
-          setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; btn.classList.remove('bg-gold','text-navy'); btn.classList.add('bg-navy','text-white'); }, 2000);
+          setTimeout(() => {
+            btn.innerHTML = orig; btn.disabled = false;
+            btn.classList.remove('bg-gold','text-navy'); btn.classList.add('bg-navy','text-white');
+          }, 2000);
         }
       });
   }
+
+  // ── Video hover preview on product cards ───────────────
+  document.querySelectorAll('.video-card-wrap.has-video').forEach(wrap => {
+    const video  = wrap.querySelector('video');
+    const iframe = wrap.querySelector('iframe[data-src]');
+    let started  = false;
+
+    function startVideo() {
+      if (started) return;
+      started = true;
+      if (video) {
+        video.load();
+        video.play().catch(() => {});
+      }
+      if (iframe && !iframe.src) {
+        iframe.src = iframe.dataset.src;
+      }
+    }
+
+    function stopVideo() {
+      if (video) {
+        video.pause();
+        video.currentTime = 0;
+        started = false;
+      }
+      if (iframe) {
+        // Stop iframe by clearing src — reload on next hover
+        const saved = iframe.dataset.src;
+        iframe.src  = '';
+        iframe.dataset.src = saved;
+        started = false;
+      }
+    }
+
+    // Desktop: mouse events
+    wrap.addEventListener('mouseenter', startVideo);
+    wrap.addEventListener('mouseleave', stopVideo);
+
+    // Mobile: tap to toggle
+    wrap.addEventListener('touchstart', e => {
+      if (wrap.classList.contains('playing')) {
+        wrap.classList.remove('playing');
+        stopVideo();
+      } else {
+        // Stop any other playing cards
+        document.querySelectorAll('.video-card-wrap.playing').forEach(w => {
+          w.classList.remove('playing');
+          const v = w.querySelector('video');
+          if (v) { v.pause(); v.currentTime = 0; }
+        });
+        wrap.classList.add('playing');
+        startVideo();
+      }
+    }, { passive: true });
+  });
 </script>
 {% endblock %}
