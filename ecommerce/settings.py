@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     'ecommerce',
     'products',
     'cart',
-    'order',
+    'order.apps.OrderConfig',   # instead of just 'order'
     'payment',
     'delivery',
     'rider',
@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'chat',
     'livestream',
     'fraud',
+    'notifications',
 ]
 
 # ── Middleware ─────────────────────────────────────────────
@@ -112,8 +113,6 @@ else:
         }
     }
 # ── Channel Layers ─────────────────────────────────────────
-# Uses Redis on Railway when REDIS_URL is set.
-# Falls back to InMemory for local dev / Railway without Redis.
 _redis_url = os.environ.get('REDIS_URL', '').strip()
 
 if _redis_url:
@@ -122,12 +121,12 @@ if _redis_url:
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
                 'hosts': [_redis_url],
-                # Hardened against Railway's internal network having brief
-                # latency spikes on first connect — without these, a single
-                # slow Redis read crashes the whole WebSocket connection.
                 'capacity':     1500,
                 'expiry':       60,
                 'group_expiry': 86400,
+                # Keep the pub-sub connection alive so Railway's internal
+                # network doesn't drop it after 60s of inactivity.
+                'health_check_interval': 20,
             },
         }
     }
