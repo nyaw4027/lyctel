@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     'ecommerce',
     'products',
     'cart',
-    'order.apps.OrderConfig',   # instead of just 'order'
+    'order',   # instead of just 'order'
     'payment',
     'delivery',
     'rider',
@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'chat',
     'livestream',
     'fraud',
-    'notifications',
+  
 ]
 
 # ── Middleware ─────────────────────────────────────────────
