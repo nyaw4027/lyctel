@@ -7,11 +7,22 @@ from django.utils import timezone
 
 class StreamConsumer(AsyncWebsocketConsumer):
     """
-    Single WebSocket consumer that handles everything for one live stream:
+    Single WebSocket consumer that handles everything for one live stream.
+
+    WebRTC signaling model:
+      - The VENDOR (broadcaster) is the only one who sends 'offer' on
+        startCamera(). That offer is broadcast to the whole room; each
+        VIEWER answers it individually with their own channel_name as
+        peer_id so the vendor can create one RTCPeerConnection per viewer.
+      - VIEWERS also send their own 'offer' on page load (startViewing())
+        to request the stream. This offer must include the viewer's
+        channel_name as `sender` when relayed to the vendor, so the
+        vendor's handleViewerOffer() can key its peerConnections map
+        correctly and route the matching 'answer' back to THAT viewer only.
 
     CLIENT → SERVER message types:
-      offer        — WebRTC SDP offer  (vendor → server → viewers)
-      answer       — WebRTC SDP answer (viewer → server → vendor)
+      offer        — WebRTC SDP offer  (viewer requests stream OR vendor pushes one)
+      answer       — WebRTC SDP answer (in reply to an offer)
       ice          — ICE candidate relay
       chat         — Chat message
       gift         — Viewer sends a gift
@@ -20,10 +31,11 @@ class StreamConsumer(AsyncWebsocketConsumer):
       ping         — Keepalive
 
     SERVER → CLIENT message types:
-      offer / answer / ice  — WebRTC signaling passthrough
+      offer / answer / ice  — WebRTC signaling passthrough (always includes `sender`)
       chat                  — New chat message
-      gift_event            — Gift animation broadcast
+      gift                  — Gift animation broadcast
       viewer_count          — Current viewer count update
+      pinned_products       — Initial pinned products list (sent on connect)
       product_pinned        — New product pinned
       product_unpinned      — Product removed
       stream_ended          — Stream has ended
@@ -36,29 +48,24 @@ class StreamConsumer(AsyncWebsocketConsumer):
         self.user        = self.scope['user']
         self.is_vendor   = False
 
-        # Verify stream exists and is live
         stream = await self._get_stream()
         if not stream:
             await self.close()
             return
 
-        # Check if this user is the vendor
         self.is_vendor = await self._is_stream_vendor(stream)
 
         await self.channel_layer.group_add(self.room_group, self.channel_name)
         await self.accept()
 
-        # Track viewer
         await self._add_viewer(stream)
 
-        # Broadcast updated viewer count
         count = await self._get_viewer_count()
         await self.channel_layer.group_send(self.room_group, {
             'type':  'viewer_count_update',
             'count': count,
         })
 
-        # Send current pinned products to the new viewer
         products = await self._get_pinned_products()
         await self.send(text_data=json.dumps({
             'type':     'pinned_products',
@@ -67,11 +74,8 @@ class StreamConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group, self.channel_name)
-
-        # Update viewer left_at
         await self._remove_viewer()
 
-        # Broadcast updated count
         count = await self._get_viewer_count()
         await self.channel_layer.group_send(self.room_group, {
             'type':  'viewer_count_update',
@@ -88,7 +92,8 @@ class StreamConsumer(AsyncWebsocketConsumer):
 
         # ── WebRTC signaling ──────────────────────────────
         if msg_type == 'offer':
-            # Vendor → all viewers
+            # Relay to the room, always tagging who sent it so the
+            # receiving side (vendor or viewer) can route correctly.
             await self.channel_layer.group_send(self.room_group, {
                 'type':   'webrtc_offer',
                 'sdp':    data.get('sdp'),
@@ -96,8 +101,11 @@ class StreamConsumer(AsyncWebsocketConsumer):
             })
 
         elif msg_type == 'answer':
-            # Viewer → vendor specifically
-            # We broadcast to group; vendor ignores answers not for them
+            # peer_id tells the server WHO should receive this answer.
+            # The viewer answering a vendor offer sets peer_id to the
+            # vendor's channel_name (from data.sender on the offer they
+            # received). The vendor answering a viewer's offer sets
+            # peer_id to that viewer's channel_name.
             await self.channel_layer.group_send(self.room_group, {
                 'type':    'webrtc_answer',
                 'sdp':     data.get('sdp'),
@@ -123,14 +131,14 @@ class StreamConsumer(AsyncWebsocketConsumer):
 
             comment = await self._save_comment(message)
             await self.channel_layer.group_send(self.room_group, {
-                'type':        'chat_message',
-                'message':     message,
-                'username':    self.user.display_name,
-                'initials':    self.user.initials,
-                'user_id':     self.user.id,
-                'comment_id':  comment.id,
-                'is_vendor':   self.is_vendor,
-                'sent_at':     comment.sent_at.strftime('%H:%M'),
+                'type':       'chat_message',
+                'message':    message,
+                'username':   self.user.display_name,
+                'initials':   self.user.initials,
+                'user_id':    self.user.id,
+                'comment_id': comment.id,
+                'is_vendor':  self.is_vendor,
+                'sent_at':    comment.sent_at.strftime('%H:%M'),
             })
 
         # ── Gift ──────────────────────────────────────────
@@ -154,13 +162,13 @@ class StreamConsumer(AsyncWebsocketConsumer):
                 return
 
             await self.channel_layer.group_send(self.room_group, {
-                'type':         'gift_event',
-                'gift_type':    gift_type,
-                'emoji':        gift['emoji'],
-                'quantity':     quantity,
-                'total_value':  str(gift['total_value']),
-                'username':     self.user.display_name,
-                'user_id':      self.user.id,
+                'type':        'gift_event',
+                'gift_type':   gift_type,
+                'emoji':       gift['emoji'],
+                'quantity':    quantity,
+                'total_value': str(gift['total_value']),
+                'username':    self.user.display_name,
+                'user_id':     self.user.id,
             })
 
         # ── Pin product (vendor only) ──────────────────────
@@ -168,7 +176,7 @@ class StreamConsumer(AsyncWebsocketConsumer):
             if not self.is_vendor:
                 return
             product_id = data.get('product_id')
-            action     = data.get('action', 'pin')  # 'pin' or 'unpin'
+            action     = data.get('action', 'pin')
 
             if action == 'pin':
                 product_data = await self._pin_product(product_id)
@@ -200,14 +208,15 @@ class StreamConsumer(AsyncWebsocketConsumer):
     # ── Group message handlers (server → this client) ─────
 
     async def webrtc_offer(self, event):
+        # Don't echo back to whoever sent it.
         if event['sender'] != self.channel_name:
             await self.send(text_data=json.dumps({
-                'type': 'offer',
-                'sdp':  event['sdp'],
+                'type':   'offer',
+                'sdp':    event['sdp'],
+                'sender': event['sender'],
             }))
 
     async def webrtc_answer(self, event):
-        # Only send to the peer that should receive this answer
         target = event.get('peer_id')
         if target and target == self.channel_name:
             await self.send(text_data=json.dumps({
@@ -216,6 +225,7 @@ class StreamConsumer(AsyncWebsocketConsumer):
                 'sender': event['sender'],
             }))
         elif not target and event['sender'] != self.channel_name:
+            # Fallback for any legacy client not yet sending peer_id
             await self.send(text_data=json.dumps({
                 'type':   'answer',
                 'sdp':    event['sdp'],
@@ -313,7 +323,7 @@ class StreamConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _remove_viewer(self):
-        from livestream.models import StreamViewer, LiveStream
+        from livestream.models import StreamViewer
         if self.user.is_authenticated:
             StreamViewer.objects.filter(
                 stream_id=self.stream_id,
@@ -352,7 +362,6 @@ class StreamConsumer(AsyncWebsocketConsumer):
             quantity=quantity,
         )
 
-        # Update stream total gift value
         LiveStream.objects.filter(id=self.stream_id).update(
             total_gifts_value=gift.total_value
         )
@@ -372,13 +381,13 @@ class StreamConsumer(AsyncWebsocketConsumer):
         for pin in pins:
             p = pin.product
             result.append({
-                'id':              p.pk,
-                'name':            p.name,
-                'price':           str(p.final_price),
-                'slug':            p.slug,
-                'image':           p.primary_image or '',
-                'is_highlighted':  pin.is_highlighted,
-                'in_stock':        p.is_in_stock,
+                'id':             p.pk,
+                'name':           p.name,
+                'price':          str(p.final_price),
+                'slug':           p.slug,
+                'image':          p.primary_image or '',
+                'is_highlighted': pin.is_highlighted,
+                'in_stock':       p.is_in_stock,
             })
         return result
 
@@ -394,7 +403,6 @@ class StreamConsumer(AsyncWebsocketConsumer):
             pin, _ = StreamProduct.objects.get_or_create(
                 stream=stream, product=product
             )
-            # Highlight this one, un-highlight others
             StreamProduct.objects.filter(stream=stream).exclude(
                 pk=pin.pk
             ).update(is_highlighted=False)
