@@ -8,7 +8,6 @@
                   object-fit:cover; border-radius:16px; background:#111; }
   .chat-box     { height:280px; overflow-y:auto; scroll-behavior:smooth; }
 
-  /* Gift animation */
   .gift-anim { position:fixed; pointer-events:none; z-index:999;
                font-size:3rem; animation:floatUp 2.5s ease forwards; }
   @keyframes floatUp {
@@ -17,14 +16,12 @@
     100% { opacity:0; transform:translateY(-220px) scale(.8); }
   }
 
-  /* Product buy card */
   .product-card-live { animation:slideUp .3s ease forwards; }
   @keyframes slideUp {
     from { opacity:0; transform:translateY(20px); }
     to   { opacity:1; transform:translateY(0); }
   }
 
-  /* Gift picker */
   .gift-btn { transition:all .2s; }
   .gift-btn:hover { transform:scale(1.15); }
   .gift-btn:active { transform:scale(.9); }
@@ -35,7 +32,6 @@
 <div class="min-h-screen bg-gray-950 text-white">
   <div class="max-w-5xl mx-auto px-3 py-4">
 
-    <!-- Live badge + title -->
     <div class="flex items-center gap-3 mb-4 flex-wrap">
       {% if stream.is_live %}
       <span class="flex items-center gap-1.5 bg-red-600 text-white text-xs font-bold
@@ -56,7 +52,6 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-      <!-- Video -->
       <div class="lg:col-span-2 space-y-3">
         <div class="relative">
           <video id="remote-video" autoplay playsinline></video>
@@ -66,17 +61,15 @@
             <div class="w-12 h-12 border-4 border-red-600 border-t-transparent
                         rounded-full animate-spin mb-4"></div>
             <p class="text-white font-semibold">Connecting to stream...</p>
+            <p id="connecting-hint" class="text-gray-500 text-xs mt-2"></p>
           </div>
         </div>
 
-        <!-- Pinned product cards -->
         <div id="pinned-products" class="flex gap-3 overflow-x-auto pb-1"></div>
       </div>
 
-      <!-- Right: chat + gifts -->
       <div class="flex flex-col gap-3">
 
-        <!-- Chat -->
         <div class="bg-gray-900 rounded-2xl p-4 flex-1 flex flex-col">
           <p class="text-sm font-semibold text-white mb-2">💬 Live Chat</p>
           <div id="chat-box" class="chat-box flex-1 space-y-2 mb-3">
@@ -101,7 +94,6 @@
           {% endif %}
         </div>
 
-        <!-- Gift panel -->
         {% if user.is_authenticated %}
         <div class="bg-gray-900 rounded-2xl p-4">
           <p class="text-sm font-semibold text-white mb-3">🎁 Send a Gift</p>
@@ -130,30 +122,48 @@
 {% block extra_js %}
 <script>
 const STREAM_ID  = '{{ stream.id }}';
-const CSRF_TOKEN = '{{ csrf_token }}';
 const IS_AUTH    = {{ user.is_authenticated|yesno:'true,false' }};
 const WS_SCHEME  = location.protocol === 'https:' ? 'wss' : 'ws';
 const wsUrl      = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
+// CSRF_TOKEN is already declared globally in base.html — do not redeclare here.
 
 let ws, pc;
+let vendorChannel = null;   // the vendor's channel_name, learned from their offer/answer
+let connectTimeout = null;
 
 // ── WebSocket ──────────────────────────────────────────
 function connectWS() {
   ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
-    // Send WebRTC offer to get the stream
     startViewing();
+    // If we don't get a track within 15s, show a helpful hint instead of
+    // spinning forever — usually means the vendor hasn't started their
+    // camera yet, or both sides are behind strict NATs with no TURN server.
+    connectTimeout = setTimeout(() => {
+      const hint = document.getElementById('connecting-hint');
+      if (hint) hint.textContent = 'Still connecting — the host may not have started their camera yet.';
+    }, 15000);
   };
 
   ws.onmessage = (e) => {
     const data = JSON.parse(e.data);
     switch (data.type) {
       case 'offer':
+        // Vendor sent (or re-sent) an offer directly to us.
+        vendorChannel = data.sender;
         handleOffer(data.sdp);
         break;
+      case 'answer':
+        // Vendor answered OUR offer (the normal "request the stream" flow).
+        vendorChannel = data.sender;
+        if (pc) {
+          pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }))
+            .catch(() => {});
+        }
+        break;
       case 'ice':
-        if (pc && data.peer_id === null) {
+        if (pc && data.sender === vendorChannel) {
           pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {});
         }
         break;
@@ -194,15 +204,23 @@ async function startViewing() {
     const vid = document.getElementById('remote-video');
     vid.srcObject = e.streams[0];
     document.getElementById('connecting-overlay').classList.add('hidden');
+    if (connectTimeout) clearTimeout(connectTimeout);
   };
 
   pc.onicecandidate = (e) => {
     if (e.candidate) {
-      ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate, peer_id: null }));
+      // Target the vendor specifically once we know their channel name;
+      // before that (very first ICE candidates can fire before the
+      // answer arrives) we send untargeted and the server will broadcast
+      // it room-wide as a fallback.
+      ws.send(JSON.stringify({
+        type:      'ice',
+        candidate: e.candidate,
+        peer_id:   vendorChannel,
+      }));
     }
   };
 
-  // Add receive-only transceivers
   pc.addTransceiver('video', { direction: 'recvonly' });
   pc.addTransceiver('audio', { direction: 'recvonly' });
 
@@ -212,11 +230,11 @@ async function startViewing() {
 }
 
 async function handleOffer(sdp) {
-  // Viewer receives re-offer from vendor (e.g. after camera switch)
+  if (!pc) return;
   await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
-  ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp }));
+  ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp, peer_id: vendorChannel }));
 }
 
 // ── Chat ───────────────────────────────────────────────
@@ -258,7 +276,7 @@ function appendChat(data) {
 // ── Gifts ──────────────────────────────────────────────
 async function sendGift(giftType) {
   if (!IS_AUTH) { location.href = '/accounts/login/'; return; }
-  const res = await fetch(`/live/${STREAM_ID}/send-gift/`, {
+  const res = await fetch(`/livestream/${STREAM_ID}/send-gift/`, {
     method: 'POST',
     headers: {
       'X-CSRFToken':      CSRF_TOKEN,
@@ -314,7 +332,6 @@ function upsertPinnedProduct(p) {
         : '<span class="text-[10px] text-red-400">Out of stock</span>'}
     </div>`;
 
-  // Highlighted products go first
   if (p.is_highlighted) {
     container.prepend(div);
   } else {
@@ -333,7 +350,7 @@ function showStreamEnded() {
   document.getElementById('connecting-overlay').innerHTML = `
     <p class="text-4xl mb-3">📺</p>
     <p class="text-white font-semibold text-lg">Stream has ended</p>
-    <a href="/live/" class="mt-4 text-gold hover:underline text-sm">Browse other streams →</a>`;
+    <a href="{% url 'livestream:list' %}" class="mt-4 text-gold hover:underline text-sm">Browse other streams →</a>`;
 }
 </script>
 {% endblock %}
