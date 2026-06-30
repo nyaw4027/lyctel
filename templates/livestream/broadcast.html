@@ -170,7 +170,7 @@
 {% block extra_js %}
 <script>
 const STREAM_ID   = '{{ stream.id }}';
-const CSRF_TOKEN  = '{{ csrf_token }}';
+// CSRF_TOKEN already declared globally in base.html — do not redeclare here.
 const WS_SCHEME   = location.protocol === 'https:' ? 'wss' : 'ws';
 const wsUrl       = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
 
