@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Vendors — Staff{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
+
+  <div class="flex items-center gap-4 mb-6 flex-wrap">
+    <a href="{% url 'staff:home' %}" class="text-sm text-gray-500 hover:text-navy transition-colors">← Dashboard</a>
+    <h1 class="font-display font-700 text-2xl text-navy">Vendors</h1>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-100 p-4 mb-5">
+    <form method="GET" class="flex flex-wrap gap-3 items-end">
+      <div class="flex-1 min-w-[180px]">
+        <label class="block text-xs font-semibold text-gray-500 mb-1">Search</label>
+        <input type="text" name="q" value="{{ query }}"
+               placeholder="Shop name, phone, location..."
+               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+        <select name="status" class="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+          <option value="">All</option>
+          <option value="pending"   {% if filter_status == 'pending'   %}selected{% endif %}>Pending ({{ counts.pending }})</option>
+          <option value="active"    {% if filter_status == 'active'    %}selected{% endif %}>Active ({{ counts.active }})</option>
+          <option value="suspended" {% if filter_status == 'suspended' %}selected{% endif %}>Suspended ({{ counts.suspended }})</option>
+        </select>
+      </div>
+      <button type="submit" class="bg-navy text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-navy-700 transition-colors">Filter</button>
+      {% if query or filter_status %}
+      <a href="{% url 'staff:vendor_list' %}" class="text-sm text-gray-500 hover:text-navy font-medium px-4 py-2">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="flex gap-2 flex-wrap mb-5">
+    <a href="?status=pending"   class="text-xs font-semibold px-3 py-1.5 rounded-full border {% if filter_status == 'pending' %}bg-orange-500 text-white border-orange-500{% else %}bg-white text-gray-600 border-gray-200{% endif %}">⏳ Pending {{ counts.pending }}</a>
+    <a href="?status=active"    class="text-xs font-semibold px-3 py-1.5 rounded-full border {% if filter_status == 'active' %}bg-green-500 text-white border-green-500{% else %}bg-white text-gray-600 border-gray-200{% endif %}">✓ Active {{ counts.active }}</a>
+    <a href="?status=suspended" class="text-xs font-semibold px-3 py-1.5 rounded-full border {% if filter_status == 'suspended' %}bg-red-500 text-white border-red-500{% else %}bg-white text-gray-600 border-gray-200{% endif %}">⛔ Suspended {{ counts.suspended }}</a>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase bg-gray-50 border-b border-gray-100">
+            <th class="px-5 py-3 text-left font-semibold">Shop</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Owner</th>
+            <th class="px-5 py-3 text-left font-semibold hidden lg:table-cell">Location</th>
+            <th class="px-5 py-3 text-right font-semibold">Products</th>
+            <th class="px-5 py-3 text-center font-semibold">Status</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Joined</th>
+            <th class="px-5 py-3 text-right font-semibold">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for vendor in vendors %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                {% if vendor.logo %}
+                <img src="{{ vendor.logo.url }}" class="w-9 h-9 rounded-xl object-cover flex-shrink-0"/>
+                {% else %}
+                <div class="w-9 h-9 bg-navy rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {{ vendor.shop_name|first|upper }}
+                </div>
+                {% endif %}
+                <p class="font-semibold text-navy text-sm truncate max-w-[160px]">{{ vendor.shop_name }}</p>
+              </div>
+            </td>
+            <td class="px-5 py-3.5 text-gray-500 hidden md:table-cell text-xs">
+              {{ vendor.owner.get_full_name|default:vendor.owner.phone }}
+            </td>
+            <td class="px-5 py-3.5 text-gray-500 hidden lg:table-cell text-xs">
+              {{ vendor.location|default:"—" }}
+            </td>
+            <td class="px-5 py-3.5 text-right text-navy font-semibold">
+              {{ vendor.product_count }}
+            </td>
+            <td class="px-5 py-3.5 text-center">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                {% if vendor.status == 'active' %}bg-green-100 text-green-700
+                {% elif vendor.status == 'pending' %}bg-orange-100 text-orange-700
+                {% else %}bg-red-100 text-red-600{% endif %}">
+                {{ vendor.get_status_display }}
+              </span>
+            </td>
+            <td class="px-5 py-3.5 text-xs text-gray-400 hidden md:table-cell">
+              {{ vendor.joined_at|date:"M d, Y" }}
+            </td>
+            <td class="px-5 py-3.5 text-right">
+              <a href="{% url 'staff:vendor_detail' vendor.pk %}"
+                 class="text-xs border border-gray-200 hover:border-navy text-gray-600 hover:text-navy font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                Review
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="px-5 py-16 text-center text-gray-400"><p class="text-3xl mb-2">🏪</p><p class="text-sm">No vendors found.</p></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

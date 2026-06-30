@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ vendor.name }} — Staff{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+
+  <div class="flex items-center gap-4 mb-6 flex-wrap">
+    <a href="{% url 'staff:food_vendor_list' %}" class="text-sm text-gray-500 hover:text-navy transition-colors">← Restaurants</a>
+    <h1 class="font-display font-700 text-2xl text-navy">{{ vendor.name }}</h1>
+    <span class="text-xs font-semibold px-3 py-1 rounded-full
+      {% if vendor.status == 'open' %}bg-green-100 text-green-700
+      {% elif vendor.status == 'suspended' %}bg-red-100 text-red-600
+      {% else %}bg-gray-100 text-gray-500{% endif %}">
+      {{ vendor.get_status_display }}
+    </span>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-5">
+    <h2 class="font-display font-700 text-navy text-sm mb-3">Actions</h2>
+    <div class="flex flex-wrap gap-3">
+      {% if vendor.status != 'suspended' %}
+      <form method="POST" onsubmit="return confirm('Suspend {{ vendor.name|escapejs }}?')">
+        <input type="hidden" name="action" value="suspend"/>{% csrf_token %}
+        <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">⛔ Suspend</button>
+      </form>
+      {% else %}
+      <form method="POST"><input type="hidden" name="action" value="reactivate"/>{% csrf_token %}
+        <button type="submit" class="bg-navy hover:bg-navy-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">↻ Reactivate</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    <div class="lg:col-span-2 space-y-5">
+      <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100">
+          <h2 class="font-display font-700 text-navy">Menu Items</h2>
+        </div>
+        <div class="divide-y divide-gray-50">
+          {% for item in menu_items %}
+          <div class="flex items-center justify-between px-5 py-3">
+            <div>
+              <p class="text-sm font-semibold text-navy">{{ item.name }}</p>
+              <p class="text-xs text-gray-400">{{ item.category.name|default:"—" }}</p>
+            </div>
+            <p class="text-sm font-display font-700 text-navy">GHS {{ item.price }}</p>
+          </div>
+          {% empty %}
+          <p class="px-5 py-8 text-center text-gray-400 text-sm">No menu items yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100">
+          <h2 class="font-display font-700 text-navy">Recent Orders</h2>
+        </div>
+        <div class="divide-y divide-gray-50">
+          {% for order in recent_orders %}
+          <a href="{% url 'staff:food_order_detail' order.order_ref %}" class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
+            <span class="text-sm font-bold text-gold-dark">{{ order.order_ref }}</span>
+            <span class="text-xs text-gray-400">{{ order.created_at|date:"M d, H:i" }}</span>
+          </a>
+          {% empty %}
+          <p class="px-5 py-8 text-center text-gray-400 text-sm">No orders yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-5">
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <h3 class="font-display font-700 text-navy text-sm mb-3">Restaurant Info</h3>
+        <div class="space-y-2 text-sm text-gray-600">
+          <p>👤 {{ vendor.owner.get_full_name|default:vendor.owner.phone }}</p>
+          <p>🏙 {{ vendor.city|default:"—" }}</p>
+          <p>📅 Joined {{ vendor.joined_at|date:"M d, Y" }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

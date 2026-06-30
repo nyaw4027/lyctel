@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ order.order_ref }} — Staff{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 md:px-6 py-8">
+
+  <div class="flex items-center gap-4 mb-6 flex-wrap">
+    <a href="{% url 'staff:food_order_list' %}" class="text-sm text-gray-500 hover:text-navy transition-colors">← Food Orders</a>
+    <h1 class="font-display font-700 text-2xl text-navy">{{ order.order_ref }}</h1>
+    <span class="text-xs font-semibold px-3 py-1 rounded-full
+      {% if order.status == 'delivered' %}bg-green-100 text-green-700
+      {% elif order.status == 'cancelled' %}bg-red-100 text-red-600
+      {% else %}bg-gray-100 text-gray-500{% endif %}">
+      {{ order.get_status_display }}
+    </span>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-5">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h2 class="font-display font-700 text-navy">Order Items — {{ order.vendor.name }}</h2>
+    </div>
+    <div class="divide-y divide-gray-50">
+      {% for item in order.items.all %}
+      <div class="flex items-center justify-between px-5 py-3">
+        <p class="text-sm text-navy">{{ item.quantity }}× {{ item.item_name|default:item.food_item.name }}</p>
+        <p class="text-sm font-display font-700 text-navy">GHS {{ item.subtotal }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-5">
+    <h2 class="font-display font-700 text-navy text-sm mb-3">Update Status</h2>
+    <form method="POST" class="flex flex-wrap gap-3 items-end">
+      {% csrf_token %}
+      <div class="flex-1 min-w-[160px]">
+        <select name="status" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+          {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="bg-navy text-white text-sm font-semibold px-5 py-2 rounded-xl hover:bg-navy-700 transition-colors">
+        Update
+      </button>
+    </form>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-100 p-5">
+    <h3 class="font-display font-700 text-navy text-sm mb-3">Customer & Delivery</h3>
+    <div class="space-y-2 text-sm text-gray-600">
+      <p>👤 {{ order.customer.get_full_name|default:order.customer.phone }}</p>
+      <p>📍 {{ order.delivery_address }}</p>
+      <p>💰 Total: GHS {{ order.total_amount }}</p>
+      <p>📅 {{ order.created_at|date:"M d, Y H:i" }}</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

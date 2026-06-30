@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Customers — Staff{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
+
+  <div class="flex items-center gap-4 mb-6 flex-wrap">
+    <a href="{% url 'staff:home' %}" class="text-sm text-gray-500 hover:text-navy transition-colors">← Dashboard</a>
+    <h1 class="font-display font-700 text-2xl text-navy">Customers</h1>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-100 p-4 mb-5">
+    <form method="GET" class="flex flex-wrap gap-3 items-end">
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-xs font-semibold text-gray-500 mb-1">Search</label>
+        <input type="text" name="q" value="{{ query }}" placeholder="Name or phone..."
+               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+      </div>
+      <button type="submit" class="bg-navy text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-navy-700 transition-colors">Search</button>
+      {% if query %}
+      <a href="{% url 'staff:customer_list' %}" class="text-sm text-gray-500 hover:text-navy font-medium px-4 py-2">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase bg-gray-50 border-b border-gray-100">
+            <th class="px-5 py-3 text-left font-semibold">Customer</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Phone</th>
+            <th class="px-5 py-3 text-right font-semibold">Orders</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Joined</th>
+            <th class="px-5 py-3 text-right font-semibold">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for customer in customers %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                {% if customer.profile_pic %}
+                <img src="{{ customer.profile_pic.url }}" class="w-9 h-9 rounded-full object-cover flex-shrink-0"/>
+                {% else %}
+                <div class="w-9 h-9 bg-navy rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {{ customer.first_name|first|upper|default:"U" }}
+                </div>
+                {% endif %}
+                <p class="font-semibold text-navy text-sm">{{ customer.get_full_name|default:"—" }}</p>
+              </div>
+            </td>
+            <td class="px-5 py-3.5 text-gray-500 hidden md:table-cell">{{ customer.phone }}</td>
+            <td class="px-5 py-3.5 text-right text-navy font-semibold">{{ customer.order_count }}</td>
+            <td class="px-5 py-3.5 text-xs text-gray-400 hidden md:table-cell">{{ customer.created_at|date:"M d, Y" }}</td>
+            <td class="px-5 py-3.5 text-right">
+              <a href="{% url 'staff:customer_detail' customer.pk %}"
+                 class="text-xs border border-gray-200 hover:border-navy text-gray-600 hover:text-navy font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                View
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="px-5 py-16 text-center text-gray-400"><p class="text-3xl mb-2">👤</p><p class="text-sm">No customers found.</p></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
