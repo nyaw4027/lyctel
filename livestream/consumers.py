@@ -376,7 +376,7 @@ class StreamConsumer(AsyncWebsocketConsumer):
         from livestream.models import StreamProduct
         pins = StreamProduct.objects.filter(
             stream_id=self.stream_id
-        ).select_related('product', 'product__images')
+        ).select_related('product').prefetch_related('product__images')
         result = []
         for pin in pins:
             p = pin.product
