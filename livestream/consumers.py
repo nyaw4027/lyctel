@@ -1,4 +1,5 @@
 import json
+import asyncio
 from decimal import Decimal
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
@@ -55,16 +56,34 @@ class StreamConsumer(AsyncWebsocketConsumer):
 
         self.is_vendor = await self._is_stream_vendor(stream)
 
-        await self.channel_layer.group_add(self.room_group, self.channel_name)
+        try:
+            await asyncio.wait_for(
+                self.channel_layer.group_add(self.room_group, self.channel_name),
+                timeout=8,
+            )
+        except (asyncio.TimeoutError, Exception):
+            # Redis hiccup on first connect — accept the socket anyway so
+            # the client doesn't see a hard failure; group features (chat,
+            # gifts, pin updates) may be briefly unavailable until the next
+            # successful operation, but the WebRTC video/audio path itself
+            # does not depend on the channel layer at all.
+            pass
+
         await self.accept()
 
         await self._add_viewer(stream)
 
-        count = await self._get_viewer_count()
-        await self.channel_layer.group_send(self.room_group, {
-            'type':  'viewer_count_update',
-            'count': count,
-        })
+        try:
+            count = await asyncio.wait_for(self._get_viewer_count(), timeout=5)
+            await asyncio.wait_for(
+                self.channel_layer.group_send(self.room_group, {
+                    'type':  'viewer_count_update',
+                    'count': count,
+                }),
+                timeout=5,
+            )
+        except (asyncio.TimeoutError, Exception):
+            pass
 
         products = await self._get_pinned_products()
         await self.send(text_data=json.dumps({

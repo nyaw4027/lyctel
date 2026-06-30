@@ -111,7 +111,6 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-
 # ── Channel Layers ─────────────────────────────────────────
 # Uses Redis on Railway when REDIS_URL is set.
 # Falls back to InMemory for local dev / Railway without Redis.
@@ -121,7 +120,15 @@ if _redis_url:
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG':  {'hosts': [_redis_url]},
+            'CONFIG': {
+                'hosts': [_redis_url],
+                # Hardened against Railway's internal network having brief
+                # latency spikes on first connect — without these, a single
+                # slow Redis read crashes the whole WebSocket connection.
+                'capacity':     1500,
+                'expiry':       60,
+                'group_expiry': 86400,
+            },
         }
     }
 else:
@@ -130,7 +137,6 @@ else:
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
         }
     }
-
 # ── Password validation ────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
