@@ -78,6 +78,21 @@
         <p class="text-xs text-gray-400 mb-3">Or click anywhere on the map to drop a pin 👇</p>
         <div id="delivery-map" class="mb-4"></div>
 
+        <div>
+    <label class="block text-sm font-medium text-gray-600 mb-1">
+        Delivery Phone Number *
+    </label>
+    <input
+        type="tel"
+        id="delivery_phone"
+        name="delivery_phone"
+        value="{{ form_data.delivery_phone|default:user.phone }}"
+        placeholder="+233XXXXXXXXX"
+        required
+        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"
+    >
+</div>
+
         <div class="grid sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1">Street Address *</label>
