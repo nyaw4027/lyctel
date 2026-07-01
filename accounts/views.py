@@ -1,5 +1,6 @@
 import logging
 import json
+import requests
 
 from django.conf import settings
 from django.contrib import messages
@@ -7,6 +8,7 @@ from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.core.cache import cache
+from django.core.mail import send_mail
 from django.db.models import Sum
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
@@ -120,12 +122,95 @@ def logout_view(request):
     return redirect('frontend:home')
 
 
-# ── FORGOT PASSWORD — step 1: enter phone ────────────────
+# ── OTP DELIVERY HELPERS ──────────────────────────────────
+
+def _send_otp_sms(phone: str, otp: str) -> bool:
+    """
+    Send OTP via Termii SMS.
+    Returns True if the API call succeeded, False otherwise.
+    Failure is logged but never raises — we don't want SMS to crash the flow.
+    """
+    api_key = getattr(settings, 'TERMII_API_KEY', '').strip()
+    sender  = getattr(settings, 'TERMII_SENDER_ID', 'Lynctel').strip()
+
+    if not api_key:
+        logger.warning('TERMII_API_KEY not set — skipping SMS OTP')
+        return False
+
+    # Normalise to international format for Termii (233XXXXXXXXX)
+    intl_phone = phone
+    if phone.startswith('0'):
+        intl_phone = '233' + phone[1:]
+    elif phone.startswith('+'):
+        intl_phone = phone[1:]
+
+    payload = {
+        'to':      intl_phone,
+        'from':    sender,
+        'sms':     f'Your Lynctel password reset code is: {otp}. It expires in 10 minutes. Do not share it.',
+        'type':    'plain',
+        'api_key': api_key,
+        'channel': 'generic',
+    }
+
+    try:
+        resp = requests.post(
+            'https://api.ng.termii.com/api/sms/send',
+            json=payload,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        logger.info('OTP SMS sent to %s — Termii response: %s', phone, resp.text[:200])
+        return True
+    except Exception as exc:
+        logger.error('Termii SMS failed for %s: %s', phone, exc)
+        return False
+
+
+def _send_otp_email(email: str, otp: str, phone: str) -> bool:
+    """
+    Send OTP via Django email.
+    Returns True on success, False otherwise.
+    """
+    if not email:
+        return False
+
+    try:
+        send_mail(
+            subject='Your Lynctel Password Reset Code',
+            message=(
+                f'Your Lynctel password reset code is: {otp}\n\n'
+                f'It expires in 10 minutes. Do not share it with anyone.\n\n'
+                f'If you did not request this, ignore this email.'
+            ),
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@lynctel.com'),
+            recipient_list=[email],
+            fail_silently=False,
+            html_message=(
+                f'<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;">'
+                f'<h2 style="color:#0F1B2D;">Password Reset Code</h2>'
+                f'<p style="color:#6b7280;">Use the code below to reset your Lynctel password.</p>'
+                f'<div style="background:#FEF3D7;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">'
+                f'<p style="font-size:36px;font-weight:bold;letter-spacing:.3em;color:#0F1B2D;margin:0;">{otp}</p>'
+                f'</div>'
+                f'<p style="color:#9ca3af;font-size:13px;">Expires in 10 minutes. Never share this code.</p>'
+                f'<p style="color:#9ca3af;font-size:13px;">If you did not request this, ignore this email.</p>'
+                f'</div>'
+            ),
+        )
+        logger.info('OTP email sent to %s', email)
+        return True
+    except Exception as exc:
+        logger.error('Email OTP failed for %s: %s', email, exc)
+        return False
+
+
+# ── STEP 1: enter phone ───────────────────────────────────
+
 def forget_password(request):
     """
     User enters their phone number.
-    We generate an OTP, store it in the cache for 10 minutes,
-    and redirect to the OTP verification step.
+    OTP is sent via SMS (always) and also via email if the account has one.
     """
     if request.user.is_authenticated:
         return redirect('frontend:home')
@@ -140,32 +225,49 @@ def forget_password(request):
         try:
             user = User.objects.filter(phone=phone).first()
 
-            # Always show the same message whether the account exists or not
-            # to prevent account enumeration attacks.
-            generic_message = (
-                'If that number is registered, a reset code has been sent.'
+            # Generic message prevents account enumeration
+            generic_msg = (
+                'If that number is registered, a reset code has been sent '
+                'via SMS and email (if you have one on file).'
             )
 
             if not user:
-                messages.info(request, generic_message)
+                messages.info(request, generic_msg)
                 return redirect('accounts:forget_password')
 
-            # Generate a 6-digit OTP
+            # Generate 6-digit OTP
             otp = get_random_string(length=6, allowed_chars='0123456789')
 
-            # Store OTP in cache for 10 minutes
+            # Store OTP + delivery channels used in cache (10 min)
             cache.set(f'pwd_reset_otp_{phone}', otp, timeout=600)
-
-            # Store phone in session so the next steps can read it
             request.session['pwd_reset_phone'] = phone
 
-            logger.warning('PASSWORD RESET OTP for %s: %s', phone, otp)
+            # Attempt delivery via SMS and email
+            sms_sent   = _send_otp_sms(phone, otp)
+            email_sent = _send_otp_email(user.email, otp, phone) if user.email else False
 
-            messages.success(request, generic_message)
+            # Build a user-friendly delivery summary
+            delivery_parts = []
+            if sms_sent:
+                masked_phone = f'{phone[:4]}****{phone[-3:]}'
+                delivery_parts.append(f'SMS to {masked_phone}')
+            if email_sent and user.email:
+                domain      = user.email.split('@')[-1]
+                masked_email = f'{user.email[:2]}****@{domain}'
+                delivery_parts.append(f'email to {masked_email}')
 
-            # Show OTP in debug mode so you can test without SMS
+            if delivery_parts:
+                messages.success(
+                    request,
+                    f'Reset code sent via {" and ".join(delivery_parts)}.'
+                )
+            else:
+                # Both channels failed — still don't reveal if account exists
+                messages.info(request, generic_msg)
+
+            # Always show OTP in DEBUG mode for easy testing
             if settings.DEBUG:
-                messages.warning(request, f'[DEBUG OTP] {otp}')
+                messages.warning(request, f'[DEBUG] OTP: {otp}')
 
             return redirect('accounts:verify_otp')
 
@@ -177,7 +279,8 @@ def forget_password(request):
     return render(request, 'accounts/forget_password.html')
 
 
-# ── FORGOT PASSWORD — step 2: verify OTP ─────────────────
+# ── STEP 2: verify OTP ────────────────────────────────────
+
 def verify_otp(request):
     if request.user.is_authenticated:
         return redirect('frontend:home')
@@ -189,6 +292,21 @@ def verify_otp(request):
 
     masked = f'{phone[:4]}****{phone[-3:]}'
 
+    # ── Resend action ──────────────────────────────────────
+    if request.method == 'POST' and request.POST.get('action') == 'resend':
+        user = User.objects.filter(phone=phone).first()
+        if user:
+            otp = get_random_string(length=6, allowed_chars='0123456789')
+            cache.set(f'pwd_reset_otp_{phone}', otp, timeout=600)
+            _send_otp_sms(phone, otp)
+            if user.email:
+                _send_otp_email(user.email, otp, phone)
+            messages.success(request, 'A new code has been sent.')
+            if settings.DEBUG:
+                messages.warning(request, f'[DEBUG] New OTP: {otp}')
+        return redirect('accounts:verify_otp')
+
+    # ── Verify action ──────────────────────────────────────
     if request.method == 'POST':
         entered_otp = request.POST.get('otp', '').strip()
         stored_otp  = cache.get(f'pwd_reset_otp_{phone}')
@@ -202,11 +320,10 @@ def verify_otp(request):
         if entered_otp != stored_otp:
             messages.error(request, 'Incorrect code. Please try again.')
             return render(request, 'accounts/verify_otp.html', {
-                'phone': phone,
+                'phone':  phone,
                 'masked': masked,
             })
 
-        # OTP is correct — clear it and mark session as verified
         cache.delete(f'pwd_reset_otp_{phone}')
         request.session['pwd_reset_verified'] = True
         return redirect('accounts:reset_password')
@@ -217,7 +334,8 @@ def verify_otp(request):
     })
 
 
-# ── FORGOT PASSWORD — step 3: set new password ───────────
+# ── STEP 3: set new password ──────────────────────────────
+
 def reset_password(request):
     if request.user.is_authenticated:
         return redirect('frontend:home')
@@ -240,19 +358,17 @@ def reset_password(request):
             errors['confirm_password'] = 'Passwords do not match.'
 
         if errors:
-            return render(request, 'accounts/reset_password.html', {
-                'errors': errors,
-            })
+            return render(request, 'accounts/reset_password.html', {'errors': errors})
 
         try:
             user = User.objects.get(phone=phone)
             user.set_password(new_pass)
             user.save()
 
-            # Clean up session
             request.session.pop('pwd_reset_phone', None)
             request.session.pop('pwd_reset_verified', None)
 
+            from django.contrib.auth import login
             login(request, user)
             messages.success(request, '✅ Password reset successfully! Welcome back.')
             return redirect('frontend:home')
@@ -261,10 +377,7 @@ def reset_password(request):
             messages.error(request, 'Account not found.')
             return redirect('accounts:forget_password')
         except Exception as e:
-            logger.error(
-                'Reset password error for phone=%s: %s', phone, str(e),
-                exc_info=True,
-            )
+            logger.error('Reset password error for %s: %s', phone, e, exc_info=True)
             messages.error(request, f'Could not reset password: {e}')
             return render(request, 'accounts/reset_password.html', {})
 
