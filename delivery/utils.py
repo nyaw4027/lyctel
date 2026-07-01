@@ -46,3 +46,10 @@ def calculate_rider_commission(delivery_fee, rate_percent=Decimal('50')):
 def calculate_app_cut(delivery_fee, rate_percent=Decimal('5')):
     """5% of delivery fee goes to Lynctel from every delivery."""
     return (delivery_fee * rate_percent / Decimal('100')).quantize(Decimal('0.01'))
+
+def calculate_distance(lat1, lng1, lat2, lng2):
+    """
+    Compatibility wrapper for distance calculation.
+    Returns the distance in kilometres.
+    """
+    return haversine_distance(lat1, lng1, lat2, lng2)
