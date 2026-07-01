@@ -1,94 +1,70 @@
 {% extends "base.html" %}
-{% block title %}Pay GHS {{ order.total_amount }} — Lynctel{% endblock %}
+{% block title %}Processing Payment — Lynctel{% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto px-4 py-16 text-center">
+<div class="min-h-screen flex items-center justify-center bg-cream px-4">
+  <div class="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center">
 
-  <!-- Spinner -->
-  <div id="waiting">
-    <div class="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-5"></div>
+    <div class="w-16 h-16 bg-gold-light rounded-2xl flex items-center justify-center mx-auto mb-5">
+      <span class="text-3xl">💳</span>
+    </div>
 
-    <h2 class="text-lg font-bold text-gray-800 mb-1">
-      Opening payment window...
-    </h2>
+    <h1 class="font-display font-700 text-navy text-xl mb-2">Complete Your Payment</h1>
+    <p class="text-gray-400 text-sm mb-2">Order <strong class="text-navy">{{ order.order_ref }}</strong></p>
+    <p class="font-display font-700 text-3xl text-navy mb-6">GHS {{ order.total_amount }}</p>
 
-    <p class="text-sm text-gray-500 mb-2">
-      Order <span class="font-bold text-gold">{{ order.order_ref }}</span>
-    </p>
+    <div id="pay-status" class="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-sm text-blue-700 mb-5">
+      <div class="flex items-center justify-center gap-2">
+        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+        </svg>
+        Opening payment window...
+      </div>
+    </div>
 
-    <p class="text-2xl font-bold text-gold mb-6">
-      GHS {{ order.total_amount }}
-    </p>
-
-    <p class="text-xs text-gray-400">
-      A secure payment window will open shortly.<br>
-      Do not close or refresh this page.
-    </p>
-  </div>
-
-  <!-- Fallback -->
-  <div id="fallback" class="hidden">
-    <p class="text-sm text-gray-600 mb-4">
-      If the payment window didn't open automatically:
-    </p>
-
-    <button id="pay-btn"
-            class="bg-navy hover:bg-navy-700 text-white font-bold px-8 py-3 rounded-xl transition">
-      Open Payment Window
+    <button id="open-pay-btn" onclick="openPayment()"
+            class="w-full bg-navy hover:bg-navy-700 text-white font-semibold py-3.5
+                   rounded-2xl transition-colors btn-press text-sm hidden">
+      🔓 Open Payment Window
     </button>
-  </div>
 
+    <p class="text-xs text-gray-400 mt-4">
+      🔒 Secured by Flutterwave · Your card details are never stored by Lynctel
+    </p>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<!-- Flutterwave Inline JS -->
 <script src="https://checkout.flutterwave.com/v3.js"></script>
-
 <script>
   const config = {{ flw_config|safe }};
 
-  // ✅ SAFE CALLBACK HANDLER
-  config.callback = function (response) {
-    console.log("Flutterwave response:", response);
-
-    if (response.status === "successful" || response.status === "completed") {
-      window.location.href = `/checkout/payment/callback/?status=successful&tx_ref=${response.tx_ref}&transaction_id=${response.transaction_id}`;
-    } else {
-      window.location.href = `/checkout/payment/callback/?status=failed&tx_ref=${response.tx_ref}`;
-    }
-  };
-
-  // ✅ HANDLE POPUP CLOSE
-  config.onclose = function () {
-    console.log("Payment popup closed");
-
-    document.getElementById('waiting').classList.add('hidden');
-    document.getElementById('fallback').classList.remove('hidden');
-  };
-
-  // ✅ AUTO TRIGGER PAYMENT
-  window.onload = function () {
-    setTimeout(function () {
-      try {
-        FlutterwaveCheckout(config);
-      } catch (e) {
-        console.error("Flutterwave error:", e);
-
-        document.getElementById('waiting').classList.add('hidden');
-        document.getElementById('fallback').classList.remove('hidden');
+  function openPayment() {
+    config.callback = function(response) {
+      if (response.status === 'successful') {
+        document.getElementById('pay-status').innerHTML =
+          '<span class="text-green-700">✅ Payment received! Redirecting...</span>';
+        window.location.href = `/checkout/payment/callback/?status=successful&tx_ref=${response.tx_ref}&transaction_id=${response.transaction_id}`;
+      } else {
+        document.getElementById('pay-status').innerHTML =
+          '<span class="text-red-600">❌ Payment was not completed. Please try again.</span>';
+        document.getElementById('open-pay-btn').classList.remove('hidden');
       }
-    }, 800);
-  };
+    };
+    config.onclose = function() {
+      document.getElementById('pay-status').innerHTML =
+        '<span class="text-orange-600">⚠ Payment window closed.</span>';
+      document.getElementById('open-pay-btn').classList.remove('hidden');
+    };
+    FlutterwaveCheckout(config);
+  }
 
-  // ✅ MANUAL FALLBACK BUTTON
-  document.addEventListener('DOMContentLoaded', function () {
-    const btn = document.getElementById('pay-btn');
-
-    if (btn) {
-      btn.addEventListener('click', function () {
-        FlutterwaveCheckout(config);
-      });
-    }
+  // Auto-open on page load
+  window.addEventListener('load', function() {
+    setTimeout(openPayment, 800);
   });
 </script>
 {% endblock %}

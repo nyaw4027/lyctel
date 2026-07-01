@@ -2,54 +2,47 @@
 {% block title %}Payment Failed — Lynctel{% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto px-4 py-16 text-center">
+<div class="min-h-screen flex items-center justify-center bg-cream px-4">
+  <div class="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center">
 
-  <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5">
-    <svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
-    </svg>
-  </div>
-
-  <h1 class="text-2xl font-bold text-gray-800 mb-2">Payment Not Completed</h1>
-  <p class="text-gray-500 text-sm mb-2">
-    Your order <span class="font-bold text-brand">{{ order.order_ref }}</span> has been saved.
-  </p>
-  <p class="text-gray-400 text-xs mb-8">
-    No money has been taken. You can try again with a different payment method.
-  </p>
-
-  <!-- Order summary -->
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6 text-left">
-    <div class="flex justify-between text-sm mb-2">
-      <span class="text-gray-500">Order</span>
-      <span class="font-bold text-brand">{{ order.order_ref }}</span>
+    <div class="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+      <span class="text-3xl">❌</span>
     </div>
-    <div class="flex justify-between text-sm mb-2">
-      <span class="text-gray-500">Amount</span>
-      <span class="font-bold">GHS {{ order.total_amount }}</span>
+
+    <h1 class="font-display font-700 text-navy text-xl mb-2">Payment Not Completed</h1>
+
+    {% if order %}
+    <p class="text-gray-400 text-sm mb-1">
+      Order <strong class="text-navy">{{ order.order_ref }}</strong>
+    </p>
+    <p class="font-display font-700 text-2xl text-navy mb-4">GHS {{ order.total_amount }}</p>
+    {% endif %}
+
+    <div class="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-sm text-red-700 mb-6">
+      Your payment was not processed. Your cart and order details have been saved —
+      you can try again below.
     </div>
-    <div class="flex justify-between text-sm">
-      <span class="text-gray-500">Deliver to</span>
-      <span class="font-medium">{{ order.delivery_city }}</span>
+
+    <div class="space-y-3">
+      <a href="{% url 'payment:page' %}"
+         class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold
+                py-3.5 rounded-2xl transition-colors btn-press text-sm text-center">
+        🔄 Try Payment Again
+      </a>
+      <a href="{% url 'order:checkout' %}"
+         class="block w-full bg-gray-50 hover:bg-gray-100 text-navy font-semibold
+                py-3.5 rounded-2xl transition-colors text-sm text-center border border-gray-200">
+        ← Back to Checkout
+      </a>
     </div>
-  </div>
 
-  <div class="flex flex-col gap-3">
-    <!-- Retry payment — POST back to payment page with order details reloaded -->
-    <a href="{% url 'order:history' %}"
-       class="w-full bg-brand hover:bg-brand-dark text-white font-bold py-3 rounded-xl transition-colors">
-      Try Payment Again
-    </a>
+    <div class="mt-5 text-xs text-gray-400">
+      Need help? WhatsApp us at
+      <a href="https://wa.me/233558040216" class="text-gold-dark font-semibold hover:underline">
+        +233 55 804 0216
+      </a>
+    </div>
 
-    <a href="https://wa.me/233XXXXXXXXX?text=Hi!+I+had+a+payment+issue+for+order+{{ order.order_ref }}"
-       target="_blank"
-       class="w-full bg-green-50 hover:bg-green-100 text-green-700 font-semibold py-3 rounded-xl transition-colors text-sm">
-      Get Help on WhatsApp
-    </a>
-
-    <a href="{% url 'frontend:home' %}" class="text-sm text-gray-400 hover:text-brand">
-      Back to Homepage
-    </a>
   </div>
 </div>
 {% endblock %}
