@@ -408,4 +408,3 @@ def price_estimate(request):
         'fee':         str(fee),
         'eta_minutes': eta,
     })
- 

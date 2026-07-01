@@ -1,21 +1,17 @@
+import json
 from decimal import Decimal
-from django.shortcuts import render, get_object_or_404, redirect
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from cart.models import Cart
 from delivery.models import Delivery
-from delivery.services import assign_rider_to_delivery
-from .models import Order
+from delivery.services import ACCRA_CENTER, assign_rider_to_delivery, estimate_fee_for_request
 
-import json
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
-from delivery.services import estimate_fee_for_request, ACCRA_CENTER
- 
- 
+from .models import Order
 
 
 # ── CART HELPER ───────────────────────────────────────────
@@ -31,6 +27,10 @@ def get_or_create_cart(request):
             user=None
         )
     return cart
+
+
+# ── CHECKOUT ───────────────────────────────────────────────
+
 @login_required
 def checkout(request):
     cart = get_or_create_cart(request)
@@ -40,14 +40,22 @@ def checkout(request):
         return redirect("cart:detail")
 
     if request.method == "POST":
-        delivery_choice = request.POST.get("delivery_choice", "rider")
-        delivery_phone = request.POST.get("delivery_phone", "").strip()
-        delivery_address = request.POST.get("delivery_address", "").strip()
-        delivery_city = request.POST.get("delivery_city", "").strip()
-        special_notes = request.POST.get("special_notes", "").strip()
-        parcel_bus_station = request.POST.get("parcel_bus_station", "").strip()
-        parcel_recipient_phone = request.POST.get("parcel_recipient_phone", "").strip()
-        parcel_notes = request.POST.get("parcel_notes", "").strip()
+        delivery_choice        = request.POST.get("delivery_choice", "rider")
+        delivery_phone         = request.POST.get("delivery_phone", "").strip()
+        delivery_address       = request.POST.get("delivery_address", "").strip()
+        delivery_city           = request.POST.get("delivery_city", "").strip()
+        # FIXED: checkout.html posts this field as "order_note", not
+        # "special_notes" — the old code was silently discarding every note.
+        order_note              = request.POST.get("order_note", "").strip()
+        parcel_bus_station       = request.POST.get("parcel_bus_station", "").strip()
+        parcel_recipient_phone  = request.POST.get("parcel_recipient_phone", "").strip()
+        parcel_notes            = request.POST.get("parcel_notes", "").strip()
+
+        # FIXED: the map in checkout.html writes to hidden inputs
+        # delivery_lat / delivery_lng, but nothing ever read them —
+        # coordinates picked on the frontend never reached the backend.
+        dlat_raw = request.POST.get("delivery_lat", "").strip()
+        dlng_raw = request.POST.get("delivery_lng", "").strip()
 
         errors = {}
 
@@ -58,18 +66,14 @@ def checkout(request):
         if delivery_choice == "rider":
             if not delivery_address:
                 errors["delivery_address"] = "Enter your delivery address."
-
             if not delivery_city:
                 errors["delivery_city"] = "Enter your city."
 
         elif delivery_choice == "parcel":
             if not parcel_bus_station:
                 errors["parcel_bus_station"] = "Enter the bus station name."
-
             if not parcel_recipient_phone:
-                errors["parcel_recipient_phone"] = (
-                    "Enter the recipient phone number."
-                )
+                errors["parcel_recipient_phone"] = "Enter the recipient phone number."
 
         if errors:
             return render(request, "order/checkout.html", {
@@ -82,13 +86,27 @@ def checkout(request):
         # Cart subtotal
         subtotal = Decimal(str(cart.total_price))
 
-        # Delivery fee
-        if delivery_choice == "rider":
-            # TODO:
-            # Replace this with your GPS/distance calculation.
-            delivery_fee = Decimal("0.00")
-        else:
-            delivery_fee = Decimal("0.00")
+        # Delivery fee — never trust the client-posted number, recompute
+        # server-side from coordinates whenever we have them.
+        delivery_lat = delivery_lng = None
+        distance_km  = None
+        delivery_fee = Decimal("0.00")
+
+        if delivery_choice == "rider" and dlat_raw and dlng_raw:
+            try:
+                delivery_lat = float(dlat_raw)
+                delivery_lng = float(dlng_raw)
+                # No per-vendor pickup point is chosen at cart-checkout time
+                # (a cart can span multiple vendors), so we estimate from a
+                # fixed city-center pickup, same fallback used by the
+                # estimate_delivery_fee AJAX endpoint below.
+                distance_km, fee = estimate_fee_for_request(
+                    ACCRA_CENTER[0], ACCRA_CENTER[1], delivery_lat, delivery_lng
+                )
+                delivery_fee = Decimal(str(fee))
+            except (TypeError, ValueError):
+                delivery_lat = delivery_lng = distance_km = None
+                delivery_fee = Decimal("0.00")
 
         total = subtotal + delivery_fee
 
@@ -98,10 +116,13 @@ def checkout(request):
             "delivery_address": delivery_address,
             "delivery_city": delivery_city,
             "delivery_phone": delivery_phone,
+            "delivery_lat": delivery_lat,
+            "delivery_lng": delivery_lng,
+            "distance_km": distance_km,
             "subtotal": str(subtotal),
             "delivery_fee": str(delivery_fee),
             "total": str(total),
-            "special_notes": special_notes,
+            "order_note": order_note,
             "parcel_bus_station": parcel_bus_station,
             "parcel_recipient_phone": parcel_recipient_phone,
             "parcel_notes": parcel_notes,
@@ -114,6 +135,8 @@ def checkout(request):
         "cart_count": cart.total_items,
         "user": request.user,
     })
+
+
 # ── ORDER CONFIRMATION ────────────────────────────────────
 
 @login_required
@@ -165,13 +188,26 @@ def order_tracking(request, order_ref):
     })
 
 
+# ── ORDER RECEIPT ─────────────────────────────────────────
+
+@login_required
+def order_receipt(request, order_ref):
+    """Download a PDF receipt for a paid order."""
+    order = get_object_or_404(
+        Order,
+        order_ref=order_ref,
+        customer=request.user,
+        payment_status=Order.PaymentStatus.PAID,
+    )
+    from .pdf import generate_order_receipt_pdf
+    return generate_order_receipt_pdf(order)
+
+
 # ── VENDOR: CONFIRM PICKUP ────────────────────────────────
 
 @login_required
 def vendor_confirm_pickup(request, order_ref):
     """Vendor marks a pickup order as ready for collection."""
-    from vendors.models import Vendor
-
     if request.method != 'POST':
         return redirect('vendors:dashboard')
 
@@ -192,7 +228,6 @@ def vendor_confirm_pickup(request, order_ref):
     order.status = Order.Status.READY
     order.save(update_fields=['pickup_confirmed_at', 'status'])
 
-    # Notify customer (plug in your notification system here)
     _notify_customer(
         order.customer,
         title=f'Order {order.order_ref} Ready for Pickup',
@@ -211,8 +246,6 @@ def vendor_confirm_pickup(request, order_ref):
 @login_required
 def vendor_dispatch_parcel(request, order_ref):
     """Vendor confirms a parcel has been sent via bus."""
-    from vendors.models import Vendor
-
     if request.method != 'POST':
         return redirect('vendors:dashboard')
 
@@ -271,19 +304,35 @@ def _notify_customer(user, title, body):
         pass  # fail silently — don't break the order flow
 
 
-# ── DELIVERY HELPER (kept from original) ─────────────────
-
+# ── DELIVERY CREATION (post-payment) ──────────────────────
+#
+# NOTE: previous versions of this function referenced order.address,
+# order.vendor_lat/vendor_lng, and order.lat/lng — none of which are
+# guaranteed to exist on the Order model. Using getattr(..., None) below
+# avoids a hard crash either way, but this is still a TODO:
+#   1. There's no per-vendor pickup coordinate anywhere in checkout yet
+#      (a cart can span multiple vendors), so pickup_lat/pickup_lng will
+#      be None until that's designed properly.
+#   2. dropoff coordinates are only available if the Order model actually
+#      stores delivery_lat/delivery_lng (populated from the session
+#      "pending_order" dict set in checkout() above, once payment succeeds
+#      and the real Order row is created). Confirm those fields exist on
+#      Order before relying on them.
 def create_delivery_for_order(order):
     """Only called for rider-mode orders."""
-    from delivery.models import Delivery, DeliveryZone
+    from delivery.models import DeliveryZone
 
     zone = DeliveryZone.objects.filter(is_active=True).first()
 
     delivery = Delivery.objects.create(
         order=order,
         zone=zone,
-        pickup_location='Vendor Location',
+        pickup_location='Vendor Location',  # TODO: use real vendor address — see note above
         dropoff_location=order.delivery_address,
+        pickup_lat=getattr(order, 'vendor_lat', None),
+        pickup_lng=getattr(order, 'vendor_lng', None),
+        dropoff_lat=getattr(order, 'delivery_lat', None),
+        dropoff_lng=getattr(order, 'delivery_lng', None),
         status=Delivery.Status.PENDING,
     )
 
@@ -294,8 +343,8 @@ def create_delivery_for_order(order):
     return delivery
 
 
+# ── FEE ESTIMATE (AJAX, called from checkout map) ─────────
 
- 
 @login_required
 def estimate_delivery_fee(request):
     """
@@ -308,10 +357,10 @@ def estimate_delivery_fee(request):
         dropoff_lat = float(data.get('dropoff_lat', 0))
         dropoff_lng = float(data.get('dropoff_lng', 0))
         vendor_id   = data.get('vendor_id')
- 
+
         if not dropoff_lat or not dropoff_lng:
             return JsonResponse({'error': 'Missing coordinates.'}, status=400)
- 
+
         # Get pickup coords from vendor if provided
         pickup_lat = pickup_lng = None
         if vendor_id:
@@ -322,247 +371,20 @@ def estimate_delivery_fee(request):
                 pickup_lng = getattr(vendor, 'longitude', None)
             except Exception:
                 pass
- 
+
         pickup_lat = pickup_lat or ACCRA_CENTER[0]
         pickup_lng = pickup_lng or ACCRA_CENTER[1]
- 
+
         distance_km, fee = estimate_fee_for_request(
             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng
         )
- 
+
         return JsonResponse({
             'distance_km':  distance_km,
             'delivery_fee': float(fee),
             'fee_display':  f'GHS {fee}',
             'distance_display': f'{distance_km} km',
         })
- 
+
     except (ValueError, TypeError) as e:
         return JsonResponse({'error': str(e)}, status=400)
-    
-
-
-
-from decimal import Decimal
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-
-# --- Add these REST Framework imports ---
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-#from .serializers import OrderSerializer 
-# ----------------------------------------
-
-from cart.models import Cart
-from delivery.models import Delivery
-from delivery.services import assign_rider_to_delivery
-from .models import Order
-
-
-# -------------------------
-# CART HELPER (CLEAN)
-# -------------------------
-def get_or_create_cart(request):
-    if request.user.is_authenticated:
-        cart, _ = Cart.objects.get_or_create(user=request.user)
-    else:
-        if not request.session.session_key:
-            request.session.create()
-        cart, _ = Cart.objects.get_or_create(
-            session_key=request.session.session_key,
-            user=None
-        )
-    return cart
-
-@login_required
-def checkout(request):
-    cart = get_or_create_cart(request)
-
-    if cart.total_items == 0:
-        messages.warning(request, "Your cart is empty.")
-        return redirect("cart:detail")
-
-    if request.method == "POST":
-        delivery_address = request.POST.get("delivery_address", "").strip()
-        delivery_city = request.POST.get("delivery_city", "").strip()
-        delivery_phone = request.POST.get("delivery_phone", "").strip()
-        special_notes = request.POST.get("special_notes", "").strip()
-
-        errors = {}
-
-        if not delivery_address:
-            errors["delivery_address"] = "Enter your delivery address."
-
-        if not delivery_city:
-            errors["delivery_city"] = "Enter your city."
-
-        if not delivery_phone:
-            errors["delivery_phone"] = "Enter a delivery phone number."
-
-        if errors:
-            return render(request, "order/checkout.html", {
-                "cart": cart,
-                "errors": errors,
-                "cart_count": cart.total_items,
-                "form_data": request.POST,
-            })
-
-        # Cart subtotal
-        subtotal = Decimal(str(cart.total_price))
-
-        # Default delivery fee.
-        # This can later be replaced with a distance-based calculation.
-        delivery_fee = Decimal("0.00")
-
-        total = subtotal + delivery_fee
-
-        # Save order temporarily until payment succeeds
-        request.session["pending_order"] = {
-            "delivery_address": delivery_address,
-            "delivery_city": delivery_city,
-            "delivery_phone": delivery_phone,
-            "customer_note": special_notes,
-            "subtotal": str(subtotal),
-            "delivery_fee": str(delivery_fee),
-            "total": str(total),
-        }
-
-        return redirect("payment:page")
-
-    return render(request, "order/checkout.html", {
-        "cart": cart,
-        "cart_count": cart.total_items,
-        "user": request.user,
-    })
-
-# -------------------------
-# ORDER CONFIRMATION
-# -------------------------
-@login_required
-def order_confirmation(request, order_ref):
-    order = get_object_or_404(
-        Order,
-        order_ref=order_ref,
-        customer=request.user
-    )
-
-    # security check
-    if order.payment_status != Order.PaymentStatus.PAID:
-        return render(request, 'order/not_paid.html', {
-            'order': order,
-            'cart_count': 0
-        })
-
-    items = order.items.select_related('product')
-
-    return render(request, 'order/order_confirmation.html', {
-        'order': order,
-        'items': items,
-        'cart_count': 0,
-    })
-
-
-# -------------------------
-# ORDER HISTORY
-# -------------------------
-@login_required
-def order_history(request):
-    orders = Order.objects.filter(
-        customer=request.user
-    ).prefetch_related('items').order_by('-created_at')
-
-    cart = get_or_create_cart(request)
-
-    return render(request, 'order/order_history.html', {
-        'orders': orders,
-        'cart_count': cart.total_items,
-    })
-
-
-# -------------------------
-# DELIVERY CREATION (post-payment)
-# -------------------------
-# FIXED (partial): previously referenced order.address, order.vendor_lat,
-# order.vendor_lng, order.lat, and order.lng — NONE of these exist on the
-# Order model (which only has delivery_address, delivery_city,
-# delivery_phone). This function would crash with AttributeError on its
-# very first real call.
-#
-# STILL UNRESOLVED — needs your input:
-#   1. There is no lat/lng anywhere in the checkout flow at all. To populate
-#      pickup_lat/pickup_lng/dropoff_lat/dropoff_lng for real, we need
-#      either a geocoding step (address -> coordinates) or stored
-#      coordinates on Vendor/DeliveryZone. I don't have delivery/models.py
-#      yet, so I don't know whether these fields are required (NOT NULL)
-#      on the Delivery model, which determines whether passing None here
-#      is even safe.
-#   2. pickup_location is hardcoded to the literal string "Vendor
-#      Location" rather than the actual vendor's address — and since an
-#      order can contain items from MULTIPLE vendors, "one pickup point
-#      per order" may not even be the right model for a marketplace like
-#      this. Flagging rather than guessing at a fix.
-def create_delivery_for_order(order):
-    
-
-    delivery = Delivery.objects.create(
-        order=order,
-       
-        pickup_location="Vendor Location",         # TODO: use the real vendor address (see note above)
-        dropoff_location=order.delivery_address,    # FIXED: was order.address (doesn't exist)
-        pickup_lat=None,                            # TODO: needs a real coordinate source — see note above
-        pickup_lng=None,
-        dropoff_lat=None,
-        dropoff_lng=None,
-        status=Delivery.Status.PENDING
-    )
-
-    rider = assign_rider_to_delivery(delivery)
-
-    if not rider:
-        print("No available rider found.")
-
-    return delivery
-
-
-# -------------------------
-# ORDER TRACKING (The missing function!)
-# -------------------------
-@login_required
-def order_tracking(request, order_ref):
-    order = get_object_or_404(
-        Order, 
-        order_ref=order_ref, 
-        customer=request.user
-    )
-    
-    # If you have a delivery linked to this order, get it
-    delivery = getattr(order, 'delivery', None)
-    
-    return render(request, 'order/tracking.html', {
-        'order': order,
-        'delivery': delivery,
-        'cart_count': 0, # Usually 0 since order is already placed
-    })
-
-
-@login_required
-def order_receipt(request, order_ref):
-    """Download a PDF receipt for a paid order."""
-    order = get_object_or_404(
-        Order,
-        order_ref=order_ref,
-        customer=request.user,
-        payment_status=Order.PaymentStatus.PAID,
-    )
-    from .pdf import generate_order_receipt_pdf
-    return generate_order_receipt_pdf(order)
-
-
-#@api_view(['GET'])
-#@permission_classes([IsAuthenticated])
-#def api_order_history(request):
-    #orders = Order.objects.filter(customer=request.user).order_by('-created_at')
-   # serializer = OrderSerializer(orders, many=True)
-    #return Response(serializer.data)

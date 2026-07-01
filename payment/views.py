@@ -118,7 +118,8 @@ def checkout(request):
         messages.warning(request, 'Your cart is empty.')
         return redirect('products:list')
 
-    subtotal = sum(item.get_total_price() for item in cart_items)
+    # CartItem exposes `subtotal` as a property (not get_total_price()).
+    subtotal = sum(item.subtotal for item in cart_items)
 
     if request.method == 'POST':
         first_name  = request.POST.get('first_name', '').strip()
@@ -258,7 +259,8 @@ def payment_page(request):
         messages.warning(request, 'Your cart is empty.')
         return redirect('products:list')
 
-    subtotal     = sum(item.get_total_price() for item in cart_items)
+    # CartItem exposes `subtotal` as a property (not get_total_price()).
+    subtotal     = sum(item.subtotal for item in cart_items)
     delivery_fee = MIN_FARE
     total        = subtotal + delivery_fee
 
