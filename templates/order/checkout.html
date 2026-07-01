@@ -5,7 +5,11 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  #delivery-map { height: 280px; border-radius: 1rem; z-index: 1; }
+  #delivery-map {
+    height: 300px;
+    border-radius: 1rem;
+    z-index: 1;
+  }
   #address-suggestions {
     position: absolute; top: 100%; left: 0; right: 0;
     background: white; border: 1px solid #e5e7eb;
@@ -19,6 +23,17 @@
     border-bottom: 1px solid #f3f4f6;
   }
   .suggestion-item:hover { background: #f9fafb; }
+  @keyframes pulse-ring {
+    0%   { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2.5); opacity: 0; }
+  }
+  .gps-pulse::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background: #3b82f6;
+    animation: pulse-ring 1.5s infinite ease-out;
+  }
 </style>
 {% endblock %}
 
@@ -27,33 +42,34 @@
 
   <!-- Breadcrumb -->
   <div class="flex items-center gap-2 text-sm text-gray-400 mb-6">
-    <a href="{% url 'products:list' %}" class="hover:text-navy">Shop</a>
+    <a href="{% url 'products:list' %}" class="hover:text-navy transition-colors">Shop</a>
     <span>/</span>
-    <a href="{% url 'cart:detail' %}" class="hover:text-navy">Cart</a>
+    <a href="{% url 'cart:detail' %}" class="hover:text-navy transition-colors">Cart</a>
     <span>/</span>
     <span class="text-navy font-medium">Checkout</span>
   </div>
 
   <h1 class="font-display font-800 text-2xl md:text-3xl text-navy mb-8">Checkout</h1>
 
+  <!-- GPS status banner -->
+  <div id="gps-banner" class="mb-5 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-sm text-blue-700">
+    <div class="relative w-3 h-3 flex-shrink-0">
+      <div class="gps-pulse absolute inset-0 rounded-full bg-blue-400 opacity-75"></div>
+      <div class="relative w-3 h-3 bg-blue-500 rounded-full"></div>
+    </div>
+    <span id="gps-status">Detecting your current location...</span>
+  </div>
+
   <form method="POST" id="checkout-form" class="grid lg:grid-cols-3 gap-8">
     {% csrf_token %}
 
-    <!-- LEFT: Details + Map + Payment -->
+    <!-- LEFT -->
     <div class="lg:col-span-2 space-y-6">
-
-      {% if messages %}
-      {% for message in messages %}
-      <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl px-4 py-3">
-        {{ message }}
-      </div>
-      {% endfor %}
-      {% endif %}
 
       <!-- Personal details -->
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
         <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
-          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
           Your Details
         </h2>
         <div class="grid sm:grid-cols-2 gap-4">
@@ -62,100 +78,105 @@
             <input type="text" name="first_name"
                    value="{{ form_data.first_name|default:request.user.first_name }}"
                    placeholder="Kwame"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy"/>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1.5">Last Name</label>
             <input type="text" name="last_name"
                    value="{{ form_data.last_name|default:request.user.last_name }}"
                    placeholder="Mensah"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy"/>
           </div>
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1.5">Phone Number *</label>
             <input type="tel" name="phone"
                    value="{{ form_data.phone|default:request.user.phone }}"
                    placeholder="024 xxx xxxx"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
-          </div>
-          <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Email (optional)</label>
-            <input type="email" name="email"
-                   value="{{ form_data.email|default:request.user.email }}"
-                   placeholder="kwame@example.com"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy"/>
           </div>
         </div>
       </div>
 
-      <!-- Delivery address + map -->
+      <!-- Pickup + Delivery map -->
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-        <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
-          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
-          Delivery Address
+        <h2 class="font-bold text-navy text-base mb-1 flex items-center gap-2">
+          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+          Pickup & Delivery
         </h2>
-
-        <!-- Address search -->
-        <div class="relative mb-4">
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Search your location</label>
-          <input type="text" id="address-search" autocomplete="off"
-                 placeholder="Type your street, area, or a nearby landmark..."
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy transition-colors"/>
-          <div id="address-suggestions"></div>
-        </div>
-
-        <p class="text-xs text-gray-400 mb-3 flex items-center gap-1">
-          <span>📍</span> Or click anywhere on the map to drop a delivery pin
+        <p class="text-xs text-gray-400 mb-4 ml-9">
+          🔵 Blue pin = your current location (pickup) · 🔴 Red pin = delivery address
         </p>
 
         <!-- Map -->
         <div id="delivery-map" class="mb-4 border border-gray-100 shadow-sm"></div>
 
-        <!-- Address fields -->
+        <!-- Delivery address search -->
+        <div class="relative mb-4">
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Search Delivery Address</label>
+          <input type="text" id="address-search" autocomplete="off"
+                 placeholder="Type the address where you want delivery..."
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy"/>
+          <div id="address-suggestions"></div>
+        </div>
+
+        <p class="text-xs text-gray-400 mb-4">Or click on the map to set your delivery location</p>
+
         <div class="grid sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Street Address *</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Delivery Address *</label>
             <input type="text" name="delivery_address" id="delivery_address"
                    value="{{ form_data.delivery_address|default:'' }}"
                    placeholder="House number, street name, area"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy"/>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1.5">City *</label>
             <input type="text" name="delivery_city" id="delivery_city"
                    value="{{ form_data.delivery_city|default:'' }}"
-                   placeholder="e.g. Accra, Kumasi"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
+                   placeholder="e.g. Accra"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy"/>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Order Note (optional)</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Delivery Note (optional)</label>
             <input type="text" name="order_note"
                    value="{{ form_data.order_note|default:'' }}"
                    placeholder="e.g. Call on arrival, blue gate"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy"/>
           </div>
         </div>
 
-        <!-- Hidden fields populated by map JS -->
-        <input type="hidden" name="delivery_lat" id="delivery_lat" value="">
-        <input type="hidden" name="delivery_lng" id="delivery_lng" value="">
-        <input type="hidden" name="delivery_fee" id="delivery_fee" value="{{ default_fee|default:'8.00' }}">
-        <input type="hidden" name="distance_km"  id="distance_km"  value="">
-
-        <!-- Live fee display -->
-        <div id="fee-banner" class="mt-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-center justify-between hidden">
-          <div>
-            <p class="text-xs text-blue-600 font-medium">Delivery Fee</p>
-            <p id="fee-detail" class="text-xs text-blue-400 mt-0.5"></p>
+        <!-- Live fare card — shows after both pins set -->
+        <div id="fare-card" class="hidden mt-4 bg-gradient-to-r from-navy to-slate-700 text-white rounded-2xl p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs text-white/60 font-medium uppercase tracking-wider">Delivery Fare</p>
+              <p id="fare-distance" class="text-xs text-white/60 mt-0.5"></p>
+            </div>
+            <div class="text-right">
+              <p id="fare-amount" class="text-2xl font-display font-800">GHS 8.00</p>
+              <p id="fare-eta" class="text-xs text-white/60 mt-0.5"></p>
+            </div>
           </div>
-          <span id="fee-display" class="font-display font-700 text-blue-700 text-lg">GHS 8.00</span>
+          <div class="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-xs text-white/50">
+            <span>🔵 Your location</span>
+            <span class="flex-1 border-t border-dashed border-white/20"></span>
+            <span>🔴 Delivery point</span>
+          </div>
         </div>
+
+        <!-- Hidden fields -->
+        <input type="hidden" name="delivery_lat"    id="delivery_lat"    value="">
+        <input type="hidden" name="delivery_lng"    id="delivery_lng"    value="">
+        <input type="hidden" name="pickup_lat"      id="pickup_lat"      value="">
+        <input type="hidden" name="pickup_lng"      id="pickup_lng"      value="">
+        <input type="hidden" name="delivery_fee"    id="delivery_fee"    value="{{ default_fee|default:'8.00' }}">
+        <input type="hidden" name="distance_km"     id="distance_km"     value="">
       </div>
 
       <!-- Payment method -->
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
         <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
-          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
           Payment Method
         </h2>
         <div class="space-y-2">
@@ -169,7 +190,7 @@
           <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy has-[:checked]:bg-navy/5 transition-all">
             <input type="radio" name="payment_method" value="paystack" class="w-4 h-4 accent-navy">
             <div>
-              <p class="text-sm font-semibold text-navy">📱 Mobile Money / Card</p>
+              <p class="text-sm font-semibold text-navy">📱 Mobile Money / Card (Paystack)</p>
               <p class="text-xs text-gray-400 mt-0.5">MTN MoMo, Vodafone Cash, AirtelTigo, Visa/Mastercard</p>
             </div>
           </label>
@@ -190,7 +211,6 @@
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm sticky top-24">
         <h2 class="font-bold text-navy text-base mb-4">🧾 Order Summary</h2>
 
-        <!-- Cart items -->
         <div class="space-y-3 mb-4 max-h-64 overflow-y-auto pr-1">
           {% for item in cart_items %}
           <div class="flex items-center gap-3">
@@ -206,22 +226,23 @@
               <p class="text-sm font-medium text-navy truncate">{{ item.product.name }}</p>
               <p class="text-xs text-gray-400">× {{ item.quantity }}</p>
             </div>
-            <span class="text-sm font-bold text-navy flex-shrink-0">GHS {{ item.subtotal }}</span>
+            <span class="text-sm font-bold text-navy">GHS {{ item.subtotal }}</span>
           </div>
           {% empty %}
           <p class="text-sm text-gray-400 text-center py-4">Your cart is empty</p>
           {% endfor %}
         </div>
 
-        <!-- Totals -->
         <div class="border-t border-gray-100 pt-4 space-y-2.5 text-sm">
           <div class="flex justify-between text-gray-500">
-            <span>Subtotal ({{ cart_items|length }} item{{ cart_items|length|pluralize }})</span>
+            <span>Subtotal</span>
             <span class="font-medium text-navy">GHS {{ subtotal }}</span>
           </div>
           <div class="flex justify-between text-gray-500">
             <span>Delivery Fee</span>
-            <span id="summary-fee" class="font-medium text-navy">GHS {{ default_fee|default:'8.00' }}</span>
+            <span id="summary-fee" class="font-medium text-navy">
+              <span class="text-xs text-gray-400 italic">Set location</span>
+            </span>
           </div>
           <div id="summary-distance" class="text-xs text-gray-400 text-right hidden"></div>
           <div class="flex justify-between font-display font-700 text-navy text-base pt-2 border-t border-gray-100">
@@ -230,23 +251,15 @@
           </div>
         </div>
 
-        <!-- Place order button -->
         <button type="submit" id="place-order-btn"
-                class="w-full bg-navy hover:bg-navy-700 text-white font-bold py-4 rounded-2xl mt-5 transition-all btn-press text-sm shadow-lg shadow-navy/20 flex items-center justify-center gap-2">
-          <span>Place Order</span>
-          <span>→</span>
+                class="w-full bg-navy hover:bg-navy-700 text-white font-bold py-4 rounded-2xl mt-5 transition-all text-sm shadow-lg shadow-navy/20 flex items-center justify-center gap-2">
+          Place Order →
         </button>
 
-        <p class="text-xs text-gray-400 text-center mt-3 leading-relaxed">
-          By placing your order you agree to our
-          <a href="{% url 'frontend:terms' %}" class="underline hover:text-navy">Terms of Service</a>
-        </p>
-
-        <!-- Security badges -->
         <div class="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-gray-100">
-          <span class="text-xs text-gray-400 flex items-center gap-1">🔒 Secure checkout</span>
+          <span class="text-xs text-gray-400">🔒 Secure checkout</span>
           <span class="text-gray-200">|</span>
-          <span class="text-xs text-gray-400 flex items-center gap-1">🇬🇭 Ghana trusted</span>
+          <span class="text-xs text-gray-400">🇬🇭 Ghana trusted</span>
         </div>
       </div>
     </div>
@@ -260,55 +273,106 @@
 <script>
 (function() {
   const LOCATIONIQ_KEY = "{{ locationiq_key|default:'' }}";
-  const ACCRA_LAT      = 5.6037;
-  const ACCRA_LNG      = -0.1870;
   const SUBTOTAL       = parseFloat("{{ subtotal }}") || 0;
 
-  // ── MAP SETUP ─────────────────────────────────────────
-  const map = L.map('delivery-map').setView([ACCRA_LAT, ACCRA_LNG], 13);
+  // State
+  let pickupLat = null, pickupLng = null;
+  let dropoffLat = null, dropoffLng = null;
+  let pickupMarker = null, dropoffMarker = null;
+  let routeLine = null;
 
-  if (LOCATIONIQ_KEY) {
-    L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
-      attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
-      maxZoom: 19, subdomains: ['a','b','c'],
-    }).addTo(map);
-  } else {
-    // Fallback to free OpenStreetMap tiles if no LocationIQ key
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
-    }).addTo(map);
+  // ── MAP SETUP ─────────────────────────────────────────
+  const map = L.map('delivery-map').setView([5.6037, -0.1870], 13);
+
+  const tileUrl = LOCATIONIQ_KEY
+    ? `https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`
+    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+  L.tileLayer(tileUrl, {
+    attribution: LOCATIONIQ_KEY
+      ? '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap'
+      : '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
+    subdomains: LOCATIONIQ_KEY ? ['a','b','c'] : ['a','b','c'],
+  }).addTo(map);
+
+  // ── CUSTOM ICONS ──────────────────────────────────────
+  const pickupIcon = L.divIcon({
+    html: '<div style="width:16px;height:16px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>',
+    className: '', iconSize: [22, 22], iconAnchor: [11, 11],
+  });
+  const dropoffIcon = L.divIcon({
+    html: '<div style="width:16px;height:16px;background:#ef4444;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>',
+    className: '', iconSize: [22, 22], iconAnchor: [11, 11],
+  });
+
+  // ── SET PICKUP (customer's current location) ──────────
+  function setPickup(lat, lng) {
+    pickupLat = lat;
+    pickupLng = lng;
+
+    if (pickupMarker) {
+      pickupMarker.setLatLng([lat, lng]);
+    } else {
+      pickupMarker = L.marker([lat, lng], { icon: pickupIcon })
+        .addTo(map)
+        .bindPopup('🔵 Your location (pickup)');
+    }
+
+    document.getElementById('pickup_lat').value = lat;
+    document.getElementById('pickup_lng').value = lng;
+
+    updateGPSStatus('📍 Location detected — now set your delivery address', 'green');
+
+    if (dropoffLat && dropoffLng) {
+      calculateFare();
+    }
   }
 
-  let deliveryMarker = null;
+  // ── SET DROPOFF (delivery address) ───────────────────
+  function setDropoff(lat, lng) {
+    dropoffLat = lat;
+    dropoffLng = lng;
 
-  function setPin(lat, lng) {
-    if (deliveryMarker) {
-      deliveryMarker.setLatLng([lat, lng]);
+    if (dropoffMarker) {
+      dropoffMarker.setLatLng([lat, lng]);
     } else {
-      deliveryMarker = L.marker([lat, lng], { draggable: true })
+      dropoffMarker = L.marker([lat, lng], { icon: dropoffIcon, draggable: true })
         .addTo(map)
-        .bindPopup('📍 Your delivery location')
+        .bindPopup('🔴 Delivery location')
         .on('dragend', e => {
           const pos = e.target.getLatLng();
-          onLocation(pos.lat, pos.lng, true);
+          setDropoff(pos.lat, pos.lng);
+          reverseGeocode(pos.lat, pos.lng);
         });
     }
-    map.setView([lat, lng], 15);
+
     document.getElementById('delivery_lat').value = lat;
     document.getElementById('delivery_lng').value = lng;
+
+    // Fit both markers on map if both exist
+    if (pickupLat && pickupLng) {
+      map.fitBounds([
+        [pickupLat, pickupLng],
+        [dropoffLat, dropoffLng],
+      ], { padding: [40, 40] });
+      calculateFare();
+    } else {
+      map.setView([lat, lng], 15);
+    }
   }
 
-  map.on('click', e => onLocation(e.latlng.lat, e.latlng.lng, true));
+  // Click on map sets dropoff
+  map.on('click', e => {
+    setDropoff(e.latlng.lat, e.latlng.lng);
+    reverseGeocode(e.latlng.lat, e.latlng.lng);
+  });
 
-  function onLocation(lat, lng, doReverse) {
-    setPin(lat, lng);
-    fetchFee(lat, lng);
-    if (doReverse) reverseGeocode(lat, lng);
-  }
+  // ── FARE CALCULATION ──────────────────────────────────
+  function calculateFare() {
+    if (!pickupLat || !pickupLng || !dropoffLat || !dropoffLng) return;
 
-  // ── PRICE ESTIMATE ────────────────────────────────────
-  function fetchFee(dlat, dlng) {
-    fetch(`/delivery/api/price-estimate/?olat=${ACCRA_LAT}&olng=${ACCRA_LNG}&dlat=${dlat}&dlng=${dlng}`)
+    fetch(`/delivery/api/price-estimate/?olat=${pickupLat}&olng=${pickupLng}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
       .then(r => r.json())
       .then(data => {
         if (!data.success) return;
@@ -320,25 +384,31 @@
         document.getElementById('delivery_fee').value = data.fee;
         document.getElementById('distance_km').value  = data.distance_km;
 
-        // Update summary panel
-        document.getElementById('summary-fee').textContent   = `GHS ${data.fee}`;
+        // Update fare card
+        document.getElementById('fare-card').classList.remove('hidden');
+        document.getElementById('fare-amount').textContent   = `GHS ${data.fee}`;
+        document.getElementById('fare-distance').textContent = `${data.distance_km} km`;
+        document.getElementById('fare-eta').textContent      = `~${data.eta_minutes} min estimated`;
+
+        // Update summary
+        document.getElementById('summary-fee').innerHTML     = `<span class="font-medium text-navy">GHS ${data.fee}</span>`;
         document.getElementById('summary-total').textContent = `GHS ${total}`;
 
-        // Show fee banner
-        const banner = document.getElementById('fee-banner');
-        banner.classList.remove('hidden');
-        document.getElementById('fee-display').textContent = `GHS ${data.fee}`;
-        document.getElementById('fee-detail').textContent  = `${data.distance_km} km away · ~${data.eta_minutes} min`;
-
-        // Show distance in summary
         const distEl = document.getElementById('summary-distance');
         distEl.textContent = `${data.distance_km} km · ~${data.eta_minutes} min`;
         distEl.classList.remove('hidden');
+
+        // Draw route line between pins
+        if (routeLine) map.removeLayer(routeLine);
+        routeLine = L.polyline(
+          [[pickupLat, pickupLng], [dropoffLat, dropoffLng]],
+          { color: '#1e3a5f', weight: 3, dashArray: '6 4', opacity: 0.7 }
+        ).addTo(map);
       })
       .catch(console.error);
   }
 
-  // ── REVERSE GEOCODE ───────────────────────────────────
+  // ── REVERSE GEOCODE dropoff pin → address fields ──────
   function reverseGeocode(lat, lng) {
     if (!LOCATIONIQ_KEY) return;
     fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
@@ -375,8 +445,9 @@
             return;
           }
           suggestBox.innerHTML = results.map(r =>
-            `<div class="suggestion-item" data-lat="${r.lat}" data-lon="${r.lon}"
-                  data-name="${r.display_name.replace(/"/g, '&quot;')}">
+            `<div class="suggestion-item"
+                  data-lat="${r.lat}" data-lon="${r.lon}"
+                  data-name="${r.display_name.replace(/"/g,'&quot;')}">
                📍 ${r.display_name}
              </div>`
           ).join('');
@@ -393,38 +464,72 @@
     searchInput.value = item.dataset.name;
     document.getElementById('delivery_address').value = item.dataset.name;
     suggestBox.classList.remove('show');
-    onLocation(lat, lon, false);
+    setDropoff(lat, lon);
   });
 
   document.addEventListener('click', e => {
     if (e.target !== searchInput) suggestBox.classList.remove('show');
   });
 
-  // ── BROWSER GEOLOCATION ON LOAD ───────────────────────
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      pos => onLocation(pos.coords.latitude, pos.coords.longitude, true),
-      () => {},
-      { timeout: 5000 }
-    );
+  // ── GPS STATUS HELPER ─────────────────────────────────
+  function updateGPSStatus(msg, color) {
+    const banner = document.getElementById('gps-banner');
+    const status = document.getElementById('gps-status');
+    status.textContent = msg;
+    banner.className = banner.className.replace(/bg-\w+-50|border-\w+-100|text-\w+-700/g, '');
+    const colors = {
+      blue:  'bg-blue-50 border-blue-100 text-blue-700',
+      green: 'bg-green-50 border-green-100 text-green-700',
+      red:   'bg-red-50 border-red-100 text-red-700',
+    };
+    banner.className = `mb-5 border rounded-2xl px-4 py-3 flex items-center gap-3 text-sm ${colors[color] || colors.blue}`;
   }
 
-  // ── FORM VALIDATION BEFORE SUBMIT ─────────────────────
-  document.getElementById('checkout-form').addEventListener('submit', function(e) {
-    const address = document.getElementById('delivery_address').value.trim();
-    const city    = document.getElementById('delivery_city').value.trim();
-    const phone   = document.querySelector('[name="phone"]').value.trim();
-    const firstName = document.querySelector('[name="first_name"]').value.trim();
+  // ── BROWSER GEOLOCATION (the Uber pickup point) ───────
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setPickup(pos.coords.latitude, pos.coords.longitude);
+        map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+      },
+      err => {
+        updateGPSStatus('⚠️ Could not detect your location — please click the map to set your pickup point', 'red');
+        // Allow clicking map to set pickup if GPS fails
+        let pickupSet = false;
+        map.on('click', e => {
+          if (!pickupSet) {
+            setPickup(e.latlng.lat, e.latlng.lng);
+            pickupSet = true;
+          }
+        });
+      },
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  } else {
+    updateGPSStatus('⚠️ GPS not supported — click the map to set your pickup point', 'red');
+  }
 
-    if (!firstName || !phone || !address || !city) {
+  // ── FORM VALIDATION ───────────────────────────────────
+  document.getElementById('checkout-form').addEventListener('submit', function(e) {
+    const address   = document.getElementById('delivery_address').value.trim();
+    const city      = document.getElementById('delivery_city').value.trim();
+    const phone     = document.querySelector('[name="phone"]').value.trim();
+    const firstName = document.querySelector('[name="first_name"]').value.trim();
+    const dlat      = document.getElementById('delivery_lat').value;
+    const dlng      = document.getElementById('delivery_lng').value;
+
+    if (!firstName) { e.preventDefault(); alert('Please enter your first name.'); return; }
+    if (!phone)     { e.preventDefault(); alert('Please enter your phone number.'); return; }
+    if (!address)   { e.preventDefault(); alert('Please enter your delivery address.'); return; }
+    if (!city)      { e.preventDefault(); alert('Please enter your city.'); return; }
+    if (!dlat || !dlng) {
       e.preventDefault();
-      alert('Please fill in all required fields and set your delivery location on the map.');
+      alert('Please set your delivery location on the map.');
       return;
     }
 
-    // Show loading state
     const btn = document.getElementById('place-order-btn');
-    btn.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Processing...';
+    btn.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Placing Order...';
     btn.disabled = true;
   });
 })();
