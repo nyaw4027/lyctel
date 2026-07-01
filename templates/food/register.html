@@ -1,6 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Register Your Restaurant — Lynctel Food{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  #location-map {
+    height: 260px;
+    border-radius: 16px;
+    border: 2px solid #e5e7eb;
+    z-index: 1;
+  }
+  #location-map.has-pin { border-color: #F5A623; }
+  .leaflet-container { border-radius: 14px; }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="bg-navy relative overflow-hidden">
   <div class="absolute inset-0 opacity-5"
@@ -18,6 +33,7 @@
   <form method="POST" enctype="multipart/form-data" class="space-y-6">
     {% csrf_token %}
 
+    <!-- STEP 1: Restaurant Details -->
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
         <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">1</div>
@@ -53,31 +69,60 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Address *</label>
-            <input type="text" name="address" value="{{ form_data.address|default:'' }}"
+            <input type="text" name="address" id="address-input" value="{{ form_data.address|default:'' }}"
                    placeholder="Street, area"
                    class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.address %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
             {% if errors.address %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.address }}</p>{% endif %}
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">City</label>
-            <input type="text" name="city" value="{{ form_data.city|default:'Accra' }}"
+            <input type="text" name="city" id="city-input" value="{{ form_data.city|default:'Accra' }}"
                    class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
           </div>
         </div>
 
+        <!-- FIXED: was a single GPS-only button, latitude/longitude were always null
+             for new restaurants that didn't use GPS. Replaced with a proper
+             LocationIQ-powered interactive map — vendor can search, drag the pin,
+             or fall back to GPS. Coordinates are always captured before submit. -->
         <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Pin Your Location</label>
-          <button type="button" onclick="getLocation()"
-                  class="w-full border-2 border-dashed border-gray-200 hover:border-gold rounded-xl px-4 py-4 text-sm font-medium text-navy transition-colors flex items-center justify-center gap-2">
-            📍 <span id="loc-label">Use My Current Location</span>
-          </button>
-          <input type="hidden" name="latitude" id="lat-input" value="{{ form_data.latitude|default:'' }}"/>
-          <input type="hidden" name="longitude" id="lng-input" value="{{ form_data.longitude|default:'' }}"/>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+            Pin Your Restaurant Location *
+          </label>
+
+          <!-- Search box -->
+          <div class="flex gap-2 mb-3">
+            <input type="text" id="map-search" placeholder="Search for your restaurant address..."
+                   class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+            <button type="button" onclick="searchAddress()"
+                    class="bg-navy text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-navy-700 transition-colors flex-shrink-0">
+              Search
+            </button>
+            <button type="button" onclick="useGPS()"
+                    title="Use my current location"
+                    class="bg-gold-light text-navy text-sm font-semibold px-3 py-2.5 rounded-xl hover:bg-gold/30 transition-colors flex-shrink-0">
+              📍 GPS
+            </button>
+          </div>
+
+          <!-- Map -->
+          <div id="location-map"></div>
+
+          <!-- Status / coordinate display -->
+          <div id="map-status" class="mt-2 text-xs text-gray-400 flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
+            Click on the map or search to pin your restaurant location
+          </div>
+
+          <!-- Hidden fields submitted with the form -->
+          <input type="hidden" name="latitude"  id="lat-input"  value="{{ form_data.latitude|default:'' }}"/>
+          <input type="hidden" name="longitude" id="lng-input"  value="{{ form_data.longitude|default:'' }}"/>
         </div>
 
       </div>
     </div>
 
+    <!-- STEP 2: Contact & Hours -->
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
         <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">2</div>
@@ -124,6 +169,7 @@
       </div>
     </div>
 
+    <!-- STEP 3: Branding -->
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
         <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">3</div>
@@ -153,6 +199,7 @@
       </div>
     </div>
 
+    <!-- Submit -->
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div class="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
         <div>
@@ -161,31 +208,189 @@
         </div>
         <p class="font-display font-700 text-2xl text-green-600">GHS 0</p>
       </div>
-      <button type="submit"
+      <button type="submit" id="submit-btn"
+              onclick="return validateLocation()"
               class="w-full bg-navy hover:bg-navy-700 text-white font-semibold py-4 rounded-2xl
                      transition-colors btn-press flex items-center justify-center gap-2 text-sm">
         Launch My Restaurant 🚀
       </button>
     </div>
+
   </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  function getLocation() {
-    const label = document.getElementById('loc-label');
-    if (!navigator.geolocation) { label.textContent = 'Geolocation not supported'; return; }
-    label.textContent = 'Locating...';
+  const LOCATIONIQ_KEY = '{{ LOCATIONIQ_API_KEY|default:"" }}';
+
+  // ── MAP SETUP ────────────────────────────────────────────
+  // Default to Accra, Ghana centre
+  const defaultLat = 5.6037;
+  const defaultLng = -0.1870;
+
+  const map = L.map('location-map').setView([defaultLat, defaultLng], 13);
+
+  L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
+    attribution: '© LocationIQ · © OpenStreetMap',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // Fallback to OpenStreetMap tiles if LocationIQ key is missing
+  if (!LOCATIONIQ_KEY) {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+    }).addTo(map);
+  }
+
+  const pinIcon = L.divIcon({
+    className: '',
+    html: '<div style="font-size:2rem;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">📍</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+  });
+
+  let marker = null;
+
+  // Restore previously entered coords (e.g. after form validation failure)
+  const savedLat = parseFloat(document.getElementById('lat-input').value);
+  const savedLng = parseFloat(document.getElementById('lng-input').value);
+  if (savedLat && savedLng) {
+    placePin(savedLat, savedLng, 'Saved location');
+    map.setView([savedLat, savedLng], 16);
+  }
+
+  // Click on map → drop pin
+  map.on('click', function(e) {
+    placePin(e.latlng.lat, e.latlng.lng);
+    reverseGeocode(e.latlng.lat, e.latlng.lng);
+  });
+
+  function placePin(lat, lng, label) {
+    if (marker) map.removeLayer(marker);
+    marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(map);
+    document.getElementById('lat-input').value  = lat.toFixed(6);
+    document.getElementById('lng-input').value  = lng.toFixed(6);
+    document.getElementById('location-map').classList.add('has-pin');
+    setStatus(`✓ ${label || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}`, 'green');
+
+    // Allow dragging to fine-tune
+    marker.on('dragend', function(e) {
+      const pos = e.target.getLatLng();
+      document.getElementById('lat-input').value = pos.lat.toFixed(6);
+      document.getElementById('lng-input').value = pos.lng.toFixed(6);
+      reverseGeocode(pos.lat, pos.lng);
+    });
+  }
+
+  // ── ADDRESS SEARCH ───────────────────────────────────────
+  function searchAddress() {
+    const query = document.getElementById('map-search').value.trim();
+    if (!query) return;
+    setStatus('Searching...', 'blue');
+
+    const baseQuery = query.toLowerCase().includes('ghana') ? query : query + ', Ghana';
+    const url = LOCATIONIQ_KEY
+      ? `https://us1.locationiq.com/v1/search.php?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(baseQuery)}&format=json&limit=1`
+      : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(baseQuery)}&format=json&limit=1`;
+
+    fetch(url)
+      .then(r => r.json())
+      .then(results => {
+        if (results && results.length > 0) {
+          const lat = parseFloat(results[0].lat);
+          const lng = parseFloat(results[0].lon);
+          map.setView([lat, lng], 16);
+          placePin(lat, lng, results[0].display_name?.split(',')[0] || query);
+        } else {
+          setStatus('⚠ No results found — try a more specific address', 'orange');
+        }
+      })
+      .catch(() => setStatus('⚠ Search failed — click on the map to pin manually', 'orange'));
+  }
+
+  // ── REVERSE GEOCODE (fill address field from pin) ────────
+  function reverseGeocode(lat, lng) {
+    const url = LOCATIONIQ_KEY
+      ? `https://us1.locationiq.com/v1/reverse.php?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`
+      : `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.address) {
+          const addr = data.address;
+          // Only prefill if fields are empty — don't overwrite what they typed
+          const addressInput = document.getElementById('address-input');
+          const cityInput    = document.getElementById('city-input');
+          if (!addressInput.value) {
+            addressInput.value = [
+              addr.road || addr.pedestrian,
+              addr.neighbourhood || addr.suburb,
+            ].filter(Boolean).join(', ');
+          }
+          if (!cityInput.value || cityInput.value === 'Accra') {
+            cityInput.value = addr.city || addr.town || addr.county || 'Accra';
+          }
+          setStatus(`✓ Pinned: ${data.display_name?.split(',')[0] || 'Location set'}`, 'green');
+        }
+      })
+      .catch(() => {});  // reverse geocode failure is cosmetic — pin is already saved
+  }
+
+  // ── GPS FALLBACK ─────────────────────────────────────────
+  function useGPS() {
+    if (!navigator.geolocation) {
+      setStatus('⚠ Geolocation not supported on this device', 'orange');
+      return;
+    }
+    setStatus('Getting your location...', 'blue');
     navigator.geolocation.getCurrentPosition(
       pos => {
-        document.getElementById('lat-input').value = pos.coords.latitude;
-        document.getElementById('lng-input').value = pos.coords.longitude;
-        label.textContent = '✓ Location captured';
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        map.setView([lat, lng], 16);
+        placePin(lat, lng, 'Your current location');
+        reverseGeocode(lat, lng);
       },
-      () => { label.textContent = 'Could not get location — try again'; }
+      () => setStatus('⚠ Could not get location — search or click the map instead', 'orange'),
+      { timeout: 8000 }
     );
   }
+
+  // ── ALLOW ENTER KEY IN SEARCH BOX ───────────────────────
+  document.getElementById('map-search').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); searchAddress(); }
+  });
+
+  // ── STATUS LINE ──────────────────────────────────────────
+  function setStatus(msg, color) {
+    const colors = {
+      green:  'text-green-600',
+      orange: 'text-orange-500',
+      blue:   'text-blue-500',
+      gray:   'text-gray-400',
+    };
+    const el = document.getElementById('map-status');
+    el.className = `mt-2 text-xs ${colors[color] || colors.gray} flex items-center gap-1.5`;
+    el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full inline-block
+      ${color === 'green' ? 'bg-green-500' : color === 'orange' ? 'bg-orange-500' : 'bg-blue-500'}"></span>
+      ${msg}`;
+  }
+
+  // ── VALIDATE BEFORE SUBMIT ───────────────────────────────
+  function validateLocation() {
+    const lat = document.getElementById('lat-input').value;
+    const lng = document.getElementById('lng-input').value;
+    if (!lat || !lng) {
+      setStatus('⚠ Please pin your restaurant on the map before submitting', 'orange');
+      document.getElementById('location-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return false;
+    }
+    return true;
+  }
+
+  // ── IMAGE PREVIEW ────────────────────────────────────────
   function previewImg(input, targetId) {
     const file = input.files[0];
     if (!file) return;
