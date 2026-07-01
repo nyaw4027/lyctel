@@ -155,7 +155,7 @@ def _send_otp_sms(phone: str, otp: str) -> bool:
 
     try:
         resp = requests.post(
-            'https://api.ng.termii.com/api/sms/send',
+            'https://v3.api.termii.com/api/sms/send',
             json=payload,
             timeout=10,
         )
@@ -239,7 +239,7 @@ def _send_otp_sms(phone: str, otp: str) -> bool:
  
     try:
         resp = requests.post(
-            'https://api.ng.termii.com/api/sms/send',
+            'https://v3.api.termii.com/api/sms/send',
             json=payload,
             timeout=10,
         )
