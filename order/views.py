@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
 from cart.models import Cart
-from delivery.models import Delivery, DeliveryZone
+from delivery.models import Delivery
 from delivery.services import assign_rider_to_delivery
 from .models import Order
 
@@ -31,101 +31,89 @@ def get_or_create_cart(request):
             user=None
         )
     return cart
-
-
-# ── CHECKOUT ──────────────────────────────────────────────
-
 @login_required
 def checkout(request):
-    cart  = get_or_create_cart(request)
-    zones = DeliveryZone.objects.filter(is_active=True)
+    cart = get_or_create_cart(request)
 
     if cart.total_items == 0:
-        messages.warning(request, 'Your cart is empty.')
-        return redirect('cart:detail')
+        messages.warning(request, "Your cart is empty.")
+        return redirect("cart:detail")
 
-    if request.method == 'POST':
-        delivery_choice        = request.POST.get('delivery_choice', 'rider')
-        delivery_phone         = request.POST.get('delivery_phone', '').strip()
-        delivery_address       = request.POST.get('delivery_address', '').strip()
-        delivery_city          = request.POST.get('delivery_city', '').strip()
-        zone_id                = request.POST.get('zone_id', '').strip()
-        special_notes          = request.POST.get('special_notes', '').strip()
-        parcel_bus_station     = request.POST.get('parcel_bus_station', '').strip()
-        parcel_recipient_phone = request.POST.get('parcel_recipient_phone', '').strip()
-        parcel_notes           = request.POST.get('parcel_notes', '').strip()
+    if request.method == "POST":
+        delivery_choice = request.POST.get("delivery_choice", "rider")
+        delivery_phone = request.POST.get("delivery_phone", "").strip()
+        delivery_address = request.POST.get("delivery_address", "").strip()
+        delivery_city = request.POST.get("delivery_city", "").strip()
+        special_notes = request.POST.get("special_notes", "").strip()
+        parcel_bus_station = request.POST.get("parcel_bus_station", "").strip()
+        parcel_recipient_phone = request.POST.get("parcel_recipient_phone", "").strip()
+        parcel_notes = request.POST.get("parcel_notes", "").strip()
 
         errors = {}
 
-        # Phone is required for all modes
+        # Phone is required for all delivery methods
         if not delivery_phone:
-            errors['delivery_phone'] = 'Enter a contact phone number.'
+            errors["delivery_phone"] = "Enter a contact phone number."
 
-        if delivery_choice == 'rider':
+        if delivery_choice == "rider":
             if not delivery_address:
-                errors['delivery_address'] = 'Enter your delivery address.'
+                errors["delivery_address"] = "Enter your delivery address."
+
             if not delivery_city:
-                errors['delivery_city'] = 'Enter your city.'
-            if not zone_id:
-                errors['zone_id'] = 'Select a delivery zone.'
+                errors["delivery_city"] = "Enter your city."
 
-        elif delivery_choice == 'parcel':
+        elif delivery_choice == "parcel":
             if not parcel_bus_station:
-                errors['parcel_bus_station'] = 'Enter the bus station name.'
-            if not parcel_recipient_phone:
-                errors['parcel_recipient_phone'] = 'Enter the recipient phone number at the station.'
+                errors["parcel_bus_station"] = "Enter the bus station name."
 
-        # pickup needs nothing extra — vendor location is already known
+            if not parcel_recipient_phone:
+                errors["parcel_recipient_phone"] = (
+                    "Enter the recipient phone number."
+                )
 
         if errors:
-            return render(request, 'order/checkout.html', {
-                'cart':       cart,
-                'zones':      zones,
-                'errors':     errors,
-                'cart_count': cart.total_items,
-                'form_data':  request.POST,
+            return render(request, "order/checkout.html", {
+                "cart": cart,
+                "errors": errors,
+                "cart_count": cart.total_items,
+                "form_data": request.POST,
             })
 
-        # ── Calculate fee ──────────────────────────────────
-        subtotal = Decimal(cart.total_price)
+        # Cart subtotal
+        subtotal = Decimal(str(cart.total_price))
 
-        if delivery_choice == 'rider':
-            zone         = get_object_or_404(DeliveryZone, pk=zone_id, is_active=True)
-            delivery_fee = Decimal(zone.delivery_fee)
-            zone_pk      = zone.pk
+        # Delivery fee
+        if delivery_choice == "rider":
+            # TODO:
+            # Replace this with your GPS/distance calculation.
+            delivery_fee = Decimal("0.00")
         else:
-            # pickup and parcel have no platform delivery fee
-            delivery_fee = Decimal('0.00')
-            zone_pk      = None
+            delivery_fee = Decimal("0.00")
 
         total = subtotal + delivery_fee
 
-        # ── Store in session for payment view ──────────────
-        request.session['pending_order'] = {
-            'delivery_choice':        delivery_choice,
-            'delivery_address':       delivery_address,
-            'delivery_city':          delivery_city,
-            'delivery_phone':         delivery_phone,
-            'zone_id':                zone_pk,
-            'subtotal':               str(subtotal),
-            'delivery_fee':           str(delivery_fee),
-            'total':                  str(total),
-            'special_notes':          special_notes,
-            'parcel_bus_station':     parcel_bus_station,
-            'parcel_recipient_phone': parcel_recipient_phone,
-            'parcel_notes':           parcel_notes,
+        # Save order until payment succeeds
+        request.session["pending_order"] = {
+            "delivery_choice": delivery_choice,
+            "delivery_address": delivery_address,
+            "delivery_city": delivery_city,
+            "delivery_phone": delivery_phone,
+            "subtotal": str(subtotal),
+            "delivery_fee": str(delivery_fee),
+            "total": str(total),
+            "special_notes": special_notes,
+            "parcel_bus_station": parcel_bus_station,
+            "parcel_recipient_phone": parcel_recipient_phone,
+            "parcel_notes": parcel_notes,
         }
 
-        return redirect('payment:page')
+        return redirect("payment:page")
 
-    return render(request, 'order/checkout.html', {
-        'cart':       cart,
-        'zones':      zones,
-        'cart_count': cart.total_items,
-        'user':       request.user,
+    return render(request, "order/checkout.html", {
+        "cart": cart,
+        "cart_count": cart.total_items,
+        "user": request.user,
     })
-
-
 # ── ORDER CONFIRMATION ────────────────────────────────────
 
 @login_required
@@ -368,7 +356,7 @@ from rest_framework.response import Response
 # ----------------------------------------
 
 from cart.models import Cart
-from delivery.models import Delivery, DeliveryZone
+from delivery.models import Delivery
 from delivery.services import assign_rider_to_delivery
 from .models import Order
 
@@ -388,94 +376,66 @@ def get_or_create_cart(request):
         )
     return cart
 
-
-# -------------------------
-# CHECKOUT
-#
 @login_required
 def checkout(request):
     cart = get_or_create_cart(request)
-    zones = DeliveryZone.objects.filter(is_active=True)
 
     if cart.total_items == 0:
-        messages.warning(request, 'Your cart is empty.')
-        return redirect('cart:detail')  # ✅ FIXED NAME
+        messages.warning(request, "Your cart is empty.")
+        return redirect("cart:detail")
 
-    if request.method == 'POST':
-        delivery_address = request.POST.get('delivery_address', '').strip()
-        delivery_city    = request.POST.get('delivery_city', '').strip()
-        delivery_phone   = request.POST.get('delivery_phone', '').strip()
-        zone_id          = request.POST.get('zone_id')
-        # FIXED: the checkout form has a "Special Notes" textarea
-        # (name="special_notes") that was never read here — anything the
-        # customer typed (gate colour, landmark, delivery timing) was
-        # silently discarded instead of reaching the order.
-        special_notes    = request.POST.get('special_notes', '').strip()
+    if request.method == "POST":
+        delivery_address = request.POST.get("delivery_address", "").strip()
+        delivery_city = request.POST.get("delivery_city", "").strip()
+        delivery_phone = request.POST.get("delivery_phone", "").strip()
+        special_notes = request.POST.get("special_notes", "").strip()
 
         errors = {}
 
         if not delivery_address:
-            errors['delivery_address'] = 'Enter your delivery address.'
+            errors["delivery_address"] = "Enter your delivery address."
+
         if not delivery_city:
-            errors['delivery_city'] = 'Enter your city.'
+            errors["delivery_city"] = "Enter your city."
+
         if not delivery_phone:
-            errors['delivery_phone'] = 'Enter a delivery phone number.'
-        if not zone_id:
-            errors['zone_id'] = 'Select a delivery zone.'
+            errors["delivery_phone"] = "Enter a delivery phone number."
 
         if errors:
-            return render(request, 'order/checkout.html', {
-                'cart': cart,
-                'zones': zones,
-                'errors': errors,
-                'cart_count': cart.total_items,
-                'form_data': request.POST,
+            return render(request, "order/checkout.html", {
+                "cart": cart,
+                "errors": errors,
+                "cart_count": cart.total_items,
+                "form_data": request.POST,
             })
 
-        # FIXED: a malformed/tampered zone_id (non-numeric) previously
-        # raised an unhandled ValueError inside get_object_or_404 — a 500
-        # error instead of a friendly "select a valid zone" message.
-        try:
-            zone = get_object_or_404(DeliveryZone, pk=zone_id, is_active=True)
-        except (ValueError, TypeError):
-            errors['zone_id'] = 'Select a valid delivery zone.'
-            return render(request, 'order/checkout.html', {
-                'cart': cart,
-                'zones': zones,
-                'errors': errors,
-                'cart_count': cart.total_items,
-                'form_data': request.POST,
-            })
+        # Cart subtotal
+        subtotal = Decimal(str(cart.total_price))
 
-        # FIXED: Decimal(<float>) bakes in binary floating-point noise
-        # (e.g. Decimal(19.99) becomes Decimal('19.9899999999999984...')).
-        # Routing through str() first gives the exact decimal value —
-        # important here since this number becomes the amount charged.
-        subtotal     = Decimal(str(cart.total_price))
-        delivery_fee = Decimal(str(zone.delivery_fee))
-        total        = subtotal + delivery_fee
+        # Default delivery fee.
+        # This can later be replaced with a distance-based calculation.
+        delivery_fee = Decimal("0.00")
 
-        # ✅ SAVE TEMP ORDER DATA
-        request.session['pending_order'] = {
-            'delivery_address': delivery_address,
-            'delivery_city': delivery_city,
-            'delivery_phone': delivery_phone,
-            'customer_note': special_notes,
-            'zone_id': zone.pk,
-            'subtotal': str(subtotal),
-            'delivery_fee': str(delivery_fee),
-            'total': str(total),
+        total = subtotal + delivery_fee
+
+        # Save order temporarily until payment succeeds
+        request.session["pending_order"] = {
+            "delivery_address": delivery_address,
+            "delivery_city": delivery_city,
+            "delivery_phone": delivery_phone,
+            "customer_note": special_notes,
+            "subtotal": str(subtotal),
+            "delivery_fee": str(delivery_fee),
+            "total": str(total),
         }
 
-        return redirect('payment:page')
+        return redirect("payment:page")
 
-    return render(request, 'order/checkout.html', {
-        'cart': cart,
-        'zones': zones,
-        'cart_count': cart.total_items,
-        'user': request.user,
+    return render(request, "order/checkout.html", {
+        "cart": cart,
+        "cart_count": cart.total_items,
+        "user": request.user,
     })
-
 
 # -------------------------
 # ORDER CONFIRMATION
@@ -544,11 +504,11 @@ def order_history(request):
 #      per order" may not even be the right model for a marketplace like
 #      this. Flagging rather than guessing at a fix.
 def create_delivery_for_order(order):
-    zone = DeliveryZone.objects.filter(is_active=True).first()
+    
 
     delivery = Delivery.objects.create(
         order=order,
-        zone=zone,
+       
         pickup_location="Vendor Location",         # TODO: use the real vendor address (see note above)
         dropoff_location=order.delivery_address,    # FIXED: was order.address (doesn't exist)
         pickup_lat=None,                            # TODO: needs a real coordinate source — see note above
