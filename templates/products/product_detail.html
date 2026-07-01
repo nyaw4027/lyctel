@@ -478,7 +478,7 @@
       {% if user_can_review %}
       <div class="border-t border-gray-100 pt-6">
         <h3 class="font-display font-700 text-navy text-lg mb-4">Write a Review</h3>
-        <form method="post" action="{% url 'reviews:submit' product.slug %}">
+        <form method="post" action="{% url 'reviews:submit' product.pk %}">
           {% csrf_token %}
           <div class="mb-4">
             <label class="block text-sm font-semibold text-gray-700 mb-2">Your Rating</label>

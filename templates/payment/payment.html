@@ -4,118 +4,193 @@
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
 
+  <!-- Progress steps -->
   <div class="flex items-center gap-2 mb-8 text-sm overflow-x-auto pb-1">
-    <span class="text-gray-400">Cart</span><span class="text-gray-300">›</span>
-    <span class="text-gray-400">Delivery</span><span class="text-gray-300">›</span>
-    <span class="font-semibold text-navy">Payment</span><span class="text-gray-300">›</span>
-    <span class="text-gray-400">Done</span>
+    <span class="text-gray-400 whitespace-nowrap flex items-center gap-1.5">
+      <span class="w-5 h-5 bg-green-500 text-white rounded-full text-xs flex items-center justify-center font-bold">✓</span>
+      Delivery
+    </span>
+    <span class="text-gray-300">›</span>
+    <span class="font-semibold text-navy whitespace-nowrap flex items-center gap-1.5">
+      <span class="w-5 h-5 bg-navy text-white rounded-full text-xs flex items-center justify-center font-bold">2</span>
+      Payment
+    </span>
+    <span class="text-gray-300">›</span>
+    <span class="text-gray-400 whitespace-nowrap flex items-center gap-1.5">
+      <span class="w-5 h-5 bg-gray-200 text-gray-500 rounded-full text-xs flex items-center justify-center font-bold">3</span>
+      Done
+    </span>
   </div>
 
   <div class="flex flex-col lg:flex-row gap-6">
+
+    <!-- Payment form -->
     <div class="flex-1">
-      <div class="bg-white rounded-2xl border border-gray-100 p-6">
-        <h2 class="font-display font-700 text-xl text-navy mb-2">Choose Payment Method</h2>
-        <p class="text-gray-400 text-sm mb-6">All payments secured via Flutterwave.</p>
+      <form method="POST" id="payment-form" class="space-y-4">
+        {% csrf_token %}
 
-        <form method="POST" id="payment-form">
-          {% csrf_token %}
+        <!-- MoMo options -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <h2 class="font-display font-700 text-navy text-lg mb-5">Pay with Mobile Money</h2>
 
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Mobile Money</p>
-          <div class="space-y-3 mb-5">
-            {% for val, label, color, abbr in momo_options %}
-            <label class="flex items-center gap-4 border-2 border-gray-100 hover:border-navy
-                          rounded-2xl p-4 cursor-pointer transition-all">
-              <input type="radio" name="payment_method" value="{{ val }}" class="hidden"/>
-              <div class="w-10 h-10 {{ color }} rounded-xl flex items-center justify-center
-                          font-bold text-xs flex-shrink-0">{{ abbr }}</div>
+          <div class="space-y-3 mb-5" id="momo-options">
+            {% for value, label, pill_class, shortcode in momo_options %}
+            <label class="flex items-center gap-4 border-2 border-gray-100 rounded-2xl p-4 cursor-pointer
+                          hover:border-gold transition-all has-[:checked]:border-gold has-[:checked]:bg-gold-light">
+              <input type="radio" name="payment_method" value="{{ value }}"
+                     class="w-4 h-4 accent-gold"
+                     onclick="showMomoField()" required/>
               <div class="flex-1">
                 <p class="font-semibold text-navy text-sm">{{ label }}</p>
+                <span class="text-xs font-bold px-2.5 py-0.5 rounded-full {{ pill_class }}">{{ shortcode }}</span>
               </div>
-              <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center
-                          justify-center option-circle">
-                <div class="w-2.5 h-2.5 rounded-full bg-navy scale-0 option-dot transition-transform"></div>
-              </div>
+              <span class="text-2xl">📱</span>
             </label>
             {% endfor %}
+
+            <!-- Card option -->
+            <label class="flex items-center gap-4 border-2 border-gray-100 rounded-2xl p-4 cursor-pointer
+                          hover:border-gold transition-all has-[:checked]:border-gold has-[:checked]:bg-gold-light">
+              <input type="radio" name="payment_method" value="card"
+                     class="w-4 h-4 accent-gold"
+                     onclick="hideMomoField()" required/>
+              <div class="flex-1">
+                <p class="font-semibold text-navy text-sm">Bank Card</p>
+                <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600">Visa / Mastercard</span>
+              </div>
+              <span class="text-2xl">💳</span>
+            </label>
           </div>
 
-          <div id="momo-input" class="hidden mb-5">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Mobile Money Number *</label>
-            <input type="tel" name="momo_number" id="momo_number" placeholder="0241234567"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
-            <p class="text-xs text-gray-400 mt-1">You'll receive a prompt to approve payment.</p>
+          <!-- MoMo number input (shown for MoMo, hidden for card) -->
+          <div id="momo-number-wrap" class="hidden mb-5">
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              MoMo Number *
+            </label>
+            <input type="tel" name="momo_number" id="momo-number"
+                   placeholder="e.g. 0558040216"
+                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+            <p class="text-xs text-gray-400 mt-1.5">
+              📱 You will receive a MoMo prompt to approve the payment
+            </p>
           </div>
 
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Card</p>
-          <label class="flex items-center gap-4 border-2 border-gray-100 hover:border-navy
-                        rounded-2xl p-4 cursor-pointer transition-all mb-6">
-            <input type="radio" name="payment_method" value="card" class="hidden"/>
-            <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center
-                        text-lg flex-shrink-0">💳</div>
-            <div class="flex-1">
-              <p class="font-semibold text-navy text-sm">Debit / Credit Card</p>
-              <p class="text-xs text-gray-400">Visa, Mastercard</p>
+          <!-- Gateway selection (hidden — default Flutterwave, can offer Paystack) -->
+          <div class="mb-5 bg-gray-50 rounded-2xl p-4">
+            <p class="text-xs font-semibold text-gray-500 mb-3">Payment Gateway</p>
+            <div class="flex gap-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="payment_provider" value="flutterwave"
+                       checked class="w-4 h-4 accent-navy"/>
+                <span class="text-sm text-navy font-medium">Flutterwave</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="payment_provider" value="paystack"
+                       class="w-4 h-4 accent-navy"/>
+                <span class="text-sm text-navy font-medium">Paystack</span>
+              </label>
             </div>
-            <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center
-                        justify-center option-circle">
-              <div class="w-2.5 h-2.5 rounded-full bg-navy scale-0 option-dot transition-transform"></div>
-            </div>
-          </label>
+          </div>
 
           <button type="submit" id="pay-btn"
-                  class="w-full bg-navy hover:bg-navy-700 text-white font-semibold
-                         py-3.5 rounded-xl transition-colors btn-press">
-            Pay GHS {{ pending_order.total }} Securely →
+                  class="w-full bg-navy hover:bg-navy-700 text-white font-display font-700
+                         py-4 rounded-2xl transition-colors btn-press flex items-center
+                         justify-center gap-2 text-sm">
+            <span id="pay-btn-text">🔒 Pay GHS {{ pending_order.total }}</span>
+            <span id="pay-btn-loader" class="hidden">
+              <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+              Processing...
+            </span>
           </button>
-          <p class="text-center text-xs text-gray-400 mt-3">🔒 Protected by Flutterwave</p>
-        </form>
-      </div>
+          <p class="text-center text-xs text-gray-400 mt-3">🔒 Payments are secured and encrypted</p>
+        </div>
+
+      </form>
     </div>
 
+    <!-- Order summary -->
     <div class="w-full lg:w-80 flex-shrink-0">
-      <div class="bg-white rounded-2xl border border-gray-100 p-5 sticky top-20">
-        <h2 class="font-display font-700 text-navy text-base mb-4">Order Summary</h2>
-        <div class="space-y-2 text-sm mb-4">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-20">
+        <h2 class="font-display font-700 text-navy mb-4">Order Summary</h2>
+
+        <!-- Cart items -->
+        <div class="space-y-3 mb-4 max-h-60 overflow-y-auto pr-1">
+          {% for item in cart.items.all %}
+          <div class="flex items-center gap-3">
+            {% with item.product.images.first as img %}
+            {% if img %}
+            <img src="{{ img.image.url }}" class="w-11 h-11 rounded-xl object-cover flex-shrink-0"/>
+            {% else %}
+            <div class="w-11 h-11 rounded-xl bg-gray-100 flex items-center justify-center text-lg flex-shrink-0">📦</div>
+            {% endif %}
+            {% endwith %}
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-semibold text-navy truncate">{{ item.product.name }}</p>
+              <p class="text-xs text-gray-400">× {{ item.quantity }}</p>
+            </div>
+            <p class="text-sm font-display font-700 text-navy flex-shrink-0">GHS {{ item.subtotal }}</p>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="border-t border-gray-100 pt-3 space-y-2 text-sm">
           <div class="flex justify-between text-gray-500">
-            <span>Subtotal</span><span class="font-semibold text-navy">GHS {{ pending_order.subtotal }}</span>
+            <span>Subtotal</span>
+            <span class="font-semibold text-navy">GHS {{ pending_order.subtotal }}</span>
           </div>
           <div class="flex justify-between text-gray-500">
-            <span>Delivery</span><span class="font-semibold text-navy">GHS {{ pending_order.delivery_fee }}</span>
+            <span>Delivery fee</span>
+            <span class="font-semibold text-navy">GHS {{ pending_order.delivery_fee }}</span>
           </div>
           <div class="flex justify-between pt-2 border-t border-gray-100">
             <span class="font-display font-700 text-navy">Total</span>
             <span class="font-display font-700 text-navy text-lg">GHS {{ pending_order.total }}</span>
           </div>
         </div>
-        <div class="bg-cream rounded-xl p-3 text-xs text-gray-500 space-y-1.5">
-          <div class="flex gap-2"><span>📍</span><span>{{ pending_order.delivery_address }}, {{ pending_order.delivery_city }}</span></div>
-          <div class="flex gap-2"><span>📞</span><span>{{ pending_order.delivery_phone }}</span></div>
+
+        <div class="mt-4 border-t border-gray-100 pt-4">
+          <p class="text-xs text-gray-400 mb-2">📍 Deliver to</p>
+          <p class="text-sm font-semibold text-navy">{{ pending_order.delivery_address }}</p>
+          <p class="text-xs text-gray-400">{{ pending_order.delivery_city }}</p>
+          <p class="text-xs text-gray-400 mt-0.5">📞 {{ pending_order.delivery_phone }}</p>
+        </div>
+
+        <div class="mt-4 flex flex-wrap justify-center gap-2">
+          <span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">MTN MoMo</span>
+          <span class="text-xs font-semibold bg-red-100 text-red-600 px-2.5 py-1 rounded-full">Vodafone</span>
+          <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">AirtelTigo</span>
+          <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">💳 Card</span>
+        </div>
+
+        <div class="mt-3 bg-cream rounded-xl px-3 py-2.5 text-xs text-gray-500 text-center">
+          🔒 Secured by Flutterwave & Paystack
         </div>
       </div>
     </div>
+
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  const momoMethods = ['mtn_momo','vodafone_cash','airteltigo'];
-  document.querySelectorAll('input[name="payment_method"]').forEach(r => {
-    r.addEventListener('change', function() {
-      document.querySelectorAll('.option-dot').forEach(d => { d.classList.add('scale-0'); d.classList.remove('scale-100'); });
-      this.closest('label').querySelector('.option-dot').classList.remove('scale-0');
-      this.closest('label').querySelector('.option-dot').classList.add('scale-100');
-      const isMomo = momoMethods.includes(this.value);
-      document.getElementById('momo-input').classList.toggle('hidden', !isMomo);
-      document.getElementById('momo_number').required = isMomo;
-    });
-  });
-  document.getElementById('payment-form').addEventListener('submit', function(e) {
-    if (!document.querySelector('input[name="payment_method"]:checked')) {
-      e.preventDefault(); alert('Please select a payment method.'); return;
-    }
-    const btn = document.getElementById('pay-btn');
-    btn.disabled = true; btn.textContent = 'Processing...';
+  function showMomoField() {
+    document.getElementById('momo-number-wrap').classList.remove('hidden');
+    document.getElementById('momo-number').required = true;
+  }
+  function hideMomoField() {
+    document.getElementById('momo-number-wrap').classList.add('hidden');
+    document.getElementById('momo-number').required = false;
+  }
+
+  document.getElementById('payment-form').addEventListener('submit', function() {
+    const btn  = document.getElementById('pay-btn');
+    btn.disabled = true;
+    document.getElementById('pay-btn-text').classList.add('hidden');
+    document.getElementById('pay-btn-loader').classList.remove('hidden');
   });
 </script>
 {% endblock %}
