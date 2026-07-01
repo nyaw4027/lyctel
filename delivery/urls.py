@@ -28,4 +28,5 @@ urlpatterns = [
 
     # Rider dashboard (legacy delivery app view)
     path("rider/dashboard/", views.rider_dashboard, name="rider_dashboard"),
+    path('api/price-estimate/', views.price_estimate, name='price_estimate'),
 ]

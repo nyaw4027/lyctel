@@ -1,485 +1,298 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Checkout — Lynctel{% endblock %}
 
 {% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  .mode-card input[type=radio]:checked ~ .card-inner {
-    border-color: var(--active-color, #0F1B2D);
-    background: var(--active-bg, rgba(15,27,45,.04));
-    box-shadow: 0 4px 20px rgba(0,0,0,.08);
+  #delivery-map { height: 280px; border-radius: 1rem; z-index: 1; }
+  #address-suggestions {
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: white; border: 1px solid #e5e7eb;
+    border-top: none; border-radius: 0 0 .75rem .75rem;
+    max-height: 200px; overflow-y: auto; z-index: 50;
+    box-shadow: 0 8px 20px rgba(0,0,0,.1); display: none;
   }
-  .mode-card .radio-dot { transition: all .15s; }
-  .mode-card input[type=radio]:checked ~ .card-inner .radio-dot {
-    background: var(--active-color, #0F1B2D);
-    transform: scale(1);
+  #address-suggestions.show { display: block; }
+  .suggestion-item {
+    padding: 10px 14px; font-size: 13px; cursor: pointer;
+    border-bottom: 1px solid #f3f4f6;
   }
+  .suggestion-item:hover { background: #f9fafb; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+  <h1 class="font-display font-800 text-2xl md:text-3xl text-navy mb-6">Checkout</h1>
 
-  <!-- Progress -->
-  <div class="flex items-center gap-2 mb-8 text-sm overflow-x-auto pb-1">
-    <a href="{% url 'cart:detail' %}" class="text-gold-dark font-semibold hover:underline whitespace-nowrap">← Cart</a>
-    <span class="text-gray-300">›</span>
-    <span class="font-semibold text-navy whitespace-nowrap flex items-center gap-1.5">
-      <span class="w-5 h-5 bg-navy text-white rounded-full text-xs flex items-center justify-center font-bold">1</span>
-      Delivery
-    </span>
-    <span class="text-gray-300">›</span>
-    <span class="text-gray-400 whitespace-nowrap flex items-center gap-1.5">
-      <span class="w-5 h-5 bg-gray-200 text-gray-500 rounded-full text-xs flex items-center justify-center font-bold">2</span>
-      Payment
-    </span>
-    <span class="text-gray-300">›</span>
-    <span class="text-gray-400 whitespace-nowrap flex items-center gap-1.5">
-      <span class="w-5 h-5 bg-gray-200 text-gray-500 rounded-full text-xs flex items-center justify-center font-bold">3</span>
-      Done
-    </span>
-  </div>
+  <form method="POST" id="checkout-form" class="grid lg:grid-cols-3 gap-8">
+    {% csrf_token %}
 
-  <div class="flex flex-col lg:flex-row gap-6">
+    <!-- LEFT: Delivery + Payment -->
+    <div class="lg:col-span-2 space-y-6">
 
-    <!-- ── FORM ─────────────────────────────────────────── -->
-    <div class="flex-1">
-      <form method="POST" id="checkout-form" class="space-y-5">
-        {% csrf_token %}
+      {% if errors %}
+      <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl px-4 py-3">
+        {% for field, msg in errors.items %}<p>⚠ {{ msg }}</p>{% endfor %}
+      </div>
+      {% endif %}
 
-        <!-- ── STEP 1: Contact phone (all modes) ── -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <h2 class="font-display font-700 text-xl text-navy mb-5">Contact Details</h2>
+      <!-- Personal details -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+        <h2 class="font-bold text-navy text-base mb-4">👤 Your Details</h2>
+        <div class="grid sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-              Phone Number *
-            </label>
-            <input type="tel" name="delivery_phone"
-                   value="{{ form_data.delivery_phone|default:user.phone }}"
-                   placeholder="0241234567"
-                   class="w-full px-4 py-3 border rounded-xl text-sm
-                          {% if errors.delivery_phone %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-            {% if errors.delivery_phone %}
-            <p class="text-red-500 text-xs mt-1">⚠ {{ errors.delivery_phone }}</p>
-            {% endif %}
-            <p class="text-xs text-gray-400 mt-1">We'll use this to update you about your order.</p>
+            <label class="block text-sm font-medium text-gray-600 mb-1">First Name *</label>
+            <input type="text" name="first_name"
+                   value="{{ form_data.first_name|default:user.first_name }}"
+                   class="w-full px-4 py-2.5 border {% if errors.first_name %}border-red-400{% else %}border-gray-200{% endif %} rounded-xl text-sm"/>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Last Name</label>
+            <input type="text" name="last_name"
+                   value="{{ form_data.last_name|default:user.last_name }}"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number *</label>
+            <input type="tel" name="phone"
+                   value="{{ form_data.phone|default:user.phone }}"
+                   class="w-full px-4 py-2.5 border {% if errors.phone %}border-red-400{% else %}border-gray-200{% endif %} rounded-xl text-sm"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delivery address + map -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+        <h2 class="font-bold text-navy text-base mb-4">📍 Delivery Address</h2>
+
+        <div class="relative mb-4">
+          <label class="block text-sm font-medium text-gray-600 mb-1">Search your address</label>
+          <input type="text" id="address-search" autocomplete="off"
+                 placeholder="Start typing your street, area, or landmark..."
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"/>
+          <div id="address-suggestions"></div>
+        </div>
+
+        <p class="text-xs text-gray-400 mb-3">Or click anywhere on the map to drop a pin 👇</p>
+        <div id="delivery-map" class="mb-4"></div>
+
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Street Address *</label>
+            <input type="text" name="delivery_address" id="delivery_address"
+                   value="{{ form_data.delivery_address|default:'' }}"
+                   placeholder="House number, street, area"
+                   class="w-full px-4 py-2.5 border {% if errors.address %}border-red-400{% else %}border-gray-200{% endif %} rounded-xl text-sm"/>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">City *</label>
+            <input type="text" name="delivery_city" id="delivery_city"
+                   value="{{ form_data.delivery_city|default:'' }}"
+                   placeholder="e.g. Accra"
+                   class="w-full px-4 py-2.5 border {% if errors.city %}border-red-400{% else %}border-gray-200{% endif %} rounded-xl text-sm"/>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Order Note (optional)</label>
+            <input type="text" name="order_note"
+                   value="{{ form_data.order_note|default:'' }}"
+                   placeholder="e.g. Call on arrival"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
           </div>
         </div>
 
-        <!-- ── STEP 2: Delivery mode selector ── -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <h2 class="font-display font-700 text-xl text-navy mb-2">How would you like to receive it?</h2>
-          <p class="text-sm text-gray-500 mb-5">Choose the option that works best for your location.</p>
+        <!-- Hidden coordinate + fee fields -->
+        <input type="hidden" name="delivery_lat"  id="delivery_lat"  value="">
+        <input type="hidden" name="delivery_lng"  id="delivery_lng"  value="">
+        <input type="hidden" name="delivery_fee"  id="delivery_fee"  value="{{ default_fee }}">
+        <input type="hidden" name="distance_km"   id="distance_km"   value="">
+      </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6" id="mode-grid">
-
-            <!-- RIDER -->
-            <label class="mode-card cursor-pointer block"
-                   style="--active-color:#0F1B2D; --active-bg:rgba(15,27,45,.04)">
-              <input type="radio" name="delivery_choice" value="rider"
-                     class="sr-only"
-                     {% if form_data.delivery_choice != 'pickup' and form_data.delivery_choice != 'parcel' %}checked{% endif %}>
-              <div class="card-inner border-2 border-gray-200 rounded-2xl p-4 h-full flex flex-col gap-3 transition-all">
-                <div class="flex items-start justify-between">
-                  <div class="w-11 h-11 bg-navy/10 rounded-xl flex items-center justify-center text-2xl">🛵</div>
-                  <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mt-0.5 flex-shrink-0">
-                    <div class="radio-dot w-2.5 h-2.5 rounded-full bg-transparent scale-0"></div>
-                  </div>
-                </div>
-                <div>
-                  <p class="font-semibold text-navy text-sm">Rider Delivery</p>
-                  <p class="text-xs text-gray-500 mt-1 leading-relaxed">
-                    A Lynctel rider picks up from the vendor and delivers to your door.
-                  </p>
-                </div>
-                <p class="text-xs text-green-600 font-semibold mt-auto pt-1 border-t border-gray-100">
-                  Fastest · zone fee applies
-                </p>
-              </div>
-            </label>
-
-            <!-- PICKUP -->
-            <label class="mode-card cursor-pointer block"
-                   style="--active-color:#d97706; --active-bg:rgba(245,166,35,.05)">
-              <input type="radio" name="delivery_choice" value="pickup"
-                     class="sr-only"
-                     {% if form_data.delivery_choice == 'pickup' %}checked{% endif %}>
-              <div class="card-inner border-2 border-gray-200 rounded-2xl p-4 h-full flex flex-col gap-3 transition-all">
-                <div class="flex items-start justify-between">
-                  <div class="w-11 h-11 bg-gold/15 rounded-xl flex items-center justify-center text-2xl">🏪</div>
-                  <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mt-0.5 flex-shrink-0">
-                    <div class="radio-dot w-2.5 h-2.5 rounded-full bg-transparent scale-0"></div>
-                  </div>
-                </div>
-                <div>
-                  <p class="font-semibold text-navy text-sm">Self Pickup</p>
-                  <p class="text-xs text-gray-500 mt-1 leading-relaxed">
-                    Come collect your order directly from the vendor's location.
-                  </p>
-                </div>
-                <p class="text-xs text-gold-dark font-semibold mt-auto pt-1 border-t border-gray-100">
-                  Free · no delivery fee
-                </p>
-              </div>
-            </label>
-
-            <!-- PARCEL -->
-            <label class="mode-card cursor-pointer block"
-                   style="--active-color:#2563eb; --active-bg:rgba(37,99,235,.04)">
-              <input type="radio" name="delivery_choice" value="parcel"
-                     class="sr-only"
-                     {% if form_data.delivery_choice == 'parcel' %}checked{% endif %}>
-              <div class="card-inner border-2 border-gray-200 rounded-2xl p-4 h-full flex flex-col gap-3 transition-all">
-                <div class="flex items-start justify-between">
-                  <div class="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center text-2xl">🚌</div>
-                  <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mt-0.5 flex-shrink-0">
-                    <div class="radio-dot w-2.5 h-2.5 rounded-full bg-transparent scale-0"></div>
-                  </div>
-                </div>
-                <div>
-                  <p class="font-semibold text-navy text-sm">Bus / Parcel</p>
-                  <p class="text-xs text-gray-500 mt-1 leading-relaxed">
-                    Vendor parcels your items and sends via bus station. Best for upcountry.
-                  </p>
-                </div>
-                <p class="text-xs text-blue-600 font-semibold mt-auto pt-1 border-t border-gray-100">
-                  Free · arrange with vendor
-                </p>
-              </div>
-            </label>
-
-          </div>
-
-          <!-- ── RIDER FIELDS ── -->
-          <div id="section-rider" class="space-y-4">
-
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">Delivery Address *</label>
-              <input type="text" name="delivery_address"
-                     value="{{ form_data.delivery_address|default:'' }}"
-                     placeholder="House no., street name, nearby landmark..."
-                     class="w-full px-4 py-3 border rounded-xl text-sm
-                            {% if errors.delivery_address %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-              {% if errors.delivery_address %}
-              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.delivery_address }}</p>
-              {% endif %}
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">City *</label>
-              <input type="text" name="delivery_city"
-                     value="{{ form_data.delivery_city|default:'' }}"
-                     placeholder="e.g. Accra, Kumasi, Tema..."
-                     class="w-full px-4 py-3 border rounded-xl text-sm
-                            {% if errors.delivery_city %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-              {% if errors.delivery_city %}
-              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.delivery_city }}</p>
-              {% endif %}
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">Delivery Zone *</label>
-              <select name="zone_id" id="zone-select"
-                      class="w-full px-4 py-3 border rounded-xl text-sm bg-white cursor-pointer
-                             {% if errors.zone_id %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}">
-                <option value="">— Select your delivery area —</option>
-                {% for zone in zones %}
-                <option value="{{ zone.pk }}"
-                        data-fee="{{ zone.delivery_fee }}"
-                        {% if form_data.zone_id == zone.pk|stringformat:"s" %}selected{% endif %}>
-                  {{ zone.name }} — GHS {{ zone.delivery_fee }}
-                </option>
-                {% endfor %}
-              </select>
-              {% if errors.zone_id %}
-              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.zone_id }}</p>
-              {% endif %}
-              <div id="fee-preview"
-                   class="hidden mt-2 bg-gold-light border border-gold/30 rounded-xl
-                          px-4 py-2.5 flex items-center justify-between text-sm">
-                <span class="text-gray-600">Delivery fee for this zone</span>
-                <span id="fee-preview-amount" class="font-display font-700 text-navy"></span>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-                Special Notes <span class="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <textarea name="special_notes" rows="2"
-                        placeholder="Gate colour, nearest landmark, best time to deliver..."
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.special_notes|default:'' }}</textarea>
-            </div>
-          </div>
-
-          <!-- ── PICKUP FIELDS ── -->
-          <div id="section-pickup" class="hidden">
-            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
-              <p class="text-sm font-semibold text-amber-800">📍 Pickup Instructions</p>
-              <p class="text-sm text-amber-700 leading-relaxed">
-                After payment, the vendor will prepare your order and notify you when it's ready.
-                You'll then arrange to collect it at their location.
-              </p>
-              <p class="text-xs text-amber-600 mt-2">
-                💡 Check the vendor's shop page or WhatsApp them for their exact address.
-              </p>
-            </div>
-            <div class="mt-4">
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-                Notes for vendor <span class="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <textarea name="special_notes" rows="2"
-                        placeholder="e.g. Preferred pickup time, any special instructions..."
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.special_notes|default:'' }}</textarea>
-            </div>
-          </div>
-
-          <!-- ── PARCEL / BUS FIELDS ── -->
-          <div id="section-parcel" class="hidden space-y-4">
-            <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700">
-              🚌 Fill in your bus station details. The vendor will parcel your items and send them there.
-              You'll receive a notification with the waybill number once it's dispatched.
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-                Bus Station / Terminal *
-              </label>
-              <input type="text" name="parcel_bus_station"
-                     value="{{ form_data.parcel_bus_station|default:'' }}"
-                     placeholder="e.g. VIP Kumasi Terminal, STC Cape Coast Station"
-                     class="w-full px-4 py-3 border rounded-xl text-sm
-                            {% if errors.parcel_bus_station %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-              {% if errors.parcel_bus_station %}
-              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.parcel_bus_station }}</p>
-              {% endif %}
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-                Recipient Phone at Station *
-              </label>
-              <input type="tel" name="parcel_recipient_phone"
-                     value="{{ form_data.parcel_recipient_phone|default:'' }}"
-                     placeholder="Phone number to call at the station"
-                     class="w-full px-4 py-3 border rounded-xl text-sm
-                            {% if errors.parcel_recipient_phone %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-              {% if errors.parcel_recipient_phone %}
-              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.parcel_recipient_phone }}</p>
-              {% endif %}
-              <p class="text-xs text-gray-400 mt-1">
-                The vendor will write this on the parcel and the bus company will call it.
-              </p>
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-                Additional Notes <span class="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <textarea name="parcel_notes" rows="2"
-                        placeholder="e.g. Recipient name, preferred bus company, station landmark..."
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.parcel_notes|default:'' }}</textarea>
-            </div>
-          </div>
-
+      <!-- Payment method -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+        <h2 class="font-bold text-navy text-base mb-4">💳 Payment Method</h2>
+        <div class="space-y-2">
+          <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy transition-colors">
+            <input type="radio" name="payment_method" value="cash" checked class="w-4 h-4 accent-navy">
+            <span class="text-sm font-medium text-navy">💵 Cash on Delivery</span>
+          </label>
+          <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy transition-colors">
+            <input type="radio" name="payment_method" value="paystack" class="w-4 h-4 accent-navy">
+            <span class="text-sm font-medium text-navy">📱 Mobile Money / Card (Paystack)</span>
+          </label>
         </div>
+      </div>
 
-        <!-- ── SUBMIT ── -->
-        <button type="submit" id="submit-btn"
-                class="w-full bg-navy text-white font-semibold py-4 rounded-xl transition-all btn-press
-                       flex items-center justify-center gap-2">
-          <span id="btn-text">Continue to Payment →</span>
-          <span id="btn-loader" class="hidden">
-            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-            </svg>
-          </span>
-        </button>
-        <p class="text-center text-xs text-gray-400">🔒 Your information is secure and encrypted</p>
-
-      </form>
     </div>
 
-    <!-- ── ORDER SUMMARY SIDEBAR ─────────────────────────── -->
-    <div class="w-full lg:w-80 flex-shrink-0">
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-20">
-        <h2 class="font-display font-700 text-navy text-base mb-4">Order Summary</h2>
+    <!-- RIGHT: Order summary -->
+    <div class="lg:col-span-1">
+      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm sticky top-24">
+        <h2 class="font-bold text-navy text-base mb-4">🧾 Order Summary</h2>
 
-        <div class="space-y-3 mb-4 max-h-60 overflow-y-auto pr-1">
-          {% for item in cart.items.all %}
+        <div class="space-y-3 mb-4 max-h-60 overflow-y-auto">
+          {% for item in cart_items %}
           <div class="flex items-center gap-3">
-            {% with item.product.images.first as img %}
-            {% if img %}
-            <img src="{{ img.image.url }}" class="w-12 h-12 rounded-xl object-cover flex-shrink-0"/>
+            {% if item.product.images.first %}
+            <img src="{{ item.product.images.first.image.url }}"
+                 class="w-12 h-12 rounded-xl object-cover flex-shrink-0"/>
             {% else %}
-            <div class="w-12 h-12 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center text-xl">📦</div>
+            <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-lg flex-shrink-0">🛍</div>
             {% endif %}
-            {% endwith %}
             <div class="flex-1 min-w-0">
-              <p class="text-xs font-semibold text-navy truncate leading-tight">{{ item.product.name }}</p>
-              {% if item.product.vendor %}
-              <p class="text-xs text-gray-400">🏪 {{ item.product.vendor.shop_name }}</p>
-              {% endif %}
+              <p class="text-sm font-medium text-navy truncate">{{ item.product.name }}</p>
               <p class="text-xs text-gray-400">× {{ item.quantity }}</p>
             </div>
-            <p class="text-sm font-display font-700 text-navy flex-shrink-0">GHS {{ item.subtotal }}</p>
+            <span class="text-sm font-bold text-navy">GHS {{ item.get_total_price }}</span>
           </div>
           {% endfor %}
         </div>
 
-        <div class="border-t border-gray-100 pt-3 space-y-2 text-sm">
+        <div class="border-t border-gray-100 pt-4 space-y-2 text-sm">
           <div class="flex justify-between text-gray-500">
             <span>Subtotal</span>
-            <span class="font-semibold text-navy">GHS {{ cart.total_price }}</span>
+            <span>GHS {{ subtotal }}</span>
           </div>
           <div class="flex justify-between text-gray-500">
-            <span>Delivery fee</span>
-            <span id="sidebar-fee" class="font-semibold text-navy">—</span>
+            <span>Delivery Fee</span>
+            <span id="display-fee">GHS {{ default_fee }}</span>
           </div>
-          <div class="flex justify-between pt-2 border-t border-gray-100">
-            <span class="font-display font-700 text-navy">Total</span>
-            <span id="sidebar-total" class="font-display font-700 text-navy text-lg">
-              GHS {{ cart.total_price }}
-            </span>
+          <p id="display-distance" class="text-xs text-gray-400"></p>
+          <div class="flex justify-between font-display font-700 text-navy text-base pt-2 border-t border-gray-100">
+            <span>Total</span>
+            <span id="display-total">GHS {{ subtotal }}</span>
           </div>
         </div>
 
-        <!-- Delivery mode summary (updates dynamically) -->
-        <div id="mode-summary" class="mt-4 rounded-xl px-3 py-2.5 text-xs text-center font-medium
-                                      bg-navy/5 text-navy">
-          🛵 Rider Delivery selected
-        </div>
-
-        <div class="mt-4 border-t border-gray-100 pt-4">
-          <p class="text-xs text-gray-400 text-center mb-3">Secure payment via</p>
-          <div class="flex flex-wrap justify-center gap-2">
-            <span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">MTN MoMo</span>
-            <span class="text-xs font-semibold bg-red-100 text-red-600 px-2.5 py-1 rounded-full">Vodafone</span>
-            <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">AirtelTigo</span>
-            <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">💳 Card</span>
-          </div>
-        </div>
-        <div class="mt-3 bg-cream rounded-xl px-3 py-2.5 text-xs text-gray-500 text-center">
-          🔒 Powered by Flutterwave — 100% secure
-        </div>
+        <button type="submit"
+                class="w-full bg-navy hover:bg-navy-700 text-white font-bold py-3.5 rounded-xl mt-5 transition-colors text-sm">
+          Place Order →
+        </button>
+        <p class="text-xs text-gray-400 text-center mt-2">Pin your location for accurate pricing</p>
       </div>
     </div>
 
-  </div>
+  </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-(function () {
-  const subtotal    = parseFloat("{{ cart.total_price|floatformat:2 }}") || 0;
-  const zoneSelect  = document.getElementById('zone-select');
-  const sidebarFee  = document.getElementById('sidebar-fee');
-  const sidebarTot  = document.getElementById('sidebar-total');
-  const feePreview  = document.getElementById('fee-preview');
-  const feeAmount   = document.getElementById('fee-preview-amount');
-  const modeSummary = document.getElementById('mode-summary');
-  const submitBtn   = document.getElementById('submit-btn');
+(function() {
+  const LOCATIONIQ_KEY = "{{ locationiq_key|default:'' }}";
+  const ACCRA_LAT      = 5.6037;
+  const ACCRA_LNG      = -0.1870;
+  const SUBTOTAL       = parseFloat("{{ subtotal }}") || 0;
 
-  const sections = {
-    rider:  document.getElementById('section-rider'),
-    pickup: document.getElementById('section-pickup'),
-    parcel: document.getElementById('section-parcel'),
-  };
+  // ── MAP ────────────────────────────────────────────────
+  const map = L.map('delivery-map').setView([ACCRA_LAT, ACCRA_LNG], 13);
+  L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
+    attribution: '&copy; LocationIQ &copy; OpenStreetMap',
+    maxZoom: 19, subdomains: ['a','b','c'],
+  }).addTo(map);
 
-  const modeMeta = {
-    rider:  { label: '🛵 Rider Delivery selected',  fee: null  },
-    pickup: { label: '🏪 Self Pickup — no delivery fee', fee: 0 },
-    parcel: { label: '🚌 Bus/Parcel — no platform fee', fee: 0 },
-  };
+  let deliveryMarker = null;
 
-  // ── Show/hide sections + sync sidebar ─────────────────
-  function switchMode(mode) {
-    Object.entries(sections).forEach(([key, el]) => {
-      if (!el) return;
-      el.classList.toggle('hidden', key !== mode);
-    });
-
-    const meta = modeMeta[mode];
-    modeSummary.textContent = meta.label;
-
-    if (meta.fee === 0) {
-      // Free delivery
-      sidebarFee.textContent = 'GHS 0.00';
-      sidebarTot.textContent = 'GHS ' + subtotal.toFixed(2);
-      feePreview.classList.add('hidden');
-      enableSubmit();
+  function setPin(lat, lng) {
+    if (deliveryMarker) {
+      deliveryMarker.setLatLng([lat, lng]);
     } else {
-      // Rider — driven by zone select
-      syncZoneFee();
+      deliveryMarker = L.marker([lat, lng], { draggable: true })
+        .addTo(map)
+        .bindPopup('Your delivery location')
+        .on('dragend', e => {
+          const pos = e.target.getLatLng();
+          onLocation(pos.lat, pos.lng, true);
+        });
     }
-
-    // Update radio dot colours via CSS variable on mode-card
-    syncRadioDots();
+    map.setView([lat, lng], 15);
+    document.getElementById('delivery_lat').value = lat;
+    document.getElementById('delivery_lng').value = lng;
   }
 
-  function syncZoneFee() {
-    if (!zoneSelect) return;
-    const opt = zoneSelect.options[zoneSelect.selectedIndex];
-    const fee = parseFloat(opt?.dataset.fee ?? NaN);
+  map.on('click', e => onLocation(e.latlng.lat, e.latlng.lng, true));
 
-    if (zoneSelect.value && !isNaN(fee)) {
-      sidebarFee.textContent = 'GHS ' + fee.toFixed(2);
-      sidebarTot.textContent = 'GHS ' + (subtotal + fee).toFixed(2);
-      feePreview.classList.remove('hidden');
-      feeAmount.textContent  = 'GHS ' + fee.toFixed(2);
-      enableSubmit();
-    } else {
-      sidebarFee.textContent = '—';
-      sidebarTot.textContent = 'GHS ' + subtotal.toFixed(2);
-      feePreview.classList.add('hidden');
-      disableSubmit();
-    }
+  function onLocation(lat, lng, doReverse) {
+    setPin(lat, lng);
+    fetchFee(lat, lng);
+    if (doReverse) reverseGeocode(lat, lng);
   }
 
-  function syncRadioDots() {
-    document.querySelectorAll('.mode-card').forEach(label => {
-      const radio = label.querySelector('input[type=radio]');
-      const dot   = label.querySelector('.radio-dot');
-      if (!dot) return;
-      if (radio.checked) {
-        dot.style.background  = getComputedStyle(label).getPropertyValue('--active-color').trim();
-        dot.style.transform   = 'scale(1)';
-      } else {
-        dot.style.background  = 'transparent';
-        dot.style.transform   = 'scale(0)';
-      }
-    });
+  // ── PRICE ESTIMATE ────────────────────────────────────
+  function fetchFee(dlat, dlng) {
+    fetch(`/delivery/api/price-estimate/?olat=${ACCRA_LAT}&olng=${ACCRA_LNG}&dlat=${dlat}&dlng=${dlng}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return;
+        document.getElementById('delivery_fee').value    = data.fee;
+        document.getElementById('distance_km').value     = data.distance_km;
+        document.getElementById('display-fee').textContent = `GHS ${data.fee}`;
+        document.getElementById('display-distance').textContent = `${data.distance_km} km · ~${data.eta_minutes} min`;
+        document.getElementById('display-total').textContent = `GHS ${(SUBTOTAL + parseFloat(data.fee)).toFixed(2)}`;
+      })
+      .catch(console.error);
   }
 
-  function enableSubmit() {
-    submitBtn.disabled = false;
-    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-  }
-  function disableSubmit() {
-    submitBtn.disabled = true;
-    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+  // ── REVERSE GEOCODE ───────────────────────────────────
+  function reverseGeocode(lat, lng) {
+    if (!LOCATIONIQ_KEY) return;
+    fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.display_name) {
+          document.getElementById('delivery_address').value = d.display_name;
+          const parts = d.address || {};
+          const city  = parts.city || parts.town || parts.county || '';
+          if (city) document.getElementById('delivery_city').value = city;
+        }
+      }).catch(console.error);
   }
 
-  // ── Bind radio changes ─────────────────────────────────
-  document.querySelectorAll('input[name="delivery_choice"]').forEach(radio => {
-    radio.addEventListener('change', () => switchMode(radio.value));
+  // ── AUTOCOMPLETE ──────────────────────────────────────
+  const searchInput = document.getElementById('address-search');
+  const suggestBox  = document.getElementById('address-suggestions');
+  let timer = null;
+
+  searchInput.addEventListener('input', function() {
+    const q = this.value.trim();
+    clearTimeout(timer);
+    if (q.length < 3 || !LOCATIONIQ_KEY) { suggestBox.classList.remove('show'); return; }
+    timer = setTimeout(() => {
+      fetch(`https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&countrycodes=gh&limit=5&format=json`)
+        .then(r => r.json())
+        .then(results => {
+          if (!Array.isArray(results) || !results.length) { suggestBox.classList.remove('show'); return; }
+          suggestBox.innerHTML = results.map(r =>
+            `<div class="suggestion-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.replace(/"/g,'&quot;')}">${r.display_name}</div>`
+          ).join('');
+          suggestBox.classList.add('show');
+        }).catch(console.error);
+    }, 400);
   });
 
-  if (zoneSelect) {
-    zoneSelect.addEventListener('change', syncZoneFee);
-  }
-
-  // ── Init on load ───────────────────────────────────────
-  const checked = document.querySelector('input[name="delivery_choice"]:checked');
-  switchMode(checked ? checked.value : 'rider');
-
-  // ── Submit loader ──────────────────────────────────────
-  document.getElementById('checkout-form').addEventListener('submit', function () {
-    document.getElementById('btn-text').textContent = 'Processing...';
-    document.getElementById('btn-loader').classList.remove('hidden');
-    submitBtn.disabled = true;
+  suggestBox.addEventListener('click', e => {
+    const item = e.target.closest('.suggestion-item');
+    if (!item) return;
+    const lat = parseFloat(item.dataset.lat);
+    const lon = parseFloat(item.dataset.lon);
+    searchInput.value = item.dataset.name;
+    document.getElementById('delivery_address').value = item.dataset.name;
+    suggestBox.classList.remove('show');
+    onLocation(lat, lon, false);
   });
+
+  document.addEventListener('click', e => { if (e.target !== searchInput) suggestBox.classList.remove('show'); });
+
+  // ── BROWSER GEOLOCATION ───────────────────────────────
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => onLocation(pos.coords.latitude, pos.coords.longitude, true),
+      () => {},
+      { timeout: 5000 }
+    );
+  }
 })();
 </script>
 {% endblock %}

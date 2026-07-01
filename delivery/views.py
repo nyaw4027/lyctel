@@ -10,8 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from order.models import Order
 from .models import Delivery, DeliveryTracking, DeliveryZone
 from rider.models import RiderProfile, DeliveryAcceptance
-from .utils import calculate_distance
-
+from .utils import haversine_distance, calculate_distance, calculate_delivery_fee, estimate_eta_minutes
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
@@ -381,3 +380,31 @@ def _push_prompt_to_rider(rider_profile, delivery, acceptance):
             "commission": commission,
         }
     )
+
+
+    
+def price_estimate(request):
+    """
+    GET /delivery/api/price-estimate/
+    ?olat=5.6&olng=-0.18&dlat=5.65&dlng=-0.19
+    Returns: { success, distance_km, fee, eta_minutes }
+    """
+    try:
+        origin_lat  = float(request.GET.get('olat'))
+        origin_lng  = float(request.GET.get('olng'))
+        dropoff_lat = float(request.GET.get('dlat'))
+        dropoff_lng = float(request.GET.get('dlng'))
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid coordinates'})
+ 
+    distance = haversine_distance(origin_lat, origin_lng, dropoff_lat, dropoff_lng)
+    fee      = calculate_delivery_fee(distance)
+    eta      = estimate_eta_minutes(distance)
+ 
+    return JsonResponse({
+        'success':     True,
+        'distance_km': round(distance, 2),
+        'fee':         str(fee),
+        'eta_minutes': eta,
+    })
+ 

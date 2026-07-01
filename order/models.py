@@ -53,6 +53,9 @@ class Order(models.Model):
     delivery_address = models.TextField(blank=True)
     delivery_city    = models.CharField(max_length=100, blank=True)
     delivery_phone   = models.CharField(max_length=20, blank=True)
+    
+    delivery_lat = models.FloatField(null=True, blank=True)
+    delivery_lng = models.FloatField(null=True, blank=True)
 
     # Used for parcel/bus mode
     parcel_bus_station     = models.CharField(max_length=255, blank=True)
@@ -78,6 +81,8 @@ class Order(models.Model):
     created_at   = models.DateTimeField(auto_now_add=True)
     updated_at   = models.DateTimeField(auto_now=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
+
+
 
     class Meta:
         ordering = ['-created_at']
