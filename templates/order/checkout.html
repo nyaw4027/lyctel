@@ -24,117 +24,161 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
-  <h1 class="font-display font-800 text-2xl md:text-3xl text-navy mb-6">Checkout</h1>
+
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-sm text-gray-400 mb-6">
+    <a href="{% url 'products:list' %}" class="hover:text-navy">Shop</a>
+    <span>/</span>
+    <a href="{% url 'cart:detail' %}" class="hover:text-navy">Cart</a>
+    <span>/</span>
+    <span class="text-navy font-medium">Checkout</span>
+  </div>
+
+  <h1 class="font-display font-800 text-2xl md:text-3xl text-navy mb-8">Checkout</h1>
 
   <form method="POST" id="checkout-form" class="grid lg:grid-cols-3 gap-8">
     {% csrf_token %}
 
-    <!-- LEFT: Delivery + Payment -->
+    <!-- LEFT: Details + Map + Payment -->
     <div class="lg:col-span-2 space-y-6">
 
-      {% if errors %}
+      {% if messages %}
+      {% for message in messages %}
       <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl px-4 py-3">
-        {% for field, msg in errors.items %}<p>⚠ {{ msg }}</p>{% endfor %}
+        {{ message }}
       </div>
+      {% endfor %}
       {% endif %}
 
       <!-- Personal details -->
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-        <h2 class="font-bold text-navy text-base mb-4">👤 Your Details</h2>
+        <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
+          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+          Your Details
+        </h2>
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">First Name *</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">First Name *</label>
             <input type="text" name="first_name"
-                   value="{{ form_data.first_name|default:user.first_name }}"
-                   class="w-full px-4 py-2.5 border {% if errors.first_name %}border-red-400{% else %}border-gray-200{% endif %} rounded-xl text-sm"/>
+                   value="{{ form_data.first_name|default:request.user.first_name }}"
+                   placeholder="Kwame"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Last Name</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Last Name</label>
             <input type="text" name="last_name"
-                   value="{{ form_data.last_name|default:user.last_name }}"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+                   value="{{ form_data.last_name|default:request.user.last_name }}"
+                   placeholder="Mensah"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number *</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Phone Number *</label>
             <input type="tel" name="phone"
-                   value="{{ form_data.phone|default:user.phone }}"
-                   class="w-full px-4 py-2.5 border {% if errors.phone %}border-red-400{% else %}border-gray-200{% endif %} rounded-xl text-sm"/>
+                   value="{{ form_data.phone|default:request.user.phone }}"
+                   placeholder="024 xxx xxxx"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Email (optional)</label>
+            <input type="email" name="email"
+                   value="{{ form_data.email|default:request.user.email }}"
+                   placeholder="kwame@example.com"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
           </div>
         </div>
       </div>
 
       <!-- Delivery address + map -->
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-        <h2 class="font-bold text-navy text-base mb-4">📍 Delivery Address</h2>
+        <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
+          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+          Delivery Address
+        </h2>
 
+        <!-- Address search -->
         <div class="relative mb-4">
-          <label class="block text-sm font-medium text-gray-600 mb-1">Search your address</label>
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Search your location</label>
           <input type="text" id="address-search" autocomplete="off"
-                 placeholder="Start typing your street, area, or landmark..."
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"/>
+                 placeholder="Type your street, area, or a nearby landmark..."
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy transition-colors"/>
           <div id="address-suggestions"></div>
         </div>
 
-        <p class="text-xs text-gray-400 mb-3">Or click anywhere on the map to drop a pin 👇</p>
-        <div id="delivery-map" class="mb-4"></div>
+        <p class="text-xs text-gray-400 mb-3 flex items-center gap-1">
+          <span>📍</span> Or click anywhere on the map to drop a delivery pin
+        </p>
 
-        <div>
-    <label class="block text-sm font-medium text-gray-600 mb-1">
-        Delivery Phone Number *
-    </label>
-    <input
-        type="tel"
-        id="delivery_phone"
-        name="delivery_phone"
-        value="{{ form_data.delivery_phone|default:user.phone }}"
-        placeholder="+233XXXXXXXXX"
-        required
-        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"
-    >
-</div>
+        <!-- Map -->
+        <div id="delivery-map" class="mb-4 border border-gray-100 shadow-sm"></div>
 
+        <!-- Address fields -->
         <div class="grid sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1">Street Address *</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Street Address *</label>
             <input type="text" name="delivery_address" id="delivery_address"
                    value="{{ form_data.delivery_address|default:'' }}"
-                   placeholder="House number, street, area"
-                   class="w-full px-4 py-2.5 border {% if errors.address %}border-red-400{% else %}border-gray-200{% endif %} rounded-xl text-sm"/>
+                   placeholder="House number, street name, area"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">City *</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">City *</label>
             <input type="text" name="delivery_city" id="delivery_city"
                    value="{{ form_data.delivery_city|default:'' }}"
-                   placeholder="e.g. Accra"
-                   class="w-full px-4 py-2.5 border {% if errors.city %}border-red-400{% else %}border-gray-200{% endif %} rounded-xl text-sm"/>
+                   placeholder="e.g. Accra, Kumasi"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Order Note (optional)</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Order Note (optional)</label>
             <input type="text" name="order_note"
                    value="{{ form_data.order_note|default:'' }}"
-                   placeholder="e.g. Call on arrival"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+                   placeholder="e.g. Call on arrival, blue gate"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition-colors"/>
           </div>
         </div>
 
-        <!-- Hidden coordinate + fee fields -->
-        <input type="hidden" name="delivery_lat"  id="delivery_lat"  value="">
-        <input type="hidden" name="delivery_lng"  id="delivery_lng"  value="">
-        <input type="hidden" name="delivery_fee"  id="delivery_fee"  value="{{ default_fee }}">
-        <input type="hidden" name="distance_km"   id="distance_km"   value="">
+        <!-- Hidden fields populated by map JS -->
+        <input type="hidden" name="delivery_lat" id="delivery_lat" value="">
+        <input type="hidden" name="delivery_lng" id="delivery_lng" value="">
+        <input type="hidden" name="delivery_fee" id="delivery_fee" value="{{ default_fee|default:'8.00' }}">
+        <input type="hidden" name="distance_km"  id="distance_km"  value="">
+
+        <!-- Live fee display -->
+        <div id="fee-banner" class="mt-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-center justify-between hidden">
+          <div>
+            <p class="text-xs text-blue-600 font-medium">Delivery Fee</p>
+            <p id="fee-detail" class="text-xs text-blue-400 mt-0.5"></p>
+          </div>
+          <span id="fee-display" class="font-display font-700 text-blue-700 text-lg">GHS 8.00</span>
+        </div>
       </div>
 
       <!-- Payment method -->
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-        <h2 class="font-bold text-navy text-base mb-4">💳 Payment Method</h2>
+        <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
+          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+          Payment Method
+        </h2>
         <div class="space-y-2">
-          <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy transition-colors">
+          <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy has-[:checked]:bg-navy/5 transition-all">
             <input type="radio" name="payment_method" value="cash" checked class="w-4 h-4 accent-navy">
-            <span class="text-sm font-medium text-navy">💵 Cash on Delivery</span>
+            <div>
+              <p class="text-sm font-semibold text-navy">💵 Cash on Delivery</p>
+              <p class="text-xs text-gray-400 mt-0.5">Pay when your order arrives</p>
+            </div>
           </label>
-          <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy transition-colors">
+          <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy has-[:checked]:bg-navy/5 transition-all">
             <input type="radio" name="payment_method" value="paystack" class="w-4 h-4 accent-navy">
-            <span class="text-sm font-medium text-navy">📱 Mobile Money / Card (Paystack)</span>
+            <div>
+              <p class="text-sm font-semibold text-navy">📱 Mobile Money / Card</p>
+              <p class="text-xs text-gray-400 mt-0.5">MTN MoMo, Vodafone Cash, AirtelTigo, Visa/Mastercard</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy has-[:checked]:bg-navy/5 transition-all">
+            <input type="radio" name="payment_method" value="flutterwave" class="w-4 h-4 accent-navy">
+            <div>
+              <p class="text-sm font-semibold text-navy">⚡ Flutterwave</p>
+              <p class="text-xs text-gray-400 mt-0.5">Pay securely via Flutterwave</p>
+            </div>
           </label>
         </div>
       </div>
@@ -146,45 +190,64 @@
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm sticky top-24">
         <h2 class="font-bold text-navy text-base mb-4">🧾 Order Summary</h2>
 
-        <div class="space-y-3 mb-4 max-h-60 overflow-y-auto">
+        <!-- Cart items -->
+        <div class="space-y-3 mb-4 max-h-64 overflow-y-auto pr-1">
           {% for item in cart_items %}
           <div class="flex items-center gap-3">
-            {% if item.product.images.first %}
-            <img src="{{ item.product.images.first.image.url }}"
-                 class="w-12 h-12 rounded-xl object-cover flex-shrink-0"/>
+            {% with item.product.images.first as img %}
+            {% if img %}
+            <img src="{{ img.image.url }}" alt="{{ item.product.name }}"
+                 class="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-gray-100"/>
             {% else %}
             <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-lg flex-shrink-0">🛍</div>
             {% endif %}
+            {% endwith %}
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-navy truncate">{{ item.product.name }}</p>
               <p class="text-xs text-gray-400">× {{ item.quantity }}</p>
             </div>
-            <span class="text-sm font-bold text-navy">GHS {{ item.get_total_price }}</span>
+            <span class="text-sm font-bold text-navy flex-shrink-0">GHS {{ item.subtotal }}</span>
           </div>
+          {% empty %}
+          <p class="text-sm text-gray-400 text-center py-4">Your cart is empty</p>
           {% endfor %}
         </div>
 
-        <div class="border-t border-gray-100 pt-4 space-y-2 text-sm">
+        <!-- Totals -->
+        <div class="border-t border-gray-100 pt-4 space-y-2.5 text-sm">
           <div class="flex justify-between text-gray-500">
-            <span>Subtotal</span>
-            <span>GHS {{ subtotal }}</span>
+            <span>Subtotal ({{ cart_items|length }} item{{ cart_items|length|pluralize }})</span>
+            <span class="font-medium text-navy">GHS {{ subtotal }}</span>
           </div>
           <div class="flex justify-between text-gray-500">
             <span>Delivery Fee</span>
-            <span id="display-fee">GHS {{ default_fee }}</span>
+            <span id="summary-fee" class="font-medium text-navy">GHS {{ default_fee|default:'8.00' }}</span>
           </div>
-          <p id="display-distance" class="text-xs text-gray-400"></p>
+          <div id="summary-distance" class="text-xs text-gray-400 text-right hidden"></div>
           <div class="flex justify-between font-display font-700 text-navy text-base pt-2 border-t border-gray-100">
             <span>Total</span>
-            <span id="display-total">GHS {{ subtotal }}</span>
+            <span id="summary-total">GHS {{ subtotal }}</span>
           </div>
         </div>
 
-        <button type="submit"
-                class="w-full bg-navy hover:bg-navy-700 text-white font-bold py-3.5 rounded-xl mt-5 transition-colors text-sm">
-          Place Order →
+        <!-- Place order button -->
+        <button type="submit" id="place-order-btn"
+                class="w-full bg-navy hover:bg-navy-700 text-white font-bold py-4 rounded-2xl mt-5 transition-all btn-press text-sm shadow-lg shadow-navy/20 flex items-center justify-center gap-2">
+          <span>Place Order</span>
+          <span>→</span>
         </button>
-        <p class="text-xs text-gray-400 text-center mt-2">Pin your location for accurate pricing</p>
+
+        <p class="text-xs text-gray-400 text-center mt-3 leading-relaxed">
+          By placing your order you agree to our
+          <a href="{% url 'frontend:terms' %}" class="underline hover:text-navy">Terms of Service</a>
+        </p>
+
+        <!-- Security badges -->
+        <div class="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-gray-100">
+          <span class="text-xs text-gray-400 flex items-center gap-1">🔒 Secure checkout</span>
+          <span class="text-gray-200">|</span>
+          <span class="text-xs text-gray-400 flex items-center gap-1">🇬🇭 Ghana trusted</span>
+        </div>
       </div>
     </div>
 
@@ -201,12 +264,20 @@
   const ACCRA_LNG      = -0.1870;
   const SUBTOTAL       = parseFloat("{{ subtotal }}") || 0;
 
-  // ── MAP ────────────────────────────────────────────────
+  // ── MAP SETUP ─────────────────────────────────────────
   const map = L.map('delivery-map').setView([ACCRA_LAT, ACCRA_LNG], 13);
-  L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
-    attribution: '&copy; LocationIQ &copy; OpenStreetMap',
-    maxZoom: 19, subdomains: ['a','b','c'],
-  }).addTo(map);
+
+  if (LOCATIONIQ_KEY) {
+    L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
+      attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
+      maxZoom: 19, subdomains: ['a','b','c'],
+    }).addTo(map);
+  } else {
+    // Fallback to free OpenStreetMap tiles if no LocationIQ key
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
+    }).addTo(map);
+  }
 
   let deliveryMarker = null;
 
@@ -216,7 +287,7 @@
     } else {
       deliveryMarker = L.marker([lat, lng], { draggable: true })
         .addTo(map)
-        .bindPopup('Your delivery location')
+        .bindPopup('📍 Your delivery location')
         .on('dragend', e => {
           const pos = e.target.getLatLng();
           onLocation(pos.lat, pos.lng, true);
@@ -241,11 +312,28 @@
       .then(r => r.json())
       .then(data => {
         if (!data.success) return;
-        document.getElementById('delivery_fee').value    = data.fee;
-        document.getElementById('distance_km').value     = data.distance_km;
-        document.getElementById('display-fee').textContent = `GHS ${data.fee}`;
-        document.getElementById('display-distance').textContent = `${data.distance_km} km · ~${data.eta_minutes} min`;
-        document.getElementById('display-total').textContent = `GHS ${(SUBTOTAL + parseFloat(data.fee)).toFixed(2)}`;
+
+        const fee   = parseFloat(data.fee);
+        const total = (SUBTOTAL + fee).toFixed(2);
+
+        // Update hidden fields
+        document.getElementById('delivery_fee').value = data.fee;
+        document.getElementById('distance_km').value  = data.distance_km;
+
+        // Update summary panel
+        document.getElementById('summary-fee').textContent   = `GHS ${data.fee}`;
+        document.getElementById('summary-total').textContent = `GHS ${total}`;
+
+        // Show fee banner
+        const banner = document.getElementById('fee-banner');
+        banner.classList.remove('hidden');
+        document.getElementById('fee-display').textContent = `GHS ${data.fee}`;
+        document.getElementById('fee-detail').textContent  = `${data.distance_km} km away · ~${data.eta_minutes} min`;
+
+        // Show distance in summary
+        const distEl = document.getElementById('summary-distance');
+        distEl.textContent = `${data.distance_km} km · ~${data.eta_minutes} min`;
+        distEl.classList.remove('hidden');
       })
       .catch(console.error);
   }
@@ -258,14 +346,15 @@
       .then(d => {
         if (d.display_name) {
           document.getElementById('delivery_address').value = d.display_name;
-          const parts = d.address || {};
-          const city  = parts.city || parts.town || parts.county || '';
+        }
+        if (d.address) {
+          const city = d.address.city || d.address.town || d.address.county || '';
           if (city) document.getElementById('delivery_city').value = city;
         }
       }).catch(console.error);
   }
 
-  // ── AUTOCOMPLETE ──────────────────────────────────────
+  // ── ADDRESS AUTOCOMPLETE ──────────────────────────────
   const searchInput = document.getElementById('address-search');
   const suggestBox  = document.getElementById('address-suggestions');
   let timer = null;
@@ -273,14 +362,23 @@
   searchInput.addEventListener('input', function() {
     const q = this.value.trim();
     clearTimeout(timer);
-    if (q.length < 3 || !LOCATIONIQ_KEY) { suggestBox.classList.remove('show'); return; }
+    if (q.length < 3 || !LOCATIONIQ_KEY) {
+      suggestBox.classList.remove('show');
+      return;
+    }
     timer = setTimeout(() => {
       fetch(`https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&countrycodes=gh&limit=5&format=json`)
         .then(r => r.json())
         .then(results => {
-          if (!Array.isArray(results) || !results.length) { suggestBox.classList.remove('show'); return; }
+          if (!Array.isArray(results) || !results.length) {
+            suggestBox.classList.remove('show');
+            return;
+          }
           suggestBox.innerHTML = results.map(r =>
-            `<div class="suggestion-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.replace(/"/g,'&quot;')}">${r.display_name}</div>`
+            `<div class="suggestion-item" data-lat="${r.lat}" data-lon="${r.lon}"
+                  data-name="${r.display_name.replace(/"/g, '&quot;')}">
+               📍 ${r.display_name}
+             </div>`
           ).join('');
           suggestBox.classList.add('show');
         }).catch(console.error);
@@ -298,9 +396,11 @@
     onLocation(lat, lon, false);
   });
 
-  document.addEventListener('click', e => { if (e.target !== searchInput) suggestBox.classList.remove('show'); });
+  document.addEventListener('click', e => {
+    if (e.target !== searchInput) suggestBox.classList.remove('show');
+  });
 
-  // ── BROWSER GEOLOCATION ───────────────────────────────
+  // ── BROWSER GEOLOCATION ON LOAD ───────────────────────
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       pos => onLocation(pos.coords.latitude, pos.coords.longitude, true),
@@ -308,6 +408,25 @@
       { timeout: 5000 }
     );
   }
+
+  // ── FORM VALIDATION BEFORE SUBMIT ─────────────────────
+  document.getElementById('checkout-form').addEventListener('submit', function(e) {
+    const address = document.getElementById('delivery_address').value.trim();
+    const city    = document.getElementById('delivery_city').value.trim();
+    const phone   = document.querySelector('[name="phone"]').value.trim();
+    const firstName = document.querySelector('[name="first_name"]').value.trim();
+
+    if (!firstName || !phone || !address || !city) {
+      e.preventDefault();
+      alert('Please fill in all required fields and set your delivery location on the map.');
+      return;
+    }
+
+    // Show loading state
+    const btn = document.getElementById('place-order-btn');
+    btn.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Processing...';
+    btn.disabled = true;
+  });
 })();
 </script>
 {% endblock %}
