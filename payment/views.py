@@ -54,7 +54,7 @@ def _split_commissions(order):
     for item in order.items.select_related('product__vendor').all():
         vendor = item.product.vendor if item.product else None
         if vendor:
-            vendor_totals[vendor] = vendor_totals.get(vendor, Decimal('0')) + item.get_total_price()
+            vendor_totals[vendor] = vendor_totals.get(vendor, Decimal('0')) + (item.price * item.quantity)
 
     for vendor, total in vendor_totals.items():
         rate       = Decimal(str(vendor.commission_rate or 10)) / Decimal('100')
@@ -118,7 +118,6 @@ def checkout(request):
         messages.warning(request, 'Your cart is empty.')
         return redirect('products:list')
 
-    # CartItem exposes `subtotal` as a property (not get_total_price()).
     subtotal = sum(item.subtotal for item in cart_items)
 
     if request.method == 'POST':
@@ -144,6 +143,7 @@ def checkout(request):
             return render(request, 'payment/checkout.html', {
                 'cart_items':     cart_items,
                 'subtotal':       subtotal,
+
                 'default_fee':    str(MIN_FARE),
                 'errors':         errors,
                 'form_data':      request.POST,
@@ -202,6 +202,7 @@ def checkout(request):
                 product  = cart_item.product,
                 quantity = cart_item.quantity,
                 price    = cart_item.product.selling_price,
+                subtotal = cart_item.subtotal,
             )
 
         # Create delivery record (no zone)
@@ -259,7 +260,6 @@ def payment_page(request):
         messages.warning(request, 'Your cart is empty.')
         return redirect('products:list')
 
-    # CartItem exposes `subtotal` as a property (not get_total_price()).
     subtotal     = sum(item.subtotal for item in cart_items)
     delivery_fee = MIN_FARE
     total        = subtotal + delivery_fee
