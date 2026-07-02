@@ -6,4 +6,4 @@ class DeliveryConfig(AppConfig):
     name = 'delivery'
 
     def ready(self):
-        import delivery.signals
+        import delivery.signals  # noqa: F401 — registers pre_save/post_save hooks

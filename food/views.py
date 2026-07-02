@@ -1116,3 +1116,83 @@ def _split_food_commission(food_order):
             'status':         'pending',
         }
     )
+
+
+    
+@login_required
+@require_POST
+def reorder(request, ref):
+    """
+    Adds every item from a past delivered food order back into the cart,
+    then redirects to the vendor's menu so the customer can adjust before
+    checking out.
+ 
+    Behaviour notes:
+    - If the cart already has items from a DIFFERENT vendor, we don't
+      silently wipe them — we redirect to the menu with a clear warning
+      so the customer can decide.
+    - Items that are no longer available (is_available=False or deleted)
+      are skipped with an individual warning rather than blocking the
+      whole reorder.
+    - Stock/availability is re-checked at this point, not at original
+      order time, so the customer always sees current prices.
+    """
+    from food.models import FoodOrder, FoodCart, FoodCartItem
+ 
+    order  = get_object_or_404(FoodOrder, order_ref=ref, customer=request.user)
+    vendor = order.vendor
+ 
+    # Get or create the customer's cart
+    cart, _ = FoodCart.objects.get_or_create(customer=request.user)
+ 
+    # Conflict: cart already has items from a different restaurant
+    if cart.vendor and cart.vendor != vendor and cart.cart_items.exists():
+        messages.warning(
+            request,
+            f'Your cart already has items from {cart.vendor.name}. '
+            f'Clear your cart first to reorder from {vendor.name}.'
+        )
+        return redirect('food:vendor_menu', slug=vendor.slug)
+ 
+    cart.vendor = vendor
+    cart.save(update_fields=['vendor'])
+ 
+    added   = 0
+    skipped = []
+ 
+    for item in order.items.select_related('food').all():
+        food = item.food  # ForeignKey to the original FoodItem
+ 
+        # food might be None if the item was deleted from the menu
+        if food is None or not food.is_available:
+            skipped.append(item.name)
+            continue
+ 
+        cart_item, created = FoodCartItem.objects.get_or_create(
+            cart=cart,
+            food=food,
+            defaults={'quantity': item.quantity, 'note': item.note},
+        )
+        if not created:
+            # Already in cart — bump the quantity
+            cart_item.quantity += item.quantity
+            cart_item.save(update_fields=['quantity'])
+ 
+        added += 1
+ 
+    if added:
+        messages.success(
+            request,
+            f'✅ {added} item{"s" if added != 1 else ""} added to your cart from {vendor.name}.'
+        )
+    if skipped:
+        messages.warning(
+            request,
+            f'⚠ {len(skipped)} item{"s" if len(skipped) != 1 else ""} '
+            f'no longer available and were skipped: {", ".join(skipped)}.'
+        )
+    if not added and not skipped:
+        messages.info(request, 'No items could be added — the menu may have changed.')
+ 
+    return redirect('food:vendor_menu', slug=vendor.slug)
+ 

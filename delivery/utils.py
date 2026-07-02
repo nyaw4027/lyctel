@@ -24,6 +24,11 @@ def haversine_distance(lat1, lng1, lat2, lng2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
+def calculate_distance(lat1, lng1, lat2, lng2):
+    """Alias for haversine_distance — used by delivery/views.py."""
+    return haversine_distance(lat1, lng1, lat2, lng2)
+
+
 def calculate_delivery_fee(distance_km):
     """Returns a Decimal delivery fee for the given distance."""
     if not distance_km or distance_km <= 0:
@@ -39,17 +44,10 @@ def estimate_eta_minutes(distance_km, prep_time=10):
 
 
 def calculate_rider_commission(delivery_fee, rate_percent=Decimal('50')):
-    """Rider gets 50%, app keeps 45%, 5% is the app's rider cut."""
+    """Rider gets 50% of delivery fee."""
     return (delivery_fee * rate_percent / Decimal('100')).quantize(Decimal('0.01'))
 
 
 def calculate_app_cut(delivery_fee, rate_percent=Decimal('5')):
     """5% of delivery fee goes to Lynctel from every delivery."""
     return (delivery_fee * rate_percent / Decimal('100')).quantize(Decimal('0.01'))
-
-def calculate_distance(lat1, lng1, lat2, lng2):
-    """
-    Compatibility wrapper for distance calculation.
-    Returns the distance in kilometres.
-    """
-    return haversine_distance(lat1, lng1, lat2, lng2)

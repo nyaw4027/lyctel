@@ -36,7 +36,8 @@ INSTALLED_APPS = [
     'cart',
     'order',   # instead of just 'order'
     'payment',
-    'delivery',
+    'delivery.apps.DeliveryConfig',
+
     'rider',
     'frontend',
     'accounts',

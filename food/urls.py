@@ -32,4 +32,5 @@ urlpatterns = [
     path('order/<str:ref>/',                        views.order_track,                name='order_track'),
     path('order/<str:ref>/api/',                    views.order_track_api,            name='order_track_api'),
     path('orders/',                                 views.order_history,              name='order_history'),
+    path('orders/<str:ref>/reorder/',               views.reorder,                    name='reorder'),
 ]
