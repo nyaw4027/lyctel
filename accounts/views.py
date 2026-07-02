@@ -123,169 +123,137 @@ def logout_view(request):
 
 
 # ── OTP DELIVERY HELPERS ──────────────────────────────────
-
 def _send_otp_sms(phone: str, otp: str) -> bool:
     """
-    Send OTP via Termii SMS.
+    Send OTP via Arkesel SMS.
     Returns True if the API call succeeded, False otherwise.
     Failure is logged but never raises — we don't want SMS to crash the flow.
     """
-    api_key = getattr(settings, 'TERMII_API_KEY', '').strip()
-    sender  = getattr(settings, 'TERMII_SENDER_ID', 'Lynctel').strip()
+    api_key   = getattr(settings, 'ARKESEL_API_KEY',   '')
+    sender_id = getattr(settings, 'ARKESEL_SENDER_ID', 'Lynctel')
 
     if not api_key:
-        logger.warning('TERMII_API_KEY not set — skipping SMS OTP')
+        logger.warning('ARKESEL_API_KEY not set — skipping SMS OTP')
         return False
 
-    # Normalise to international format for Termii (233XXXXXXXXX)
-    intl_phone = phone
-    if phone.startswith('0'):
-        intl_phone = '233' + phone[1:]
-    elif phone.startswith('+'):
-        intl_phone = phone[1:]
+    # Normalise to E.164 international format (+233XXXXXXXXX)
+    intl_phone = phone.strip()
+    if intl_phone.startswith('0'):
+        intl_phone = '+233' + intl_phone[1:]
+    elif intl_phone.startswith('233') and not intl_phone.startswith('+'):
+        intl_phone = '+' + intl_phone
+    elif not intl_phone.startswith('+'):
+        intl_phone = '+233' + intl_phone
 
+    # Arkesel v2 API — key goes in header, not payload
     payload = {
-        'to':      intl_phone,
-        'from':    sender,
-        'sms':     f'Your Lynctel password reset code is: {otp}. It expires in 10 minutes. Do not share it.',
-        'type':    'plain',
-        'api_key': api_key,
-        'channel': 'generic',
+        'sender':     sender_id,
+        'message':    f'Your Lynctel password reset code is: {otp}. It expires in 10 minutes. Do not share it.',
+        'recipients': [intl_phone],
+    }
+    headers = {
+        'api-key':      api_key,
+        'Content-Type': 'application/json',
     }
 
     try:
         resp = requests.post(
-            'https://v3.api.termii.com/api/sms/send',
+            'https://sms.arkesel.com/api/v2/sms/send',
             json=payload,
+            headers=headers,
             timeout=10,
         )
         resp.raise_for_status()
-        logger.info('OTP SMS sent to %s — Termii response: %s', phone, resp.text[:200])
-        return True
+        data = resp.json()
+        if data.get('status') == 'success':
+            logger.info('OTP SMS sent to %s via Arkesel', phone)
+            return True
+        else:
+            logger.error('Arkesel SMS failed for %s: %s', phone, data)
+            return False
     except Exception as exc:
-        logger.error('Termii SMS failed for %s: %s', phone, exc)
+        logger.error('Arkesel SMS failed for %s: %s', phone, exc)
         return False
-
-
-def _send_otp_email(email: str, otp: str, phone: str) -> bool:
-    """
-    Send OTP via Django email.
-    Returns True on success, False otherwise.
-    """
-    if not email:
-        return False
-
-    try:
-        send_mail(
-            subject='Your Lynctel Password Reset Code',
-            message=(
-                f'Your Lynctel password reset code is: {otp}\n\n'
-                f'It expires in 10 minutes. Do not share it with anyone.\n\n'
-                f'If you did not request this, ignore this email.'
-            ),
-            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@lynctel.com'),
-            recipient_list=[email],
-            fail_silently=False,
-            html_message=(
-                f'<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;">'
-                f'<h2 style="color:#0F1B2D;">Password Reset Code</h2>'
-                f'<p style="color:#6b7280;">Use the code below to reset your Lynctel password.</p>'
-                f'<div style="background:#FEF3D7;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">'
-                f'<p style="font-size:36px;font-weight:bold;letter-spacing:.3em;color:#0F1B2D;margin:0;">{otp}</p>'
-                f'</div>'
-                f'<p style="color:#9ca3af;font-size:13px;">Expires in 10 minutes. Never share this code.</p>'
-                f'<p style="color:#9ca3af;font-size:13px;">If you did not request this, ignore this email.</p>'
-                f'</div>'
-            ),
-        )
-        logger.info('OTP email sent to %s', email)
-        return True
-    except Exception as exc:
-        logger.error('Email OTP failed for %s: %s', email, exc)
-        return False
-
-
 
 # ── OTP DELIVERY HELPERS ──────────────────────────────────
- 
 def _send_otp_sms(phone: str, otp: str) -> bool:
     """
-    Send OTP via Termii SMS.
+    Send OTP via Arkesel SMS API v1 (GET-based).
     Returns True if the API call succeeded, False otherwise.
-    Failure is logged but never raises — we don't want SMS to crash the flow.
+    Failure is logged but never raises.
     """
-    api_key = getattr(settings, 'TERMII_API_KEY', '').strip()
-    sender  = getattr(settings, 'TERMII_SENDER_ID', 'Lynctel').strip()
- 
+    api_key   = getattr(settings, 'ARKESEL_API_KEY',   '').strip()
+    sender_id = getattr(settings, 'ARKESEL_SENDER_ID', 'Lynctel').strip()
+
     if not api_key:
-        logger.warning('TERMII_API_KEY not set — skipping SMS OTP')
+        logger.warning('ARKESEL_API_KEY not set — skipping SMS OTP')
         return False
- 
-    # Normalise to international format for Termii (233XXXXXXXXX)
-    intl_phone = phone
-    if phone.startswith('0'):
-        intl_phone = '233' + phone[1:]
-    elif phone.startswith('+'):
-        intl_phone = phone[1:]
- 
-    payload = {
-        'to':      intl_phone,
-        'from':    sender,
-        'sms':     f'Your Lynctel password reset code is: {otp}. It expires in 10 minutes. Do not share it.',
-        'type':    'plain',
+
+    # Normalise phone — Arkesel v1 accepts 0XXXXXXXXX or 233XXXXXXXXX
+    intl_phone = phone.strip()
+    if intl_phone.startswith('+'):
+        intl_phone = intl_phone[1:]   # strip leading + → 233XXXXXXXXX
+    elif intl_phone.startswith('0'):
+        intl_phone = '233' + intl_phone[1:]  # 0XX → 233XX
+
+    message = (
+        f'Your Lynctel password reset code is: {otp}. '
+        f'It expires in 10 minutes. Do not share it.'
+    )
+
+    params = {
+        'action':  'send-sms',
         'api_key': api_key,
-        'channel': 'generic',
+        'to':      intl_phone,
+        'from':    sender_id,
+        'sms':     message,
     }
- 
+
     try:
-        resp = requests.post(
-            'https://v3.api.termii.com/api/sms/send',
-            json=payload,
+        resp = requests.get(
+            'https://sms.arkesel.com/sms/api',
+            params=params,
             timeout=10,
         )
         resp.raise_for_status()
-        logger.info('OTP SMS sent to %s — Termii response: %s', phone, resp.text[:200])
-        return True
+        data = resp.json()
+
+        if data.get('code') == 'ok':
+            logger.info('OTP SMS sent to %s via Arkesel v1', phone)
+            return True
+        else:
+            logger.error('Arkesel v1 SMS failed for %s: %s', phone, data)
+            return False
+
     except Exception as exc:
-        logger.error('Termii SMS failed for %s: %s', phone, exc)
+        logger.error('Arkesel SMS failed for %s: %s', phone, exc)
         return False
  
  
 def _send_otp_email(email: str, otp: str, phone: str) -> bool:
-    """
-    Send OTP via Django email.
-    Returns True on success, False otherwise.
+    """Send OTP via email.
+    Returns True if the email was sent, False otherwise.
     """
     if not email:
+        logger.warning('No email provided for OTP email to %s', phone)
         return False
- 
+
+    subject = 'Your Lynctel password reset code'
+    message = (
+        f'Hello,\n\n'
+        f'Your Lynctel password reset code is: {otp}. It expires in 10 minutes.\n\n'
+        'If you did not request this, please ignore this email.\n\n'
+        'Thank you,\n'
+        'Lynctel Team'
+    )
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or 'no-reply@lynctel.com'
+
     try:
-        send_mail(
-            subject='Your Lynctel Password Reset Code',
-            message=(
-                f'Your Lynctel password reset code is: {otp}\n\n'
-                f'It expires in 10 minutes. Do not share it with anyone.\n\n'
-                f'If you did not request this, ignore this email.'
-            ),
-            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@lynctel.com'),
-            recipient_list=[email],
-            fail_silently=False,
-            html_message=(
-                f'<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;">'
-                f'<h2 style="color:#0F1B2D;">Password Reset Code</h2>'
-                f'<p style="color:#6b7280;">Use the code below to reset your Lynctel password.</p>'
-                f'<div style="background:#FEF3D7;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">'
-                f'<p style="font-size:36px;font-weight:bold;letter-spacing:.3em;color:#0F1B2D;margin:0;">{otp}</p>'
-                f'</div>'
-                f'<p style="color:#9ca3af;font-size:13px;">Expires in 10 minutes. Never share this code.</p>'
-                f'<p style="color:#9ca3af;font-size:13px;">If you did not request this, ignore this email.</p>'
-                f'</div>'
-            ),
-        )
-        logger.info('OTP email sent to %s', email)
+        send_mail(subject, message, from_email, [email], fail_silently=False)
+        logger.info('OTP email sent to %s for phone %s', email, phone)
         return True
     except Exception as exc:
-        logger.error('Email OTP failed for %s: %s', email, exc)
+        logger.error('OTP email failed for %s: %s', email, exc, exc_info=True)
         return False
  
  
