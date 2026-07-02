@@ -260,7 +260,7 @@ def payment_page(request):
         messages.warning(request, 'Your cart is empty.')
         return redirect('products:list')
 
-    subtotal     = sum(item.subtotal for item in cart_items)
+    subtotal = sum(item.subtotal for item in cart_items)
     delivery_fee = MIN_FARE
     total        = subtotal + delivery_fee
 
