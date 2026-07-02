@@ -210,7 +210,7 @@ def flutterwave_init(request, order_pk):
 
     if not FLW_SECRET:
         messages.error(request, 'Payment gateway not configured. Please pay on delivery.')
-        return redirect('order:detail', pk=order.pk)
+        return redirect('order:order_detail', pk=order.pk)
 
     try:
         resp = http_requests.post(
@@ -244,7 +244,7 @@ def flutterwave_init(request, order_pk):
         logger.error('Flutterwave init error for order %s: %s', order.pk, str(e))
 
     messages.error(request, 'Could not start payment. Please try again or pay on delivery.')
-    return redirect('order:detail', pk=order.pk)
+    return redirect('order:order_detail', pk=order.pk)
 
 
 # ── FLUTTERWAVE CALLBACK ──────────────────────────────────
@@ -272,10 +272,10 @@ def payment_callback(request):
             if order and order.payment_status != Order.PaymentStatus.PAID:
                 _mark_paid(order)
                 messages.success(request, f'✅ Payment confirmed! Order {order.order_ref} is being processed.')
-                return redirect('order:detail', pk=order.pk)
+                return redirect('order:order_detail', pk=order.pk)
             elif order:
                 messages.info(request, 'Order already confirmed.')
-                return redirect('order:detail', pk=order.pk)
+                return redirect('order:order_detail', pk=order.pk)
             else:
                 messages.error(request, 'Order not found.')
         else:
