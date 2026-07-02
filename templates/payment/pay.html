@@ -1,70 +1,142 @@
 {% extends "base.html" %}
-{% block title %}Processing Payment — Lynctel{% endblock %}
+{% block title %}Complete Payment — Lynctel{% endblock %}
 
 {% block content %}
 <div class="min-h-screen flex items-center justify-center bg-cream px-4">
   <div class="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center">
 
-    <div class="w-16 h-16 bg-gold-light rounded-2xl flex items-center justify-center mx-auto mb-5">
-      <span class="text-3xl">💳</span>
+    <!-- Icon -->
+    <div class="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+      <span class="text-3xl">📱</span>
     </div>
 
     <h1 class="font-display font-700 text-navy text-xl mb-2">Complete Your Payment</h1>
-    <p class="text-gray-400 text-sm mb-2">Order <strong class="text-navy">{{ order.order_ref }}</strong></p>
-    <p class="font-display font-700 text-3xl text-navy mb-6">GHS {{ order.total_amount }}</p>
+    <p class="text-gray-400 text-sm mb-1">
+      Order <strong class="text-navy">{{ order.order_ref }}</strong>
+    </p>
+    <p class="font-display font-700 text-3xl text-navy mb-2">GHS {{ order.total_amount }}</p>
+    <p class="text-xs text-gray-400 mb-6">
+      Pay with MTN MoMo, Vodafone Cash, AirtelTigo Money, or Card
+    </p>
 
-    <div id="pay-status" class="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-sm text-blue-700 mb-5">
+    <!-- Status banner -->
+    <div id="pay-status"
+         class="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-sm text-blue-700 mb-5">
       <div class="flex items-center justify-center gap-2">
         <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <circle class="opacity-25" cx="12" cy="12" r="10"
+                  stroke="currentColor" stroke-width="4"/>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
         </svg>
         Opening payment window...
       </div>
     </div>
 
+    <!-- Fallback button (shown if popup blocked or closed) -->
     <button id="open-pay-btn" onclick="openPayment()"
-            class="w-full bg-navy hover:bg-navy-700 text-white font-semibold py-3.5
-                   rounded-2xl transition-colors btn-press text-sm hidden">
-      🔓 Open Payment Window
+            class="w-full bg-navy hover:bg-navy-700 text-white font-semibold
+                   py-3.5 rounded-2xl transition-colors text-sm hidden mb-3">
+      📱 Open Payment Window
     </button>
 
-    <p class="text-xs text-gray-400 mt-4">
-      🔒 Secured by Flutterwave · Your card details are never stored by Lynctel
+    <!-- Cancel link -->
+    <a href="{% url 'order:detail' pk=order.pk %}"
+       class="block text-xs text-gray-400 hover:text-navy transition-colors mt-2">
+      ← Cancel and return to order
+    </a>
+
+    <!-- Payment method icons -->
+    <div class="flex items-center justify-center gap-3 mt-6 pt-5 border-t border-gray-100">
+      <span class="text-xs text-gray-300">Accepted:</span>
+      <span class="text-xs bg-yellow-50 text-yellow-700 font-semibold px-2 py-0.5 rounded">MTN MoMo</span>
+      <span class="text-xs bg-red-50 text-red-600 font-semibold px-2 py-0.5 rounded">Vodafone</span>
+      <span class="text-xs bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded">AirtelTigo</span>
+    </div>
+
+    <p class="text-xs text-gray-400 mt-3">
+      🔒 Secured by Paystack · Your details are never stored by Lynctel
     </p>
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<!-- Flutterwave Inline JS -->
-<script src="https://checkout.flutterwave.com/v3.js"></script>
+<!-- Paystack Inline JS -->
+<script src="https://js.paystack.co/v1/inline.js"></script>
 <script>
-  const config = {{ flw_config|safe }};
+  const PAYSTACK_PUBLIC_KEY = "{{ public_key }}";
+  const ORDER_REF           = "{{ order.order_ref }}";
+  const AMOUNT_KOBO         = {{ amount_kobo }};  // amount in kobo (GHS × 100)
+  const EMAIL               = "{{ email }}";
+  const VERIFY_URL          = "{% url 'payment:paystack_verify' order_pk=order.pk %}";
+  const CALLBACK_URL        = "{% url 'payment:paystack-callback' tx_ref=order.order_ref %}";
 
-  function openPayment() {
-    config.callback = function(response) {
-      if (response.status === 'successful') {
-        document.getElementById('pay-status').innerHTML =
-          '<span class="text-green-700">✅ Payment received! Redirecting...</span>';
-        window.location.href = `/checkout/payment/callback/?status=successful&tx_ref=${response.tx_ref}&transaction_id=${response.transaction_id}`;
-      } else {
-        document.getElementById('pay-status').innerHTML =
-          '<span class="text-red-600">❌ Payment was not completed. Please try again.</span>';
-        document.getElementById('open-pay-btn').classList.remove('hidden');
-      }
+  function setStatus(html, type) {
+    const colors = {
+      blue:   'bg-blue-50 border-blue-100 text-blue-700',
+      green:  'bg-green-50 border-green-200 text-green-700',
+      red:    'bg-red-50 border-red-200 text-red-600',
+      orange: 'bg-orange-50 border-orange-200 text-orange-600',
     };
-    config.onclose = function() {
-      document.getElementById('pay-status').innerHTML =
-        '<span class="text-orange-600">⚠ Payment window closed.</span>';
-      document.getElementById('open-pay-btn').classList.remove('hidden');
-    };
-    FlutterwaveCheckout(config);
+    const el = document.getElementById('pay-status');
+    el.className = `border rounded-2xl px-4 py-3 text-sm mb-5 ${colors[type] || colors.blue}`;
+    el.innerHTML = html;
   }
 
-  // Auto-open on page load
+  function showRetryBtn() {
+    document.getElementById('open-pay-btn').classList.remove('hidden');
+  }
+
+  function openPayment() {
+    document.getElementById('open-pay-btn').classList.add('hidden');
+    setStatus(
+      '<div class="flex items-center justify-center gap-2">'
+      + '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">'
+      + '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>'
+      + '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>'
+      + '</svg>Opening payment window...</div>',
+      'blue'
+    );
+
+    const handler = PaystackPop.setup({
+      key:       PAYSTACK_PUBLIC_KEY,
+      email:     EMAIL,
+      amount:    AMOUNT_KOBO,
+      currency:  'GHS',
+      ref:       ORDER_REF,
+      // Ghana Mobile Money channels
+      channels:  ['mobile_money', 'card', 'bank_transfer'],
+      metadata: {
+        custom_fields: [
+          { display_name: 'Order Ref',    variable_name: 'order_ref',    value: ORDER_REF },
+          { display_name: 'Lynctel Order', variable_name: 'platform',    value: 'Lynctel' },
+        ],
+        order_ref: ORDER_REF,
+      },
+
+      callback: function(response) {
+        if (response.status === 'success') {
+          setStatus('✅ Payment received! Verifying...', 'green');
+          // Redirect to verify endpoint so Django confirms with Paystack
+          window.location.href = `${VERIFY_URL}?reference=${response.reference}`;
+        } else {
+          setStatus('❌ Payment was not completed. Please try again.', 'red');
+          showRetryBtn();
+        }
+      },
+
+      onClose: function() {
+        setStatus('⚠ Payment window closed. Click below to try again.', 'orange');
+        showRetryBtn();
+      },
+    });
+
+    handler.openIframe();
+  }
+
+  // Auto-open after short delay so page renders first
   window.addEventListener('load', function() {
-    setTimeout(openPayment, 800);
+    setTimeout(openPayment, 600);
   });
 </script>
 {% endblock %}
