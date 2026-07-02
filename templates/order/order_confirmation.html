@@ -6,8 +6,7 @@
 
   <!-- Success animation -->
   <div class="text-center mb-8">
-    <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5
-                animate-[pop_.4s_ease]">
+    <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
       <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
       </svg>
@@ -28,158 +27,58 @@
         <p class="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Order Reference</p>
         <p class="font-display font-700 text-2xl text-navy">{{ order.order_ref }}</p>
       </div>
-      <div class="flex flex-col items-end gap-1">
+      <div class="flex flex-col items-end gap-1.5">
         <span class="text-xs font-semibold px-3 py-1.5 rounded-full
-                     {% if order.status == 'delivered' %}bg-green-100 text-green-700
-                     {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
-                     {% else %}bg-blue-100 text-blue-700{% endif %}">
+          {% if order.status == 'delivered' %}bg-green-100 text-green-700
+          {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
+          {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
+          {% elif order.status == 'cancelled' %}bg-red-100 text-red-600
+          {% else %}bg-gray-100 text-gray-500{% endif %}">
           {{ order.get_status_display }}
         </span>
         <span class="text-xs font-semibold px-3 py-1.5 rounded-full bg-green-100 text-green-700">
-          {{ order.get_payment_status_display }}
+          ✓ {{ order.get_payment_status_display }}
         </span>
       </div>
     </div>
 
-    <!-- ── DELIVERY MODE ── -->
+    <!-- Delivery info — uses actual Order model fields only -->
     <div class="px-5 py-4 border-b border-gray-50">
-      {% with mode=order.delivery_choice %}
-
-      {% if mode == 'rider' or not mode %}
-      <!-- Rider delivery -->
       <div class="flex items-start gap-4">
         <div class="w-11 h-11 bg-navy/10 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🛵</div>
         <div class="flex-1 min-w-0">
           <p class="font-semibold text-navy text-sm">Rider Delivery</p>
-          <p class="text-xs text-gray-500 mt-0.5">{{ order.delivery_address }}{% if order.delivery_city %}, {{ order.delivery_city }}{% endif %}</p>
+          <p class="text-xs text-gray-500 mt-0.5">{{ order.delivery_address }}, {{ order.delivery_city }}</p>
+          <p class="text-xs text-gray-400 mt-0.5">📞 {{ order.delivery_phone }}</p>
           {% if order.customer_note %}
-          <p class="text-xs text-gray-400 mt-1">Note: {{ order.customer_note }}</p>
+          <p class="text-xs text-gray-400 mt-1 italic">Note: {{ order.customer_note }}</p>
           {% endif %}
-          <div class="mt-2">
-            {% if order.status == 'pending' %}
+          <div class="mt-2.5">
+            {% if order.status == 'pending' or order.status == 'confirmed' %}
             <span class="text-xs bg-yellow-100 text-yellow-700 font-semibold px-2.5 py-1 rounded-full">
-              ⏳ Assigning rider
+              ⏳ Assigning rider — we'll call when on the way
             </span>
             {% elif order.status == 'dispatched' %}
             <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-full">
-              🛵 Rider on the way
+              🛵 Rider on the way to you
             </span>
             {% elif order.status == 'delivered' %}
             <span class="text-xs bg-green-100 text-green-700 font-semibold px-2.5 py-1 rounded-full">
-              ✓ Delivered
+              ✓ Delivered {{ order.delivered_at|date:"d M, H:i" }}
             </span>
             {% endif %}
           </div>
         </div>
       </div>
-
-      {% elif mode == 'pickup' %}
-      <!-- Self pickup -->
-      <div class="flex items-start gap-4">
-        <div class="w-11 h-11 bg-gold/15 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🏪</div>
-        <div class="flex-1 min-w-0">
-          <p class="font-semibold text-navy text-sm">Self Pickup</p>
-          <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">
-            The vendor will notify you when your order is ready to collect.
-          </p>
-          {% for item in items %}
-          {% if item.product.vendor and forloop.first %}
-          <div class="mt-2 bg-gold/5 border border-gold/20 rounded-xl px-3 py-2">
-            <p class="text-xs font-semibold text-navy">{{ item.product.vendor.shop_name }}</p>
-            {% if item.product.vendor.location %}
-            <p class="text-xs text-gray-500 mt-0.5">📍 {{ item.product.vendor.location }}</p>
-            {% endif %}
-            {% if item.product.vendor.phone %}
-            <p class="text-xs text-gray-500 mt-0.5">📞 {{ item.product.vendor.phone }}</p>
-            {% endif %}
-            {% if item.product.vendor.whatsapp %}
-            <a href="{{ item.product.vendor.whatsapp_link }}" target="_blank"
-               class="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold
-                      bg-green-500 text-white px-2 py-1 rounded-lg">
-              💬 WhatsApp Vendor
-            </a>
-            {% endif %}
-          </div>
-          {% endif %}
-          {% endfor %}
-          <div class="mt-2">
-            {% if order.pickup_confirmed_at %}
-            <span class="text-xs bg-green-100 text-green-700 font-semibold px-2.5 py-1 rounded-full">
-              ✅ Ready for pickup since {{ order.pickup_confirmed_at|date:"M d, g:i A" }}
-            </span>
-            {% else %}
-            <span class="text-xs bg-yellow-100 text-yellow-700 font-semibold px-2.5 py-1 rounded-full">
-              ⏳ Vendor preparing your order
-            </span>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-
-      {% elif mode == 'parcel' %}
-      <!-- Bus / Parcel -->
-      <div class="flex items-start gap-4">
-        <div class="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🚌</div>
-        <div class="flex-1 min-w-0">
-          <p class="font-semibold text-navy text-sm">Bus / Parcel Delivery</p>
-          <div class="mt-1.5 space-y-0.5 text-xs text-gray-500">
-            <p>📍 Station: <span class="font-semibold text-navy">{{ order.parcel_bus_station|default:"—" }}</span></p>
-            <p>📞 Recipient: <span class="font-semibold text-navy">{{ order.parcel_recipient_phone|default:"—" }}</span></p>
-            {% if order.parcel_notes %}
-            <p class="text-gray-400 mt-1">Notes: {{ order.parcel_notes }}</p>
-            {% endif %}
-          </div>
-          <div class="mt-2">
-            {% if order.parcel_dispatched_at %}
-            <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-full">
-              🚌 Sent on {{ order.parcel_dispatched_at|date:"M d, g:i A" }}
-            </span>
-            {% if order.parcel_waybill %}
-            <p class="text-xs text-gray-500 mt-1.5">
-              Waybill: <strong class="text-navy">{{ order.parcel_waybill }}</strong>
-            </p>
-            {% endif %}
-            {% else %}
-            <span class="text-xs bg-yellow-100 text-yellow-700 font-semibold px-2.5 py-1 rounded-full">
-              ⏳ Vendor preparing parcel
-            </span>
-            {% endif %}
-          </div>
-          <div class="mt-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-xs text-blue-700">
-            💡 Contact the bus station or call the recipient number once dispatched.
-          </div>
-        </div>
-      </div>
-      {% endif %}
-
-      {% endwith %}
     </div>
 
-    <!-- Basic delivery info (phone + date) -->
-    <div class="px-5 py-4 border-b border-gray-50 space-y-2 text-sm">
-      <div class="flex justify-between">
-        <span class="text-gray-400">Contact phone</span>
-        <span class="font-semibold text-navy">{{ order.delivery_phone }}</span>
-      </div>
-      <div class="flex justify-between">
-        <span class="text-gray-400">Date</span>
-        <span class="font-semibold text-navy">{{ order.created_at|date:"d M Y, H:i" }}</span>
-      </div>
-      {% if order.distance_km %}
-      <div class="flex justify-between">
-        <span class="text-gray-400">Distance</span>
-        <span class="font-semibold text-navy">{{ order.distance_km|floatformat:1 }} km</span>
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Items -->
+    <!-- Order summary -->
     <div class="px-5 py-4 border-b border-gray-50 space-y-2">
       {% for item in items %}
       <div class="flex items-center justify-between text-sm">
         <div class="flex items-center gap-3 min-w-0">
-          {% if item.product and item.product.images.first %}
-          <img src="{{ item.product.images.first.image.url }}"
+          {% if item.product and item.product.primary_image %}
+          <img src="{{ item.product.primary_image }}"
                class="w-10 h-10 rounded-lg object-cover flex-shrink-0"/>
           {% else %}
           <div class="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center text-base">📦</div>
@@ -199,17 +98,19 @@
       </div>
       <div class="flex justify-between text-gray-500">
         <span>Delivery fee</span>
-        {% if order.delivery_choice == 'pickup' or order.delivery_choice == 'parcel' %}
-        <span class="text-green-600 font-semibold">Free</span>
-        {% else %}
         <span>GHS {{ order.delivery_fee }}</span>
-        {% endif %}
       </div>
       <div class="flex justify-between font-display font-700 text-navy text-base
                   pt-2 border-t border-gray-100">
         <span>Total Paid</span>
         <span>GHS {{ order.total_amount }}</span>
       </div>
+    </div>
+
+    <!-- Date -->
+    <div class="px-5 py-3 bg-gray-50 text-xs text-gray-400 flex justify-between">
+      <span>Placed {{ order.created_at|date:"d M Y, H:i" }}</span>
+      <span>Ref: {{ order.order_ref }}</span>
     </div>
   </div>
 
@@ -220,6 +121,16 @@
               text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm btn-press">
       📍 Track Order
     </a>
+    <!-- NEW: PDF receipt download — links to the order_receipt view added earlier -->
+    <a href="{% url 'order:receipt' order.order_ref %}"
+       class="flex-1 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100
+              text-navy font-semibold px-6 py-3 rounded-xl transition-colors text-sm
+              border border-gray-200">
+      📄 Download Receipt
+    </a>
+  </div>
+
+  <div class="flex flex-col sm:flex-row gap-3 mb-6">
     <a href="https://wa.me/233558040216?text=Hi!+My+order+ref+is+{{ order.order_ref }}"
        target="_blank"
        class="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600
