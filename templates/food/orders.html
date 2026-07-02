@@ -10,40 +10,88 @@
   {% if orders %}
   <div class="space-y-3">
     {% for order in orders %}
-    <a href="{% url 'food:order_track' order.order_ref %}"
-       class="block bg-white rounded-2xl border border-gray-100 p-4 card-hover">
-      <div class="flex items-start justify-between gap-3 mb-3">
-        <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-navy flex items-center justify-center overflow-hidden flex-shrink-0">
-            {% if order.vendor.logo %}<img src="{{ order.vendor.logo.url }}" class="w-full h-full object-cover"/>{% else %}🍴{% endif %}
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden card-hover">
+
+      <!-- Order header — tappable to track -->
+      <a href="{% url 'food:order_track' order.order_ref %}" class="block p-4">
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-navy flex items-center justify-center overflow-hidden flex-shrink-0">
+              {% if order.vendor.logo %}
+              <img src="{{ order.vendor.logo.url }}" class="w-full h-full object-cover"/>
+              {% else %}
+              <span class="text-white text-lg">🍴</span>
+              {% endif %}
+            </div>
+            <div>
+              <p class="font-semibold text-navy text-sm">{{ order.vendor.name }}</p>
+              <p class="text-xs text-gray-400">{{ order.order_ref }} · {{ order.created_at|date:"M d, Y" }}</p>
+            </div>
           </div>
-          <div>
-            <p class="font-semibold text-navy text-sm">{{ order.vendor.name }}</p>
-            <p class="text-xs text-gray-400">{{ order.order_ref }} · {{ order.created_at|date:"M d, Y" }}</p>
-          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0
+            {% if order.status == 'pending' %}bg-amber-50 text-amber-700
+            {% elif order.status == 'confirmed' %}bg-blue-50 text-blue-700
+            {% elif order.status == 'preparing' %}bg-purple-50 text-purple-700
+            {% elif order.status == 'ready' %}bg-orange-50 text-orange-700
+            {% elif order.status == 'delivered' %}bg-green-50 text-green-700
+            {% else %}bg-gray-100 text-gray-500{% endif %}">
+            {{ order.get_status_display }}
+          </span>
         </div>
-        <span class="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0
-                {% if order.status == 'pending' %}bg-amber-50 text-amber-700
-                {% elif order.status == 'confirmed' %}bg-blue-50 text-blue-700
-                {% elif order.status == 'preparing' %}bg-purple-50 text-purple-700
-                {% elif order.status == 'ready' %}bg-orange-50 text-orange-700
-                {% elif order.status == 'delivered' %}bg-green-50 text-green-700
-                {% else %}bg-gray-100 text-gray-500{% endif %}">
-          {{ order.get_status_display }}
-        </span>
-      </div>
 
-      <div class="text-xs text-gray-500 pl-14 mb-2">
-        {% for item in order.items.all %}{{ item.quantity }}× {{ item.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
-      </div>
+        <!-- Items summary -->
+        <p class="text-xs text-gray-500 pl-14 mb-2 line-clamp-1">
+          {% for item in order.items.all %}{{ item.quantity }}× {{ item.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </p>
 
-      <div class="flex items-center justify-between pt-3 border-t border-gray-50 pl-14">
-        <span class="text-xs text-gray-400">
-          {% if order.payment_status == 'paid' %}✅ Paid{% else %}⏳ {{ order.get_payment_status_display }}{% endif %}
-        </span>
-        <span class="font-display font-700 text-navy text-sm">GHS {{ order.subtotal|add:order.delivery_fee }}</span>
+        <!-- Totals row -->
+        <div class="flex items-center justify-between pt-3 border-t border-gray-50 pl-14">
+          <span class="text-xs text-gray-400">
+            {% if order.payment_status == 'paid' %}
+            <span class="text-green-600 font-semibold">✅ Paid</span>
+            {% else %}
+            ⏳ {{ order.get_payment_status_display }}
+            {% endif %}
+          </span>
+          <span class="font-display font-700 text-navy text-sm">
+            GHS {{ order.total_amount }}
+          </span>
+        </div>
+      </a>
+
+      <!-- Reorder button — only shown for delivered orders so
+           items are still likely to be available -->
+      {% if order.status == 'delivered' %}
+      <div class="px-4 pb-4 pt-0 flex gap-2">
+        <form method="POST" action="{% url 'food:reorder' order.order_ref %}"
+              class="flex-1">
+          {% csrf_token %}
+          <button type="submit"
+                  class="w-full flex items-center justify-center gap-2 bg-orange-500
+                         hover:bg-orange-600 text-white text-xs font-semibold
+                         px-4 py-2.5 rounded-xl transition-colors btn-press">
+            🔄 Reorder
+          </button>
+        </form>
+        <a href="{% url 'food:order_track' order.order_ref %}"
+           class="flex items-center justify-center gap-1.5 border border-gray-200
+                  hover:border-navy text-gray-500 hover:text-navy text-xs font-semibold
+                  px-4 py-2.5 rounded-xl transition-colors">
+          📍 Track
+        </a>
       </div>
-    </a>
+      {% elif order.status in 'pending,confirmed,preparing,ready,en_route' %}
+      <div class="px-4 pb-4 pt-0">
+        <a href="{% url 'food:order_track' order.order_ref %}"
+           class="flex items-center justify-center gap-2 bg-navy hover:bg-navy-700
+                  text-white text-xs font-semibold px-4 py-2.5 rounded-xl
+                  transition-colors btn-press w-full">
+          📍 Track Live
+        </a>
+      </div>
+      {% endif %}
+
+    </div>
     {% endfor %}
   </div>
   {% else %}
@@ -52,7 +100,8 @@
     <h2 class="font-display font-700 text-xl text-navy mb-2">No food orders yet</h2>
     <p class="text-gray-400 text-sm mb-6">Hungry? Browse restaurants near you.</p>
     <a href="{% url 'food:home' %}"
-       class="inline-flex items-center gap-2 bg-navy text-white font-semibold px-6 py-3 rounded-2xl transition-colors btn-press text-sm">
+       class="inline-flex items-center gap-2 bg-navy text-white font-semibold
+              px-6 py-3 rounded-2xl transition-colors btn-press text-sm">
       Order Food →
     </a>
   </div>
