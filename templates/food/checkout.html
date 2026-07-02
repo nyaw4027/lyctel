@@ -10,9 +10,10 @@
     height: 280px;
     border-radius: 1rem;
     z-index: 1;
+    background: #e9edf2;
   }
   @media (min-width: 640px) {
-    #delivery-map { height: 360px; }
+    #delivery-map { height: 380px; }
   }
   .leaflet-control-attribution { font-size: 8px; opacity: .7; }
   .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 12px rgba(15,27,45,.15) !important; }
@@ -43,7 +44,7 @@
   .suggestion-item:hover { background: #f9fafb; }
   .suggestion-item:last-child { border-bottom: none; }
 
-  /* Bolt-style delivery pin: drop shadow + soft bounce on drop */
+  /* Bolt-style teardrop delivery pin */
   .delivery-pin-wrap {
     width: 30px; height: 30px;
     display: flex; align-items: center; justify-content: center;
@@ -63,6 +64,47 @@
     border-radius: 50%;
     border: 3px solid white;
     box-shadow: 0 2px 8px rgba(0,0,0,.35);
+    position: relative;
+  }
+  .vendor-pin-wrap::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid #0F1B2D;
+    opacity: .35;
+    animation: vendorPulse 2.2s ease-out infinite;
+  }
+  @keyframes vendorPulse {
+    0%   { transform: scale(.6); opacity: .5; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+
+  /* Rider/bike marker that travels along the route */
+  .bike-marker-wrap {
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    background: #F5A623;
+    border-radius: 50%;
+    border: 2.5px solid white;
+    box-shadow: 0 3px 10px rgba(15,27,45,.4);
+    font-size: 13px;
+    transform-origin: center;
+  }
+
+  /* Uber-style animated route line — drawn via two stacked polylines:
+     a static base + a dashed overlay whose dash offset scrolls to feel
+     like it's "flowing" toward the destination. */
+  .route-base-line {
+    filter: drop-shadow(0 1px 2px rgba(15,27,45,.25));
+  }
+  .route-flow-line {
+    stroke-dasharray: 1 14;
+    stroke-linecap: round;
+    animation: routeFlow 0.9s linear infinite;
+  }
+  @keyframes routeFlow {
+    to { stroke-dashoffset: -15; }
   }
 
   #map-relative { position: relative; }
@@ -94,9 +136,43 @@
     z-index: 500;
     text-align: center;
     pointer-events: none;
-    transition: opacity .3s ease;
+    transition: opacity .3s ease, background .2s ease;
   }
   .map-hint-pill.hide { opacity: 0; }
+
+  /* Route info badge — replaces the hint pill once a route is drawn,
+     styled like a ride-hailing app's trip summary strip */
+  .route-badge {
+    position: absolute;
+    top: 10px; left: 10px; right: 10px;
+    background: rgba(15,27,45,.94);
+    backdrop-filter: blur(4px);
+    color: white;
+    padding: 10px 14px;
+    border-radius: 14px;
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    box-shadow: 0 6px 18px rgba(15,27,45,.25);
+  }
+  .route-badge.show { display: flex; }
+  .route-badge .rb-main {
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+  .route-badge .rb-sub {
+    font-size: 10.5px;
+    color: rgba(255,255,255,.6);
+    margin-top: 1px;
+  }
+  .route-badge .rb-eta {
+    text-align: right;
+    font-size: 11px;
+    color: #F5A623;
+    font-weight: 600;
+  }
 
   #use-location-btn { transition: transform .15s ease, opacity .15s ease; }
   #use-location-btn:active { transform: scale(.96); }
@@ -152,6 +228,13 @@
         <div id="map-relative">
           <div id="delivery-map"></div>
           <div class="map-hint-pill" id="map-hint">Tap or drag the pin to set your delivery spot</div>
+          <div class="route-badge" id="route-badge">
+            <div>
+              <div class="rb-main" id="rb-distance">—</div>
+              <div class="rb-sub" id="rb-sub">Road route to your address</div>
+            </div>
+            <div class="rb-eta" id="rb-eta">—</div>
+          </div>
           <div class="map-recenter-btn" id="recenter-btn" title="Recenter">🎯</div>
         </div>
 
@@ -275,6 +358,13 @@
   const VENDOR_LNG = parseFloat("{{ vendor_lng }}") || -0.1870;
   const SUBTOTAL   = parseFloat("{{ subtotal }}") || 0;
 
+  // Public OSRM demo server — good for building/testing the road-route
+  // visualization with zero setup and no API key. It's rate-limited and
+  // not meant for production traffic, so before shipping this for real,
+  // point ROUTING_URL at a self-hosted OSRM instance, Mapbox Directions,
+  // or Google Directions instead.
+  const ROUTING_URL = 'https://router.project-osrm.org/route/v1/driving';
+
   if (!LOCATIONIQ_KEY) {
     console.warn('LocationIQ key missing — map will not load. Check that the checkout view passes locationiq_key into context.');
   }
@@ -291,7 +381,7 @@
   window.addEventListener('resize', () => map.invalidateSize());
   setTimeout(() => map.invalidateSize(), 100);
 
-  // Vendor marker (fixed, not draggable)
+  // Vendor marker (fixed, not draggable, pulsing "live" ring like a ride-hailing pickup point)
   L.marker([VENDOR_LAT, VENDOR_LNG], {
     icon: L.divIcon({
       html: '<div class="vendor-pin-wrap"></div>',
@@ -311,7 +401,8 @@
 
   // Delivery marker (draggable)
   let deliveryMarker = null;
-  const hintPill = document.getElementById('map-hint');
+  const hintPill   = document.getElementById('map-hint');
+  const routeBadge = document.getElementById('route-badge');
 
   function setDeliveryPin(lat, lng, animate) {
     if (hintPill) hintPill.classList.add('hide');
@@ -343,19 +434,142 @@
     onLocationChosen(e.latlng.lat, e.latlng.lng, true);
   });
 
-  // Recenter button — flies back to the current pin (or vendor if none set yet)
+  // Recenter button — fits the whole route if one exists, else flies to the pin/vendor
   document.getElementById('recenter-btn').addEventListener('click', function() {
-    if (deliveryMarker) {
+    if (routeLatLngs && routeLatLngs.length) {
+      map.flyToBounds(L.latLngBounds(routeLatLngs), { padding: [36, 36], duration: 0.8 });
+    } else if (deliveryMarker) {
       map.flyTo(deliveryMarker.getLatLng(), 16, { duration: 0.8 });
     } else {
       map.flyTo([VENDOR_LAT, VENDOR_LNG], 14, { duration: 0.8 });
     }
   });
 
-  // ── PRICE/DISTANCE ESTIMATE ──────────────────────────
+  // ── ROUTE PATH (Uber-style road-following line + traveling rider) ──
+  let routeBaseLine = null;
+  let routeFlowLine = null;
+  let bikeMarker    = null;
+  let routeLatLngs  = null;
+  let bikeAnimFrame = null;
+
+  const bikeIcon = L.divIcon({
+    html: '<div class="bike-marker-wrap">🛵</div>',
+    className: '', iconSize: [26, 26], iconAnchor: [13, 13],
+  });
+
+  function clearRoute() {
+    if (routeBaseLine) { map.removeLayer(routeBaseLine); routeBaseLine = null; }
+    if (routeFlowLine) { map.removeLayer(routeFlowLine); routeFlowLine = null; }
+    if (bikeAnimFrame)  cancelAnimationFrame(bikeAnimFrame);
+    routeLatLngs = null;
+  }
+
+  function drawRoute(latlngs) {
+    clearRoute();
+    routeLatLngs = latlngs;
+
+    routeBaseLine = L.polyline(latlngs, {
+      color: '#0F1B2D', weight: 5, opacity: 0.18, className: 'route-base-line',
+    }).addTo(map);
+
+    routeFlowLine = L.polyline(latlngs, {
+      color: '#F5A623', weight: 4, opacity: 0.95, className: 'route-flow-line',
+    }).addTo(map);
+
+    if (!bikeMarker) {
+      bikeMarker = L.marker(latlngs[0], { icon: bikeIcon, interactive: false }).addTo(map);
+    } else {
+      bikeMarker.setLatLng(latlngs[0]);
+    }
+    animateBikeAlongRoute(latlngs);
+  }
+
+  // Cumulative-distance interpolation so the bike moves at a steady visual
+  // speed along the actual road geometry, not just between two endpoints.
+  function animateBikeAlongRoute(latlngs) {
+    if (bikeAnimFrame) cancelAnimationFrame(bikeAnimFrame);
+    if (latlngs.length < 2) return;
+
+    const segLengths = [];
+    let total = 0;
+    for (let i = 1; i < latlngs.length; i++) {
+      const d = map.distance(latlngs[i - 1], latlngs[i]);
+      segLengths.push(d);
+      total += d;
+    }
+    if (total === 0) return;
+
+    const DURATION_MS = 2200; // fixed visual preview duration, independent of real ETA
+    const start = performance.now();
+
+    function step(now) {
+      const t = Math.min((now - start) / DURATION_MS, 1);
+      let target = t * total;
+      let acc = 0;
+      for (let i = 0; i < segLengths.length; i++) {
+        if (acc + segLengths[i] >= target) {
+          const segT = segLengths[i] === 0 ? 0 : (target - acc) / segLengths[i];
+          const a = latlngs[i], b = latlngs[i + 1];
+          const lat = a.lat + (b.lat - a.lat) * segT;
+          const lng = a.lng + (b.lng - a.lng) * segT;
+          bikeMarker.setLatLng([lat, lng]);
+          break;
+        }
+        acc += segLengths[i];
+      }
+      if (t < 1) {
+        bikeAnimFrame = requestAnimationFrame(step);
+      }
+    }
+    bikeAnimFrame = requestAnimationFrame(step);
+  }
+
+  function formatEtaClock(minutesFromNow) {
+    const arrival = new Date(Date.now() + minutesFromNow * 60000);
+    let h = arrival.getHours();
+    const m = arrival.getMinutes().toString().padStart(2, '0');
+    const suffix = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m} ${suffix}`;
+  }
+
+  function showRouteBadge(distanceKm, durationMin, approx) {
+    document.getElementById('rb-distance').textContent = `🛵 ${distanceKm.toFixed(1)} km · ${Math.round(durationMin)} min`;
+    document.getElementById('rb-sub').textContent = approx
+      ? 'Straight-line estimate — road route unavailable'
+      : 'Road route to your address';
+    document.getElementById('rb-eta').textContent = `Arrives ~${formatEtaClock(durationMin)}`;
+    routeBadge.classList.add('show');
+  }
+
+  function fetchRoutePath(vLat, vLng, dLat, dLng) {
+    const url = `${ROUTING_URL}/${vLng},${vLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (data.code !== 'Ok' || !data.routes || !data.routes.length) throw new Error('no route');
+        const route = data.routes[0];
+        const latlngs = route.geometry.coordinates.map(c => L.latLng(c[1], c[0]));
+        drawRoute(latlngs);
+        map.flyToBounds(L.latLngBounds(latlngs), { padding: [36, 36], duration: 0.9 });
+        showRouteBadge(route.distance / 1000, route.duration / 60, false);
+      })
+      .catch(() => {
+        // Fall back to a straight dashed line so the UI still shows a path
+        // even if the routing service is unreachable.
+        const straight = [L.latLng(vLat, vLng), L.latLng(dLat, dLng)];
+        drawRoute(straight);
+        map.flyToBounds(L.latLngBounds(straight), { padding: [36, 36], duration: 0.9 });
+        const km = map.distance(straight[0], straight[1]) / 1000;
+        showRouteBadge(km, (km / 22) * 60, true); // rough 22 km/h fallback speed
+      });
+  }
+
+  // ── PRICE/DISTANCE ESTIMATE (authoritative fee — unchanged) ─────
   function onLocationChosen(lat, lng, reverseGeocode) {
     setDeliveryPin(lat, lng, true);
     fetchPriceEstimate(lat, lng);
+    fetchRoutePath(VENDOR_LAT, VENDOR_LNG, lat, lng);
     if (reverseGeocode) reverseGeocodeAddress(lat, lng);
   }
 
