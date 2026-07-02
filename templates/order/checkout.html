@@ -114,6 +114,44 @@
     box-shadow: 0 2px 8px rgba(15,27,45,.4);
     display: flex; align-items: center; justify-content: center;
     font-size: 11px;
+    position: relative;
+  }
+  .vendor-dot::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
+    border-radius: 50%;
+    border: 2px solid #0F1B2D;
+    opacity: .35;
+    animation: vendorPulse 2.2s ease-out infinite;
+  }
+  @keyframes vendorPulse {
+    0%   { transform: scale(.6); opacity: .5; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+
+  /* ── Traveling rider marker ───────────────────────── */
+  .bike-marker-wrap {
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    background: #F5A623;
+    border-radius: 50%;
+    border: 2.5px solid white;
+    box-shadow: 0 3px 10px rgba(15,27,45,.4);
+    font-size: 13px;
+  }
+
+  /* ── Uber-style animated route (base + flowing dashed overlay) ── */
+  .route-base-line {
+    filter: drop-shadow(0 1px 2px rgba(15,27,45,.2));
+  }
+  .route-flow-line {
+    stroke-dasharray: 1 14;
+    stroke-linecap: round;
+    animation: routeFlow 0.9s linear infinite;
+  }
+  @keyframes routeFlow {
+    to { stroke-dashoffset: -15; }
   }
 
   /* ── Fare card ─────────────────────────────────────── */
@@ -450,7 +488,16 @@
   // Fixed pickup point — matches ACCRA_CENTER in delivery/services.py
   const PICKUP = [5.6037, -0.1870];
 
-  let map, dropoffMarker, userMarker, routeLayer;
+  // Free fallback routing service — used whenever no LocationIQ key is
+  // configured, or the LocationIQ Directions call fails. It's a public
+  // demo server: fine for building/testing, but rate-limited, so a
+  // production deploy should point this at a self-hosted OSRM instance
+  // or a paid directions API instead.
+  const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
+
+  let map, dropoffMarker, userMarker;
+  let routeBaseLayer = null, routeFlowLayer = null, bikeMarker = null;
+  let bikeAnimFrame = null;
   let dropoffLat = null, dropoffLng = null;
   let fareDebounce = null;
   let geocodeTimer = null;
@@ -472,6 +519,11 @@
   const userIcon = L.divIcon({
     html: `<div class="user-location-dot"></div>`,
     className: '', iconSize: [18, 18], iconAnchor: [9, 9],
+  });
+
+  const bikeIcon = L.divIcon({
+    html: `<div class="bike-marker-wrap">🛵</div>`,
+    className: '', iconSize: [26, 26], iconAnchor: [13, 13],
   });
 
   // ── INIT MAP ──────────────────────────────────────────
@@ -591,6 +643,16 @@
     fareDebounce = setTimeout(calculateFare, 400);
   }
 
+  function formatEtaClock(minutesFromNow) {
+    if (!minutesFromNow) return '';
+    const arrival = new Date(Date.now() + minutesFromNow * 60000);
+    let h = arrival.getHours();
+    const m = arrival.getMinutes().toString().padStart(2, '0');
+    const suffix = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m} ${suffix}`;
+  }
+
   function calculateFare() {
     if (dropoffLat === null) return;
     fetch(`/delivery/api/price-estimate/?olat=${PICKUP[0]}&olng=${PICKUP[1]}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
@@ -602,58 +664,132 @@
         const total = (SUBTOTAL + fee).toFixed(2);
         const dist  = data.distance_km;
         const eta   = data.eta_minutes;
+        const clock = formatEtaClock(eta);
 
         // Fare card
         document.getElementById('fare-card').classList.remove('hidden');
         document.getElementById('fare-amount').textContent    = data.fee;
         document.getElementById('fare-distance').textContent  = `${dist} km`;
         document.getElementById('fare-eta').textContent       = eta ? `~${eta} min` : '';
-        document.getElementById('fare-route-label').textContent = `${dist} km route`;
+
+        // Draw route on map — the label gets filled in once the route
+        // geometry comes back, so it can show real road distance/ETA.
+        drawRoute(dist, clock);
 
         // Summary panel
         document.getElementById('summary-fee').innerHTML = `<span class="font-medium text-navy">GHS ${data.fee}</span>`;
         document.getElementById('summary-total').textContent = `GHS ${total}`;
         const meta = document.getElementById('summary-meta');
-        meta.textContent = `${dist} km` + (eta ? ` · ~${eta} min` : '');
+        meta.textContent = `${dist} km` + (eta ? ` · ~${eta} min` : '') + (clock ? ` · arrives ~${clock}` : '');
         meta.classList.remove('hidden');
-
-        // Draw route on map
-        drawRoute();
       })
       .catch(console.error);
   }
 
-  // ── ROUTE DRAWING ─────────────────────────────────────
-  function drawRoute() {
-    if (routeLayer) map.removeLayer(routeLayer);
+  // ── ROUTE DRAWING (real road path + animated flow + traveling rider) ──
+  function clearRouteLayers() {
+    if (routeBaseLayer) { map.removeLayer(routeBaseLayer); routeBaseLayer = null; }
+    if (routeFlowLayer) { map.removeLayer(routeFlowLayer); routeFlowLayer = null; }
+    if (bikeAnimFrame) cancelAnimationFrame(bikeAnimFrame);
+  }
 
+  function renderRoute(coords, approxLabel, fallbackDist, clock) {
+    clearRouteLayers();
+
+    routeBaseLayer = L.polyline(coords, {
+      color: '#0F1B2D', weight: 6, opacity: 0.15, className: 'route-base-line',
+    }).addTo(map);
+
+    routeFlowLayer = L.polyline(coords, {
+      color: '#F5A623', weight: 4, opacity: 0.9, className: 'route-flow-line',
+      lineCap: 'round', lineJoin: 'round',
+    }).addTo(map);
+
+    if (!bikeMarker) {
+      bikeMarker = L.marker(coords[0], { icon: bikeIcon, interactive: false, zIndexOffset: 300 }).addTo(map);
+    } else {
+      bikeMarker.setLatLng(coords[0]);
+    }
+    animateBikeAlongRoute(coords);
+
+    map.fitBounds(L.latLngBounds(coords), { padding: [50, 50] });
+
+    const label = document.getElementById('fare-route-label');
+    const distText = fallbackDist ? `${fallbackDist} km route` : 'route';
+    label.textContent = clock ? `${distText} · arrives ~${clock}` : distText;
+    if (approxLabel) label.textContent += ' (approx)';
+  }
+
+  // Cumulative-distance interpolation so the rider marker moves at a
+  // steady visual pace along the actual road geometry.
+  function animateBikeAlongRoute(coords) {
+    if (bikeAnimFrame) cancelAnimationFrame(bikeAnimFrame);
+    if (coords.length < 2) return;
+
+    const latlngs = coords.map(c => L.latLng(c[0], c[1]));
+    const segLengths = [];
+    let total = 0;
+    for (let i = 1; i < latlngs.length; i++) {
+      const d = map.distance(latlngs[i - 1], latlngs[i]);
+      segLengths.push(d);
+      total += d;
+    }
+    if (total === 0) return;
+
+    const DURATION_MS = 2200; // fixed visual preview duration, not the real ETA
+    const start = performance.now();
+
+    function step(now) {
+      const t = Math.min((now - start) / DURATION_MS, 1);
+      const target = t * total;
+      let acc = 0;
+      for (let i = 0; i < segLengths.length; i++) {
+        if (acc + segLengths[i] >= target) {
+          const segT = segLengths[i] === 0 ? 0 : (target - acc) / segLengths[i];
+          const a = latlngs[i], b = latlngs[i + 1];
+          bikeMarker.setLatLng([
+            a.lat + (b.lat - a.lat) * segT,
+            a.lng + (b.lng - a.lng) * segT,
+          ]);
+          break;
+        }
+        acc += segLengths[i];
+      }
+      if (t < 1) bikeAnimFrame = requestAnimationFrame(step);
+    }
+    bikeAnimFrame = requestAnimationFrame(step);
+  }
+
+  function drawRoute(fallbackDist, clock) {
     if (LOCATIONIQ_KEY) {
-      // Real road route via LocationIQ Directions API
       fetch(`https://us1.locationiq.com/v1/directions/driving/${PICKUP[1]},${PICKUP[0]};${dropoffLng},${dropoffLat}?key=${LOCATIONIQ_KEY}&overview=full&geometries=geojson`)
         .then(r => r.json())
         .then(data => {
-          if (!data.routes || !data.routes[0]) { drawStraightLine(); return; }
+          if (!data.routes || !data.routes[0]) { tryOSRM(fallbackDist, clock); return; }
           const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-          routeLayer = L.polyline(coords, {
-            color: '#F5A623', weight: 5, opacity: 0.85,
-            lineCap: 'round', lineJoin: 'round',
-          }).addTo(map);
-          map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+          renderRoute(coords, false, fallbackDist, clock);
         })
-        .catch(drawStraightLine);
+        .catch(() => tryOSRM(fallbackDist, clock));
     } else {
-      drawStraightLine();
+      tryOSRM(fallbackDist, clock);
     }
   }
 
-  function drawStraightLine() {
-    if (routeLayer) map.removeLayer(routeLayer);
-    routeLayer = L.polyline(
-      [PICKUP, [dropoffLat, dropoffLng]],
-      { color: '#F5A623', weight: 4, dashArray: '8 5', opacity: 0.75,
-        lineCap: 'round', lineJoin: 'round' }
-    ).addTo(map);
-    map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+  function tryOSRM(fallbackDist, clock) {
+    const url = `${OSRM_URL}/${PICKUP[1]},${PICKUP[0]};${dropoffLng},${dropoffLat}?overview=full&geometries=geojson`;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (data.code !== 'Ok' || !data.routes || !data.routes.length) throw new Error('no route');
+        const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        renderRoute(coords, false, fallbackDist, clock);
+      })
+      .catch(() => drawStraightLine(fallbackDist, clock));
+  }
+
+  function drawStraightLine(fallbackDist, clock) {
+    const coords = [PICKUP, [dropoffLat, dropoffLng]];
+    renderRoute(coords, true, fallbackDist, clock);
   }
 
   // ── REVERSE GEOCODE ───────────────────────────────────
