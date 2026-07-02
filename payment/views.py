@@ -179,7 +179,7 @@ def payment_page(request):
 
         if not payment_method:
             messages.error(request, 'Choose a payment method to continue.')
-            return render(request, 'payment/pay.html', {
+            return render(request, 'payment/payment.html', {
                 'pending_order': pending_order,
                 'cart':          cart,
                 'momo_options':  MOMO_OPTIONS,
@@ -193,7 +193,7 @@ def payment_page(request):
 
         return redirect('payment:flutterwave_init', order_pk=order.pk)
 
-    return render(request, 'payment/pay.html', {
+    return render(request, 'payment/payment.html', {
         'pending_order': pending_order,
         'cart':          cart,
         'momo_options':  MOMO_OPTIONS,
