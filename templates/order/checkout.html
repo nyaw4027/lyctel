@@ -5,53 +5,157 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
+  /* ── Map container ─────────────────────────────────── */
   #delivery-map {
-    height: 300px;
-    border-radius: 1rem;
+    height: 380px;
+    border-radius: 1.25rem;
     z-index: 1;
+    background: #e8edf2;
   }
+
+  /* ── Custom Leaflet controls ───────────────────────── */
+  .leaflet-control-zoom a {
+    background: white !important;
+    color: #0F1B2D !important;
+    font-weight: 700 !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12) !important;
+  }
+  .leaflet-control-zoom {
+    border: none !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+  }
+
+  /* ── Address autocomplete ──────────────────────────── */
   #address-suggestions {
     position: absolute; top: 100%; left: 0; right: 0;
-    background: white; border: 1px solid #e5e7eb;
-    border-top: none; border-radius: 0 0 .75rem .75rem;
-    max-height: 200px; overflow-y: auto; z-index: 50;
-    box-shadow: 0 8px 20px rgba(0,0,0,.1); display: none;
+    background: white;
+    border-radius: 0 0 .875rem .875rem;
+    max-height: 220px; overflow-y: auto; z-index: 9999;
+    box-shadow: 0 12px 32px rgba(0,0,0,.12);
+    display: none;
+    border: 1px solid #e5e7eb;
+    border-top: none;
   }
   #address-suggestions.show { display: block; }
   .suggestion-item {
-    padding: 10px 14px; font-size: 13px; cursor: pointer;
+    padding: 11px 16px; font-size: 13px; cursor: pointer;
     border-bottom: 1px solid #f3f4f6;
+    display: flex; align-items: flex-start; gap: 10px;
+    transition: background .15s;
   }
-  .suggestion-item:hover { background: #f9fafb; }
-  @keyframes pulse-ring {
-    0%   { transform: scale(1); opacity: 1; }
-    100% { transform: scale(2.5); opacity: 0; }
+  .suggestion-item:hover { background: #f8fafc; }
+  .suggestion-item:last-child { border-bottom: none; }
+
+  /* ── GPS banner ────────────────────────────────────── */
+  #gps-banner {
+    transition: all .3s ease;
   }
-  .gps-pulse::before {
+
+  /* ── Pulsing user dot on map ───────────────────────── */
+  .user-location-dot {
+    width: 18px; height: 18px;
+    position: relative;
+  }
+  .user-location-dot::before {
+    content: '';
+    position: absolute; inset: -6px;
+    border-radius: 50%;
+    background: rgba(59,130,246,.25);
+    animation: userPulse 2s ease-out infinite;
+  }
+  .user-location-dot::after {
     content: '';
     position: absolute; inset: 0;
     border-radius: 50%;
     background: #3b82f6;
-    animation: pulse-ring 1.5s infinite ease-out;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(59,130,246,.5);
   }
+  @keyframes userPulse {
+    0%   { transform: scale(1); opacity: .8; }
+    100% { transform: scale(2.8); opacity: 0; }
+  }
+
+  /* ── Delivery pin ──────────────────────────────────── */
+  .drop-pin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,.3));
+    animation: pinDrop .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  .drop-pin-head {
+    width: 28px; height: 28px;
+    background: #ef4444;
+    border: 3.5px solid white;
+    border-radius: 50%;
+    box-shadow: 0 3px 10px rgba(239,68,68,.45);
+  }
+  .drop-pin-stem {
+    width: 3px; height: 14px;
+    background: #ef4444;
+    border-radius: 0 0 3px 3px;
+    margin-top: -1px;
+  }
+  @keyframes pinDrop {
+    0%   { transform: translateY(-20px) scale(.7); opacity: 0; }
+    100% { transform: translateY(0) scale(1);      opacity: 1; }
+  }
+
+  /* ── Vendor dot ────────────────────────────────────── */
+  .vendor-dot {
+    width: 24px; height: 24px;
+    background: #0F1B2D;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(15,27,45,.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+  }
+
+  /* ── Fare card ─────────────────────────────────────── */
+  #fare-card {
+    transition: all .4s ease;
+    transform-origin: top;
+  }
+  #fare-card.hidden { display: none; }
+
+  /* ── Delivery sections ─────────────────────────────── */
   .delivery-section { display: none; }
   .delivery-section.active { display: block; }
-  .field-error {
-    color: #dc2626;
+
+  /* ── Input errors ──────────────────────────────────── */
+  .field-error { color: #dc2626; font-size: 12px; margin-top: 4px; }
+  .input-error { border-color: #fca5a5 !important; background: #fef2f2; }
+
+  /* ── Map overlay button (locate me) ───────────────── */
+  .map-btn {
+    position: absolute;
+    z-index: 400;
+    background: white;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 12px;
     font-size: 12px;
-    margin-top: 4px;
+    font-weight: 600;
+    color: #0F1B2D;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    display: flex; align-items: center; gap: 6px;
+    transition: all .2s;
   }
-  .input-error {
-    border-color: #fca5a5 !important;
-    background-color: #fef2f2;
-  }
+  .map-btn:hover { background: #f8fafc; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+  .map-btn:active { transform: scale(.97); }
+  #locate-me-btn { bottom: 12px; right: 12px; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
 
-  <!-- Breadcrumb -->
   <div class="flex items-center gap-2 text-sm text-gray-400 mb-6">
     <a href="{% url 'products:list' %}" class="hover:text-navy transition-colors">Shop</a>
     <span>/</span>
@@ -60,38 +164,36 @@
     <span class="text-navy font-medium">Checkout</span>
   </div>
 
-  <h1 class="font-display font-800 text-2xl md:text-3xl text-navy mb-8">Checkout</h1>
+  <h1 class="font-display font-800 text-2xl md:text-3xl text-navy mb-6">Checkout</h1>
 
-  <!-- GPS status banner (used only to conveniently center the map — the delivery fee itself
-       is always calculated by the server from a fixed pickup point, never from this) -->
+  <!-- GPS banner -->
   <div id="gps-banner" class="mb-5 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-sm text-blue-700">
-    <div class="relative w-3 h-3 flex-shrink-0">
-      <div class="gps-pulse absolute inset-0 rounded-full bg-blue-400 opacity-75"></div>
-      <div class="relative w-3 h-3 bg-blue-500 rounded-full"></div>
+    <div class="flex-shrink-0 relative w-4 h-4">
+      <div class="absolute inset-0 rounded-full bg-blue-400 opacity-60 animate-ping"></div>
+      <div class="relative w-4 h-4 bg-blue-500 rounded-full"></div>
     </div>
-    <span id="gps-status">Detecting your location to center the map...</span>
+    <span id="gps-status">Detecting your location...</span>
   </div>
 
   <form method="POST" id="checkout-form" class="grid lg:grid-cols-3 gap-8">
     {% csrf_token %}
 
-    <!-- LEFT -->
-    <div class="lg:col-span-2 space-y-6">
+    <!-- LEFT ───────────────────────────────────────────── -->
+    <div class="lg:col-span-2 space-y-5">
 
-      <!-- Delivery method -->
+      <!-- Step 1: Delivery method -->
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
         <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
           <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
           Delivery Method
         </h2>
-
         <div class="space-y-2 mb-5">
           <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy has-[:checked]:bg-navy/5 transition-all">
             <input type="radio" name="delivery_choice" value="rider" class="delivery-choice-input w-4 h-4 accent-navy"
                    {% if form_data.delivery_choice != "pickup" and form_data.delivery_choice != "parcel" %}checked{% endif %}>
             <div>
               <p class="text-sm font-semibold text-navy">🛵 Rider Delivery</p>
-              <p class="text-xs text-gray-400 mt-0.5">Delivered to your door in Accra</p>
+              <p class="text-xs text-gray-400 mt-0.5">Delivered to your door — fee based on distance</p>
             </div>
           </label>
           <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy has-[:checked]:bg-navy/5 transition-all">
@@ -99,7 +201,7 @@
                    {% if form_data.delivery_choice == "pickup" %}checked{% endif %}>
             <div>
               <p class="text-sm font-semibold text-navy">🏪 Self Pickup</p>
-              <p class="text-xs text-gray-400 mt-0.5">Collect your order yourself, no delivery fee</p>
+              <p class="text-xs text-gray-400 mt-0.5">Collect yourself — no delivery fee</p>
             </div>
           </label>
           <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy has-[:checked]:bg-navy/5 transition-all">
@@ -107,54 +209,64 @@
                    {% if form_data.delivery_choice == "parcel" %}checked{% endif %}>
             <div>
               <p class="text-sm font-semibold text-navy">🚌 Bus / Parcel</p>
-              <p class="text-xs text-gray-400 mt-0.5">Sent by intercity bus to a station near the recipient</p>
+              <p class="text-xs text-gray-400 mt-0.5">Sent via intercity bus to a station near you</p>
             </div>
           </label>
         </div>
 
-        <!-- Phone: required for every delivery method -->
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Contact Phone Number *</label>
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Contact Phone *</label>
           <input type="tel" name="delivery_phone" id="delivery_phone"
                  value="{{ form_data.delivery_phone|default:'' }}"
                  placeholder="024 xxx xxxx"
                  class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy {% if errors.delivery_phone %}input-error{% endif %}"/>
-          {% if errors.delivery_phone %}
-            <p class="field-error">{{ errors.delivery_phone }}</p>
-          {% endif %}
+          {% if errors.delivery_phone %}<p class="field-error">{{ errors.delivery_phone }}</p>{% endif %}
         </div>
       </div>
 
-      <!-- Rider delivery: map + address -->
+      <!-- Step 2a: Rider delivery — Uber-style map -->
       <div class="delivery-section bg-white border border-gray-100 rounded-2xl p-5 shadow-sm" data-section="rider">
         <h2 class="font-bold text-navy text-base mb-1 flex items-center gap-2">
           <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
-          Delivery Location
+          Drop Your Delivery Pin
         </h2>
-        <p class="text-xs text-gray-400 mb-4 ml-9">🔴 Drop the pin where we should deliver</p>
+        <p class="text-xs text-gray-400 mb-4 ml-9">Drag the red pin or search below to set exactly where we deliver</p>
 
-        <div id="delivery-map" class="mb-4 border border-gray-100 shadow-sm"></div>
+        <!-- Map -->
+        <div class="relative rounded-2xl overflow-hidden border border-gray-100 shadow-sm mb-4">
+          <div id="delivery-map"></div>
+          <!-- Locate me button inside map -->
+          <button type="button" id="locate-me-btn" class="map-btn" onclick="locateMe()">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            My Location
+          </button>
+        </div>
 
+        <!-- Address search -->
         <div class="relative mb-4">
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Search Delivery Address</label>
-          <input type="text" id="address-search" autocomplete="off"
-                 placeholder="Type the address where you want delivery..."
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy"/>
+          <div class="relative">
+            <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+            </svg>
+            <input type="text" id="address-search" autocomplete="off"
+                   placeholder="Search your delivery address..."
+                   class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy focus:bg-white transition-all"/>
+          </div>
           <div id="address-suggestions"></div>
         </div>
 
-        <p class="text-xs text-gray-400 mb-4">Or click on the map to set your delivery location</p>
-
+        <!-- Address fields -->
         <div class="grid sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1.5">Delivery Address *</label>
             <input type="text" name="delivery_address" id="delivery_address"
                    value="{{ form_data.delivery_address|default:'' }}"
-                   placeholder="House number, street name, area"
+                   placeholder="House number, street, area"
                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy {% if errors.delivery_address %}input-error{% endif %}"/>
-            {% if errors.delivery_address %}
-              <p class="field-error">{{ errors.delivery_address }}</p>
-            {% endif %}
+            {% if errors.delivery_address %}<p class="field-error">{{ errors.delivery_address }}</p>{% endif %}
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1.5">City *</label>
@@ -162,96 +274,114 @@
                    value="{{ form_data.delivery_city|default:'' }}"
                    placeholder="e.g. Accra"
                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy {% if errors.delivery_city %}input-error{% endif %}"/>
-            {% if errors.delivery_city %}
-              <p class="field-error">{{ errors.delivery_city }}</p>
-            {% endif %}
+            {% if errors.delivery_city %}<p class="field-error">{{ errors.delivery_city }}</p>{% endif %}
           </div>
         </div>
 
-        <!-- Live fare card — this is an estimate only. The server always
-             recomputes the real fee from the pin, so the number here can
-             shift slightly once the order is placed. -->
-        <div id="fare-card" class="hidden mt-4 bg-gradient-to-r from-navy to-slate-700 text-white rounded-2xl p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-xs text-white/60 font-medium uppercase tracking-wider">Estimated Delivery Fare</p>
-              <p id="fare-distance" class="text-xs text-white/60 mt-0.5"></p>
+        <!-- Uber-style fare card -->
+        <div id="fare-card" class="hidden mt-4">
+          <div class="bg-gradient-to-br from-navy via-slate-800 to-slate-900 text-white rounded-2xl p-5 shadow-lg">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1">
+                <p class="text-[11px] font-bold uppercase tracking-widest text-white/50 mb-2">Delivery Fare</p>
+                <div class="flex items-baseline gap-2">
+                  <span id="fare-amount" class="text-3xl font-display font-800">—</span>
+                  <span class="text-white/50 text-sm">GHS</span>
+                </div>
+                <div class="flex items-center gap-3 mt-2">
+                  <span id="fare-distance" class="text-xs text-white/60 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                    —
+                  </span>
+                  <span class="text-white/30">·</span>
+                  <span id="fare-eta" class="text-xs text-white/60 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    —
+                  </span>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-2xl">🛵</div>
+              </div>
             </div>
-            <div class="text-right">
-              <p id="fare-amount" class="text-2xl font-display font-800">—</p>
-              <p id="fare-eta" class="text-xs text-white/60 mt-0.5"></p>
+            <!-- Route viz -->
+            <div class="mt-4 flex items-center gap-2 text-xs text-white/50">
+              <div class="w-2.5 h-2.5 rounded-full bg-blue-400 flex-shrink-0"></div>
+              <div class="flex-1 border-t border-dashed border-white/20"></div>
+              <div id="fare-route-label" class="text-white/40 whitespace-nowrap">calculating route...</div>
+              <div class="flex-1 border-t border-dashed border-white/20"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0"></div>
             </div>
           </div>
         </div>
 
-        <!-- Read server-side to recompute the authoritative fee -->
         <input type="hidden" name="delivery_lat" id="delivery_lat" value="{{ form_data.delivery_lat|default:'' }}">
         <input type="hidden" name="delivery_lng" id="delivery_lng" value="{{ form_data.delivery_lng|default:'' }}">
       </div>
 
-      <!-- Bus / parcel delivery -->
+      <!-- Step 2b: Bus / parcel -->
       <div class="delivery-section bg-white border border-gray-100 rounded-2xl p-5 shadow-sm" data-section="parcel">
         <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
           <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
           Bus / Parcel Details
         </h2>
-
         <div class="grid sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-600 mb-1.5">Bus Station *</label>
-            <input type="text" name="parcel_bus_station" id="parcel_bus_station"
+            <input type="text" name="parcel_bus_station"
                    value="{{ form_data.parcel_bus_station|default:'' }}"
                    placeholder="e.g. Kaneshie STC terminal"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy {% if errors.parcel_bus_station %}input-error{% endif %}"/>
-            {% if errors.parcel_bus_station %}
-              <p class="field-error">{{ errors.parcel_bus_station }}</p>
-            {% endif %}
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy {% if errors.parcel_bus_station %}input-error{% endif %}"/>
+            {% if errors.parcel_bus_station %}<p class="field-error">{{ errors.parcel_bus_station }}</p>{% endif %}
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Recipient's Phone Number *</label>
-            <input type="tel" name="parcel_recipient_phone" id="parcel_recipient_phone"
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Recipient Phone *</label>
+            <input type="tel" name="parcel_recipient_phone"
                    value="{{ form_data.parcel_recipient_phone|default:'' }}"
-                   placeholder="Phone of the person collecting the parcel"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy {% if errors.parcel_recipient_phone %}input-error{% endif %}"/>
-            {% if errors.parcel_recipient_phone %}
-              <p class="field-error">{{ errors.parcel_recipient_phone }}</p>
-            {% endif %}
+                   placeholder="Phone of person collecting"
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy {% if errors.parcel_recipient_phone %}input-error{% endif %}"/>
+            {% if errors.parcel_recipient_phone %}<p class="field-error">{{ errors.parcel_recipient_phone }}</p>{% endif %}
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Parcel Notes (optional)</label>
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Notes (optional)</label>
             <input type="text" name="parcel_notes"
                    value="{{ form_data.parcel_notes|default:'' }}"
-                   placeholder="e.g. Bus company, parcel description"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy"/>
+                   placeholder="Bus company, parcel description..."
+                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy"/>
           </div>
         </div>
       </div>
 
-      <!-- Self pickup -->
+      <!-- Step 2c: Self pickup -->
       <div class="delivery-section bg-white border border-gray-100 rounded-2xl p-5 shadow-sm" data-section="pickup">
         <h2 class="font-bold text-navy text-base mb-2 flex items-center gap-2">
           <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
           Self Pickup
         </h2>
-        <p class="text-sm text-gray-500 ml-9">No delivery fee — we'll text the number above when your order is ready to collect.</p>
+        <div class="ml-9 flex items-start gap-3 bg-green-50 rounded-xl p-4 text-sm text-green-700">
+          <span class="text-xl">✅</span>
+          <div>
+            <p class="font-semibold">No delivery fee!</p>
+            <p class="text-xs text-green-600 mt-0.5">We'll notify you via the phone number above when your order is ready to collect.</p>
+          </div>
+        </div>
       </div>
 
-      <!-- Order note -->
+      <!-- Step 3: Order note -->
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
         <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
           <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
-          Order Note
+          Order Note <span class="text-gray-400 font-normal text-xs ml-1">(optional)</span>
         </h2>
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Anything else we should know? (optional)</label>
         <input type="text" name="order_note"
                value="{{ form_data.order_note|default:'' }}"
-               placeholder="e.g. Call on arrival, blue gate"
+               placeholder="e.g. Call on arrival, blue gate, leave at door"
                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy"/>
       </div>
 
     </div>
 
-    <!-- RIGHT: Order summary -->
+    <!-- RIGHT: Order summary ──────────────────────────── -->
     <div class="lg:col-span-1">
       <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm sticky top-24">
         <h2 class="font-bold text-navy text-base mb-4">🧾 Order Summary</h2>
@@ -285,11 +415,9 @@
           </div>
           <div class="flex justify-between text-gray-500">
             <span>Delivery Fee</span>
-            <span id="summary-fee" class="font-medium text-navy">
-              <span class="text-xs text-gray-400 italic" id="summary-fee-placeholder">Depends on method</span>
-            </span>
+            <span id="summary-fee" class="font-medium text-navy text-xs text-gray-400 italic">Set by location</span>
           </div>
-          <div id="summary-distance" class="text-xs text-gray-400 text-right hidden"></div>
+          <div id="summary-meta" class="text-xs text-gray-400 text-right hidden"></div>
           <div class="flex justify-between font-display font-700 text-navy text-base pt-2 border-t border-gray-100">
             <span>Total</span>
             <span id="summary-total">GHS {{ cart.total_price|floatformat:2 }}</span>
@@ -297,7 +425,7 @@
         </div>
 
         <button type="submit" id="place-order-btn"
-                class="w-full bg-navy hover:bg-navy-700 text-white font-bold py-4 rounded-2xl mt-5 transition-all text-sm shadow-lg shadow-navy/20 flex items-center justify-center gap-2">
+                class="w-full bg-navy hover:bg-navy-700 text-white font-bold py-4 rounded-2xl mt-5 transition-all text-sm shadow-lg shadow-navy/20 flex items-center justify-center gap-2 btn-press">
           Continue to Payment →
         </button>
 
@@ -318,162 +446,259 @@
 <script>
 (function() {
   const LOCATIONIQ_KEY = "{{ locationiq_key|default:'' }}";
-  const SUBTOTAL        = parseFloat("{{ cart.total_price|default:0 }}") || 0;
+  const SUBTOTAL = parseFloat("{{ cart.total_price|default:0 }}") || 0;
+  // Fixed pickup point — matches ACCRA_CENTER in delivery/services.py
+  const PICKUP = [5.6037, -0.1870];
 
-  // Fixed vendor pickup point — must match ACCRA_CENTER used server-side in
-  // views.checkout(), since the backend always recomputes the fee from this
-  // point and ignores whatever the client posts. Keeping this in sync is
-  // what makes the on-page estimate match what actually gets charged.
-  const ACCRA_CENTER = [5.6037, -0.1870];
-
+  let map, dropoffMarker, userMarker, routeLayer;
   let dropoffLat = null, dropoffLng = null;
-  let dropoffMarker = null;
-  let routeLine = null;
-  let map = null;
+  let fareDebounce = null;
+  let geocodeTimer = null;
 
-  const dropoffIcon = L.divIcon({
-    html: '<div style="width:16px;height:16px;background:#ef4444;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>',
-    className: '', iconSize: [22, 22], iconAnchor: [11, 11],
-  });
-  const pickupIcon = L.divIcon({
-    html: '<div style="width:16px;height:16px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>',
-    className: '', iconSize: [22, 22], iconAnchor: [11, 11],
+  // ── MAP ICONS ─────────────────────────────────────────
+  const pinIcon = L.divIcon({
+    html: `<div class="drop-pin">
+             <div class="drop-pin-head"></div>
+             <div class="drop-pin-stem"></div>
+           </div>`,
+    className: '', iconSize: [28, 42], iconAnchor: [14, 42],
   });
 
+  const vendorIcon = L.divIcon({
+    html: `<div class="vendor-dot">🏪</div>`,
+    className: '', iconSize: [28, 28], iconAnchor: [14, 14],
+  });
+
+  const userIcon = L.divIcon({
+    html: `<div class="user-location-dot"></div>`,
+    className: '', iconSize: [18, 18], iconAnchor: [9, 9],
+  });
+
+  // ── INIT MAP ──────────────────────────────────────────
   function initMap() {
     if (map) return;
 
-    map = L.map('delivery-map').setView(ACCRA_CENTER, 12);
+    map = L.map('delivery-map', {
+      center: PICKUP, zoom: 12,
+      zoomControl: true,
+      attributionControl: false,
+    });
 
+    // High-quality styled tiles via LocationIQ (falls back to OSM)
     const tileUrl = LOCATIONIQ_KEY
       ? `https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`
       : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
     L.tileLayer(tileUrl, {
-      attribution: LOCATIONIQ_KEY
-        ? '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap'
-        : '&copy; OpenStreetMap contributors',
       maxZoom: 19,
       subdomains: ['a', 'b', 'c'],
     }).addTo(map);
 
-    L.marker(ACCRA_CENTER, { icon: pickupIcon }).addTo(map).bindPopup('🔵 Vendor pickup point');
+    // Small attribution bottom-left
+    L.control.attribution({ position: 'bottomleft', prefix: false })
+      .addTo(map)
+      .setPrefix(LOCATIONIQ_KEY ? '© LocationIQ © OSM' : '© OpenStreetMap');
 
-    map.on('click', e => {
-      setDropoff(e.latlng.lat, e.latlng.lng);
-      reverseGeocode(e.latlng.lat, e.latlng.lng);
-    });
+    // Vendor pickup marker
+    L.marker(PICKUP, { icon: vendorIcon })
+      .addTo(map)
+      .bindTooltip('📦 Pickup point', { permanent: false, direction: 'top' });
 
-    // Restore a pin from a failed submit, if any
-    const existingLat = parseFloat(document.getElementById('delivery_lat').value);
-    const existingLng = parseFloat(document.getElementById('delivery_lng').value);
-    if (existingLat && existingLng) {
-      setDropoff(existingLat, existingLng);
-      map.setView([existingLat, existingLng], 15);
+    // Click to drop pin
+    map.on('click', e => placePin(e.latlng.lat, e.latlng.lng, true));
+
+    // Restore from failed submit
+    const savedLat = parseFloat(document.getElementById('delivery_lat').value);
+    const savedLng = parseFloat(document.getElementById('delivery_lng').value);
+    if (savedLat && savedLng) {
+      placePin(savedLat, savedLng, false);
+      map.setView([savedLat, savedLng], 15);
     }
   }
 
-  function setDropoff(lat, lng) {
+  // ── PLACE DELIVERY PIN ────────────────────────────────
+  function placePin(lat, lng, animate) {
     dropoffLat = lat;
     dropoffLng = lng;
-
-    if (dropoffMarker) {
-      dropoffMarker.setLatLng([lat, lng]);
-    } else {
-      dropoffMarker = L.marker([lat, lng], { icon: dropoffIcon, draggable: true })
-        .addTo(map)
-        .bindPopup('🔴 Delivery location')
-        .on('dragend', e => {
-          const pos = e.target.getLatLng();
-          setDropoff(pos.lat, pos.lng);
-          reverseGeocode(pos.lat, pos.lng);
-        });
-    }
 
     document.getElementById('delivery_lat').value = lat;
     document.getElementById('delivery_lng').value = lng;
 
-    map.fitBounds([ACCRA_CENTER, [lat, lng]], { padding: [40, 40] });
-    calculateFare();
+    if (dropoffMarker) {
+      dropoffMarker.setLatLng([lat, lng]);
+    } else {
+      dropoffMarker = L.marker([lat, lng], { icon: pinIcon, draggable: true })
+        .addTo(map)
+        .bindTooltip('🔴 Your delivery location', { direction: 'top' });
+
+      dropoffMarker.on('dragend', e => {
+        const pos = e.target.getLatLng();
+        placePin(pos.lat, pos.lng, false);
+        reverseGeocode(pos.lat, pos.lng);
+      });
+    }
+
+    if (animate) {
+      map.panTo([lat, lng], { animate: true, duration: 0.5 });
+    }
+
+    reverseGeocode(lat, lng);
+    scheduleFareCalc();
+  }
+
+  // ── LOCATE ME BUTTON ──────────────────────────────────
+  function locateMe() {
+    if (!navigator.geolocation) {
+      setGPSBanner('⚠ GPS not supported — tap the map to set your delivery pin', 'red');
+      return;
+    }
+    setGPSBanner('Detecting your location...', 'blue');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        // Show user's blue dot
+        if (userMarker) {
+          userMarker.setLatLng([lat, lng]);
+        } else {
+          userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: -100 })
+            .addTo(map)
+            .bindTooltip('📍 You are here', { direction: 'top' });
+        }
+
+        // Auto-drop the delivery pin at user's location
+        placePin(lat, lng, true);
+        map.setView([lat, lng], 15);
+        setGPSBanner('📍 Delivery pin placed at your location — drag to adjust', 'green');
+      },
+      err => {
+        const msgs = {
+          1: '⚠ Location access denied — tap the map to set your pin',
+          2: '⚠ Location unavailable — tap the map to set your pin',
+          3: '⚠ Location timed out — tap the map to set your pin',
+        };
+        setGPSBanner(msgs[err.code] || '⚠ Could not detect location — tap the map', 'red');
+      },
+      { timeout: 10000, enableHighAccuracy: true, maximumAge: 30000 }
+    );
+  }
+  window.locateMe = locateMe;
+
+  // ── FARE CALCULATION ──────────────────────────────────
+  function scheduleFareCalc() {
+    clearTimeout(fareDebounce);
+    fareDebounce = setTimeout(calculateFare, 400);
   }
 
   function calculateFare() {
-    if (dropoffLat === null || dropoffLng === null) return;
-
-    fetch(`/delivery/api/price-estimate/?olat=${ACCRA_CENTER[0]}&olng=${ACCRA_CENTER[1]}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
+    if (dropoffLat === null) return;
+    fetch(`/delivery/api/price-estimate/?olat=${PICKUP[0]}&olng=${PICKUP[1]}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
       .then(r => r.json())
       .then(data => {
         if (!data.success) return;
 
         const fee   = parseFloat(data.fee);
         const total = (SUBTOTAL + fee).toFixed(2);
+        const dist  = data.distance_km;
+        const eta   = data.eta_minutes;
 
+        // Fare card
         document.getElementById('fare-card').classList.remove('hidden');
-        document.getElementById('fare-amount').textContent   = `GHS ${data.fee}`;
-        document.getElementById('fare-distance').textContent = `${data.distance_km} km`;
-        document.getElementById('fare-eta').textContent      = data.eta_minutes ? `~${data.eta_minutes} min estimated` : '';
+        document.getElementById('fare-amount').textContent    = data.fee;
+        document.getElementById('fare-distance').textContent  = `${dist} km`;
+        document.getElementById('fare-eta').textContent       = eta ? `~${eta} min` : '';
+        document.getElementById('fare-route-label').textContent = `${dist} km route`;
 
-        document.getElementById('summary-fee').innerHTML     = `<span class="font-medium text-navy">GHS ${data.fee}</span>`;
+        // Summary panel
+        document.getElementById('summary-fee').innerHTML = `<span class="font-medium text-navy">GHS ${data.fee}</span>`;
         document.getElementById('summary-total').textContent = `GHS ${total}`;
+        const meta = document.getElementById('summary-meta');
+        meta.textContent = `${dist} km` + (eta ? ` · ~${eta} min` : '');
+        meta.classList.remove('hidden');
 
-        const distEl = document.getElementById('summary-distance');
-        distEl.textContent = `${data.distance_km} km` + (data.eta_minutes ? ` · ~${data.eta_minutes} min` : '');
-        distEl.classList.remove('hidden');
-
-        if (routeLine) map.removeLayer(routeLine);
-        routeLine = L.polyline(
-          [ACCRA_CENTER, [dropoffLat, dropoffLng]],
-          { color: '#1e3a5f', weight: 3, dashArray: '6 4', opacity: 0.7 }
-        ).addTo(map);
+        // Draw route on map
+        drawRoute();
       })
       .catch(console.error);
   }
 
+  // ── ROUTE DRAWING ─────────────────────────────────────
+  function drawRoute() {
+    if (routeLayer) map.removeLayer(routeLayer);
+
+    if (LOCATIONIQ_KEY) {
+      // Real road route via LocationIQ Directions API
+      fetch(`https://us1.locationiq.com/v1/directions/driving/${PICKUP[1]},${PICKUP[0]};${dropoffLng},${dropoffLat}?key=${LOCATIONIQ_KEY}&overview=full&geometries=geojson`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.routes || !data.routes[0]) { drawStraightLine(); return; }
+          const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+          routeLayer = L.polyline(coords, {
+            color: '#F5A623', weight: 5, opacity: 0.85,
+            lineCap: 'round', lineJoin: 'round',
+          }).addTo(map);
+          map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+        })
+        .catch(drawStraightLine);
+    } else {
+      drawStraightLine();
+    }
+  }
+
+  function drawStraightLine() {
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = L.polyline(
+      [PICKUP, [dropoffLat, dropoffLng]],
+      { color: '#F5A623', weight: 4, dashArray: '8 5', opacity: 0.75,
+        lineCap: 'round', lineJoin: 'round' }
+    ).addTo(map);
+    map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+  }
+
+  // ── REVERSE GEOCODE ───────────────────────────────────
   function reverseGeocode(lat, lng) {
     if (!LOCATIONIQ_KEY) return;
-    fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.display_name) {
-          document.getElementById('delivery_address').value = d.display_name;
-        }
-        if (d.address) {
-          const city = d.address.city || d.address.town || d.address.county || '';
-          if (city) document.getElementById('delivery_city').value = city;
-        }
-      }).catch(console.error);
+    clearTimeout(geocodeTimer);
+    geocodeTimer = setTimeout(() => {
+      fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.display_name) {
+            document.getElementById('delivery_address').value = d.display_name;
+          }
+          if (d.address) {
+            const city = d.address.city || d.address.town || d.address.county || '';
+            if (city) document.getElementById('delivery_city').value = city;
+          }
+        }).catch(() => {});
+    }, 300);
   }
 
   // ── ADDRESS AUTOCOMPLETE ──────────────────────────────
   const searchInput = document.getElementById('address-search');
   const suggestBox  = document.getElementById('address-suggestions');
-  let timer = null;
+  let searchTimer   = null;
 
   searchInput.addEventListener('input', function() {
     const q = this.value.trim();
-    clearTimeout(timer);
-    if (q.length < 3 || !LOCATIONIQ_KEY) {
-      suggestBox.classList.remove('show');
-      return;
-    }
-    timer = setTimeout(() => {
-      fetch(`https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&countrycodes=gh&limit=5&format=json`)
+    clearTimeout(searchTimer);
+    if (q.length < 3 || !LOCATIONIQ_KEY) { suggestBox.classList.remove('show'); return; }
+
+    searchTimer = setTimeout(() => {
+      fetch(`https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&countrycodes=gh&limit=6&format=json`)
         .then(r => r.json())
         .then(results => {
-          if (!Array.isArray(results) || !results.length) {
-            suggestBox.classList.remove('show');
-            return;
-          }
+          if (!Array.isArray(results) || !results.length) { suggestBox.classList.remove('show'); return; }
           suggestBox.innerHTML = results.map(r =>
-            `<div class="suggestion-item"
-                  data-lat="${r.lat}" data-lon="${r.lon}"
-                  data-name="${r.display_name.replace(/"/g,'&quot;')}">
-               📍 ${r.display_name}
+            `<div class="suggestion-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.replace(/"/g,'&quot;')}">
+               <svg class="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+               <span>${r.display_name}</span>
              </div>`
           ).join('');
           suggestBox.classList.add('show');
-        }).catch(console.error);
-    }, 400);
+        }).catch(() => {});
+    }, 350);
   });
 
   suggestBox.addEventListener('click', e => {
@@ -481,56 +706,51 @@
     if (!item) return;
     const lat = parseFloat(item.dataset.lat);
     const lon = parseFloat(item.dataset.lon);
-    searchInput.value = item.dataset.name;
+    searchInput.value = '';
     document.getElementById('delivery_address').value = item.dataset.name;
     suggestBox.classList.remove('show');
-    setDropoff(lat, lon);
+    placePin(lat, lon, true);
+    map.setView([lat, lon], 15);
   });
 
   document.addEventListener('click', e => {
-    if (e.target !== searchInput) suggestBox.classList.remove('show');
+    if (!searchInput.contains(e.target) && !suggestBox.contains(e.target)) {
+      suggestBox.classList.remove('show');
+    }
   });
 
-  // ── GPS: only used to center the map, never sent to the server ───
-  function updateGPSStatus(msg, color) {
+  // ── GPS BANNER ────────────────────────────────────────
+  function setGPSBanner(msg, color) {
     const banner = document.getElementById('gps-banner');
     const status = document.getElementById('gps-status');
     status.textContent = msg;
-    const colors = {
-      blue:  'bg-blue-50 border-blue-100 text-blue-700',
-      green: 'bg-green-50 border-green-100 text-green-700',
-      red:   'bg-red-50 border-red-100 text-red-700',
+    const cls = {
+      blue:  'mb-5 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-sm text-blue-700',
+      green: 'mb-5 bg-green-50 border border-green-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-sm text-green-700',
+      red:   'mb-5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-sm text-red-600',
     };
-    banner.className = `mb-5 border rounded-2xl px-4 py-3 flex items-center gap-3 text-sm ${colors[color] || colors.blue}`;
-  }
-
-  function centerMapOnGPS() {
-    if (!navigator.geolocation) {
-      updateGPSStatus('⚠️ GPS not supported — click the map to set your delivery pin', 'red');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        if (map) map.setView([pos.coords.latitude, pos.coords.longitude], 14);
-        updateGPSStatus('📍 Map centered on your location — click to drop your delivery pin', 'green');
-      },
-      () => updateGPSStatus('⚠️ Could not detect your location — click the map to set your delivery pin', 'red'),
-      { timeout: 8000, enableHighAccuracy: true }
-    );
+    banner.className = cls[color] || cls.blue;
   }
 
   // ── DELIVERY METHOD TABS ──────────────────────────────
-  const sections = document.querySelectorAll('.delivery-section');
+  const sections     = document.querySelectorAll('.delivery-section');
   const choiceInputs = document.querySelectorAll('.delivery-choice-input');
 
   function showSection(choice) {
     sections.forEach(s => s.classList.toggle('active', s.dataset.section === choice));
+    const banner = document.getElementById('gps-banner');
     if (choice === 'rider') {
+      banner.classList.remove('hidden');
       initMap();
-      setTimeout(() => { if (map) map.invalidateSize(); }, 50);
-      document.getElementById('gps-banner').classList.remove('hidden');
+      setTimeout(() => { if (map) map.invalidateSize(); }, 60);
+      // Auto-locate when rider tab shown for the first time
+      if (!dropoffMarker) locateMe();
     } else {
-      document.getElementById('gps-banner').classList.add('hidden');
+      banner.classList.add('hidden');
+      // Reset fee display for non-rider methods
+      document.getElementById('summary-fee').innerHTML = '<span class="text-xs text-gray-400 italic">Free / N/A</span>';
+      document.getElementById('summary-total').textContent = `GHS ${SUBTOTAL.toFixed(2)}`;
+      document.getElementById('summary-meta').classList.add('hidden');
     }
   }
 
@@ -538,15 +758,13 @@
     input.addEventListener('change', () => { if (input.checked) showSection(input.value); });
   });
 
-  const initialChoice = document.querySelector('.delivery-choice-input:checked');
-  showSection(initialChoice ? initialChoice.value : 'rider');
-  if (initialChoice ? initialChoice.value === 'rider' : true) centerMapOnGPS();
+  const initial = document.querySelector('.delivery-choice-input:checked');
+  showSection(initial ? initial.value : 'rider');
 
-  // ── FORM VALIDATION (mirrors the server-side checks in checkout()) ───
+  // ── FORM VALIDATION ───────────────────────────────────
   document.getElementById('checkout-form').addEventListener('submit', function(e) {
     const choice = document.querySelector('.delivery-choice-input:checked').value;
     const phone  = document.getElementById('delivery_phone').value.trim();
-
     if (!phone) { e.preventDefault(); alert('Please enter a contact phone number.'); return; }
 
     if (choice === 'rider') {
@@ -557,14 +775,14 @@
     }
 
     if (choice === 'parcel') {
-      const station = document.getElementById('parcel_bus_station').value.trim();
-      const recipientPhone = document.getElementById('parcel_recipient_phone').value.trim();
-      if (!station)       { e.preventDefault(); alert('Please enter the bus station.'); return; }
-      if (!recipientPhone){ e.preventDefault(); alert("Please enter the recipient's phone number."); return; }
+      const station = document.querySelector('[name=parcel_bus_station]').value.trim();
+      const rPhone  = document.querySelector('[name=parcel_recipient_phone]').value.trim();
+      if (!station) { e.preventDefault(); alert('Please enter the bus station.'); return; }
+      if (!rPhone)  { e.preventDefault(); alert("Please enter the recipient's phone."); return; }
     }
 
     const btn = document.getElementById('place-order-btn');
-    btn.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Placing Order...';
+    btn.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Processing...';
     btn.disabled = true;
   });
 })();
