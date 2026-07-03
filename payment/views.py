@@ -244,7 +244,10 @@ def flutterwave_init(request, order_pk):
         logger.error('Flutterwave init error for order %s: %s', order.pk, str(e))
 
     messages.error(request, 'Could not start payment. Please try again or pay on delivery.')
-    return redirect('order:order_detail', pk=order.pk)
+    return redirect(
+    "order:tracking",
+    order_ref=order.order_ref
+)
 
 
 # ── FLUTTERWAVE CALLBACK ──────────────────────────────────
@@ -275,7 +278,10 @@ def payment_callback(request):
                 return redirect('order:order_detail', pk=order.pk)
             elif order:
                 messages.info(request, 'Order already confirmed.')
-                return redirect('order:order_detail', pk=order.pk)
+                return redirect(
+    "order:tracking",
+    order_ref=order.order_ref
+)
             else:
                 messages.error(request, 'Order not found.')
         else:
@@ -325,7 +331,10 @@ def paystack_init(request, order_pk):
 
     if not PAYSTACK_PUBLIC:
         messages.error(request, 'Payment gateway not configured. Please pay on delivery.')
-        return redirect('order:detail', pk=order.pk)
+        return redirect(
+    "order:tracking",
+    order_ref=order.order_ref
+)
 
     email = (
         request.user.email or
@@ -350,7 +359,7 @@ def paystack_verify(request, order_pk):
 
     if not reference or not PAYSTACK_SECRET:
         messages.error(request, 'Payment verification failed.')
-        return redirect('order:detail', pk=order.pk)
+        return redirect('order:tracking', order_ref=order.order_ref)
 
     try:
         resp = http_requests.get(
@@ -375,7 +384,7 @@ def paystack_verify(request, order_pk):
         logger.error('Paystack verify error for order %s: %s', order.pk, str(e))
         messages.error(request, 'Could not verify payment. Contact support if charged.')
 
-    return redirect('order:detail', pk=order.pk)
+    return redirect('order:tracking', order_ref=order.order_ref)
 
 
 # ── PAYSTACK CALLBACK ─────────────────────────────────────
@@ -411,7 +420,7 @@ def paystack_callback(request, tx_ref):
         logger.error('Paystack callback error: %s', str(e))
         messages.error(request, 'Could not verify payment. Contact support if charged.')
 
-    return redirect('order:detail', pk=order.pk)
+    return redirect('order:tracking', order_ref=order.order_ref)
 
 
 # ── PAYSTACK WEBHOOK ──────────────────────────────────────
