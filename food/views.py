@@ -1195,4 +1195,3 @@ def reorder(request, ref):
         messages.info(request, 'No items could be added — the menu may have changed.')
  
     return redirect('food:vendor_menu', slug=vendor.slug)
- 
