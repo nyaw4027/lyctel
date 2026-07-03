@@ -252,6 +252,65 @@
     font-size: 11px;
     color: #9ca3af;
   }
+
+  /* Visible fallback if tiles genuinely can't load — the console warning
+     from before was invisible to the actual person using the checkout. */
+  .map-error-banner {
+    position: absolute;
+    inset: 0;
+    background: rgba(233,237,242,.97);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    z-index: 600;
+    border-radius: 1rem;
+  }
+  .map-error-banner.show { display: flex; }
+  .map-error-banner p {
+    font-size: 12.5px;
+    color: #45403a;
+    max-width: 240px;
+    margin: 0 0 10px;
+  }
+  .map-error-banner button {
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    background: #0F1B2D;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+
+  /* "You are here" dot, separate from the delivery pin, so people can see
+     their actual GPS position alongside the drop-off point they've chosen */
+  .user-location-dot {
+    width: 16px; height: 16px;
+    position: relative;
+  }
+  .user-location-dot::before {
+    content: '';
+    position: absolute; inset: -6px;
+    border-radius: 50%;
+    background: rgba(59,130,246,.25);
+    animation: userPulse 2s ease-out infinite;
+  }
+  .user-location-dot::after {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background: #3b82f6;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(59,130,246,.5);
+  }
+  @keyframes userPulse {
+    0%   { transform: scale(1); opacity: .8; }
+    100% { transform: scale(2.8); opacity: 0; }
+  }
 </style>
 {% endblock %}
 
@@ -314,6 +373,10 @@
           <button type="button" class="layer-toggle-btn" id="layer-toggle-btn" title="Toggle satellite view">
             <span id="layer-toggle-icon">🛰️</span> <span id="layer-toggle-text">Satellite</span>
           </button>
+          <div class="map-error-banner" id="map-error-banner">
+            <p>The map couldn't load tiles right now. You can still search or type your address below.</p>
+            <button type="button" id="map-retry-btn">Retry map</button>
+          </div>
         </div>
 
         <div class="location-previews">
@@ -473,17 +536,23 @@
   // for prototyping, but OSM's own tile usage policy also isn't meant for
   // sustained production load — get a LocationIQ (or Mapbox) key before
   // this carries real traffic.
+  // Free OSM fallback layer — used both as the no-key default AND as an
+  // automatic runtime fallback if a configured LocationIQ key starts
+  // failing (e.g. a domain/referrer restriction on the key rejects
+  // requests from this host with 401s). See handleTileError() below.
+  const osmFallbackLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
+    subdomains: ['a', 'b', 'c'],
+  });
+
   const streetLayer = LOCATIONIQ_KEY
     ? L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
         attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
         maxZoom: 19,
         subdomains: ['a', 'b', 'c'],
       })
-    : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19,
-        subdomains: ['a', 'b', 'c'],
-      });
+    : osmFallbackLayer;
 
   // Satellite layer: Esri World Imagery, free, no key required.
   // NOTE: the previous version pointed at server.arcgisonline.com, an old
@@ -503,12 +572,53 @@
 
   streetLayer.addTo(map);
 
-  // ── DIAGNOSTICS ─────────────────────────────────────
-  // If the map is still blank after this, open the browser console —
-  // one of these two will fire and say exactly why.
-  streetLayer.on('tileerror', function(e) {
+  // ── DIAGNOSTICS + VISIBLE FALLBACK ───────────────────
+  const errorBanner = document.getElementById('map-error-banner');
+  let tileFailCount = 0;
+  let tileOkCount = 0;
+
+  let usingLocationIQStreet = !!LOCATIONIQ_KEY; // false once we've fallen back to OSM
+
+  function handleTileError(e) {
+    tileFailCount++;
     console.error('[map] tile failed to load:', e.tile && e.tile.src, e);
+
+    // If the LocationIQ street layer is the one failing repeatedly, it's
+    // almost always a bad/domain-restricted key (LocationIQ returns 401 for
+    // requests from origins not on the key's allowed-referrer list) —
+    // auto-swap to the free OSM layer so the map still works while that
+    // gets fixed on the LocationIQ dashboard, instead of staying broken.
+    if (usingLocationIQStreet && !onSatellite && tileFailCount >= 4 && tileOkCount === 0) {
+      console.warn('[map] LocationIQ street tiles failing repeatedly — falling back to OpenStreetMap. Check the API key\'s domain/referrer restrictions in the LocationIQ dashboard.');
+      map.removeLayer(streetLayer);
+      osmFallbackLayer.addTo(map);
+      usingLocationIQStreet = false;
+      tileFailCount = 0;
+      return;
+    }
+
+    // Several failures with no successes shortly after load = the tile
+    // source itself is down/blocked, not just one flaky tile. Surface it
+    // visibly instead of leaving a silent gray box.
+    if (tileFailCount >= 4 && tileOkCount === 0) {
+      errorBanner.classList.add('show');
+    }
+  }
+  function handleTileLoad() {
+    tileOkCount++;
+    errorBanner.classList.remove('show');
+  }
+  streetLayer.on('tileerror', handleTileError);
+  streetLayer.on('tileload', handleTileLoad);
+  satelliteLayer.on('tileerror', handleTileError);
+  satelliteLayer.on('tileload', handleTileLoad);
+
+  document.getElementById('map-retry-btn').addEventListener('click', function() {
+    tileFailCount = 0;
+    errorBanner.classList.remove('show');
+    (onSatellite ? satelliteLayer : streetLayer).redraw();
   });
+
   setTimeout(() => {
     const size = map.getSize();
     if (size.x === 0 || size.y === 0) {
@@ -543,11 +653,25 @@
   setTimeout(() => map.invalidateSize(), 100);
 
   // ── LOCATION PREVIEW THUMBNAILS (photo-style snapshot of each pin) ──
-  // Uses a free, key-less static-map renderer so both the vendor pickup
-  // point and the chosen drop-off pin get a small "here's what's there"
-  // image, similar to the trip-confirmation screen in ride-hailing apps.
+  // Renders a real OSM tile for the area around each point directly —
+  // no external "static map" service involved. (The previous version used
+  // staticmap.openstreetmap.de, which turned out to not even resolve via
+  // DNS — a dead dependency. This computes the tile ourselves from the
+  // same OSM tile servers already proven to work as the map fallback.)
+  function latLngToTile(lat, lng, z) {
+    const latRad = (lat * Math.PI) / 180;
+    const n = Math.pow(2, z);
+    const x = Math.floor(((lng + 180) / 360) * n);
+    const y = Math.floor(
+      ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n
+    );
+    return { x, y, z };
+  }
+
   function staticPreviewUrl(lat, lng) {
-    return `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=17&size=300x160&maptype=mapnik&markers=${lat},${lng},red-pushpin`;
+    const { x, y, z } = latLngToTile(lat, lng, 16);
+    const sub = 'abc'[(x + y) % 3];
+    return `https://${sub}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
   }
 
   document.getElementById('vendor-preview-img').src = staticPreviewUrl(VENDOR_LAT, VENDOR_LNG);
@@ -581,8 +705,24 @@
 
   // Delivery marker (draggable)
   let deliveryMarker = null;
+  let userMarker      = null;
   const hintPill   = document.getElementById('map-hint');
   const routeBadge = document.getElementById('route-badge');
+
+  const userIcon = L.divIcon({
+    html: '<div class="user-location-dot"></div>',
+    className: '', iconSize: [16, 16], iconAnchor: [8, 8],
+  });
+
+  function showUserLocation(lat, lng) {
+    if (userMarker) {
+      userMarker.setLatLng([lat, lng]);
+    } else {
+      userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: -100, interactive: false })
+        .addTo(map)
+        .bindTooltip('📍 You are here', { direction: 'top' });
+    }
+  }
 
   function setDeliveryPin(lat, lng, animate) {
     if (hintPill) hintPill.classList.add('hide');
@@ -632,6 +772,8 @@
   let bikeMarker    = null;
   let routeLatLngs  = null;
   let bikeAnimFrame = null;
+  let routeRequestSeq = 0; // guards against a slow, stale fetch overwriting a newer one
+  let priceRequestSeq = 0;
 
   const bikeIcon = L.divIcon({
     html: '<div class="bike-marker-wrap">🛵</div>',
@@ -724,10 +866,15 @@
   }
 
   function fetchRoutePath(vLat, vLng, dLat, dLng) {
+    const requestId = ++routeRequestSeq;
     const url = `${ROUTING_URL}/${vLng},${vLat};${dLng},${dLat}?overview=full&geometries=geojson`;
     fetch(url)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`OSRM HTTP ${r.status}`);
+        return r.json();
+      })
       .then(data => {
+        if (requestId !== routeRequestSeq) return; // a newer request already won
         if (data.code !== 'Ok' || !data.routes || !data.routes.length) throw new Error('no route');
         const route = data.routes[0];
         const latlngs = route.geometry.coordinates.map(c => L.latLng(c[1], c[0]));
@@ -735,7 +882,9 @@
         map.flyToBounds(L.latLngBounds(latlngs), { padding: [36, 36], duration: 0.9 });
         showRouteBadge(route.distance / 1000, route.duration / 60, false);
       })
-      .catch(() => {
+      .catch((err) => {
+        if (requestId !== routeRequestSeq) return;
+        console.warn('[route] falling back to straight line:', err.message || err);
         // Fall back to a straight dashed line so the UI still shows a path
         // even if the routing service is unreachable.
         const straight = [L.latLng(vLat, vLng), L.latLng(dLat, dLng)];
@@ -755,12 +904,17 @@
   }
 
   function fetchPriceEstimate(lat, lng) {
+    const requestId = ++priceRequestSeq;
     // NOTE: correct path is /food/price-estimate/ (no "api/" segment — matches food/urls.py name='price_estimate')
     const url = `/food/price-estimate/?vlat=${VENDOR_LAT}&vlng=${VENDOR_LNG}&dlat=${lat}&dlng=${lng}&prep=20`;
     fetch(url)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`price-estimate HTTP ${r.status}`);
+        return r.json();
+      })
       .then(data => {
-        if (!data.success) return;
+        if (requestId !== priceRequestSeq) return; // a newer request already won
+        if (!data.success) { console.warn('[price] backend returned success:false', data); return; }
         document.getElementById('delivery_fee_input').value = data.fee;
         document.getElementById('distance_km_input').value  = data.distance_km;
         document.getElementById('display-fee').textContent  = 'GHS ' + data.fee;
@@ -768,20 +922,27 @@
         const total = (SUBTOTAL + parseFloat(data.fee)).toFixed(2);
         document.getElementById('display-total').textContent = 'GHS ' + total;
       })
-      .catch(err => console.error('Price estimate failed:', err));
+      .catch(err => console.error('[price] estimate failed:', err));
   }
 
   // ── REVERSE GEOCODE (pin → address text) ─────────────
+  let geocodeDebounce = null;
   function reverseGeocodeAddress(lat, lng) {
     if (!LOCATIONIQ_KEY) return;
-    fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.display_name) {
-          document.getElementById('delivery_address').value = data.display_name;
-        }
-      })
-      .catch(err => console.error('Reverse geocode failed:', err));
+    clearTimeout(geocodeDebounce);
+    geocodeDebounce = setTimeout(() => {
+      fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
+        .then(r => {
+          if (!r.ok) throw new Error(`reverse-geocode HTTP ${r.status}`);
+          return r.json();
+        })
+        .then(data => {
+          if (data.display_name) {
+            document.getElementById('delivery_address').value = data.display_name;
+          }
+        })
+        .catch(err => console.error('[geocode] reverse geocode failed:', err));
+    }, 300);
   }
 
   // ── ADDRESS AUTOCOMPLETE (typed search) ──────────────
@@ -839,6 +1000,7 @@
     useLocationBtn.innerHTML = '<span>⏳</span> Locating…';
     navigator.geolocation.getCurrentPosition(
       pos => {
+        showUserLocation(pos.coords.latitude, pos.coords.longitude);
         onLocationChosen(pos.coords.latitude, pos.coords.longitude, true);
         useLocationBtn.classList.remove('loading');
         useLocationBtn.innerHTML = '<span>🎯</span> Use My Location';
@@ -855,7 +1017,10 @@
   // ── TRY BROWSER GEOLOCATION ON LOAD (silent — no error popup) ─
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      pos => onLocationChosen(pos.coords.latitude, pos.coords.longitude, true),
+      pos => {
+        showUserLocation(pos.coords.latitude, pos.coords.longitude);
+        onLocationChosen(pos.coords.latitude, pos.coords.longitude, true);
+      },
       () => { /* user denied or unavailable — they can search/click/use-my-location instead */ },
       { timeout: 5000 }
     );
