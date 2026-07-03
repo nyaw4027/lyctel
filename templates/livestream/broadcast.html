@@ -3,209 +3,165 @@
 
 {% block extra_head %}
 <style>
-  body { background: #0a0a0a; color: white; }
-  #local-video {
-    width: 100%; height: 100%;
-    object-fit: cover;
-    border-radius: 1rem;
-    background: #111;
-    transform: scaleX(-1); /* mirror for broadcaster */
-  }
-  .chat-bubble {
-    animation: slideIn .3s ease;
-  }
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .reaction-float {
-    position: absolute;
-    font-size: 2rem;
-    animation: floatUp 2.5s ease forwards;
-    pointer-events: none;
-  }
+  body { background: #0a0a0a; }
+  #local-video { width:100%; aspect-ratio:9/16; max-height:75vh;
+                 object-fit:cover; border-radius:16px; background:#111; }
+  .chat-box    { height:300px; overflow-y:auto; scroll-behavior:smooth; }
+  .gift-anim   { position:fixed; pointer-events:none; z-index:999;
+                 font-size:2.5rem; animation:floatUp 2s ease forwards; }
   @keyframes floatUp {
-    0%   { opacity: 1; transform: translateY(0) scale(1); }
-    100% { opacity: 0; transform: translateY(-200px) scale(1.5); }
+    0%   { opacity:1; transform:translateY(0) scale(1); }
+    100% { opacity:0; transform:translateY(-200px) scale(1.6); }
   }
-  #chat-messages { scrollbar-width: thin; scrollbar-color: #333 transparent; }
+  .pin-card { cursor:pointer; transition:all .2s; }
+  .pin-card:hover { transform:translateY(-2px); }
+  .pin-card.highlighted { border-color:#F5A623 !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="flex flex-col lg:flex-row h-screen bg-gray-950 overflow-hidden">
+<div class="min-h-screen bg-gray-950 text-white">
+  <div class="max-w-6xl mx-auto px-4 py-6">
 
-  <!-- LEFT: Video + Controls -->
-  <div class="flex-1 flex flex-col relative min-h-0">
-
-    <!-- Video -->
-    <div class="flex-1 relative bg-black overflow-hidden rounded-none lg:rounded-2xl lg:m-3">
-      <video id="local-video" autoplay muted playsinline></video>
-
-      <!-- LIVE badge + viewer count -->
-      <div class="absolute top-4 left-4 flex items-center gap-2 z-10">
-        <span id="live-badge"
-              class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <span class="flex items-center gap-1.5 bg-red-600 text-white text-xs font-bold
+                     px-3 py-1.5 rounded-full animate-pulse">
           🔴 LIVE
         </span>
-        <span class="bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
-          👁 <span id="viewer-count">0</span>
-        </span>
-      </div>
-
-      <!-- Stream title -->
-      <div class="absolute top-4 right-4 z-10">
-        <span class="bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm max-w-48 truncate block">
+        <h1 class="font-display font-700 text-white text-lg truncate max-w-xs">
           {{ stream.title }}
-        </span>
+        </h1>
       </div>
-
-      <!-- Stream duration -->
-      <div class="absolute bottom-4 left-4 z-10">
-        <span class="bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm font-mono">
-          ⏱ <span id="duration">00:00</span>
-        </span>
-      </div>
-
-      <!-- Reaction float zone -->
-      <div id="reaction-zone" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
-
-      <!-- Connection status -->
-      <div id="connection-status"
-           class="absolute bottom-4 right-4 z-10 bg-yellow-500/80 text-black text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm">
-        Connecting...
-      </div>
-    </div>
-
-    <!-- Controls bar -->
-    <div class="flex items-center justify-between gap-3 px-4 py-3 bg-gray-900 border-t border-gray-800">
-
-      <!-- Camera / Mic toggles -->
-      <div class="flex items-center gap-2">
-        <button id="toggle-cam" onclick="toggleCamera()"
-                class="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-lg transition-colors"
-                title="Toggle Camera">📷</button>
-        <button id="toggle-mic" onclick="toggleMic()"
-                class="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-lg transition-colors"
-                title="Toggle Mic">🎤</button>
-        <button onclick="switchCamera()"
-                class="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-lg transition-colors"
-                title="Switch Camera">🔄</button>
-      </div>
-
-      <!-- Pin product -->
-      <button onclick="document.getElementById('pin-modal').classList.remove('hidden')"
-              class="flex items-center gap-2 bg-gold text-navy text-sm font-semibold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors">
-        📌 Pin Product
-      </button>
-
-      <!-- End stream -->
-      <button onclick="confirmEnd()"
-              class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
-        ⏹ End Stream
-      </button>
-    </div>
-  </div>
-
-  <!-- RIGHT: Chat -->
-  <div class="w-full lg:w-80 xl:w-96 flex flex-col bg-gray-900 border-l border-gray-800 h-64 lg:h-full">
-
-    <!-- Chat header -->
-    <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
-      <h3 class="font-bold text-sm text-white">💬 Live Chat</h3>
-      <span class="text-xs text-gray-400" id="chat-count">0 messages</span>
-    </div>
-
-    <!-- Pinned product bar -->
-    <div id="pinned-bar" class="hidden px-3 py-2 bg-gold/10 border-b border-gold/20">
       <div class="flex items-center gap-3">
-        <img id="pinned-img" src="" class="w-10 h-10 rounded-lg object-cover" alt=""/>
-        <div class="flex-1 min-w-0">
-          <p id="pinned-name" class="text-xs font-bold text-white truncate"></p>
-          <p id="pinned-price" class="text-xs text-gold font-semibold"></p>
-        </div>
-        <a id="pinned-link" href="#"
-           class="text-xs bg-gold text-navy font-bold px-3 py-1.5 rounded-lg hover:bg-yellow-400 transition-colors flex-shrink-0">
-          Buy Now
-        </a>
-      </div>
-    </div>
-
-    <!-- Messages -->
-    <div id="chat-messages"
-         class="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-0">
-      <p class="text-xs text-gray-500 text-center">Stream started — say hello! 👋</p>
-    </div>
-
-    <!-- Chat input -->
-    <div class="px-3 py-3 border-t border-gray-800">
-      <!-- Reactions row -->
-      <div class="flex items-center gap-1 mb-2">
-        {% for emoji in "❤️🔥😂👏🎉🙏😍💯" %}
-        <button onclick="sendReaction('{{ emoji }}')"
-                class="text-lg hover:scale-125 transition-transform">{{ emoji }}</button>
-        {% endfor %}
-      </div>
-      <div class="flex gap-2">
-        <input type="text" id="chat-input"
-               placeholder="Say something..."
-               maxlength="300"
-               class="flex-1 bg-gray-800 border border-gray-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-gold placeholder-gray-500"
-               onkeydown="if(event.key==='Enter')sendChat()"/>
-        <button onclick="sendChat()"
-                class="bg-gold hover:bg-yellow-400 text-navy font-bold px-4 py-2.5 rounded-xl transition-colors text-sm">
-          Send
+        <span id="viewer-count"
+              class="flex items-center gap-1.5 bg-white/10 text-white text-sm
+                     font-semibold px-3 py-1.5 rounded-full">
+          👁 0 watching
+        </span>
+        <button onclick="endStream()"
+                class="bg-red-600 hover:bg-red-700 text-white text-sm font-bold
+                       px-4 py-2 rounded-xl transition-colors">
+          End Stream
         </button>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- PIN PRODUCT MODAL -->
-<div id="pin-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4">
-  <div class="bg-gray-900 rounded-2xl w-full max-w-md border border-gray-700 p-5">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="font-bold text-white">📌 Pin a Product</h3>
-      <button onclick="document.getElementById('pin-modal').classList.add('hidden')"
-              class="text-gray-400 hover:text-white text-xl">×</button>
-    </div>
-    <div class="space-y-2 max-h-64 overflow-y-auto" id="product-list">
-      {% for product in vendor_products %}
-      <button onclick="pinProduct('{{ product.pk }}', '{{ product.name|escapejs }}', '{{ product.selling_price }}', '{% if product.images.first %}{{ product.images.first.image.url }}{% endif %}', '{{ product.slug }}')"
-              class="w-full flex items-center gap-3 bg-gray-800 hover:bg-gray-700 rounded-xl p-3 text-left transition-colors">
-        {% if product.images.first %}
-        <img src="{{ product.images.first.image.url }}"
-             class="w-12 h-12 rounded-lg object-cover flex-shrink-0"/>
-        {% else %}
-        <div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center text-xl flex-shrink-0">🛍</div>
-        {% endif %}
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold text-white truncate">{{ product.name }}</p>
-          <p class="text-xs text-gold font-bold">GHS {{ product.selling_price }}</p>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+      <!-- Camera feed -->
+      <div class="lg:col-span-2 space-y-4">
+        <div class="relative">
+          <video id="local-video" autoplay muted playsinline></video>
+          <div id="cam-placeholder"
+               class="absolute inset-0 flex flex-col items-center justify-center
+                      bg-gray-900 rounded-2xl">
+            <p class="text-5xl mb-3">📸</p>
+            <p class="text-white font-semibold mb-3">Camera not started</p>
+            <button onclick="startCamera()"
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold
+                           px-6 py-3 rounded-xl transition-colors">
+              🔴 Start Camera
+            </button>
+          </div>
         </div>
-      </button>
-      {% empty %}
-      <p class="text-sm text-gray-400 text-center py-4">No active products found.</p>
-      {% endfor %}
-    </div>
-  </div>
-</div>
 
-<!-- END STREAM CONFIRM -->
-<div id="end-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-  <div class="bg-gray-900 rounded-2xl w-full max-w-sm border border-gray-700 p-6 text-center">
-    <p class="text-3xl mb-3">⏹</p>
-    <h3 class="font-bold text-white text-lg mb-2">End Stream?</h3>
-    <p class="text-gray-400 text-sm mb-5">Your viewers will be disconnected.</p>
-    <div class="flex gap-3">
-      <button onclick="document.getElementById('end-modal').classList.add('hidden')"
-              class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-xl transition-colors">
-        Cancel
-      </button>
-      <button onclick="endStream()"
-              class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl transition-colors">
-        End Stream
-      </button>
+        <!-- Camera controls -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <button onclick="toggleCamera()"
+                  id="cam-btn"
+                  class="hidden bg-white/10 hover:bg-white/20 text-white text-sm
+                         font-semibold px-4 py-2 rounded-xl transition-colors">
+            📷 Camera On
+          </button>
+          <button onclick="toggleMic()"
+                  id="mic-btn"
+                  class="hidden bg-white/10 hover:bg-white/20 text-white text-sm
+                         font-semibold px-4 py-2 rounded-xl transition-colors">
+            🎙 Mic On
+          </button>
+          <button onclick="switchCamera()"
+                  class="hidden bg-white/10 hover:bg-white/20 text-white text-sm
+                         font-semibold px-4 py-2 rounded-xl transition-colors"
+                  id="switch-cam-btn">
+            🔄 Flip Camera
+          </button>
+        </div>
+
+        <!-- Gift stats -->
+        <div class="bg-white/5 rounded-2xl p-4 grid grid-cols-3 gap-3 text-center">
+          <div>
+            <p class="text-2xl font-display font-700 text-gold" id="stat-viewers">0</p>
+            <p class="text-xs text-gray-400 mt-0.5">Total Viewers</p>
+          </div>
+          <div>
+            <p class="text-2xl font-display font-700 text-green-400" id="stat-gifts">GHS 0</p>
+            <p class="text-xs text-gray-400 mt-0.5">Gifts Received</p>
+          </div>
+          <div>
+            <p class="text-2xl font-display font-700 text-blue-400" id="stat-sales">GHS 0</p>
+            <p class="text-xs text-gray-400 mt-0.5">Stream Sales</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel: products + chat -->
+      <div class="flex flex-col gap-4">
+
+        <!-- Pin products -->
+        <div class="bg-gray-900 rounded-2xl p-4">
+          <p class="text-sm font-semibold text-white mb-3">📦 Pin a Product</p>
+          <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+            {% for product in products %}
+            <div class="pin-card flex items-center gap-3 bg-white/5 hover:bg-white/10
+                        border border-white/10 rounded-xl p-2.5 transition-all
+                        {% if product.pk in pinned_ids %}highlighted{% endif %}"
+                 id="pin-{{ product.pk }}"
+                 onclick="togglePin({{ product.pk }})">
+              {% with product.images.first as img %}
+              {% if img %}
+              <img src="{{ img.image.url }}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0"/>
+              {% else %}
+              <div class="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-lg flex-shrink-0">📦</div>
+              {% endif %}
+              {% endwith %}
+              <div class="flex-1 min-w-0">
+                <p class="text-white text-xs font-semibold truncate">{{ product.name }}</p>
+                <p class="text-gold text-xs">GHS {{ product.final_price }}</p>
+              </div>
+              <span class="text-xs pin-label {% if product.pk in pinned_ids %}text-gold{% else %}text-gray-500{% endif %}"
+                    id="label-{{ product.pk }}">
+                {% if product.pk in pinned_ids %}✓ Pinned{% else %}Pin{% endif %}
+              </span>
+            </div>
+            {% empty %}
+            <p class="text-gray-500 text-xs text-center py-4">No active products.</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Live chat -->
+        <div class="bg-gray-900 rounded-2xl p-4 flex-1 flex flex-col">
+          <p class="text-sm font-semibold text-white mb-3">💬 Live Chat</p>
+          <div id="chat-box" class="chat-box flex-1 space-y-2 mb-3">
+            <p class="text-gray-600 text-xs text-center">Chat will appear here...</p>
+          </div>
+          <div class="flex gap-2">
+            <input id="chat-input" type="text" maxlength="300"
+                   placeholder="Say something..."
+                   class="flex-1 bg-white/10 text-white text-sm px-3 py-2
+                          rounded-xl border border-white/10 outline-none
+                          focus:border-gold/50 placeholder-gray-500"/>
+            <button onclick="sendChat()"
+                    class="bg-gold hover:bg-gold-dark text-navy text-sm
+                           font-bold px-4 py-2 rounded-xl transition-colors">
+              Send
+            </button>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 </div>
@@ -213,276 +169,242 @@
 
 {% block extra_js %}
 <script>
-const STREAM_ID    = "{{ stream.stream_id }}";
-const WS_URL       = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/livestream/${STREAM_ID}/`;
-const IS_VENDOR    = true;
-const VENDOR_NAME  = "{{ request.user.get_full_name|escapejs }}";
+const STREAM_ID   = '{{ stream.id }}';
+// CSRF_TOKEN already declared globally in base.html — do not redeclare here.
+const WS_SCHEME   = location.protocol === 'https:' ? 'wss' : 'ws';
+const wsUrl       = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
 
-let ws, localStream, peerConnections = {}, camOn = true, micOn = true;
-let startTime = Date.now(), chatCount = 0;
+const END_STREAM_URL   = '{% url "livestream:end_stream" stream.id %}';
+const STREAM_LIST_URL  = '{% url "livestream:list" %}';
+const PIN_PRODUCT_URL  = '{% url "livestream:pin_product" stream.id %}';
 
-const iceConfig = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-  ]
-};
+let ws, localStream, peerConnections = {};
+let camOn = false, micOn = false;
+let facingMode = 'user';
+let totalGifts = 0;
 
-// ── CAMERA SETUP ──────────────────────────────────────────
+const pinnedSet = new Set({{ pinned_ids|default:"[]"|safe }});
+
+// ── WebSocket ──────────────────────────────────────────
+function connectWS() {
+  ws = new WebSocket(wsUrl);
+
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    switch (data.type) {
+      case 'viewer_count':
+        document.getElementById('viewer-count').textContent = `👁 ${data.count} watching`;
+        document.getElementById('stat-viewers').textContent  = data.count;
+        break;
+      case 'chat':
+        appendChat(data);
+        break;
+      case 'gift':
+        showGiftAnim(data.emoji, data.username);
+        totalGifts += parseFloat(data.total_value);
+        document.getElementById('stat-gifts').textContent = 'GHS ' + totalGifts.toFixed(2);
+        break;
+      case 'offer':
+        // A viewer is requesting the stream — data.sender is their channel name.
+        handleViewerOffer(data.sdp, data.sender);
+        break;
+      case 'answer':
+        // A viewer answered our offer (if we ever push one) — data.sender identifies them.
+        if (peerConnections[data.sender]) {
+          peerConnections[data.sender].setRemoteDescription(
+            new RTCSessionDescription({ type: 'answer', sdp: data.sdp })
+          );
+        }
+        break;
+      case 'ice':
+        if (data.sender && peerConnections[data.sender]) {
+          peerConnections[data.sender].addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          ).catch(() => {});
+        }
+        break;
+    }
+  };
+
+  ws.onclose = () => setTimeout(connectWS, 3000);
+}
+
+// ── Camera ─────────────────────────────────────────────
 async function startCamera() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-      audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 },
+      video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: true,
     });
-    document.getElementById('local-video').srcObject = localStream;
-    setStatus('🟢 Camera ready — connecting...', 'green');
+    const vid = document.getElementById('local-video');
+    vid.srcObject = localStream;
+    document.getElementById('cam-placeholder').classList.add('hidden');
+    document.getElementById('cam-btn').classList.remove('hidden');
+    document.getElementById('mic-btn').classList.remove('hidden');
+    document.getElementById('switch-cam-btn').classList.remove('hidden');
+    camOn = true; micOn = true;
     connectWS();
   } catch (err) {
-    setStatus('❌ Camera error: ' + err.message, 'red');
-    console.error('Camera error:', err);
+    alert('Could not access camera: ' + err.message);
   }
 }
 
-// ── WEBSOCKET ─────────────────────────────────────────────
-function connectWS() {
-  ws = new WebSocket(WS_URL);
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'broadcaster_ready' }));
-    setStatus('🔴 LIVE', 'red');
-    startDurationTimer();
-  };
-
-  ws.onmessage = async ({ data }) => {
-    const msg = JSON.parse(data);
-
-    if (msg.type === 'viewer_joined') {
-      // New viewer — create peer connection and send offer
-      await createPeerForViewer(msg.viewer_channel);
-    }
-
-    else if (msg.type === 'webrtc_signal') {
-      const pc = peerConnections[msg.from];
-      if (!pc) return;
-
-      if (msg.signal === 'answer') {
-        await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
-      }
-      else if (msg.signal === 'ice' && msg.candidate) {
-        await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
-      }
-    }
-
-    else if (msg.type === 'chat_message') {
-      addChatBubble(msg.username, msg.message, msg.avatar, msg.is_vendor);
-    }
-
-    else if (msg.type === 'reaction') {
-      floatReaction(msg.emoji);
-    }
-
-    else if (msg.type === 'viewer_count') {
-      document.getElementById('viewer-count').textContent = msg.count;
-    }
-
-    else if (msg.type === 'gift') {
-      addGiftBubble(msg.username, msg.gift, msg.amount);
-    }
-  };
-
-  ws.onclose = () => setStatus('🔌 Disconnected', 'gray');
-  ws.onerror = () => setStatus('❌ Connection error', 'red');
-}
-
-// ── WEBRTC: create peer connection for a viewer ────────────
-async function createPeerForViewer(viewerChannel) {
-  const pc = new RTCPeerConnection(iceConfig);
-  peerConnections[viewerChannel] = pc;
-
-  // Add local stream tracks
-  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-  // Send ICE candidates to this viewer
-  pc.onicecandidate = ({ candidate }) => {
-    if (candidate) {
-      ws.send(JSON.stringify({
-        type:      'ice_candidate',
-        target:    viewerChannel,
-        candidate: candidate,
-      }));
-    }
-  };
-
-  // Create and send offer
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-
-  ws.send(JSON.stringify({
-    type:   'webrtc_offer',
-    target: viewerChannel,
-    sdp:    offer.sdp,
-  }));
-}
-
-// ── CONTROLS ──────────────────────────────────────────────
 function toggleCamera() {
-  camOn = !camOn;
-  localStream.getVideoTracks().forEach(t => t.enabled = camOn);
-  document.getElementById('toggle-cam').textContent = camOn ? '📷' : '📷❌';
+  if (!localStream) return;
+  localStream.getVideoTracks().forEach(t => { t.enabled = !t.enabled; camOn = t.enabled; });
+  document.getElementById('cam-btn').textContent = camOn ? '📷 Camera On' : '📷 Camera Off';
 }
 
 function toggleMic() {
-  micOn = !micOn;
-  localStream.getAudioTracks().forEach(t => t.enabled = micOn);
-  document.getElementById('toggle-mic').textContent = micOn ? '🎤' : '🔇';
+  if (!localStream) return;
+  localStream.getAudioTracks().forEach(t => { t.enabled = !t.enabled; micOn = t.enabled; });
+  document.getElementById('mic-btn').textContent = micOn ? '🎙 Mic On' : '🎙 Mic Off';
 }
 
 async function switchCamera() {
-  const tracks = localStream.getVideoTracks();
-  if (!tracks.length) return;
-  const current = tracks[0].getSettings().facingMode;
-  const newFace = current === 'user' ? 'environment' : 'user';
-  try {
-    const newStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: newFace },
-      audio: true,
-    });
-    const newTrack = newStream.getVideoTracks()[0];
-    tracks[0].stop();
-    localStream.removeTrack(tracks[0]);
-    localStream.addTrack(newTrack);
-    document.getElementById('local-video').srcObject = localStream;
-    // Update all peer connections
-    Object.values(peerConnections).forEach(pc => {
-      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-      if (sender) sender.replaceTrack(newTrack);
-    });
-  } catch (err) {
-    console.error('Camera switch failed:', err);
+  facingMode = facingMode === 'user' ? 'environment' : 'user';
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    await startCamera();
   }
 }
 
-// ── CHAT ──────────────────────────────────────────────────
+// ── WebRTC: answer viewer offers ──────────────────────
+async function handleViewerOffer(sdp, viewerChannel) {
+  if (!localStream || !viewerChannel) return;
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  peerConnections[viewerChannel] = pc;
+
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate, peer_id: viewerChannel }));
+    }
+  };
+
+  await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+
+  // peer_id tells the server to route this answer ONLY to the viewer
+  // whose offer we're responding to.
+  ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp, peer_id: viewerChannel }));
+}
+
+// ── Pin product ────────────────────────────────────────
+// Calls the Django pin_product view directly over HTTP (not via WebSocket).
+async function togglePin(productId) {
+  const action = pinnedSet.has(productId) ? 'unpin' : 'pin';
+
+  let data;
+  try {
+    const res = await fetch(PIN_PRODUCT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN,
+      },
+      body: JSON.stringify({ product_id: productId, action }),
+    });
+    data = await res.json();
+  } catch (err) {
+    console.error('Pin request failed:', err);
+    return;
+  }
+  if (!data.success) return;
+
+  const card  = document.getElementById(`pin-${productId}`);
+  const label = document.getElementById(`label-${productId}`);
+
+  if (data.action === 'pinned') {
+    document.querySelectorAll('.pin-card.highlighted').forEach(el => el.classList.remove('highlighted'));
+    document.querySelectorAll('.pin-label').forEach(el => {
+      el.textContent = 'Pin';
+      el.classList.remove('text-gold');
+      el.classList.add('text-gray-500');
+    });
+    pinnedSet.clear();
+    pinnedSet.add(productId);
+    card.classList.add('highlighted');
+    label.textContent = '✓ Pinned';
+    label.classList.remove('text-gray-500');
+    label.classList.add('text-gold');
+  } else {
+    pinnedSet.delete(productId);
+    card.classList.remove('highlighted');
+    label.textContent = 'Pin';
+    label.classList.remove('text-gold');
+    label.classList.add('text-gray-500');
+  }
+}
+
+// ── Chat ───────────────────────────────────────────────
 function sendChat() {
   const input = document.getElementById('chat-input');
   const msg   = input.value.trim();
-  if (!msg || !ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({
-    type:      'chat_message',
-    message:   msg,
-    is_vendor: true,
-  }));
+  if (!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'chat', message: msg }));
   input.value = '';
 }
 
-function sendReaction(emoji) {
-  if (!ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ type: 'reaction', emoji }));
-}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('chat-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendChat();
+  });
+});
 
-function pinProduct(id, name, price, image, slug) {
-  if (!ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({
-    type: 'pin_product', product_id: id,
-    product_name: name, price, image, slug,
-  }));
-  document.getElementById('pin-modal').classList.add('hidden');
-}
-
-// ── END STREAM ────────────────────────────────────────────
-function confirmEnd() {
-  document.getElementById('end-modal').classList.remove('hidden');
-}
-
-function endStream() {
-  if (ws && ws.readyState === 1) {
-    ws.send(JSON.stringify({ type: 'stream_ended' }));
-  }
-  localStream?.getTracks().forEach(t => t.stop());
-  Object.values(peerConnections).forEach(pc => pc.close());
-  fetch('{% url "livestream:end_stream" stream.stream_id %}', {
-    method: 'POST',
-    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-  }).finally(() => window.location.href = '{% url "vendors:dashboard" %}');
-}
-
-// ── UI HELPERS ────────────────────────────────────────────
-function addChatBubble(username, message, avatar, isVendor) {
-  const box = document.getElementById('chat-messages');
+function appendChat(data) {
+  const box = document.getElementById('chat-box');
   const div = document.createElement('div');
-  div.className = 'chat-bubble flex items-start gap-2';
+  div.className = 'flex items-start gap-2';
+  const badge = data.is_vendor
+    ? '<span class="text-[10px] bg-gold text-navy font-bold px-1.5 py-0.5 rounded-full ml-1">VENDOR</span>'
+    : '';
   div.innerHTML = `
-    <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold
-                ${isVendor ? 'bg-gold text-navy' : 'bg-gray-700 text-white'}">
-      ${avatar ? `<img src="${avatar}" class="w-full h-full rounded-full object-cover"/>` : username[0]}
+    <div class="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center
+                text-[10px] font-bold text-white flex-shrink-0">
+      ${data.initials || '?'}
     </div>
-    <div class="flex-1 min-w-0">
-      <span class="text-xs font-bold ${isVendor ? 'text-gold' : 'text-gray-300'}">
-        ${isVendor ? '🏪 ' : ''}${username}
-      </span>
-      <p class="text-sm text-white break-words leading-snug mt-0.5">${message}</p>
+    <div>
+      <span class="text-xs font-semibold text-gold">${data.username}${badge}</span>
+      <p class="text-xs text-gray-300 leading-relaxed">${data.message}</p>
     </div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
-  chatCount++;
-  document.getElementById('chat-count').textContent = `${chatCount} messages`;
-  // Keep max 100 messages in DOM
-  while (box.children.length > 101) box.removeChild(box.children[1]);
 }
 
-function addGiftBubble(username, gift, amount) {
-  const box = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'chat-bubble bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-xl px-3 py-2';
-  div.innerHTML = `<p class="text-sm text-white">🎁 <strong>${username}</strong> sent ${gift} ${amount ? `(GHS ${amount})` : ''}</p>`;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-}
-
-function floatReaction(emoji) {
-  const zone = document.getElementById('reaction-zone');
-  const el   = document.createElement('div');
-  el.className = 'reaction-float';
+// ── Gift animation ─────────────────────────────────────
+function showGiftAnim(emoji, username) {
+  const el = document.createElement('div');
+  el.className = 'gift-anim';
+  el.style.cssText = `left:${20 + Math.random()*60}%;bottom:20%;`;
   el.textContent = emoji;
-  el.style.left  = Math.random() * 80 + 10 + '%';
-  el.style.bottom = '80px';
-  zone.appendChild(el);
-  setTimeout(() => el.remove(), 2500);
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2000);
 }
 
-function setStatus(msg, color) {
-  const el = document.getElementById('connection-status');
-  el.textContent = msg;
-  const colors = {
-    green: 'bg-green-500/80 text-white',
-    red:   'bg-red-600/80 text-white',
-    gray:  'bg-gray-600/80 text-white',
-  };
-  el.className = `absolute bottom-4 right-4 z-10 text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm ${colors[color] || colors.gray}`;
+// ── End stream ─────────────────────────────────────────
+async function endStream() {
+  if (!confirm('End this live stream?')) return;
+
+  if (ws) ws.send(JSON.stringify({ type: 'end_stream' }));
+
+  try {
+    const res = await fetch(END_STREAM_URL, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN },
+    });
+    const data = await res.json();
+
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+
+    alert(`Stream ended!\nViewers: ${data.total_viewers}\nGifts: GHS ${data.gifts_value}\nDuration: ${data.duration} mins`);
+  } catch (err) {
+    console.error('End stream request failed:', err);
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+  }
+  window.location.href = STREAM_LIST_URL;
 }
-
-// ── DURATION TIMER ────────────────────────────────────────
-function startDurationTimer() {
-  setInterval(() => {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
-    const s = String(elapsed % 60).padStart(2, '0');
-    document.getElementById('duration').textContent = `${m}:${s}`;
-  }, 1000);
-}
-
-// Handle pinned product from WS
-window.addEventListener('message', () => {});
-const _origOnMessage = WebSocket.prototype;
-
-// Start on load
-window.addEventListener('load', startCamera);
-
-// Prevent accidental close
-window.addEventListener('beforeunload', e => {
-  e.preventDefault();
-  e.returnValue = 'Your stream is live. Are you sure you want to leave?';
-});
 </script>
 {% endblock %}
