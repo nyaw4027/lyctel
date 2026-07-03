@@ -15,6 +15,24 @@
   @media (min-width: 640px) {
     #delivery-map { height: 380px; }
   }
+
+  /* Defensive re-assertion of Leaflet's own tile-sizing rules.
+     Tailwind's base reset applies `img { max-width: 100%; height: auto; }`
+     globally, which fights with Leaflet's tile <img> elements. leaflet.css
+     normally overrides this with !important — but if it loads after
+     Tailwind's stylesheet (or fails to load at all, e.g. CDN blocked by a
+     CSP/firewall/ad-blocker), tiles silently collapse to zero visible size
+     and the map looks completely blank even though tiles downloaded fine.
+     These rules make that impossible regardless of load order. */
+  #delivery-map img,
+  #delivery-map .leaflet-tile {
+    max-width: none !important;
+    max-height: none !important;
+  }
+  #delivery-map .leaflet-container {
+    background: #e9edf2;
+  }
+
   .leaflet-control-attribution { font-size: 8px; opacity: .7; }
   .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 12px rgba(15,27,45,.15) !important; }
   .leaflet-control-zoom a { border-radius: 10px !important; }
@@ -469,6 +487,26 @@
   );
 
   streetLayer.addTo(map);
+
+  // ── DIAGNOSTICS ─────────────────────────────────────
+  // If the map is still blank after this, open the browser console —
+  // one of these two will fire and say exactly why.
+  streetLayer.on('tileerror', function(e) {
+    console.error('[map] tile failed to load:', e.tile && e.tile.src, e);
+  });
+  setTimeout(() => {
+    const size = map.getSize();
+    if (size.x === 0 || size.y === 0) {
+      console.error(
+        '[map] #delivery-map has zero visible size (' + size.x + 'x' + size.y + '). ' +
+        'This usually means the container is hidden, collapsed, or leaflet.css ' +
+        'failed to load before this point. Check the Network tab for the ' +
+        'leaflet.css request from unpkg.com.'
+      );
+    } else {
+      console.log('[map] container size OK:', size.x + 'x' + size.y);
+    }
+  }, 300);
 
   let onSatellite = false;
   document.getElementById('layer-toggle-btn').addEventListener('click', function() {

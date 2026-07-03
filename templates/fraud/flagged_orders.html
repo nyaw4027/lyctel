@@ -30,12 +30,12 @@
           </span>
           <span class="text-xs text-gray-400">{{ flag.created_at|date:"M d, Y H:i" }}</span>
         </div>
-        <span class="text-xs font-bold text-gold-dark whitespace-nowrap">
-          {{ flag.order.order_ref }}
-        </span>
-        <!-- TODO: link this to your order confirmation/admin detail view once
-             I can see order/urls.py to confirm the correct URL name —
-             e.g. {% url 'order:order_confirmation' flag.order.order_ref %} -->
+        <!-- Link to order detail — verified URL name from order/urls.py:
+             {% url 'order:confirmation' flag.order.order_ref %} -->
+        <a href="{% url 'order:confirmation' flag.order.order_ref %}"
+           class="text-xs font-bold text-gold-dark hover:underline whitespace-nowrap">
+          {{ flag.order.order_ref }} →
+        </a>
       </div>
 
       <p class="text-sm text-gray-700 leading-relaxed mb-4">{{ flag.reason }}</p>
