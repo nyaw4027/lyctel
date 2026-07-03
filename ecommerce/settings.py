@@ -122,13 +122,13 @@ if _redis_url:
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
-                'hosts': [_redis_url],
+                 'hosts': [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
                 'capacity':     1500,
                 'expiry':       60,
                 'group_expiry': 86400,
                 # Keep the pub-sub connection alive so Railway's internal
                 # network doesn't drop it after 60s of inactivity.
-                'health_check_interval': 20,
+                
             },
         }
     }
