@@ -454,32 +454,47 @@
   const ROUTING_URL = 'https://router.project-osrm.org/route/v1/driving';
 
   if (!LOCATIONIQ_KEY) {
-    console.warn('LocationIQ key missing — falling back to free CARTO/Esri tiles. Set locationiq_key in the checkout view context for LocationIQ styling, autocomplete and reverse-geocoding.');
+    console.warn('LocationIQ key missing — falling back to free OpenStreetMap street tiles (fine for dev, not for production load) and Esri World Imagery for satellite. Set locationiq_key in the checkout view context for LocationIQ styling, autocomplete and reverse-geocoding.');
   }
 
   // ── MAP SETUP ─────────────────────────────────────────
   const map = L.map('delivery-map', { zoomControl: true }).setView([VENDOR_LAT, VENDOR_LNG], 14);
 
   // Street layer: LocationIQ if a key is configured (nicer styling, matches
-  // the rest of the app), otherwise CARTO Voyager — a free, key-less tile
-  // set that actually renders (unlike the old code, which pointed straight
-  // at LocationIQ with an empty key and silently loaded nothing, leaving
-  // the map blank).
+  // the rest of the app, and properly licensed for commercial use).
+  //
+  // Without a key, this falls back to standard OpenStreetMap tiles rather
+  // than CARTO's Voyager basemap. That's a deliberate change: CARTO's own
+  // docs state their free basemap tiles require an Enterprise license for
+  // commercial use (https://docs.carto.com/faqs/carto-basemaps) — a real
+  // problem for a live delivery app, and CARTO can also throttle/block
+  // requests it flags as commercial traffic, which would look exactly like
+  // the map "erroring out." Plain OSM tiles are the correct free fallback
+  // for prototyping, but OSM's own tile usage policy also isn't meant for
+  // sustained production load — get a LocationIQ (or Mapbox) key before
+  // this carries real traffic.
   const streetLayer = LOCATIONIQ_KEY
     ? L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
         attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
         maxZoom: 19,
         subdomains: ['a', 'b', 'c'],
       })
-    : L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; OpenStreetMap contributors',
-        maxZoom: 20,
-        subdomains: 'abcd',
+    : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+        subdomains: ['a', 'b', 'c'],
       });
 
-  // Satellite layer: real aerial imagery, free, no key required.
+  // Satellite layer: Esri World Imagery, free, no key required.
+  // NOTE: the previous version pointed at server.arcgisonline.com, an old
+  // legacy hostname. Esri's current canonical domain is
+  // services.arcgisonline.com (confirmed against Esri's own REST API docs
+  // and service metadata) — server.arcgisonline.com may still redirect,
+  // but redirects on tile requests are exactly the kind of thing that can
+  // silently fail depending on the browser/CDN, so this points at the
+  // real domain directly instead of relying on a redirect to catch it.
   const satelliteLayer = L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     {
       attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
       maxZoom: 19,
