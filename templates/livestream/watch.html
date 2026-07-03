@@ -3,216 +3,426 @@
 
 {% block extra_head %}
 <style>
-  body { background:#0a0a0a; }
-  #remote-video { width:100%; aspect-ratio:9/16; max-height:80vh;
-                  object-fit:cover; border-radius:16px; background:#111; }
-  .chat-box     { height:280px; overflow-y:auto; scroll-behavior:smooth; }
+  body { background: #0a0a0a; overflow-x: hidden; }
 
-  .gift-anim { position:fixed; pointer-events:none; z-index:999;
-               font-size:3rem; animation:floatUp 2.5s ease forwards; }
-  @keyframes floatUp {
-    0%   { opacity:1; transform:translateY(0) scale(1); }
-    60%  { opacity:1; transform:translateY(-140px) scale(1.4); }
-    100% { opacity:0; transform:translateY(-220px) scale(.8); }
+  /* ── Video ───────────────────────────────────────────── */
+  #remote-video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    background: #111;
   }
 
-  .product-card-live { animation:slideUp .3s ease forwards; }
-  @keyframes slideUp {
-    from { opacity:0; transform:translateY(20px); }
-    to   { opacity:1; transform:translateY(0); }
+  /* ── Connecting overlay ──────────────────────────────── */
+  #connecting-overlay {
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
   }
 
-  .gift-btn { transition:all .2s; }
-  .gift-btn:hover { transform:scale(1.15); }
-  .gift-btn:active { transform:scale(.9); }
+  /* ── Chat messages ───────────────────────────────────── */
+  #chat-messages {
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+  }
+  #chat-messages::-webkit-scrollbar { width: 3px; }
+  #chat-messages::-webkit-scrollbar-thumb { background: #333; border-radius: 99px; }
+
+  .chat-bubble { animation: bubbleIn .25s ease; }
+  @keyframes bubbleIn {
+    from { opacity: 0; transform: translateY(8px) scale(.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ── Gift animations ─────────────────────────────────── */
+  .gift-float {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    font-size: 2.8rem;
+    animation: giftFloat 2.8s cubic-bezier(.25,.46,.45,.94) forwards;
+  }
+  @keyframes giftFloat {
+    0%   { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+    30%  { opacity: 1; transform: translateY(-80px) scale(1.3) rotate(10deg); }
+    60%  { opacity: .8; transform: translateY(-160px) scale(1.1) rotate(-5deg); }
+    100% { opacity: 0; transform: translateY(-260px) scale(.7) rotate(5deg); }
+  }
+
+  /* ── Gift combo banner ───────────────────────────────── */
+  #gift-combo {
+    animation: comboPop .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes comboPop {
+    from { transform: scale(0) translateX(-50%); }
+    to   { transform: scale(1) translateX(-50%); }
+  }
+
+  /* ── Product cards ───────────────────────────────────── */
+  .product-card-live {
+    animation: cardSlide .35s cubic-bezier(.34,1.56,.64,1) forwards;
+    flex-shrink: 0;
+  }
+  @keyframes cardSlide {
+    from { opacity: 0; transform: translateY(16px) scale(.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .product-card-live:hover { transform: translateY(-3px); }
+  .product-card-live { transition: transform .2s ease; }
+
+  /* ── Like button pulse ───────────────────────────────── */
+  @keyframes heartBeat {
+    0%,100% { transform: scale(1); }
+    50%     { transform: scale(1.35); }
+  }
+  .like-active { animation: heartBeat .3s ease; }
+
+  /* ── Reaction bar ────────────────────────────────────── */
+  .reaction-btn { transition: transform .15s ease; }
+  .reaction-btn:active { transform: scale(.85); }
+  .reaction-btn:hover  { transform: scale(1.2); }
+
+  /* ── Gift button ─────────────────────────────────────── */
+  .gift-btn { transition: all .2s cubic-bezier(.34,1.56,.64,1); }
+  .gift-btn:active { transform: scale(.88); }
+  .gift-btn:hover  { transform: scale(1.15); }
+
+  /* ── Viewer badge ────────────────────────────────────── */
+  @keyframes countPulse {
+    0%,100% { transform: scale(1); }
+    50%     { transform: scale(1.1); }
+  }
+  .count-pulse { animation: countPulse .4s ease; }
+
+  /* ── Share toast ─────────────────────────────────────── */
+  #share-toast {
+    animation: toastIn .3s ease;
+    transform-origin: bottom center;
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(12px) scale(.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ── Fullscreen video ────────────────────────────────── */
+  #video-wrap:-webkit-full-screen #remote-video { object-fit: contain; }
+  #video-wrap:-moz-full-screen #remote-video    { object-fit: contain; }
+  #video-wrap:fullscreen #remote-video          { object-fit: contain; }
+
+  /* ── Mobile landscape ────────────────────────────────── */
+  @media (max-width: 640px) and (orientation: landscape) {
+    #main-layout { flex-direction: row; }
+    #video-col   { flex: 1; }
+    #side-col    { width: 260px; }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-950 text-white">
-  <div class="max-w-5xl mx-auto px-3 py-4">
+<div class="min-h-screen bg-gray-950 text-white" id="main-layout">
 
-    <div class="flex items-center gap-3 mb-4 flex-wrap">
-      {% if stream.is_live %}
-      <span class="flex items-center gap-1.5 bg-red-600 text-white text-xs font-bold
-                   px-3 py-1.5 rounded-full animate-pulse">🔴 LIVE</span>
+  <!-- ── MOBILE HEADER ──────────────────────────────────── -->
+  <div class="lg:hidden flex items-center gap-3 px-3 pt-3 pb-2">
+    {% if stream.is_live %}
+    <span class="flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full animate-pulse flex-shrink-0">
+      🔴 LIVE
+    </span>
+    {% endif %}
+    <div class="flex items-center gap-2 min-w-0">
+      {% if stream.vendor.logo %}
+      <img src="{{ stream.vendor.logo.url }}" class="w-6 h-6 rounded-full object-cover flex-shrink-0"/>
       {% endif %}
-      <div class="flex items-center gap-2">
-        {% if stream.vendor.logo %}
-        <img src="{{ stream.vendor.logo.url }}" class="w-7 h-7 rounded-full object-cover"/>
-        {% endif %}
-        <span class="text-sm font-semibold text-white">{{ stream.vendor.shop_name }}</span>
+      <span class="text-sm font-semibold text-white truncate">{{ stream.vendor.shop_name }}</span>
+    </div>
+    <span id="viewer-count-mobile"
+          class="ml-auto text-xs text-gray-400 bg-white/10 px-2.5 py-1 rounded-full flex-shrink-0">
+      👁 —
+    </span>
+  </div>
+
+  <div class="flex flex-col lg:flex-row max-w-7xl mx-auto lg:h-screen lg:overflow-hidden" id="main-cols">
+
+    <!-- ── LEFT: VIDEO COLUMN ─────────────────────────── -->
+    <div class="flex-1 flex flex-col min-h-0" id="video-col">
+
+      <!-- Video wrap -->
+      <div class="relative bg-black flex-1 min-h-0 lg:m-3 lg:rounded-2xl overflow-hidden" id="video-wrap">
+        <video id="remote-video" autoplay playsinline></video>
+
+        <!-- Connecting overlay -->
+        <div id="connecting-overlay"
+             class="absolute inset-0 flex flex-col items-center justify-center z-20">
+          <div class="relative mb-6">
+            <div class="w-20 h-20 border-4 border-red-600/30 border-t-red-600 rounded-full animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-3xl">📺</div>
+          </div>
+          <p class="text-white font-bold text-lg mb-1">Joining Live Stream</p>
+          <p class="text-gray-400 text-sm mb-2">{{ stream.vendor.shop_name }}</p>
+          <p id="connecting-hint" class="text-gray-600 text-xs max-w-xs text-center mt-2"></p>
+        </div>
+
+        <!-- Desktop top bar (hidden on mobile — mobile header above handles it) -->
+        <div class="hidden lg:flex absolute top-4 left-4 right-4 z-10 items-center gap-2">
+          {% if stream.is_live %}
+          <span class="flex items-center gap-1.5 bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full animate-pulse">
+            🔴 LIVE
+          </span>
+          {% endif %}
+          <div class="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+            {% if stream.vendor.logo %}
+            <img src="{{ stream.vendor.logo.url }}" class="w-5 h-5 rounded-full object-cover"/>
+            {% endif %}
+            <span class="text-white text-xs font-semibold">{{ stream.vendor.shop_name }}</span>
+          </div>
+          <span class="text-white text-xs text-gray-300 truncate max-w-xs">{{ stream.title }}</span>
+          <div class="ml-auto flex items-center gap-2">
+            <span id="viewer-count"
+                  class="text-white text-xs bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              👁 —
+            </span>
+            <button onclick="toggleFullscreen()"
+                    class="w-8 h-8 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                    title="Fullscreen">⛶</button>
+          </div>
+        </div>
+
+        <!-- Bottom overlay: reactions + like -->
+        <div class="absolute bottom-0 left-0 right-0 z-10 p-3 bg-gradient-to-t from-black/60 to-transparent">
+
+          <!-- Pinned products scroll -->
+          <div id="pinned-products" class="flex gap-2 overflow-x-auto pb-2 mb-3"
+               style="scrollbar-width:none;-ms-overflow-style:none;"></div>
+
+          <!-- Reaction + action row -->
+          <div class="flex items-center gap-2">
+            <!-- Reactions -->
+            <div class="flex items-center gap-1">
+              {% for emoji in "❤️🔥😂👏🎉" %}
+              <button onclick="sendReaction('{{ emoji }}')"
+                      class="reaction-btn text-xl w-9 h-9 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full">
+                {{ emoji }}
+              </button>
+              {% endfor %}
+            </div>
+
+            <div class="flex-1"></div>
+
+            <!-- Like button -->
+            <button id="like-btn" onclick="sendLike()"
+                    class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-xl hover:bg-white/20 transition-colors">
+              ♡
+            </button>
+
+            <!-- Share -->
+            <button onclick="shareStream()"
+                    class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-xl hover:bg-white/20 transition-colors">
+              ↗
+            </button>
+
+            <!-- Fullscreen (mobile) -->
+            <button onclick="toggleFullscreen()"
+                    class="lg:hidden w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-lg hover:bg-white/20 transition-colors">
+              ⛶
+            </button>
+          </div>
+        </div>
+
+        <!-- Gift combo display -->
+        <div id="gift-combo" class="hidden absolute top-16 left-1/2 z-30
+                                     bg-gradient-to-r from-purple-600 to-pink-600
+                                     text-white text-sm font-bold px-4 py-2 rounded-full
+                                     shadow-lg shadow-purple-500/30"
+             style="transform:translateX(-50%);">
+        </div>
+
+        <!-- Like counter float -->
+        <div id="like-display" class="absolute top-16 right-4 z-10 text-right"></div>
       </div>
-      <h1 class="text-sm text-gray-300 truncate">{{ stream.title }}</h1>
-      <span id="viewer-count"
-            class="ml-auto text-xs text-gray-400 bg-white/10 px-3 py-1 rounded-full">
-        👁 —
-      </span>
+
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- ── RIGHT: CHAT + GIFTS COLUMN ─────────────────── -->
+    <div class="w-full lg:w-96 flex flex-col bg-gray-900 lg:border-l border-gray-800 lg:h-screen" id="side-col">
 
-      <div class="lg:col-span-2 space-y-3">
-        <div class="relative">
-          <video id="remote-video" autoplay playsinline></video>
-          <div id="connecting-overlay"
-               class="absolute inset-0 flex flex-col items-center justify-center
-                      bg-gray-900/90 rounded-2xl">
-            <div class="w-12 h-12 border-4 border-red-600 border-t-transparent
-                        rounded-full animate-spin mb-4"></div>
-            <p class="text-white font-semibold">Connecting to stream...</p>
-            <p id="connecting-hint" class="text-gray-500 text-xs mt-2"></p>
-          </div>
+      <!-- Chat header -->
+      <div class="hidden lg:flex items-center justify-between px-4 py-3 border-b border-gray-800 flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-bold text-white">💬 Live Chat</span>
+          <span id="chat-badge"
+                class="text-[10px] bg-white/10 text-gray-300 px-2 py-0.5 rounded-full">0</span>
         </div>
-
-        <div id="pinned-products" class="flex gap-3 overflow-x-auto pb-1"></div>
+        <span id="viewer-count-desktop"
+              class="text-xs text-gray-400 bg-white/10 px-3 py-1 rounded-full">👁 —</span>
       </div>
 
-      <div class="flex flex-col gap-3">
+      <!-- Chat messages -->
+      <div id="chat-messages"
+           class="flex-1 overflow-y-auto px-3 py-3 space-y-2.5 min-h-0"
+           style="max-height: 320px;">
+        <p class="text-xs text-gray-500 text-center pt-2">Joining the conversation...</p>
+      </div>
 
-        <div class="bg-gray-900 rounded-2xl p-4 flex-1 flex flex-col">
-          <p class="text-sm font-semibold text-white mb-2">💬 Live Chat</p>
-          <div id="chat-box" class="chat-box flex-1 space-y-2 mb-3">
-            <p class="text-gray-600 text-xs text-center pt-4">Joining chat...</p>
-          </div>
-          {% if user.is_authenticated %}
-          <div class="flex gap-2">
-            <input id="chat-input" type="text" maxlength="300"
-                   placeholder="Say something..."
-                   class="flex-1 bg-white/10 text-white text-sm px-3 py-2 rounded-xl
-                          border border-white/10 outline-none focus:border-gold/50
-                          placeholder-gray-500"/>
-            <button onclick="sendChat()"
-                    class="bg-gold hover:bg-gold-dark text-navy text-sm
-                           font-bold px-3 py-2 rounded-xl">↑</button>
-          </div>
-          {% else %}
-          <a href="{% url 'accounts:login' %}?next={{ request.path }}"
-             class="text-center text-xs text-gold hover:underline">
-            Sign in to chat
-          </a>
-          {% endif %}
+      <!-- Gift panel -->
+      {% if user.is_authenticated %}
+      <div class="flex-shrink-0 border-t border-gray-800 px-3 py-3 bg-gray-900">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs font-bold text-white">🎁 Send a Gift</p>
+          <span class="text-[10px] text-gray-500">Vendor earns 80%</span>
         </div>
+        <div class="grid grid-cols-5 gap-1.5 mb-2">
+          {% for gift in gifts %}
+          <button class="gift-btn flex flex-col items-center gap-1 bg-white/5 hover:bg-white/10
+                         border border-white/10 rounded-xl p-2 transition-all"
+                  onclick="sendGift('{{ gift.type }}', this)">
+            <span class="text-xl leading-none">{{ gift.emoji }}</span>
+            <span class="text-[9px] text-gray-400 font-semibold">GHS {{ gift.value }}</span>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
 
+      <!-- Chat input -->
+      <div class="flex-shrink-0 border-t border-gray-800 px-3 py-3 bg-gray-950">
         {% if user.is_authenticated %}
-        <div class="bg-gray-900 rounded-2xl p-4">
-          <p class="text-sm font-semibold text-white mb-3">🎁 Send a Gift</p>
-          <div class="grid grid-cols-5 gap-2">
-            {% for gift in gifts %}
-            <button class="gift-btn flex flex-col items-center gap-1 bg-white/5
-                           hover:bg-white/15 rounded-xl p-2 transition-all"
-                    onclick="sendGift('{{ gift.type }}')">
-              <span class="text-2xl">{{ gift.emoji }}</span>
-              <span class="text-[10px] text-gray-400">GHS {{ gift.value }}</span>
-            </button>
-            {% endfor %}
-          </div>
-          <p class="text-[10px] text-gray-600 text-center mt-2">
-            Vendor earns 80% · Lynctel 20%
-          </p>
+        <div class="flex gap-2">
+          <input type="text" id="chat-input"
+                 placeholder="Say something..."
+                 maxlength="300"
+                 class="flex-1 bg-white/10 border border-white/10 text-white text-sm
+                        rounded-xl px-3 py-2.5 focus:outline-none focus:border-gold/50
+                        placeholder-gray-500"/>
+          <button onclick="sendChat()"
+                  class="bg-gold hover:bg-yellow-400 text-navy font-bold px-4 py-2.5
+                         rounded-xl transition-colors text-sm flex-shrink-0">↑</button>
         </div>
+        {% else %}
+        <a href="{% url 'accounts:login' %}?next={{ request.path }}"
+           class="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15
+                  text-white text-sm font-semibold py-3 rounded-xl transition-colors w-full">
+          Sign in to chat & send gifts →
+        </a>
         {% endif %}
-
       </div>
     </div>
   </div>
+</div>
+
+<!-- Share toast -->
+<div id="share-toast" class="hidden fixed bottom-20 left-1/2 z-50
+                              bg-gray-800 text-white text-sm font-semibold
+                              px-5 py-3 rounded-2xl shadow-xl"
+     style="transform:translateX(-50%);">
+  🔗 Link copied!
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const STREAM_ID  = '{{ stream.id }}';
-const IS_AUTH    = {{ user.is_authenticated|yesno:'true,false' }};
-const WS_SCHEME  = location.protocol === 'https:' ? 'wss' : 'ws';
-const wsUrl      = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
-// CSRF_TOKEN is already declared globally in base.html — do not redeclare here.
+const STREAM_ID = '{{ stream.id|lower }}';
+const IS_AUTH   = {{ user.is_authenticated|yesno:'true,false' }};
+const WS_SCHEME = location.protocol === 'https:' ? 'wss' : 'ws';
+const wsUrl     = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
+// CSRF_TOKEN already declared globally in base.html
 
 let ws, pc;
-let vendorChannel = null;   // the vendor's channel_name, learned from their offer/answer
+let vendorChannel = null;
 let connectTimeout = null;
+let chatCount = 0;
+let likeCount = 0;
+let likeTimer = null;
+let giftComboTimer = null;
+let giftComboCount = 0;
+let lastGiftEmoji = '';
 
-// ── WebSocket ──────────────────────────────────────────
+const iceConfig = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ]
+};
+
+// ── WEBSOCKET ─────────────────────────────────────────────
 function connectWS() {
   ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
     startViewing();
-    // If we don't get a track within 15s, show a helpful hint instead of
-    // spinning forever — usually means the vendor hasn't started their
-    // camera yet, or both sides are behind strict NATs with no TURN server.
     connectTimeout = setTimeout(() => {
       const hint = document.getElementById('connecting-hint');
-      if (hint) hint.textContent = 'Still connecting — the host may not have started their camera yet.';
+      if (hint) hint.textContent = 'Still connecting — the streamer may not have started their camera yet.';
     }, 15000);
   };
 
   ws.onmessage = (e) => {
-    const data = JSON.parse(e.data);
+    let data;
+    try { data = JSON.parse(e.data); } catch { return; }
+
     switch (data.type) {
       case 'offer':
-        // Vendor sent (or re-sent) an offer directly to us.
         vendorChannel = data.sender;
-        handleOffer(data.sdp);
+        handleVendorOffer(data.sdp);
         break;
+
       case 'answer':
-        // Vendor answered OUR offer (the normal "request the stream" flow).
         vendorChannel = data.sender;
-        if (pc) {
-          pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }))
-            .catch(() => {});
-        }
+        if (pc) pc.setRemoteDescription(
+          new RTCSessionDescription({ type: 'answer', sdp: data.sdp })
+        ).catch(() => {});
         break;
+
       case 'ice':
         if (pc && data.sender === vendorChannel) {
           pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {});
         }
         break;
+
       case 'viewer_count':
-        document.getElementById('viewer-count').textContent = `👁 ${data.count} watching`;
+        updateViewerCount(data.count);
         break;
+
       case 'chat':
         appendChat(data);
         break;
+
       case 'gift':
-        showGiftAnim(data.emoji, data.username);
+        handleGiftEvent(data);
         break;
+
       case 'pinned_products':
         renderPinnedProducts(data.products);
         break;
+
       case 'product_pinned':
         upsertPinnedProduct(data.product);
         break;
+
       case 'product_unpinned':
         removePinnedProduct(data.product_id);
         break;
+
       case 'stream_ended':
         showStreamEnded();
         break;
     }
   };
 
-  ws.onclose = () => setTimeout(connectWS, 4000);
+  ws.onclose = () => {
+    if (connectTimeout) clearTimeout(connectTimeout);
+    setTimeout(connectWS, 4000);
+  };
 }
 
-// ── WebRTC viewer ──────────────────────────────────────
+// ── WEBRTC ────────────────────────────────────────────────
 async function startViewing() {
-  pc = new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-  });
+  pc = new RTCPeerConnection(iceConfig);
 
   pc.ontrack = (e) => {
     const vid = document.getElementById('remote-video');
     vid.srcObject = e.streams[0];
     document.getElementById('connecting-overlay').classList.add('hidden');
-    if (connectTimeout) clearTimeout(connectTimeout);
+    if (connectTimeout) { clearTimeout(connectTimeout); connectTimeout = null; }
   };
 
   pc.onicecandidate = (e) => {
-    if (e.candidate) {
-      // Target the vendor specifically once we know their channel name;
-      // before that (very first ICE candidates can fire before the
-      // answer arrives) we send untargeted and the server will broadcast
-      // it room-wide as a fallback.
+    if (e.candidate && ws?.readyState === 1) {
       ws.send(JSON.stringify({
         type:      'ice',
         candidate: e.candidate,
@@ -221,89 +431,180 @@ async function startViewing() {
     }
   };
 
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed') {
+      pc.close();
+      setTimeout(startViewing, 2000);
+    }
+  };
+
   pc.addTransceiver('video', { direction: 'recvonly' });
   pc.addTransceiver('audio', { direction: 'recvonly' });
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-  ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+
+  if (ws?.readyState === 1) {
+    ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+  }
 }
 
-async function handleOffer(sdp) {
+async function handleVendorOffer(sdp) {
   if (!pc) return;
   await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
-  ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp, peer_id: vendorChannel }));
+  if (ws?.readyState === 1) {
+    ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp, peer_id: vendorChannel }));
+  }
 }
 
-// ── Chat ───────────────────────────────────────────────
+// ── CHAT ──────────────────────────────────────────────────
 function sendChat() {
   const input = document.getElementById('chat-input');
   const msg   = input.value.trim();
-  if (!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
+  if (!msg || ws?.readyState !== 1) return;
   ws.send(JSON.stringify({ type: 'chat', message: msg }));
   input.value = '';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const inp = document.getElementById('chat-input');
-  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
-  connectWS();
-});
-
 function appendChat(data) {
-  const box  = document.getElementById('chat-box');
-  const first = box.querySelector('.text-center');
-  if (first) first.remove();
+  const box = document.getElementById('chat-messages');
+  const placeholder = box.querySelector('.text-center');
+  if (placeholder) placeholder.remove();
 
+  const isVendor = data.is_vendor;
   const div = document.createElement('div');
-  div.className = 'flex items-start gap-2';
-  const badge = data.is_vendor
-    ? '<span class="text-[9px] bg-gold text-navy font-bold px-1.5 py-0.5 rounded-full ml-1">VENDOR</span>'
+  div.className = 'chat-bubble flex items-start gap-2';
+
+  const badge = isVendor
+    ? `<span class="text-[9px] bg-gold text-navy font-bold px-1.5 py-0.5 rounded-full">VENDOR</span>`
     : '';
+
   div.innerHTML = `
-    <div class="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center
-                text-[10px] font-bold text-white flex-shrink-0">${data.initials||'?'}</div>
-    <div>
-      <span class="text-xs font-semibold text-gold">${data.username}${badge}</span>
-      <p class="text-xs text-gray-300 leading-relaxed break-words">${data.message}</p>
+    <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center
+                text-xs font-bold ${isVendor ? 'bg-gold text-navy' : 'bg-white/10 text-white'}">
+      ${data.initials || '?'}
+    </div>
+    <div class="flex-1 min-w-0 bg-white/5 rounded-xl rounded-tl-sm px-3 py-2">
+      <div class="flex items-center gap-1.5 mb-0.5">
+        <span class="text-xs font-bold ${isVendor ? 'text-gold' : 'text-gray-300'} truncate">
+          ${data.username || 'Guest'}
+        </span>
+        ${badge}
+        <span class="text-[10px] text-gray-600 ml-auto flex-shrink-0">${data.sent_at || ''}</span>
+      </div>
+      <p class="text-sm text-white break-words leading-snug">${escapeHtml(data.message)}</p>
     </div>`;
+
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
+
+  chatCount++;
+  const badge2 = document.getElementById('chat-badge');
+  if (badge2) badge2.textContent = chatCount;
+
+  // Keep max 100 messages
+  while (box.children.length > 101) box.removeChild(box.children[0]);
 }
 
-// ── Gifts ──────────────────────────────────────────────
-async function sendGift(giftType) {
+// ── REACTIONS ─────────────────────────────────────────────
+function sendReaction(emoji) {
+  floatEmoji(emoji, 'reaction');
+  // Also show in chat as a system message
+  appendSystemMsg(`Someone reacted ${emoji}`);
+}
+
+function floatEmoji(emoji, source) {
+  const el = document.createElement('div');
+  el.className = 'gift-float';
+  el.textContent = emoji;
+  el.style.left   = (source === 'reaction' ? 5 + Math.random() * 30 : 30 + Math.random() * 40) + '%';
+  el.style.bottom = '100px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+}
+
+// ── LIKES ─────────────────────────────────────────────────
+function sendLike() {
+  const btn = document.getElementById('like-btn');
+  btn.textContent = '❤️';
+  btn.classList.add('like-active');
+  setTimeout(() => btn.classList.remove('like-active'), 300);
+
+  likeCount++;
+  floatEmoji('❤️', 'like');
+
+  clearTimeout(likeTimer);
+  likeTimer = setTimeout(() => {
+    const display = document.getElementById('like-display');
+    display.innerHTML = `<span class="text-xs text-red-400 font-bold bg-black/60 px-2 py-1 rounded-full">
+      ❤️ ${likeCount} likes
+    </span>`;
+    setTimeout(() => { display.innerHTML = ''; }, 2000);
+  }, 800);
+}
+
+// ── GIFTS ─────────────────────────────────────────────────
+async function sendGift(giftType, btn) {
   if (!IS_AUTH) { location.href = '/accounts/login/'; return; }
-  const res = await fetch(`/livestream/${STREAM_ID}/send-gift/`, {
-    method: 'POST',
-    headers: {
-      'X-CSRFToken':      CSRF_TOKEN,
-      'X-Requested-With': 'XMLHttpRequest',
-    },
-    body: new URLSearchParams({ gift_type: giftType, quantity: 1 }),
-  });
-  const data = await res.json();
-  if (data.success) {
-    ws.send(JSON.stringify({
-      type:      'gift',
-      gift_type: giftType,
-      quantity:  1,
-    }));
+
+  // Animate button
+  btn.style.transform = 'scale(.85)';
+  setTimeout(() => btn.style.transform = '', 200);
+
+  try {
+    const res  = await fetch(`/livestream/${STREAM_ID}/send-gift/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+      body: new URLSearchParams({ gift_type: giftType, quantity: 1 }),
+    });
+    const data = await res.json();
+
+    if (data.success && ws?.readyState === 1) {
+      ws.send(JSON.stringify({ type: 'gift', gift_type: giftType, quantity: 1 }));
+      // Show local animation immediately
+      handleGiftEvent({ emoji: data.emoji, username: 'You', total_value: data.total_value });
+    }
+  } catch (err) {
+    console.error('Gift error:', err);
   }
 }
 
-function showGiftAnim(emoji, username) {
-  const el = document.createElement('div');
-  el.className = 'gift-anim';
-  el.style.cssText = `left:${15 + Math.random()*70}%;bottom:15%;`;
-  el.textContent   = emoji;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 2500);
+function handleGiftEvent(data) {
+  const emoji    = data.emoji;
+  const username = data.username || 'Someone';
+  const amount   = data.total_value;
+
+  // Float animation
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => floatEmoji(emoji, 'gift'), i * 120);
+  }
+
+  // Combo counter
+  if (emoji === lastGiftEmoji) {
+    giftComboCount++;
+  } else {
+    giftComboCount = 1;
+    lastGiftEmoji = emoji;
+  }
+
+  clearTimeout(giftComboTimer);
+  if (giftComboCount > 1) {
+    const combo = document.getElementById('gift-combo');
+    combo.textContent = `${emoji} ×${giftComboCount} COMBO!`;
+    combo.classList.remove('hidden');
+    giftComboTimer = setTimeout(() => {
+      combo.classList.add('hidden');
+      giftComboCount = 0;
+    }, 2500);
+  }
+
+  // Chat notification
+  appendSystemMsg(`🎁 ${username} sent ${emoji}${amount ? ` (GHS ${amount})` : ''}`);
 }
 
-// ── Pinned products ────────────────────────────────────
+// ── PINNED PRODUCTS ───────────────────────────────────────
 function renderPinnedProducts(products) {
   const container = document.getElementById('pinned-products');
   container.innerHTML = '';
@@ -311,46 +612,134 @@ function renderPinnedProducts(products) {
 }
 
 function upsertPinnedProduct(p) {
-  const existing = document.getElementById(`live-product-${p.id}`);
+  const existing = document.getElementById(`lp-${p.id}`);
   if (existing) existing.remove();
 
   const container = document.getElementById('pinned-products');
-  const div = document.createElement('a');
-  div.id        = `live-product-${p.id}`;
-  div.href      = `/products/${p.slug}/`;
-  div.className = 'product-card-live flex-shrink-0 w-36 bg-gray-900 border rounded-2xl overflow-hidden '
-                + (p.is_highlighted ? 'border-gold shadow-lg shadow-gold/20' : 'border-white/10');
-  div.innerHTML = `
-    ${p.is_highlighted ? '<div class="bg-gold text-navy text-[9px] font-bold text-center py-0.5">🔥 Featured Now</div>' : ''}
-    <img src="${p.image || ''}" onerror="this.style.display='none'"
-         class="w-full h-20 object-cover"/>
+  const a = document.createElement('a');
+  a.id        = `lp-${p.id}`;
+  a.href      = `/products/${p.slug}/`;
+  a.className = 'product-card-live flex-shrink-0 w-32 rounded-xl overflow-hidden '
+              + (p.is_highlighted
+                  ? 'border-2 border-gold bg-gray-900 shadow-lg shadow-gold/20'
+                  : 'border border-white/10 bg-gray-900/80');
+
+  a.innerHTML = `
+    ${p.is_highlighted
+      ? '<div class="bg-gold text-navy text-[9px] font-bold text-center py-0.5 tracking-wide">🔥 FEATURED</div>'
+      : ''}
+    <div class="relative">
+      <img src="${p.image || ''}" onerror="this.parentElement.style.display='none'"
+           class="w-full h-20 object-cover"/>
+      ${!p.in_stock ? '<div class="absolute inset-0 bg-black/60 flex items-center justify-center"><span class="text-[10px] text-red-400 font-bold">Sold Out</span></div>' : ''}
+    </div>
     <div class="p-2">
-      <p class="text-white text-xs font-semibold leading-tight line-clamp-2">${p.name}</p>
-      <p class="text-gold text-xs font-bold mt-1">GHS ${p.price}</p>
+      <p class="text-white text-[11px] font-semibold leading-tight line-clamp-2 mb-1">${escapeHtml(p.name)}</p>
+      <p class="text-gold text-xs font-bold">GHS ${p.price}</p>
       ${p.in_stock
-        ? '<span class="text-[10px] text-green-400">✓ In stock</span>'
-        : '<span class="text-[10px] text-red-400">Out of stock</span>'}
+        ? '<div class="mt-1.5 bg-gold/20 text-gold text-[9px] font-bold text-center py-1 rounded-lg">Tap to Buy</div>'
+        : ''}
     </div>`;
 
   if (p.is_highlighted) {
-    container.prepend(div);
+    container.prepend(a);
   } else {
-    container.appendChild(div);
+    container.appendChild(a);
   }
 }
 
 function removePinnedProduct(productId) {
-  const el = document.getElementById(`live-product-${productId}`);
+  const el = document.getElementById(`lp-${productId}`);
   if (el) el.remove();
 }
 
-// ── Stream ended ───────────────────────────────────────
-function showStreamEnded() {
-  document.getElementById('connecting-overlay').classList.remove('hidden');
-  document.getElementById('connecting-overlay').innerHTML = `
-    <p class="text-4xl mb-3">📺</p>
-    <p class="text-white font-semibold text-lg">Stream has ended</p>
-    <a href="{% url 'livestream:list' %}" class="mt-4 text-gold hover:underline text-sm">Browse other streams →</a>`;
+// ── VIEWER COUNT ──────────────────────────────────────────
+function updateViewerCount(count) {
+  ['viewer-count', 'viewer-count-mobile', 'viewer-count-desktop'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = `👁 ${count} watching`;
+      el.classList.add('count-pulse');
+      setTimeout(() => el.classList.remove('count-pulse'), 400);
+    }
+  });
 }
+
+// ── SHARE ─────────────────────────────────────────────────
+async function shareStream() {
+  const url   = location.href;
+  const title = `${document.title} — Watch on Lynctel`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, url });
+      return;
+    } catch {}
+  }
+
+  try {
+    await navigator.clipboard.writeText(url);
+    const toast = document.getElementById('share-toast');
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 2200);
+  } catch {}
+}
+
+// ── FULLSCREEN ────────────────────────────────────────────
+function toggleFullscreen() {
+  const el = document.getElementById('video-wrap');
+  if (!document.fullscreenElement) {
+    (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen).call(el);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen).call(document);
+  }
+}
+
+// ── STREAM ENDED ──────────────────────────────────────────
+function showStreamEnded() {
+  const overlay = document.getElementById('connecting-overlay');
+  overlay.classList.remove('hidden');
+  overlay.innerHTML = `
+    <div class="text-center px-6">
+      <p class="text-5xl mb-4">📺</p>
+      <h2 class="text-white font-bold text-xl mb-2">Stream has ended</h2>
+      <p class="text-gray-400 text-sm mb-6">Thanks for watching {{ stream.vendor.shop_name }}!</p>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href="{% url 'livestream:list' %}"
+           class="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
+          Browse Live Streams
+        </a>
+        <a href="/shops/{{ stream.vendor.slug }}/"
+           class="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
+          Visit {{ stream.vendor.shop_name }}
+        </a>
+      </div>
+    </div>`;
+}
+
+// ── HELPERS ───────────────────────────────────────────────
+function appendSystemMsg(text) {
+  const box = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'text-center';
+  div.innerHTML = `<span class="text-[11px] text-gray-500 bg-white/5 px-3 py-1 rounded-full">${text}</span>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ── INIT ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('chat-input');
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+  connectWS();
+});
 </script>
 {% endblock %}
