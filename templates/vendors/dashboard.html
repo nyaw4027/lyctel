@@ -226,7 +226,7 @@
 
             <td class="px-5 py-3.5">
               <div class="flex items-center gap-3">
-                {% with product.images.first as img %}
+                {% with img=product.images.first %}
                 {% if img %}
                 <img src="{{ img.image.url }}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0"/>
                 {% else %}
@@ -261,14 +261,14 @@
             {# Media badge: shows image count + video indicator #}
             <td class="px-5 py-3.5 text-center hidden sm:table-cell">
               <div class="flex items-center justify-center gap-1.5">
-                {% with product.images.count as img_count %}
+                {% with img_count=product.images.count %}
                 {% if img_count %}
                 <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                   🖼 {{ img_count }}
                 </span>
                 {% endif %}
                 {% endwith %}
-                {% with product.videos.count as vid_count %}
+                {% with vid_count=product.videos.count %}
                 {% if vid_count %}
                 <span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
                   🎬 {{ vid_count }}
