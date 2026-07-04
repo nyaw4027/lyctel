@@ -10,9 +10,82 @@
     border-radius: 16px;
     border: 2px solid #e5e7eb;
     z-index: 1;
+    background: #e9edf2;
   }
   #location-map.has-pin { border-color: #F5A623; }
   .leaflet-container { border-radius: 14px; }
+
+  /* Defensive re-assertion of Leaflet's own tile-sizing rules — Tailwind's
+     base reset applies img { max-width:100%; height:auto } globally, which
+     fights Leaflet's tile <img> elements if leaflet.css loses the race to
+     load first. Same fix as the other map pages in this app. */
+  #location-map img, #location-map .leaflet-tile {
+    max-width: none !important;
+    max-height: none !important;
+  }
+
+  #map-relative { position: relative; }
+  .map-btn {
+    position: absolute; z-index: 400;
+    background: white; border: none; border-radius: 10px;
+    padding: 7px 11px; font-size: 11.5px; font-weight: 600; color: #0F1B2D;
+    cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    display: flex; align-items: center; gap: 5px; transition: all .2s;
+  }
+  .map-btn:hover { background: #f8fafc; }
+  #satellite-toggle-btn { bottom: 12px; left: 12px; }
+
+  .map-error-banner {
+    position: absolute; inset: 0; background: rgba(233,237,242,.97);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 16px; z-index: 500; border-radius: 14px;
+  }
+  .map-error-banner.show { display: flex; }
+  .map-error-banner p { font-size: 12px; color: #45403a; max-width: 220px; margin: 0 0 10px; }
+  .map-error-banner button {
+    font-size: 11.5px; font-weight: 700; color: white; background: #0F1B2D;
+    border: none; border-radius: 10px; padding: 7px 14px; cursor: pointer;
+  }
+
+  /* Step progress */
+  .step-dot {
+    width: 32px; height: 32px; border-radius: 999px; display: flex;
+    align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+    background: #f3f4f6; color: #9ca3af; transition: all .25s ease; flex-shrink: 0;
+  }
+  .step-dot.active { background: #0F1B2D; color: white; }
+  .step-dot.done    { background: #22c55e; color: white; }
+  .step-line { flex: 1; height: 2px; background: #f3f4f6; transition: background .3s ease; }
+  .step-line.done { background: #22c55e; }
+
+  /* Inline field validation */
+  .field-ok    { border-color: #22c55e !important; background: #f0fdf4 !important; }
+  .field-bad   { border-color: #fca5a5 !important; background: #fef2f2 !important; }
+
+  /* Drag & drop upload zones */
+  .dropzone { transition: border-color .2s ease, background .2s ease; }
+  .dropzone.dragover { border-color: #F5A623 !important; background: #FEF3D7; }
+
+  /* Live preview card */
+  .preview-card {
+    background: linear-gradient(160deg, #0F1B2D 0%, #1a2d47 100%);
+    border-radius: 20px; overflow: hidden; color: white; position: sticky; top: 90px;
+  }
+  .preview-banner {
+    height: 90px; background: #1a2d47; background-size: cover; background-position: center;
+    display: flex; align-items: flex-end; padding: 12px;
+  }
+  .preview-logo {
+    width: 52px; height: 52px; border-radius: 14px; background: #F5A623;
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+    border: 3px solid #0F1B2D; flex-shrink: 0; object-fit: cover;
+  }
+
+  #draft-restored-banner { display: none; }
+  #draft-restored-banner.show { display: flex; }
+
+  #error-summary { display: none; }
+  #error-summary.show { display: block; }
 </style>
 {% endblock %}
 
@@ -29,230 +102,337 @@
   </div>
 </section>
 
-<div class="max-w-3xl mx-auto px-4 md:px-6 py-12">
-  <form method="POST" enctype="multipart/form-data" class="space-y-6">
-    {% csrf_token %}
+<div class="max-w-6xl mx-auto px-4 md:px-6 py-12">
 
-    <!-- STEP 1: Restaurant Details -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
-        <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">1</div>
-        <h2 class="font-display font-700 text-navy">Restaurant Details</h2>
-      </div>
-      <div class="px-6 py-6 space-y-5">
+  <!-- Draft restored notice -->
+  <div id="draft-restored-banner"
+       class="mb-6 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 items-center justify-between gap-3 text-sm text-blue-700">
+    <span>📝 We restored your unsaved draft from last time.</span>
+    <button type="button" onclick="clearDraft()" class="text-xs font-semibold underline flex-shrink-0">Start fresh</button>
+  </div>
 
-        <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Restaurant Name *</label>
-          <input type="text" name="name" value="{{ form_data.name|default:'' }}"
-                 placeholder="e.g. Auntie Akos Kitchen"
-                 class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.name %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-          {% if errors.name %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.name }}</p>{% endif %}
+  <!-- Error summary (only shown when the server round-tripped validation errors) -->
+  {% if errors %}
+  <div id="error-summary" class="show mb-6 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm text-red-700">
+    <p class="font-semibold mb-1">⚠ Please fix {{ errors|length }} field{{ errors|length|pluralize }} before submitting:</p>
+    <ul class="list-disc list-inside space-y-0.5 text-xs">
+      {% for field, msg in errors.items %}<li>{{ msg }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <!-- Step progress -->
+  <div class="flex items-center gap-2 mb-8 max-w-md mx-auto">
+    <div class="step-dot active" id="dot-1">1</div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step-dot" id="dot-2">2</div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step-dot" id="dot-3">3</div>
+  </div>
+
+  <div class="grid lg:grid-cols-3 gap-8">
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-6 lg:col-span-2" id="reg-form">
+      {% csrf_token %}
+
+      <!-- STEP 1: Restaurant Details -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-step="1">
+        <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">1</div>
+          <h2 class="font-display font-700 text-navy">Restaurant Details</h2>
         </div>
+        <div class="px-6 py-6 space-y-5">
 
-        <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
-          <textarea name="description" rows="3" placeholder="Tell customers what makes your food special..."
-                    class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.description|default:'' }}</textarea>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Cuisine Type *</label>
-          <select name="cuisine" class="w-full px-4 py-3 border rounded-xl text-sm bg-white {% if errors.cuisine %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}">
-            <option value="">Select cuisine...</option>
-            {% for value, label in cuisines %}
-            <option value="{{ value }}" {% if form_data.cuisine == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-          {% if errors.cuisine %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.cuisine }}</p>{% endif %}
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Address *</label>
-            <input type="text" name="address" id="address-input" value="{{ form_data.address|default:'' }}"
-                   placeholder="Street, area"
-                   class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.address %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-            {% if errors.address %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.address }}</p>{% endif %}
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Restaurant Name *</label>
+            <input type="text" name="name" id="name-input" required value="{{ form_data.name|default:'' }}"
+                   placeholder="e.g. Auntie Akos Kitchen"
+                   class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.name %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+            {% if errors.name %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.name }}</p>{% endif %}
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Description <span id="desc-count" class="text-gray-300 font-normal">0/300</span>
+            </label>
+            <textarea name="description" id="description-input" rows="3" maxlength="300"
+                      placeholder="Tell customers what makes your food special..."
+                      class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.description|default:'' }}</textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Cuisine Type *</label>
+            <select name="cuisine" id="cuisine-input" required
+                    class="w-full px-4 py-3 border rounded-xl text-sm bg-white {% if errors.cuisine %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}">
+              <option value="">Select cuisine...</option>
+              {% for value, label in cuisines %}
+              <option value="{{ value }}" {% if form_data.cuisine == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            {% if errors.cuisine %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.cuisine }}</p>{% endif %}
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Address *</label>
+              <input type="text" name="address" id="address-input" required value="{{ form_data.address|default:'' }}"
+                     placeholder="Street, area"
+                     class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.address %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+              {% if errors.address %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.address }}</p>{% endif %}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">City</label>
+              <input type="text" name="city" id="city-input" value="{{ form_data.city|default:'Accra' }}"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Pin Your Restaurant Location *
+            </label>
+
+            <div class="flex gap-2 mb-3">
+              <input type="text" id="map-search" placeholder="Search for your restaurant address..."
+                     class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+              <button type="button" onclick="searchAddress()"
+                      class="bg-navy text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-navy-700 transition-colors flex-shrink-0">
+                Search
+              </button>
+              <button type="button" onclick="useGPS()" title="Use my current location"
+                      class="bg-gold-light text-navy text-sm font-semibold px-3 py-2.5 rounded-xl hover:bg-gold/30 transition-colors flex-shrink-0">
+                📍 GPS
+              </button>
+            </div>
+
+            <div id="map-relative">
+              <div id="location-map"></div>
+              <button type="button" class="map-btn" id="satellite-toggle-btn">
+                <span id="sat-icon">🛰️</span> <span id="sat-text">Satellite</span>
+              </button>
+              <div class="map-error-banner" id="map-error-banner">
+                <p>The map couldn't load tiles right now. You can still type your address and coordinates manually below.</p>
+                <button type="button" id="map-retry-btn">Retry map</button>
+              </div>
+            </div>
+
+            <div id="map-status" class="mt-2 text-xs text-gray-400 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
+              Click on the map or search to pin your restaurant location
+            </div>
+
+            <input type="hidden" name="latitude"  id="lat-input"  value="{{ form_data.latitude|default:'' }}"/>
+            <input type="hidden" name="longitude" id="lng-input"  value="{{ form_data.longitude|default:'' }}"/>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- STEP 2: Contact & Hours -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-step="2">
+        <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">2</div>
+          <h2 class="font-display font-700 text-navy">Contact & Operating Hours</h2>
+        </div>
+        <div class="px-6 py-6 space-y-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Phone *</label>
+              <input type="tel" name="phone" id="phone-input" required value="{{ form_data.phone|default:'' }}" placeholder="0241234567"
+                     class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.phone %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+              {% if errors.phone %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.phone }}</p>{% endif %}
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">WhatsApp</label>
+              <input type="tel" name="whatsapp" value="{{ form_data.whatsapp|default:'' }}" placeholder="0241234567"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Opening Time</label>
+              <input type="time" name="opening_time" value="{{ form_data.opening_time|default:'08:00' }}"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Closing Time</label>
+              <input type="time" name="closing_time" value="{{ form_data.closing_time|default:'22:00' }}"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Minimum Order (GHS)</label>
+              <input type="number" step="0.01" name="min_order" value="{{ form_data.min_order|default:'10' }}"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Avg. Prep Time (mins)</label>
+              <input type="number" name="avg_prep_time" value="{{ form_data.avg_prep_time|default:'20' }}"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: Branding -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-step="3">
+        <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">3</div>
+          <h2 class="font-display font-700 text-navy">Branding</h2>
+        </div>
+        <div class="px-6 py-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Logo</label>
+            <div class="dropzone border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center hover:border-gold transition-colors cursor-pointer"
+                 id="logo-dropzone" onclick="document.getElementById('logo-input').click()">
+              <p class="text-3xl mb-2">🖼️</p>
+              <p class="text-sm font-medium text-navy">Upload logo</p>
+              <p class="text-xs text-gray-400 mt-1">or drag & drop · JPG/PNG, max 5MB</p>
+              <input type="file" id="logo-input" name="logo" accept="image/*" class="hidden"/>
+            </div>
+            <div class="relative inline-block mt-3">
+              <img id="logo-preview" class="hidden w-20 h-20 rounded-2xl object-cover border-2 border-gold/30 mx-auto"/>
+              <button type="button" id="logo-remove" onclick="removeImg('logo')"
+                      class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs items-center justify-center">✕</button>
+            </div>
+            <p id="logo-error" class="hidden text-red-500 text-xs mt-1"></p>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">City</label>
-            <input type="text" name="city" id="city-input" value="{{ form_data.city|default:'Accra' }}"
-                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Banner</label>
+            <div class="dropzone border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center hover:border-gold transition-colors cursor-pointer"
+                 id="banner-dropzone" onclick="document.getElementById('banner-input').click()">
+              <p class="text-3xl mb-2">🏞️</p>
+              <p class="text-sm font-medium text-navy">Upload banner</p>
+              <p class="text-xs text-gray-400 mt-1">or drag & drop · JPG/PNG, max 5MB</p>
+              <input type="file" id="banner-input" name="banner" accept="image/*" class="hidden"/>
+            </div>
+            <div class="relative mt-3">
+              <img id="banner-preview" class="hidden w-full h-20 rounded-xl object-cover border-2 border-gold/30"/>
+              <button type="button" id="banner-remove" onclick="removeImg('banner')"
+                      class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs items-center justify-center">✕</button>
+            </div>
+            <p id="banner-error" class="hidden text-red-500 text-xs mt-1"></p>
           </div>
         </div>
-
-        <!-- FIXED: was a single GPS-only button, latitude/longitude were always null
-             for new restaurants that didn't use GPS. Replaced with a proper
-             LocationIQ-powered interactive map — vendor can search, drag the pin,
-             or fall back to GPS. Coordinates are always captured before submit. -->
-        <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-            Pin Your Restaurant Location *
-          </label>
-
-          <!-- Search box -->
-          <div class="flex gap-2 mb-3">
-            <input type="text" id="map-search" placeholder="Search for your restaurant address..."
-                   class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
-            <button type="button" onclick="searchAddress()"
-                    class="bg-navy text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-navy-700 transition-colors flex-shrink-0">
-              Search
-            </button>
-            <button type="button" onclick="useGPS()"
-                    title="Use my current location"
-                    class="bg-gold-light text-navy text-sm font-semibold px-3 py-2.5 rounded-xl hover:bg-gold/30 transition-colors flex-shrink-0">
-              📍 GPS
-            </button>
-          </div>
-
-          <!-- Map -->
-          <div id="location-map"></div>
-
-          <!-- Status / coordinate display -->
-          <div id="map-status" class="mt-2 text-xs text-gray-400 flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
-            Click on the map or search to pin your restaurant location
-          </div>
-
-          <!-- Hidden fields submitted with the form -->
-          <input type="hidden" name="latitude"  id="lat-input"  value="{{ form_data.latitude|default:'' }}"/>
-          <input type="hidden" name="longitude" id="lng-input"  value="{{ form_data.longitude|default:'' }}"/>
-        </div>
-
       </div>
+
+      <!-- Submit -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div class="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
+          <div>
+            <p class="font-display font-700 text-navy">Free to List</p>
+            <p class="text-xs text-gray-400 mt-0.5">No setup fees — ever</p>
+          </div>
+          <p class="font-display font-700 text-2xl text-green-600">GHS 0</p>
+        </div>
+        <button type="submit" id="submit-btn"
+                class="w-full bg-navy hover:bg-navy-700 text-white font-semibold py-4 rounded-2xl
+                       transition-colors btn-press flex items-center justify-center gap-2 text-sm">
+          <span id="submit-btn-text">Launch My Restaurant 🚀</span>
+          <span id="submit-btn-loader" class="hidden">
+            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Launching...
+          </span>
+        </button>
+      </div>
+
+    </form>
+
+    <!-- LIVE PREVIEW ─────────────────────────────────────── -->
+    <div class="lg:col-span-1">
+      <div class="preview-card">
+        <div class="preview-banner" id="preview-banner-bg">
+          <img id="preview-logo" class="preview-logo" src="" style="display:none;"/>
+          <div id="preview-logo-fallback" class="preview-logo">🍽️</div>
+        </div>
+        <div class="p-4">
+          <p id="preview-name" class="font-display font-700 text-base">Your Restaurant Name</p>
+          <p id="preview-cuisine" class="text-xs text-white/50 mt-0.5">Select a cuisine</p>
+          <p id="preview-address" class="text-xs text-white/40 mt-2 flex items-center gap-1">📍 <span>Pin your location</span></p>
+          <div class="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
+            <span class="text-[10px] font-semibold bg-white/10 px-2 py-1 rounded-full">⏱ <span id="preview-prep">20</span> min</span>
+            <span class="text-[10px] font-semibold bg-white/10 px-2 py-1 rounded-full">Min GHS <span id="preview-min">10</span></span>
+          </div>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 text-center mt-3">👀 This is roughly how customers will see your restaurant</p>
     </div>
 
-    <!-- STEP 2: Contact & Hours -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
-        <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">2</div>
-        <h2 class="font-display font-700 text-navy">Contact & Operating Hours</h2>
-      </div>
-      <div class="px-6 py-6 space-y-5">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Phone *</label>
-            <input type="tel" name="phone" value="{{ form_data.phone|default:'' }}" placeholder="0241234567"
-                   class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.phone %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-            {% if errors.phone %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.phone }}</p>{% endif %}
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">WhatsApp</label>
-            <input type="tel" name="whatsapp" value="{{ form_data.whatsapp|default:'' }}" placeholder="0241234567"
-                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Opening Time</label>
-            <input type="time" name="opening_time" value="{{ form_data.opening_time|default:'08:00' }}"
-                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Closing Time</label>
-            <input type="time" name="closing_time" value="{{ form_data.closing_time|default:'22:00' }}"
-                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Minimum Order (GHS)</label>
-            <input type="number" step="0.01" name="min_order" value="{{ form_data.min_order|default:'10' }}"
-                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Avg. Prep Time (mins)</label>
-            <input type="number" name="avg_prep_time" value="{{ form_data.avg_prep_time|default:'20' }}"
-                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 3: Branding -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
-        <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">3</div>
-        <h2 class="font-display font-700 text-navy">Branding</h2>
-      </div>
-      <div class="px-6 py-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Logo</label>
-          <div class="border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center hover:border-gold transition-colors cursor-pointer"
-               onclick="document.getElementById('logo-input').click()">
-            <p class="text-3xl mb-2">🖼️</p>
-            <p class="text-sm font-medium text-navy">Upload logo</p>
-            <input type="file" id="logo-input" name="logo" accept="image/*" class="hidden" onchange="previewImg(this,'logo-preview')"/>
-          </div>
-          <img id="logo-preview" class="hidden mt-3 w-20 h-20 rounded-2xl object-cover border-2 border-gold/30 mx-auto"/>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Banner</label>
-          <div class="border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center hover:border-gold transition-colors cursor-pointer"
-               onclick="document.getElementById('banner-input').click()">
-            <p class="text-3xl mb-2">🏞️</p>
-            <p class="text-sm font-medium text-navy">Upload banner</p>
-            <input type="file" id="banner-input" name="banner" accept="image/*" class="hidden" onchange="previewImg(this,'banner-preview')"/>
-          </div>
-          <img id="banner-preview" class="hidden mt-3 w-full h-20 rounded-xl object-cover border-2 border-gold/30"/>
-        </div>
-      </div>
-    </div>
-
-    <!-- Submit -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-      <div class="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
-        <div>
-          <p class="font-display font-700 text-navy">Free to List</p>
-          <p class="text-xs text-gray-400 mt-0.5">No setup fees — ever</p>
-        </div>
-        <p class="font-display font-700 text-2xl text-green-600">GHS 0</p>
-      </div>
-      <button type="submit" id="submit-btn"
-              onclick="return validateLocation()"
-              class="w-full bg-navy hover:bg-navy-700 text-white font-semibold py-4 rounded-2xl
-                     transition-colors btn-press flex items-center justify-center gap-2 text-sm">
-        Launch My Restaurant 🚀
-      </button>
-    </div>
-
-  </form>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
   const LOCATIONIQ_KEY = '{{ LOCATIONIQ_API_KEY|default:"" }}';
-
-  // ── MAP SETUP ────────────────────────────────────────────
-  // Default to Accra, Ghana centre
   const defaultLat = 5.6037;
   const defaultLng = -0.1870;
 
+  // ── MAP SETUP (fixed: was adding LocationIQ AND OSM tiles at once
+  //    whenever no key was set, firing a whole layer of doomed 401
+  //    requests underneath the OSM tiles that actually rendered) ──
   const map = L.map('location-map').setView([defaultLat, defaultLng], 13);
 
-  L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
-    attribution: '© LocationIQ · © OpenStreetMap',
-    maxZoom: 19,
-  }).addTo(map);
+  const streetLayer = LOCATIONIQ_KEY
+    ? L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
+        attribution: '© LocationIQ · © OpenStreetMap', maxZoom: 19,
+      })
+    : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19,
+      });
 
-  // Fallback to OpenStreetMap tiles if LocationIQ key is missing
-  if (!LOCATIONIQ_KEY) {
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
-    }).addTo(map);
+  const satelliteLayer = L.tileLayer(
+    'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
+  );
+
+  streetLayer.addTo(map);
+
+  let onSatellite = false;
+  document.getElementById('satellite-toggle-btn').addEventListener('click', function() {
+    onSatellite = !onSatellite;
+    if (onSatellite) {
+      map.removeLayer(streetLayer); satelliteLayer.addTo(map);
+      document.getElementById('sat-icon').textContent = '🗺️';
+      document.getElementById('sat-text').textContent = 'Street';
+    } else {
+      map.removeLayer(satelliteLayer); streetLayer.addTo(map);
+      document.getElementById('sat-icon').textContent = '🛰️';
+      document.getElementById('sat-text').textContent = 'Satellite';
+    }
+  });
+
+  // Tile-failure diagnostics + visible fallback (same pattern as the
+  // checkout maps elsewhere in this app)
+  const mapErrorBanner = document.getElementById('map-error-banner');
+  let tileFailCount = 0, tileOkCount = 0;
+  function handleTileError(e) {
+    tileFailCount++;
+    console.error('[restaurant-map] tile failed to load:', e.tile && e.tile.src);
+    if (tileFailCount >= 4 && tileOkCount === 0) mapErrorBanner.classList.add('show');
   }
+  function handleTileLoad() { tileOkCount++; mapErrorBanner.classList.remove('show'); }
+  streetLayer.on('tileerror', handleTileError);
+  streetLayer.on('tileload', handleTileLoad);
+  satelliteLayer.on('tileerror', handleTileError);
+  satelliteLayer.on('tileload', handleTileLoad);
+  document.getElementById('map-retry-btn').addEventListener('click', function() {
+    tileFailCount = 0; mapErrorBanner.classList.remove('show');
+    (onSatellite ? satelliteLayer : streetLayer).redraw();
+  });
 
   const pinIcon = L.divIcon({
     className: '',
     html: '<div style="font-size:2rem;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">📍</div>',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
+    iconSize: [32, 32], iconAnchor: [16, 32],
   });
 
   let marker = null;
 
-  // Restore previously entered coords (e.g. after form validation failure)
   const savedLat = parseFloat(document.getElementById('lat-input').value);
   const savedLng = parseFloat(document.getElementById('lng-input').value);
   if (savedLat && savedLng) {
@@ -260,7 +440,6 @@
     map.setView([savedLat, savedLng], 16);
   }
 
-  // Click on map → drop pin
   map.on('click', function(e) {
     placePin(e.latlng.lat, e.latlng.lng);
     reverseGeocode(e.latlng.lat, e.latlng.lng);
@@ -269,12 +448,12 @@
   function placePin(lat, lng, label) {
     if (marker) map.removeLayer(marker);
     marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(map);
-    document.getElementById('lat-input').value  = lat.toFixed(6);
-    document.getElementById('lng-input').value  = lng.toFixed(6);
+    document.getElementById('lat-input').value = lat.toFixed(6);
+    document.getElementById('lng-input').value = lng.toFixed(6);
     document.getElementById('location-map').classList.add('has-pin');
     setStatus(`✓ ${label || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}`, 'green');
+    updatePreview();
 
-    // Allow dragging to fine-tune
     marker.on('dragend', function(e) {
       const pos = e.target.getLatLng();
       document.getElementById('lat-input').value = pos.lat.toFixed(6);
@@ -283,12 +462,10 @@
     });
   }
 
-  // ── ADDRESS SEARCH ───────────────────────────────────────
   function searchAddress() {
     const query = document.getElementById('map-search').value.trim();
     if (!query) return;
     setStatus('Searching...', 'blue');
-
     const baseQuery = query.toLowerCase().includes('ghana') ? query : query + ', Ghana';
     const url = LOCATIONIQ_KEY
       ? `https://us1.locationiq.com/v1/search.php?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(baseQuery)}&format=json&limit=1`
@@ -309,7 +486,6 @@
       .catch(() => setStatus('⚠ Search failed — click on the map to pin manually', 'orange'));
   }
 
-  // ── REVERSE GEOCODE (fill address field from pin) ────────
   function reverseGeocode(lat, lng) {
     const url = LOCATIONIQ_KEY
       ? `https://us1.locationiq.com/v1/reverse.php?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`
@@ -320,35 +496,27 @@
       .then(data => {
         if (data && data.address) {
           const addr = data.address;
-          // Only prefill if fields are empty — don't overwrite what they typed
           const addressInput = document.getElementById('address-input');
           const cityInput    = document.getElementById('city-input');
           if (!addressInput.value) {
-            addressInput.value = [
-              addr.road || addr.pedestrian,
-              addr.neighbourhood || addr.suburb,
-            ].filter(Boolean).join(', ');
+            addressInput.value = [addr.road || addr.pedestrian, addr.neighbourhood || addr.suburb].filter(Boolean).join(', ');
           }
           if (!cityInput.value || cityInput.value === 'Accra') {
             cityInput.value = addr.city || addr.town || addr.county || 'Accra';
           }
           setStatus(`✓ Pinned: ${data.display_name?.split(',')[0] || 'Location set'}`, 'green');
+          updatePreview();
         }
       })
-      .catch(() => {});  // reverse geocode failure is cosmetic — pin is already saved
+      .catch(() => {});
   }
 
-  // ── GPS FALLBACK ─────────────────────────────────────────
   function useGPS() {
-    if (!navigator.geolocation) {
-      setStatus('⚠ Geolocation not supported on this device', 'orange');
-      return;
-    }
+    if (!navigator.geolocation) { setStatus('⚠ Geolocation not supported on this device', 'orange'); return; }
     setStatus('Getting your location...', 'blue');
     navigator.geolocation.getCurrentPosition(
       pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
         map.setView([lat, lng], 16);
         placePin(lat, lng, 'Your current location');
         reverseGeocode(lat, lng);
@@ -358,49 +526,214 @@
     );
   }
 
-  // ── ALLOW ENTER KEY IN SEARCH BOX ───────────────────────
   document.getElementById('map-search').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') { e.preventDefault(); searchAddress(); }
   });
 
-  // ── STATUS LINE ──────────────────────────────────────────
   function setStatus(msg, color) {
-    const colors = {
-      green:  'text-green-600',
-      orange: 'text-orange-500',
-      blue:   'text-blue-500',
-      gray:   'text-gray-400',
-    };
+    const colors = { green: 'text-green-600', orange: 'text-orange-500', blue: 'text-blue-500', gray: 'text-gray-400' };
     const el = document.getElementById('map-status');
     el.className = `mt-2 text-xs ${colors[color] || colors.gray} flex items-center gap-1.5`;
-    el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full inline-block
-      ${color === 'green' ? 'bg-green-500' : color === 'orange' ? 'bg-orange-500' : 'bg-blue-500'}"></span>
-      ${msg}`;
+    el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full inline-block ${color === 'green' ? 'bg-green-500' : color === 'orange' ? 'bg-orange-500' : 'bg-blue-500'}"></span>${msg}`;
   }
 
-  // ── VALIDATE BEFORE SUBMIT ───────────────────────────────
-  function validateLocation() {
+  // ── LIVE PREVIEW CARD ─────────────────────────────────────
+  function updatePreview() {
+    const name    = document.getElementById('name-input').value.trim();
+    const cuisine = document.getElementById('cuisine-input');
+    const address = document.getElementById('address-input').value.trim();
+    const city    = document.getElementById('city-input').value.trim();
+    const minOrd  = document.querySelector('[name="min_order"]').value;
+    const prep    = document.querySelector('[name="avg_prep_time"]').value;
+
+    document.getElementById('preview-name').textContent = name || 'Your Restaurant Name';
+    document.getElementById('preview-cuisine').textContent =
+      (cuisine.selectedOptions[0] && cuisine.value) ? cuisine.selectedOptions[0].textContent : 'Select a cuisine';
+    document.getElementById('preview-address').querySelector('span').textContent =
+      (address || city) ? [address, city].filter(Boolean).join(', ') : 'Pin your location';
+    document.getElementById('preview-min').textContent  = minOrd || '10';
+    document.getElementById('preview-prep').textContent = prep || '20';
+  }
+  ['name-input','cuisine-input','address-input','city-input'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+    document.getElementById(id).addEventListener('change', updatePreview);
+  });
+  document.querySelector('[name="min_order"]').addEventListener('input', updatePreview);
+  document.querySelector('[name="avg_prep_time"]').addEventListener('input', updatePreview);
+
+  // ── STEP PROGRESS (fills in as each section's required fields are valid) ──
+  function refreshStepProgress() {
+    const step1ok = document.getElementById('name-input').value.trim()
+      && document.getElementById('cuisine-input').value
+      && document.getElementById('address-input').value.trim()
+      && document.getElementById('lat-input').value;
+    const step2ok = document.getElementById('phone-input').value.trim().length >= 9;
+
+    setStep(1, step1ok ? 'done' : 'active');
+    setStep(2, step2ok ? 'done' : (step1ok ? 'active' : ''));
+    setStep(3, (step1ok && step2ok) ? 'active' : '');
+    document.getElementById('line-1').classList.toggle('done', !!step1ok);
+    document.getElementById('line-2').classList.toggle('done', !!(step1ok && step2ok));
+  }
+  function setStep(n, state) {
+    const dot = document.getElementById('dot-' + n);
+    dot.classList.remove('active', 'done');
+    if (state) dot.classList.add(state);
+    dot.textContent = state === 'done' ? '✓' : n;
+  }
+  document.getElementById('reg-form').addEventListener('input', refreshStepProgress);
+  refreshStepProgress();
+
+  // ── INLINE FIELD VALIDATION (visual only — server still validates) ──
+  function wireInlineValidation(id, validator) {
+    const el = document.getElementById(id);
+    el.addEventListener('blur', () => {
+      el.classList.remove('field-ok', 'field-bad');
+      if (!el.value.trim()) return;
+      el.classList.add(validator(el.value.trim()) ? 'field-ok' : 'field-bad');
+    });
+  }
+  wireInlineValidation('name-input', v => v.length >= 2);
+  wireInlineValidation('address-input', v => v.length >= 5);
+  wireInlineValidation('phone-input', v => /^0\d{9}$/.test(v.replace(/\s/g, '')));
+
+  document.getElementById('description-input').addEventListener('input', function() {
+    document.getElementById('desc-count').textContent = this.value.length + '/300';
+  });
+  document.getElementById('description-input').dispatchEvent(new Event('input'));
+
+  // ── DRAG & DROP + VALIDATED IMAGE UPLOAD ─────────────────
+  const MAX_FILE_MB = 5;
+
+  function setupDropzone(zoneId, inputId, previewId, removeId, errorId) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    input.addEventListener('change', () => handleFile(input.files[0]));
+
+    ['dragenter', 'dragover'].forEach(evt =>
+      zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(evt =>
+      zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove('dragover'); }));
+    zone.addEventListener('drop', e => {
+      const file = e.dataTransfer.files[0];
+      if (file) { input.files = e.dataTransfer.files; handleFile(file); }
+    });
+
+    function handleFile(file) {
+      const errorEl = document.getElementById(errorId);
+      errorEl.classList.add('hidden');
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        errorEl.textContent = '⚠ Please choose an image file (JPG or PNG).';
+        errorEl.classList.remove('hidden');
+        input.value = '';
+        return;
+      }
+      if (file.size > MAX_FILE_MB * 1024 * 1024) {
+        errorEl.textContent = `⚠ File is too large — max ${MAX_FILE_MB}MB.`;
+        errorEl.classList.remove('hidden');
+        input.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = document.getElementById(previewId);
+        img.src = e.target.result;
+        img.classList.remove('hidden');
+        img.style.display = '';
+        document.getElementById(removeId).classList.remove('hidden');
+        document.getElementById(removeId).style.display = 'flex';
+        if (previewId === 'logo-preview') {
+          document.getElementById('preview-logo').src = e.target.result;
+          document.getElementById('preview-logo').style.display = '';
+          document.getElementById('preview-logo-fallback').style.display = 'none';
+        }
+        if (previewId === 'banner-preview') {
+          document.getElementById('preview-banner-bg').style.backgroundImage = `url(${e.target.result})`;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+  setupDropzone('logo-dropzone', 'logo-input', 'logo-preview', 'logo-remove', 'logo-error');
+  setupDropzone('banner-dropzone', 'banner-input', 'banner-preview', 'banner-remove', 'banner-error');
+
+  function removeImg(which) {
+    document.getElementById(which + '-input').value = '';
+    document.getElementById(which + '-preview').classList.add('hidden');
+    document.getElementById(which + '-remove').classList.add('hidden');
+    if (which === 'logo') {
+      document.getElementById('preview-logo').style.display = 'none';
+      document.getElementById('preview-logo-fallback').style.display = '';
+    }
+    if (which === 'banner') {
+      document.getElementById('preview-banner-bg').style.backgroundImage = '';
+    }
+  }
+
+  // ── DRAFT AUTOSAVE (localStorage; files can't be persisted this way,
+  //    so only text/select/time/number fields are saved) ──
+  const DRAFT_KEY = 'lynctel_food_register_draft';
+  const draftFieldIds = ['name-input','description-input','cuisine-input','address-input','city-input',
+    'phone-input','lat-input','lng-input'];
+  const draftFieldNames = ['whatsapp','opening_time','closing_time','min_order','avg_prep_time'];
+
+  function saveDraft() {
+    const data = {};
+    draftFieldIds.forEach(id => { const el = document.getElementById(id); if (el) data[id] = el.value; });
+    draftFieldNames.forEach(name => { const el = document.querySelector(`[name="${name}"]`); if (el) data[name] = el.value; });
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  }
+
+  function restoreDraft() {
+    // Don't clobber values the server already repopulated after a failed submit
+    if ({{ errors|length|default:0 }} > 0) return;
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch { return; }
+    if (!saved) return;
+    let restoredAny = false;
+    draftFieldIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && saved[id] && !el.value) { el.value = saved[id]; restoredAny = true; }
+    });
+    draftFieldNames.forEach(name => {
+      const el = document.querySelector(`[name="${name}"]`);
+      if (el && saved[name] && (!el.value || el.value === el.defaultValue)) { el.value = saved[name]; }
+    });
+    if (restoredAny) {
+      document.getElementById('draft-restored-banner').classList.add('show');
+      if (saved['lat-input'] && saved['lng-input']) {
+        const lat = parseFloat(saved['lat-input']), lng = parseFloat(saved['lng-input']);
+        if (lat && lng) { placePin(lat, lng, 'Restored from draft'); map.setView([lat, lng], 16); }
+      }
+      updatePreview();
+      refreshStepProgress();
+    }
+  }
+  function clearDraft() {
+    localStorage.removeItem(DRAFT_KEY);
+    document.getElementById('draft-restored-banner').classList.remove('show');
+  }
+  document.getElementById('reg-form').addEventListener('input', () => {
+    clearTimeout(window._draftTimer);
+    window._draftTimer = setTimeout(saveDraft, 600);
+  });
+  restoreDraft();
+
+  // ── VALIDATE + SUBMIT ─────────────────────────────────────
+  document.getElementById('reg-form').addEventListener('submit', function(e) {
     const lat = document.getElementById('lat-input').value;
     const lng = document.getElementById('lng-input').value;
     if (!lat || !lng) {
+      e.preventDefault();
       setStatus('⚠ Please pin your restaurant on the map before submitting', 'orange');
       document.getElementById('location-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return false;
+      return;
     }
-    return true;
-  }
-
-  // ── IMAGE PREVIEW ────────────────────────────────────────
-  function previewImg(input, targetId) {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = document.getElementById(targetId);
-      img.src = e.target.result;
-      img.classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
-  }
+    localStorage.removeItem(DRAFT_KEY); // form is being submitted for real now
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('submit-btn-text').classList.add('hidden');
+    document.getElementById('submit-btn-loader').classList.remove('hidden');
+  });
 </script>
 {% endblock %}
