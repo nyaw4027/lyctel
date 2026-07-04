@@ -36,6 +36,15 @@
     position: absolute; bottom: 10px; left: 10px; right: 10px;
     display: flex; align-items: center; justify-content: space-between; gap: 6px;
   }
+
+  /* Livestream tab */
+  @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .live-now-banner { animation: fadeUp .4s ease both; }
+  .live-dot { animation: livePulse 1.2s ease-in-out infinite; }
+  .stream-thumb {
+    width: 56px; height: 56px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
+    background: #0f172a;
+  }
 </style>
 {% endblock %}
 
@@ -67,12 +76,47 @@
         </div>
       </div>
     </div>
-    <a href="{% url 'vendors:product_add' %}"
-       class="flex items-center gap-2 bg-navy hover:bg-navy-700 text-white
-              font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors btn-press">
-      + Add Product
+    <div class="flex items-center gap-3">
+      {% if active_stream %}
+      <a href="{% url 'livestream:go_live' %}"
+         class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white
+                font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">
+        <span class="w-2 h-2 bg-white rounded-full live-dot"></span> You're Live — Manage
+      </a>
+      {% else %}
+      <a href="{% url 'livestream:go_live' %}"
+         class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white
+                font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">
+        🔴 Go Live
+      </a>
+      {% endif %}
+      <a href="{% url 'vendors:product_add' %}"
+         class="flex items-center gap-2 bg-navy hover:bg-navy-700 text-white
+                font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors btn-press">
+        + Add Product
+      </a>
+    </div>
+  </div>
+
+  <!-- ── LIVE NOW BANNER ─────────────────────────────── -->
+  {% if active_stream %}
+  <div class="live-now-banner bg-gradient-to-r from-red-600 to-red-500 rounded-2xl p-5 mb-8
+              flex items-center justify-between flex-wrap gap-4 text-white shadow-lg shadow-red-500/20">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center text-2xl">📺</div>
+      <div>
+        <p class="font-display font-700 text-base flex items-center gap-2">
+          <span class="w-2 h-2 bg-white rounded-full live-dot"></span> Live now — {{ active_stream.title }}
+        </p>
+        <p class="text-xs text-white/80 mt-0.5">👁 {{ active_stream.current_viewers|default:0 }} watching right now</p>
+      </div>
+    </div>
+    <a href="{% url 'livestream:go_live' %}"
+       class="bg-white text-red-600 font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-red-50 transition-colors">
+      Manage Stream →
     </a>
   </div>
+  {% endif %}
 
   <!-- ── STATS GRID ──────────────────────────────────── -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -138,9 +182,13 @@
       {% elif tab_id == 'orders' %}🧾
       {% elif tab_id == 'earnings' %}💰
       {% elif tab_id == 'videos' %}🎬
+      {% elif tab_id == 'streams' %}📺
       {% elif tab_id == 'settings' %}⚙️
       {% endif %}
       {{ tab_label }}
+      {% if tab_id == 'streams' and active_stream %}
+      <span class="inline-block w-1.5 h-1.5 bg-red-500 rounded-full live-dot ml-1"></span>
+      {% endif %}
     </a>
     {% endfor %}
   </div>
@@ -437,12 +485,7 @@
       </a>
     </div>
 
-    {% with all_videos=vendor.products.all %}
-    {# Collect all videos across vendor's products #}
     {% if products %}
-    {% with has_videos=False %}
-
-    {# We iterate products and check videos inline since we can't do cross-model queries in template #}
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
       {% for product in products %}
         {% for video in product.videos.all %}
@@ -489,22 +532,17 @@
           </div>
 
         </div>
-        {% empty %}
-          {# No video on this product — skip silently #}
         {% endfor %}
       {% endfor %}
     </div>
-
-    {% endwith %}
     {% endif %}
-    {% endwith %}
 
-    {# Empty state — shown if no products have videos #}
-    {% with has_any_video=False %}
-    {% for product in products %}{% for v in product.videos.all %}{% with has_any_video=True %}{% endwith %}{% endfor %}{% endfor %}
-    {# Django template can't easily set variables, so we show the empty state conditionally via JS #}
-    {% endwith %}
-
+    {# Empty state — toggled by JS after checking whether any .video-card
+       actually rendered above. (Removed a previous block here that tried
+       to detect this via nested {% with %} tags — Django templates can't
+       mutate a variable from inside a loop like that, so it was silently
+       inert dead code; the JS check below is the only thing that ever
+       actually worked.) #}
     <div id="no-videos-msg" class="hidden">
       <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
         <p class="text-5xl mb-4">🎬</p>
@@ -520,6 +558,114 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+        TAB: LIVESTREAMS (new)
+  ═══════════════════════════════════════════════════ -->
+  {% elif current_tab == 'streams' %}
+  <div class="fade-in">
+
+    {% if not active_stream %}
+    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-red-950 rounded-2xl p-6 mb-6
+                flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-700">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-xl backdrop-blur-sm">📺</div>
+        <div>
+          <h3 class="font-display font-700 text-white text-base">Go live and sell in real time</h3>
+          <p class="text-xs text-gray-300 mt-0.5">Chat with shoppers, pin products, run polls, and collect gifts while you stream.</p>
+        </div>
+      </div>
+      <a href="{% url 'livestream:go_live' %}"
+         class="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white
+                font-bold text-sm px-6 py-2.5 rounded-xl transition whitespace-nowrap">
+        🔴 Go Live
+      </a>
+    </div>
+    {% endif %}
+
+    <!-- Livestream stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Streams</p>
+        <p class="font-display font-700 text-2xl text-navy">{{ stream_stats.total_streams|default:0 }}</p>
+      </div>
+      <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Peak Viewers Ever</p>
+        <p class="font-display font-700 text-2xl text-navy">{{ stream_stats.best_peak|default:0 }}</p>
+      </div>
+      <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Gift Revenue</p>
+        <p class="font-display font-700 text-2xl text-green-600">GHS {{ stream_stats.total_gifts|floatformat:2|default:"0.00" }}</p>
+        <p class="text-xs text-gray-400 mt-1">Vendor share (80%) of all stream gifts</p>
+      </div>
+      <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Replays Saved</p>
+        <p class="font-display font-700 text-2xl text-blue-600">{{ stream_stats.replay_count|default:0 }}</p>
+      </div>
+    </div>
+
+    {% if stream_history %}
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+            <th class="px-5 py-3 text-left font-semibold">Stream</th>
+            <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Peak Viewers</th>
+            <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Duration</th>
+            <th class="px-5 py-3 text-right font-semibold">Gifts</th>
+            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Date</th>
+            <th class="px-5 py-3 text-right font-semibold">Replay</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for stream in stream_history %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                {% if stream.thumbnail %}
+                <img src="{{ stream.thumbnail.url }}" class="stream-thumb"/>
+                {% else %}
+                <div class="stream-thumb flex items-center justify-center text-lg">📺</div>
+                {% endif %}
+                <p class="font-semibold text-navy leading-tight">{{ stream.title }}</p>
+              </div>
+            </td>
+            <td class="px-5 py-3.5 text-right text-navy font-semibold hidden md:table-cell">
+              👁 {{ stream.peak_viewers|default:stream.total_viewers|default:0 }}
+            </td>
+            <td class="px-5 py-3.5 text-right text-gray-500 hidden md:table-cell">
+              {{ stream.duration_minutes|default:"—" }}{% if stream.duration_minutes %} min{% endif %}
+            </td>
+            <td class="px-5 py-3.5 text-right font-display font-700 text-green-600">
+              GHS {{ stream.gifts_value|floatformat:2|default:"0.00" }}
+            </td>
+            <td class="px-5 py-3.5 text-gray-400 text-xs hidden md:table-cell">
+              {{ stream.ended_at|date:"M d, Y" }}
+            </td>
+            <td class="px-5 py-3.5 text-right">
+              {% if stream.recording_url %}
+              <a href="{% url 'livestream:watch' stream.id %}"
+                 class="text-xs border border-blue-200 text-blue-600 hover:bg-blue-500 hover:text-white
+                        hover:border-blue-500 font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                ▶ Watch
+              </a>
+              {% else %}
+              <span class="text-xs text-gray-300">No replay</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
+      <p class="text-5xl mb-4">📺</p>
+      <p class="font-display font-700 text-navy mb-1">No streams yet</p>
+      <p class="text-gray-400 text-sm mb-5">Go live once to see your stream history and stats here.</p>
+    </div>
+    {% endif %}
   </div>
 
   <!-- ═══════════════════════════════════════════════════
@@ -697,9 +843,14 @@
 {% endblock %}
 
 {% block extra_js %}
+{# Data passed to JS via json_script rather than |safe directly in a
+   <script> block — |safe on a template-rendered JS literal is an XSS risk
+   the moment any field in daily_sales ever contains a value influenced by
+   user input; json_script escapes it properly regardless. #}
+{{ daily_sales|json_script:"daily-sales-data" }}
 <script>
 // ── SALES CHART ──────────────────────────────────────────
-const rawData = {{ daily_sales|safe }};
+const rawData = JSON.parse(document.getElementById('daily-sales-data').textContent);
 
 const labels = rawData.map(d => {
   const dt = new Date(d.day);
