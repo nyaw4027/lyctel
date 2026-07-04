@@ -253,7 +253,7 @@
               </div>
               <div class="flex items-center gap-2 flex-wrap mb-3">
                 {% for item in order.items.all|slice:":3" %}
-                {% with item.product.images.first as img %}
+                {% with img=item.product.images.first %}
                 {% if img %}<img src="{{ img.image.url }}" class="w-9 h-9 rounded-xl object-cover border border-gray-100"/>
                 {% else %}<div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-sm">📦</div>{% endif %}
                 {% endwith %}
