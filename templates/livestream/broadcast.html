@@ -3,219 +3,377 @@
 
 {% block extra_head %}
 <style>
-  body { background: #0a0a0a; color: white; }
+  body, html { margin:0;padding:0;background:#000;overflow:hidden;height:100%; }
+  #mobile-nav, header#navbar { display:none !important; }
+
+  /* ── Root ────────────────────────────────────────────── */
+  #root { position:fixed;inset:0;display:flex;background:#000; }
+
+  /* ── Video ───────────────────────────────────────────── */
   #local-video {
-    width: 100%; height: 100%;
-    object-fit: cover;
-    border-radius: 1rem;
-    background: #111;
-    transform: scaleX(-1);
+    position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;background:#111;
+    transform:scaleX(-1);
+    z-index:1;
   }
-  .chat-bubble { animation: slideIn .25s ease; }
-  @keyframes slideIn {
-    from { opacity:0; transform:translateY(6px); }
-    to   { opacity:1; transform:translateY(0); }
+
+  /* ── Camera placeholder ──────────────────────────────── */
+  #cam-placeholder {
+    position:absolute;inset:0;z-index:5;
+    background:linear-gradient(135deg,#0d0d0d,#1a1020);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
   }
-  .reaction-float {
-    position: absolute;
-    font-size: 2rem;
-    animation: floatUp 2.5s ease forwards;
-    pointer-events: none;
+
+  /* ── UI layer ────────────────────────────────────────── */
+  #ui {
+    position:absolute;inset:0;z-index:10;
+    pointer-events:none;
+    display:flex;flex-direction:column;
+    justify-content:space-between;
   }
-  @keyframes floatUp {
-    0%   { opacity:1; transform:translateY(0) scale(1); }
-    100% { opacity:0; transform:translateY(-200px) scale(1.5); }
+  #ui > * { pointer-events:auto; }
+
+  /* ── Top bar ─────────────────────────────────────────── */
+  #top-bar {
+    padding:env(safe-area-inset-top,12px) 14px 12px;
+    background:linear-gradient(to bottom,rgba(0,0,0,.75) 0%,transparent 100%);
+    display:flex;align-items:center;gap:10px;
+    pointer-events:auto;
   }
-  #chat-messages { scrollbar-width: thin; scrollbar-color: #333 transparent; }
-  .pin-card { transition: all .2s; }
-  .pin-card:hover { transform: translateY(-2px); background: rgba(255,255,255,.12) !important; }
-  .pin-card.active { border-color: #F5A623 !important; }
+
+  /* ── Bottom area ─────────────────────────────────────── */
+  #bottom-area {
+    pointer-events:auto;
+  }
+
+  /* ── Chat overlay ────────────────────────────────────── */
+  #chat-overlay {
+    padding:0 60px 0 12px;
+    max-height:40vh;
+    display:flex;flex-direction:column;justify-content:flex-end;
+    mask-image:linear-gradient(to bottom,transparent 0%,black 35%);
+    -webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 35%);
+    pointer-events:none;
+  }
+  #chat-messages {
+    overflow-y:auto;max-height:38vh;
+    display:flex;flex-direction:column;gap:5px;
+    scrollbar-width:none;
+  }
+  #chat-messages::-webkit-scrollbar{display:none;}
+  .chat-bubble{
+    display:inline-flex;align-items:flex-start;gap:6px;max-width:85%;
+    animation:bubbleIn .2s ease;pointer-events:auto;
+  }
+  @keyframes bubbleIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+  .chat-bg{
+    background:rgba(0,0,0,.55);backdrop-filter:blur(6px);
+    border-radius:18px 18px 18px 4px;padding:6px 12px;
+  }
+
+  /* ── Right action rail ───────────────────────────────── */
+  #rail {
+    position:absolute;right:10px;bottom:160px;
+    display:flex;flex-direction:column;align-items:center;gap:18px;
+    pointer-events:auto;z-index:15;
+  }
+  .rbtn{
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    background:none;border:none;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    color:white;
+  }
+  .ricon{
+    width:46px;height:46px;
+    background:rgba(255,255,255,.15);backdrop-filter:blur(8px);
+    border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:20px;transition:transform .15s cubic-bezier(.34,1.56,.64,1);
+  }
+  .rbtn:active .ricon{transform:scale(.82);}
+  .rlabel{font-size:10px;font-weight:600;color:rgba(255,255,255,.8);}
+
+  /* ── Chat input bar ──────────────────────────────────── */
+  #chat-bar {
+    display:flex;align-items:center;gap:8px;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));
+    background:linear-gradient(to top,rgba(0,0,0,.8) 0%,transparent 100%);
+    pointer-events:auto;
+  }
+  #chat-input{
+    flex:1;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.2);border-radius:24px;
+    padding:10px 16px;color:white;font-size:13px;outline:none;
+  }
+  #chat-input::placeholder{color:rgba(255,255,255,.5);}
+  #chat-input:focus{border-color:rgba(245,166,35,.6);}
+
+  /* ── Pin product modal ───────────────────────────────── */
+  #pin-backdrop{
+    position:fixed;inset:0;z-index:40;
+    background:rgba(0,0,0,.7);display:none;
+  }
+  #pin-sheet{
+    position:fixed;bottom:0;left:0;right:0;z-index:41;
+    background:#1a1a1a;border-radius:24px 24px 0 0;
+    padding:12px 16px calc(20px + env(safe-area-inset-bottom,0px));
+    transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+    max-height:75vh;display:flex;flex-direction:column;
+  }
+  #pin-sheet.open{transform:translateY(0);}
+
+  /* ── Reaction floats ─────────────────────────────────── */
+  .emoji-float{
+    position:fixed;z-index:999;pointer-events:none;
+    font-size:2.5rem;
+    animation:emojiRise 2.4s ease forwards;
+  }
+  @keyframes emojiRise{
+    0%  {opacity:1;transform:translateY(0) scale(1);}
+    50% {opacity:1;transform:translateY(-140px) scale(1.3);}
+    100%{opacity:0;transform:translateY(-280px) scale(.6);}
+  }
+
+  /* ── Stats pill ──────────────────────────────────────── */
+  .stat-pill{
+    background:rgba(0,0,0,.55);backdrop-filter:blur(8px);
+    color:rgba(255,255,255,.85);font-size:11px;font-weight:600;
+    padding:4px 10px;border-radius:99px;
+  }
+
+  /* ── Desktop side panel ──────────────────────────────── */
+  #desktop-side{
+    width:340px;height:100vh;
+    background:#111;border-left:1px solid #222;
+    display:none;flex-direction:column;flex-shrink:0;
+  }
+  @media(min-width:1024px){
+    #desktop-side{display:flex;}
+    #rail{right:14px;bottom:100px;}
+    #chat-overlay{padding-right:12px;}
+  }
+
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  @keyframes heartPop{0%,100%{transform:scale(1)}50%{transform:scale(1.5)}}
+  .heart-pop{animation:heartPop .3s ease;}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="flex flex-col lg:flex-row h-screen bg-gray-950 overflow-hidden">
+<div id="root">
 
-  <!-- LEFT: Video + Controls -->
-  <div class="flex-1 flex flex-col relative min-h-0">
+  <!-- Video -->
+  <video id="local-video" autoplay muted playsinline></video>
 
-    <!-- Video -->
-    <div class="flex-1 relative bg-black overflow-hidden lg:rounded-2xl lg:m-3">
-      <video id="local-video" autoplay muted playsinline></video>
+  <!-- Camera placeholder -->
+  <div id="cam-placeholder">
+    <div style="font-size:60px;margin-bottom:20px;">📸</div>
+    <p style="color:white;font-weight:700;font-size:18px;margin-bottom:8px;">Ready to go live</p>
+    <p style="color:#9ca3af;font-size:14px;margin-bottom:28px;">Tap below to start your camera</p>
+    <button onclick="startCamera()"
+            style="background:#ef4444;color:white;font-weight:700;font-size:15px;
+                   border:none;border-radius:16px;padding:16px 40px;cursor:pointer;
+                   box-shadow:0 8px 24px rgba(239,68,68,.4);">
+      🔴 Start Camera
+    </button>
+  </div>
 
-      <!-- Camera placeholder -->
-      <div id="cam-placeholder"
-           class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
-        <p class="text-5xl mb-4">📸</p>
-        <p class="text-white font-semibold text-lg mb-2">Ready to go live</p>
-        <p class="text-gray-400 text-sm mb-6">Tap the button below to start your camera</p>
-        <button onclick="startCamera()"
-                class="bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-4 rounded-2xl text-base transition-colors flex items-center gap-2">
-          🔴 Start Camera
+  <!-- UI layer -->
+  <div id="ui">
+
+    <!-- Top bar -->
+    <div id="top-bar">
+      <div style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;background:rgba(255,255,255,.1);">
+        {% if vendor.logo %}
+        <img src="{{ vendor.logo.url }}" style="width:100%;height:100%;object-fit:cover;"/>
+        {% else %}
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;">
+          {{ vendor.shop_name|first|upper }}
+        </div>
+        {% endif %}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <p style="color:white;font-weight:700;font-size:13px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ vendor.shop_name }}
+        </p>
+        <p style="color:rgba(255,255,255,.6);font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ stream.title }}
+        </p>
+      </div>
+      <span id="live-badge" style="display:none;background:#ef4444;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;animation:pulse 1.5s infinite;flex-shrink:0;">
+        🔴 LIVE
+      </span>
+      <div class="stat-pill flex-shrink-0">
+        👁 <span id="viewer-count">0</span>
+      </div>
+      <div class="stat-pill" style="color:#4ade80;">
+        🎁 GHS <span id="gift-total">0</span>
+      </div>
+      <div class="stat-pill" style="font-family:monospace;">
+        ⏱ <span id="timer">00:00</span>
+      </div>
+    </div>
+
+    <!-- Bottom area -->
+    <div id="bottom-area">
+      <!-- Chat overlay -->
+      <div id="chat-overlay">
+        <div id="chat-messages"></div>
+      </div>
+
+      <!-- Reactions quick row -->
+      <div style="display:flex;align-items:center;gap:6px;padding:8px 12px 4px;pointer-events:auto;">
+        {% for emoji in "❤️🔥😂👏🎉" %}
+        <button onclick="floatEmoji('{{ emoji }}')"
+                style="width:36px;height:36px;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);
+                       border:none;border-radius:50%;font-size:18px;cursor:pointer;
+                       display:flex;align-items:center;justify-content:center;
+                       transition:transform .15s;-webkit-tap-highlight-color:transparent;"
+                ontouchstart="this.style.transform='scale(.85)'"
+                ontouchend="this.style.transform='scale(1)'">
+          {{ emoji }}
+        </button>
+        {% endfor %}
+        <div style="flex:1;"></div>
+        <button onclick="document.getElementById('pin-backdrop').style.display='block';document.getElementById('pin-sheet').classList.add('open')"
+                style="background:#F5A623;color:#0F1B2D;border:none;border-radius:20px;
+                       padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;
+                       display:flex;align-items:center;gap:5px;">
+          📌 Pin Product
         </button>
       </div>
 
-      <!-- LIVE badge + viewer count -->
-      <div class="absolute top-4 left-4 flex items-center gap-2 z-10">
-        <span id="live-badge"
-              class="hidden bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full animate-pulse">
-          🔴 LIVE
-        </span>
-        <span class="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
-          👁 <span id="viewer-count">0</span>
-        </span>
-      </div>
-
-      <!-- Stream title -->
-      <div class="absolute top-4 right-4 z-10 max-w-48">
-        <span class="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm block truncate">
-          {{ stream.title }}
-        </span>
-      </div>
-
-      <!-- Timer -->
-      <div class="absolute bottom-4 left-4 z-10">
-        <span class="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-mono">
-          ⏱ <span id="duration">00:00</span>
-        </span>
-      </div>
-
-      <!-- Stats bar -->
-      <div class="absolute bottom-4 right-4 z-10 flex items-center gap-2">
-        <span class="bg-green-500/80 text-white text-xs font-bold px-3 py-1 rounded-full">
-          🎁 GHS <span id="stat-gifts">0</span>
-        </span>
-        <span id="connection-status"
-              class="bg-yellow-500/80 text-black text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm">
-          Starting...
-        </span>
-      </div>
-
-      <!-- Reaction float zone -->
-      <div id="reaction-zone" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
-    </div>
-
-    <!-- Controls bar -->
-    <div class="flex items-center justify-between gap-3 px-4 py-3 bg-gray-900 border-t border-gray-800 flex-wrap">
-      <div class="flex items-center gap-2">
-        <button id="toggle-cam" onclick="toggleCamera()"
-                class="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-lg transition-colors"
-                title="Camera">📷</button>
-        <button id="toggle-mic" onclick="toggleMic()"
-                class="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-lg transition-colors"
-                title="Mic">🎤</button>
-        <button onclick="switchCamera()"
-                class="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-lg transition-colors"
-                title="Flip Camera">🔄</button>
-      </div>
-      <button onclick="document.getElementById('pin-modal').classList.remove('hidden')"
-              class="flex items-center gap-2 bg-gold text-navy text-sm font-bold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors">
-        📌 Pin Product
-      </button>
-      <button onclick="document.getElementById('end-modal').classList.remove('hidden')"
-              class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors">
-        ⏹ End Stream
-      </button>
-    </div>
-  </div>
-
-  <!-- RIGHT: Chat panel -->
-  <div class="w-full lg:w-80 xl:w-96 flex flex-col bg-gray-900 border-l border-gray-800" style="height:280px;flex-shrink:0;" id="chat-panel">
-
-    <!-- Header -->
-    <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
-      <h3 class="font-bold text-sm text-white">💬 Live Chat</h3>
-      <span class="text-xs text-gray-400"><span id="chat-count">0</span> messages</span>
-    </div>
-
-    <!-- Pinned product bar -->
-    <div id="pinned-bar" class="hidden px-3 py-2 bg-gold/10 border-b border-gold/20 flex-shrink-0">
-      <div class="flex items-center gap-3">
-        <img id="pinned-img" src="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" alt=""/>
-        <div class="flex-1 min-w-0">
-          <p id="pinned-name" class="text-xs font-bold text-white truncate"></p>
-          <p id="pinned-price" class="text-xs text-gold font-semibold"></p>
-        </div>
-        <span class="text-[10px] bg-gold text-navy font-bold px-2 py-1 rounded-lg flex-shrink-0">📌 Pinned</span>
-      </div>
-    </div>
-
-    <!-- Messages -->
-    <div id="chat-messages" class="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-0">
-      <p class="text-xs text-gray-500 text-center">Your stream is live — viewers can chat here 👋</p>
-    </div>
-
-    <!-- Input -->
-    <div class="px-3 py-3 border-t border-gray-800 flex-shrink-0">
-      <div class="flex items-center gap-1 mb-2 flex-wrap">
-        {% for emoji in "❤️🔥😂👏🎉🙏😍💯" %}
-        <button onclick="sendReaction('{{ emoji }}')"
-                class="text-xl hover:scale-125 transition-transform leading-none">{{ emoji }}</button>
-        {% endfor %}
-      </div>
-      <div class="flex gap-2">
+      <!-- Chat input -->
+      <div id="chat-bar">
         <input type="text" id="chat-input"
-               placeholder="Say something..."
+               placeholder="Chat with your viewers..."
                maxlength="300"
-               class="flex-1 bg-gray-800 border border-gray-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-gold placeholder-gray-500"
                onkeydown="if(event.key==='Enter')sendChat()"/>
         <button onclick="sendChat()"
-                class="bg-gold hover:bg-yellow-400 text-navy font-bold px-4 py-2.5 rounded-xl transition-colors text-sm">
-          ↑
-        </button>
+                style="width:44px;height:44px;background:#F5A623;border:none;border-radius:50%;
+                       color:#0F1B2D;font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;
+                       display:flex;align-items:center;justify-content:center;">↑</button>
+        <button onclick="confirmEnd()"
+                style="width:44px;height:44px;background:#ef4444;border:none;border-radius:50%;
+                       color:white;font-size:18px;cursor:pointer;flex-shrink:0;
+                       display:flex;align-items:center;justify-content:center;">⏹</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- PIN PRODUCT MODAL -->
-<div id="pin-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4">
-  <div class="bg-gray-900 rounded-2xl w-full max-w-md border border-gray-700 p-5 max-h-[80vh] flex flex-col">
-    <div class="flex items-center justify-between mb-4 flex-shrink-0">
-      <h3 class="font-bold text-white">📌 Pin a Product</h3>
-      <button onclick="document.getElementById('pin-modal').classList.add('hidden')"
-              class="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+  <!-- Right action rail (inside root, outside ui pointer-events) -->
+  <div id="rail">
+    <button class="rbtn" onclick="toggleCamera()">
+      <div class="ricon" id="cam-icon">📷</div>
+      <span class="rlabel" id="cam-label">Camera</span>
+    </button>
+    <button class="rbtn" onclick="toggleMic()">
+      <div class="ricon" id="mic-icon">🎤</div>
+      <span class="rlabel" id="mic-label">Mic</span>
+    </button>
+    <button class="rbtn" onclick="switchCamera()">
+      <div class="ricon">🔄</div>
+      <span class="rlabel">Flip</span>
+    </button>
+    <button class="rbtn" onclick="document.getElementById('pin-backdrop').style.display='block';document.getElementById('pin-sheet').classList.add('open')">
+      <div class="ricon">📌</div>
+      <span class="rlabel">Pin</span>
+    </button>
+    <button class="rbtn" onclick="confirmEnd()">
+      <div class="ricon" style="background:rgba(239,68,68,.3);">⏹</div>
+      <span class="rlabel" style="color:#f87171;">End</span>
+    </button>
+  </div>
+
+  <!-- Desktop side panel -->
+  <div id="desktop-side">
+    <div style="padding:14px 16px;border-bottom:1px solid #222;display:flex;align-items:center;justify-content:space-between;">
+      <span style="color:white;font-weight:700;font-size:14px;">💬 Live Chat</span>
+      <span id="chat-badge" style="font-size:11px;color:#6b7280;background:rgba(255,255,255,.05);padding:2px 8px;border-radius:99px;">0</span>
     </div>
-    <div class="space-y-2 overflow-y-auto flex-1" id="product-list">
-      {% for product in products %}
-      <button onclick="togglePin({{ product.pk }}, this)"
-              class="pin-card w-full flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-3 text-left transition-all"
-              data-id="{{ product.pk }}"
-              data-name="{{ product.name|escapejs }}"
-              data-price="{{ product.selling_price }}"
-              data-image="{% if product.images.first %}{{ product.images.first.image.url }}{% endif %}"
-              data-slug="{{ product.slug }}">
-        {% if product.images.first %}
-        <img src="{{ product.images.first.image.url }}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0"/>
-        {% else %}
-        <div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center text-xl flex-shrink-0">🛍</div>
-        {% endif %}
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold text-white truncate">{{ product.name }}</p>
-          <p class="text-xs text-gold font-bold">GHS {{ product.selling_price }}</p>
+    <div id="desktop-chat" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:#333 transparent;"></div>
+
+    <!-- Pinned product preview -->
+    <div id="pinned-bar" style="display:none;padding:10px 12px;border-top:1px solid #222;background:rgba(245,166,35,.08);">
+      <p style="color:rgba(255,255,255,.5);font-size:10px;font-weight:700;margin-bottom:6px;">📌 PINNED</p>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img id="pin-preview-img" src="" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;"/>
+        <div style="flex:1;min-width:0;">
+          <p id="pin-preview-name" style="color:white;font-size:12px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></p>
+          <p id="pin-preview-price" style="color:#F5A623;font-size:11px;font-weight:700;margin:0;"></p>
         </div>
-        <span class="pin-label text-xs text-gray-500 flex-shrink-0">Pin</span>
-      </button>
-      {% empty %}
-      <p class="text-sm text-gray-400 text-center py-8">No active products.</p>
-      {% endfor %}
+      </div>
     </div>
+
+    <div style="padding:10px 12px;border-top:1px solid #222;">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="desktop-chat-input"
+               placeholder="Chat with viewers..."
+               maxlength="300"
+               onkeydown="if(event.key==='Enter')sendChat()"
+               style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+                      border-radius:20px;padding:9px 14px;color:white;font-size:13px;outline:none;"/>
+        <button onclick="sendChat()"
+                style="background:#F5A623;border:none;border-radius:20px;padding:9px 16px;
+                       color:#0F1B2D;font-weight:700;font-size:13px;cursor:pointer;">Send</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end root -->
+
+<!-- ── PIN PRODUCT SHEET ──────────────────────────────── -->
+<div id="pin-backdrop" onclick="closePinSheet()" style="position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.7);display:none;"></div>
+<div id="pin-sheet">
+  <div style="width:40px;height:4px;background:#333;border-radius:99px;margin:0 auto 14px;"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <p style="color:white;font-weight:700;font-size:15px;margin:0;">📌 Pin a Product</p>
+    <button onclick="closePinSheet()" style="background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;">×</button>
+  </div>
+  <div style="overflow-y:auto;flex:1;" id="product-list">
+    {% for product in products %}
+    <button onclick="pinProduct({{ product.pk }}, this)"
+            data-id="{{ product.pk }}"
+            data-name="{{ product.name|escapejs }}"
+            data-price="{{ product.selling_price }}"
+            data-image="{% if product.images.first %}{{ product.images.first.image.url }}{% endif %}"
+            data-slug="{{ product.slug }}"
+            style="width:100%;display:flex;align-items:center;gap:12px;
+                   background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+                   border-radius:14px;padding:12px;margin-bottom:8px;cursor:pointer;
+                   text-align:left;transition:all .2s;"
+            class="pin-btn">
+      {% if product.images.first %}
+      <img src="{{ product.images.first.image.url }}"
+           style="width:48px;height:48px;border-radius:10px;object-fit:cover;flex-shrink:0;"/>
+      {% else %}
+      <div style="width:48px;height:48px;border-radius:10px;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">🛍</div>
+      {% endif %}
+      <div style="flex:1;min-width:0;">
+        <p style="color:white;font-size:13px;font-weight:600;margin:0 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ product.name }}</p>
+        <p style="color:#F5A623;font-size:12px;font-weight:700;margin:0;">GHS {{ product.selling_price }}</p>
+      </div>
+      <span class="pin-label" style="font-size:11px;color:#6b7280;flex-shrink:0;">Pin</span>
+    </button>
+    {% empty %}
+    <p style="color:#6b7280;text-align:center;padding:24px;">No active products</p>
+    {% endfor %}
   </div>
 </div>
 
-<!-- END STREAM MODAL -->
-<div id="end-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-  <div class="bg-gray-900 rounded-2xl w-full max-w-sm border border-gray-700 p-6 text-center">
-    <p class="text-4xl mb-3">⏹</p>
-    <h3 class="font-bold text-white text-lg mb-2">End your stream?</h3>
-    <p class="text-gray-400 text-sm mb-6">All viewers will be disconnected.</p>
-    <div class="flex gap-3">
-      <button onclick="document.getElementById('end-modal').classList.add('hidden')"
-              class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-xl transition-colors">
+<!-- ── END CONFIRM MODAL ──────────────────────────────── -->
+<div id="end-modal" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#1a1a1a;border-radius:24px;padding:28px;max-width:320px;width:100%;text-align:center;border:1px solid #333;">
+    <p style="font-size:48px;margin-bottom:12px;">⏹</p>
+    <p style="color:white;font-weight:700;font-size:18px;margin-bottom:8px;">End your stream?</p>
+    <p style="color:#9ca3af;font-size:14px;margin-bottom:24px;">All viewers will be disconnected.</p>
+    <div style="display:flex;gap:10px;">
+      <button onclick="document.getElementById('end-modal').style.display='none'"
+              style="flex:1;background:rgba(255,255,255,.1);border:none;border-radius:14px;color:white;font-weight:600;padding:14px;cursor:pointer;font-size:14px;">
         Cancel
       </button>
       <button onclick="endStream()"
-              class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl transition-colors">
+              style="flex:1;background:#ef4444;border:none;border-radius:14px;color:white;font-weight:700;padding:14px;cursor:pointer;font-size:14px;">
         End Stream
       </button>
     </div>
@@ -225,25 +383,26 @@
 
 {% block extra_js %}
 <script>
-// ── CONSTANTS ─────────────────────────────────────────────
 const STREAM_ID  = '{{ stream.id|lower }}';
 const WS_SCHEME  = location.protocol === 'https:' ? 'wss' : 'ws';
 const WS_URL     = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
 const END_URL    = '/livestream/{{ stream.id|lower }}/end/';
 const PIN_URL    = '/livestream/{{ stream.id|lower }}/pin-product/';
-// CSRF_TOKEN already declared in base.html
+// CSRF_TOKEN declared in base.html
 
-// Seed pinned set from server state so page refresh restores pin state
 const pinnedSet = new Set({{ pinned_ids|default:"[]"|safe }});
 
 let ws, localStream, facingMode = 'user';
-let peerConnections = {};   // viewerChannelName → RTCPeerConnection
+let peerConnections = {};
 let camOn = true, micOn = true;
-let startTime = null, chatCount = 0, totalGifts = 0;
+let startTime = null, timerInterval = null;
+let chatCount = 0, totalGifts = 0;
+let currentPinnedId = null;
+
 const iceConfig = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
+  iceServers:[
+    {urls:'stun:stun.l.google.com:19302'},
+    {urls:'stun:stun1.l.google.com:19302'},
   ]
 };
 
@@ -251,363 +410,310 @@ const iceConfig = {
 async function startCamera() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode },
-      audio: { echoCancellation: true, noiseSuppression: true },
+      video:{width:{ideal:1280},height:{ideal:720},facingMode},
+      audio:{echoCancellation:true,noiseSuppression:true},
     });
     document.getElementById('local-video').srcObject = localStream;
-    document.getElementById('cam-placeholder').classList.add('hidden');
-    document.getElementById('live-badge').classList.remove('hidden');
-    document.getElementById('toggle-cam').classList.remove('hidden');
-    document.getElementById('toggle-mic').classList.remove('hidden');
+    document.getElementById('cam-placeholder').style.display = 'none';
+    document.getElementById('live-badge').style.display = 'inline-flex';
     startTime = Date.now();
-    startDurationTimer();
-    setStatus('Connecting...', 'yellow');
+    startTimer();
     connectWS();
-  } catch (err) {
-    setStatus('Camera error: ' + err.message, 'red');
+  } catch(err) {
+    alert('Camera error: ' + err.message);
   }
 }
 
 function toggleCamera() {
-  if (!localStream) return;
+  if(!localStream) return;
   camOn = !camOn;
-  localStream.getVideoTracks().forEach(t => t.enabled = camOn);
-  document.getElementById('toggle-cam').textContent = camOn ? '📷' : '📷❌';
+  localStream.getVideoTracks().forEach(t=>t.enabled=camOn);
+  document.getElementById('cam-icon').textContent = camOn ? '📷' : '📷❌';
+  document.getElementById('cam-label').textContent = camOn ? 'Camera' : 'Camera Off';
 }
 
 function toggleMic() {
-  if (!localStream) return;
+  if(!localStream) return;
   micOn = !micOn;
-  localStream.getAudioTracks().forEach(t => t.enabled = micOn);
-  document.getElementById('toggle-mic').textContent = micOn ? '🎤' : '🔇';
+  localStream.getAudioTracks().forEach(t=>t.enabled=micOn);
+  document.getElementById('mic-icon').textContent = micOn ? '🎤' : '🔇';
+  document.getElementById('mic-label').textContent = micOn ? 'Mic' : 'Muted';
 }
 
 async function switchCamera() {
   facingMode = facingMode === 'user' ? 'environment' : 'user';
-  if (!localStream) return;
-  const tracks = localStream.getVideoTracks();
+  if(!localStream) return;
   try {
-    const newStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode }, audio: true,
-    });
-    const newTrack = newStream.getVideoTracks()[0];
-    if (tracks[0]) { tracks[0].stop(); localStream.removeTrack(tracks[0]); }
+    const newStream = await navigator.mediaDevices.getUserMedia({video:{facingMode},audio:true});
+    const newTrack  = newStream.getVideoTracks()[0];
+    const oldTrack  = localStream.getVideoTracks()[0];
+    if(oldTrack){ oldTrack.stop(); localStream.removeTrack(oldTrack); }
     localStream.addTrack(newTrack);
     document.getElementById('local-video').srcObject = localStream;
-    Object.values(peerConnections).forEach(pc => {
-      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-      if (sender) sender.replaceTrack(newTrack);
+    Object.values(peerConnections).forEach(pc=>{
+      const s=pc.getSenders().find(s=>s.track?.kind==='video');
+      if(s) s.replaceTrack(newTrack);
     });
-  } catch (err) {
-    console.error('Camera switch:', err);
-  }
+  } catch(e){console.error('Switch camera:',e);}
 }
 
 // ── WEBSOCKET ─────────────────────────────────────────────
 function connectWS() {
   ws = new WebSocket(WS_URL);
-
-  ws.onopen = () => {
-    setStatus('🔴 LIVE', 'red');
-  };
-
-  ws.onmessage = async ({ data }) => {
-    let msg;
-    try { msg = JSON.parse(data); } catch { return; }
-
-    switch (msg.type) {
+  ws.onopen = () => {};
+  ws.onmessage = async({data}) => {
+    let msg; try{msg=JSON.parse(data);}catch{return;}
+    switch(msg.type){
       case 'offer':
-        // A viewer is requesting the stream — msg.sender is their channel
         await handleViewerOffer(msg.sdp, msg.sender);
         break;
-
       case 'answer':
-        // Viewer answered our offer
-        if (peerConnections[msg.sender]) {
+        if(peerConnections[msg.sender])
           await peerConnections[msg.sender].setRemoteDescription(
-            new RTCSessionDescription({ type: 'answer', sdp: msg.sdp })
-          ).catch(() => {});
-        }
+            new RTCSessionDescription({type:'answer',sdp:msg.sdp})
+          ).catch(()=>{});
         break;
-
       case 'ice':
-        if (msg.sender && peerConnections[msg.sender]) {
+        if(msg.sender && peerConnections[msg.sender])
           await peerConnections[msg.sender].addIceCandidate(
             new RTCIceCandidate(msg.candidate)
-          ).catch(() => {});
-        }
+          ).catch(()=>{});
         break;
-
-      case 'chat':
-        addChatBubble(msg.username, msg.message, msg.initials, msg.is_vendor);
-        break;
-
-      case 'gift':
-        totalGifts += parseFloat(msg.total_value || 0);
-        document.getElementById('stat-gifts').textContent = totalGifts.toFixed(2);
-        addGiftBubble(msg.username, msg.emoji, msg.total_value);
-        floatReaction(msg.emoji);
-        break;
-
       case 'viewer_count':
         document.getElementById('viewer-count').textContent = msg.count;
         break;
-
+      case 'chat':
+        appendChat(msg);
+        break;
+      case 'gift':
+        handleGift(msg);
+        break;
       case 'pinned_products':
-        // Sync pinned bar on reconnect
-        if (msg.products && msg.products.length) {
-          const highlighted = msg.products.find(p => p.is_highlighted);
-          if (highlighted) showPinnedBar(highlighted);
+        if(msg.products?.length){
+          const h=msg.products.find(p=>p.is_highlighted);
+          if(h) showPinnedBar(h);
         }
         break;
-
       case 'product_pinned':
-        if (msg.product?.is_highlighted) showPinnedBar(msg.product);
-        break;
-
-      case 'product_unpinned':
-        document.getElementById('pinned-bar').classList.add('hidden');
+        if(msg.product) showPinnedBar(msg.product);
         break;
     }
   };
-
-  ws.onclose = () => {
-    setStatus('Disconnected — reconnecting...', 'gray');
-    setTimeout(connectWS, 3000);
-  };
-  ws.onerror = () => setStatus('Connection error', 'red');
+  ws.onclose = () => setTimeout(()=>{if(localStream)connectWS();},3000);
 }
 
-// ── WEBRTC: answer viewer's offer ─────────────────────────
+// ── WEBRTC ────────────────────────────────────────────────
 async function handleViewerOffer(sdp, viewerChannel) {
-  if (!localStream || !viewerChannel) return;
-
-  // Clean up old connection for this viewer if any
-  if (peerConnections[viewerChannel]) {
-    peerConnections[viewerChannel].close();
-  }
+  if(!localStream || !viewerChannel) return;
+  if(peerConnections[viewerChannel]) peerConnections[viewerChannel].close();
 
   const pc = new RTCPeerConnection(iceConfig);
   peerConnections[viewerChannel] = pc;
 
-  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
 
-  pc.onicecandidate = ({ candidate }) => {
-    if (candidate && ws?.readyState === 1) {
-      ws.send(JSON.stringify({
-        type:      'ice',
-        candidate: candidate,
-        peer_id:   viewerChannel,
-      }));
-    }
+  pc.onicecandidate = ({candidate})=>{
+    if(candidate && ws?.readyState===1)
+      ws.send(JSON.stringify({type:'ice',candidate,peer_id:viewerChannel}));
   };
-
-  pc.onconnectionstatechange = () => {
-    if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+  pc.onconnectionstatechange = ()=>{
+    if(['failed','disconnected','closed'].includes(pc.connectionState))
       delete peerConnections[viewerChannel];
-    }
   };
 
-  await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+  await pc.setRemoteDescription(new RTCSessionDescription({type:'offer',sdp}));
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
 
-  if (ws?.readyState === 1) {
-    ws.send(JSON.stringify({
-      type:    'answer',
-      sdp:     answer.sdp,
-      peer_id: viewerChannel,
-    }));
-  }
+  ws?.readyState===1 && ws.send(JSON.stringify({
+    type:'answer',sdp:answer.sdp,peer_id:viewerChannel,
+  }));
 }
 
 // ── CHAT ──────────────────────────────────────────────────
 function sendChat() {
-  const input = document.getElementById('chat-input');
-  const msg   = input.value.trim();
-  if (!msg || ws?.readyState !== 1) return;
-  ws.send(JSON.stringify({ type: 'chat', message: msg }));
-  input.value = '';
+  const m1 = document.getElementById('chat-input');
+  const m2 = document.getElementById('desktop-chat-input');
+  const msg = (m1?.value||m2?.value||'').trim();
+  if(!msg || ws?.readyState!==1) return;
+  ws.send(JSON.stringify({type:'chat',message:msg}));
+  if(m1) m1.value='';
+  if(m2) m2.value='';
 }
 
-function sendReaction(emoji) {
-  floatReaction(emoji);
+function appendChat(data) {
+  const isVendor = data.is_vendor;
+  chatCount++;
+  const badge = document.getElementById('chat-badge');
+  if(badge) badge.textContent = chatCount;
+
+  // Mobile overlay
+  const mBox = document.getElementById('chat-messages');
+  const mDiv = document.createElement('div');
+  mDiv.className = 'chat-bubble';
+  mDiv.innerHTML = `
+    <div style="width:26px;height:26px;border-radius:50%;flex-shrink:0;background:${isVendor?'#F5A623':'rgba(255,255,255,.15)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${isVendor?'#0F1B2D':'white'};">
+      ${data.initials||'?'}
+    </div>
+    <div class="chat-bg">
+      <span style="font-size:11px;font-weight:700;color:${isVendor?'#F5A623':'rgba(255,255,255,.8)'};">${isVendor?'🏪 ':''}${esc(data.username)}</span>
+      <span style="font-size:13px;color:white;margin-left:4px;">${esc(data.message)}</span>
+    </div>`;
+  mBox.appendChild(mDiv);
+  mBox.scrollTop = mBox.scrollHeight;
+  while(mBox.children.length>60) mBox.removeChild(mBox.children[0]);
+
+  // Desktop side
+  const dBox = document.getElementById('desktop-chat');
+  if(dBox){
+    const dDiv = document.createElement('div');
+    dDiv.style.cssText='display:flex;align-items:flex-start;gap:8px;';
+    dDiv.innerHTML=`
+      <div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;background:${isVendor?'#F5A623':'rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${isVendor?'#0F1B2D':'white'};">
+        ${data.initials||'?'}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <span style="font-size:11px;font-weight:700;color:${isVendor?'#F5A623':'#d1d5db'};">${isVendor?'🏪 ':''}${esc(data.username)}</span>
+        ${isVendor?'<span style="font-size:9px;background:#F5A623;color:#0F1B2D;font-weight:700;padding:1px 5px;border-radius:99px;margin-left:4px;">YOU</span>':''}
+        <p style="font-size:13px;color:white;margin:2px 0 0;word-break:break-word;">${esc(data.message)}</p>
+      </div>`;
+    dBox.appendChild(dDiv);
+    dBox.scrollTop = dBox.scrollHeight;
+    while(dBox.children.length>80) dBox.removeChild(dBox.children[0]);
+  }
+}
+
+// ── GIFTS ─────────────────────────────────────────────────
+function handleGift(data) {
+  totalGifts += parseFloat(data.total_value||0);
+  document.getElementById('gift-total').textContent = totalGifts.toFixed(2);
+  floatEmoji(data.emoji||'🎁');
+  floatEmoji(data.emoji||'🎁');
+  appendSystemMsg(`🎁 ${esc(data.username||'Someone')} sent ${data.emoji} (GHS ${data.total_value||0})`);
 }
 
 // ── PIN PRODUCT ───────────────────────────────────────────
-async function togglePin(productId, btn) {
-  const action = pinnedSet.has(productId) ? 'unpin' : 'pin';
+function closePinSheet() {
+  document.getElementById('pin-backdrop').style.display = 'none';
+  document.getElementById('pin-sheet').classList.remove('open');
+}
 
+async function pinProduct(productId, btn) {
+  const action = currentPinnedId === productId ? 'unpin' : 'pin';
   try {
-    const res  = await fetch(PIN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-      body: JSON.stringify({ product_id: productId, action }),
+    const res  = await fetch(PIN_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':CSRF_TOKEN},
+      body:JSON.stringify({product_id:productId,action}),
     });
     const data = await res.json();
-    if (!data.success) return;
+    if(!data.success) return;
 
-    // Reset all pin cards
-    document.querySelectorAll('.pin-card').forEach(c => {
-      c.classList.remove('active');
-      c.querySelector('.pin-label').textContent = 'Pin';
-      c.querySelector('.pin-label').className = 'pin-label text-xs text-gray-500 flex-shrink-0';
+    // Reset all pin buttons
+    document.querySelectorAll('.pin-btn').forEach(b=>{
+      b.style.borderColor='rgba(255,255,255,.08)';
+      b.style.background='rgba(255,255,255,.05)';
+      b.querySelector('.pin-label').textContent='Pin';
+      b.querySelector('.pin-label').style.color='#6b7280';
     });
-    pinnedSet.clear();
 
-    if (data.action === 'pinned') {
-      btn.classList.add('active');
-      const label = btn.querySelector('.pin-label');
-      label.textContent = '✓ Pinned';
-      label.className = 'pin-label text-xs text-gold font-bold flex-shrink-0';
-      pinnedSet.add(productId);
-
+    if(data.action==='pinned'){
+      currentPinnedId = productId;
+      btn.style.borderColor = '#F5A623';
+      btn.style.background  = 'rgba(245,166,35,.08)';
+      const lbl = btn.querySelector('.pin-label');
+      lbl.textContent='✓ Pinned';lbl.style.color='#F5A623';
       showPinnedBar({
-        name:  btn.dataset.name,
-        price: btn.dataset.price,
-        image: btn.dataset.image,
-        slug:  btn.dataset.slug,
+        name:btn.dataset.name, price:btn.dataset.price,
+        image:btn.dataset.image, slug:btn.dataset.slug,
       });
     } else {
-      document.getElementById('pinned-bar').classList.add('hidden');
+      currentPinnedId = null;
+      document.getElementById('pinned-bar').style.display='none';
     }
-
-    document.getElementById('pin-modal').classList.add('hidden');
-  } catch (err) {
-    console.error('Pin error:', err);
-  }
+    closePinSheet();
+  } catch(e){console.error('Pin error:',e);}
 }
 
 function showPinnedBar(product) {
-  document.getElementById('pinned-bar').classList.remove('hidden');
-  document.getElementById('pinned-img').src   = product.image || '';
-  document.getElementById('pinned-name').textContent  = product.name;
-  document.getElementById('pinned-price').textContent = `GHS ${product.price || product.selling_price || ''}`;
+  const bar   = document.getElementById('pinned-bar');
+  const img   = document.getElementById('pin-preview-img');
+  const name  = document.getElementById('pin-preview-name');
+  const price = document.getElementById('pin-preview-price');
+  if(!bar) return;
+  if(img)   img.src           = product.image||'';
+  if(name)  name.textContent  = product.name||'';
+  if(price) price.textContent = `GHS ${product.price||product.selling_price||''}`;
+  bar.style.display='block';
 }
 
 // ── END STREAM ────────────────────────────────────────────
+function confirmEnd() {
+  document.getElementById('end-modal').style.display = 'flex';
+}
+
 async function endStream() {
-  if (ws?.readyState === 1) {
-    ws.send(JSON.stringify({ type: 'end_stream' }));
-  }
-
-  localStream?.getTracks().forEach(t => t.stop());
-  Object.values(peerConnections).forEach(pc => pc.close());
-
+  ws?.readyState===1 && ws.send(JSON.stringify({type:'end_stream'}));
+  localStream?.getTracks().forEach(t=>t.stop());
+  Object.values(peerConnections).forEach(pc=>pc.close());
+  clearInterval(timerInterval);
   try {
-    const res  = await fetch(END_URL, {
-      method: 'POST',
-      headers: { 'X-CSRFToken': CSRF_TOKEN },
-    });
+    const res  = await fetch(END_URL,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}});
     const data = await res.json();
-    if (data.success) {
-      alert(`Stream ended!\nViewers: ${data.total_viewers}\nGifts: GHS ${data.gifts_value}\nDuration: ${data.duration} mins`);
+    if(data.success){
+      alert(`Stream ended!\nViewers: ${data.total_viewers}\nGifts: GHS ${data.gifts_value}\nDuration: ${data.duration||0} mins`);
     }
-  } catch (err) {
-    console.error('End stream error:', err);
-  }
-
-  window.location.href = '/vendor/dashboard/';
+  } catch(e){console.error(e);}
+  window.location.href='/vendor/dashboard/';
 }
 
-// ── UI HELPERS ────────────────────────────────────────────
-function addChatBubble(username, message, initials, isVendor) {
+// ── HELPERS ───────────────────────────────────────────────
+function floatEmoji(emoji) {
+  const el  = document.createElement('div');
+  el.className = 'emoji-float';
+  el.textContent = emoji;
+  el.style.left   = 5+Math.random()*30+'%';
+  el.style.bottom = '120px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2500);
+}
+
+function appendSystemMsg(text) {
   const box = document.getElementById('chat-messages');
   const div = document.createElement('div');
-  div.className = 'chat-bubble flex items-start gap-2';
-  div.innerHTML = `
-    <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold
-                ${isVendor ? 'bg-gold text-navy' : 'bg-gray-700 text-white'}">
-      ${initials || username?.[0] || '?'}
-    </div>
-    <div class="flex-1 min-w-0">
-      <span class="text-xs font-bold ${isVendor ? 'text-gold' : 'text-gray-300'}">
-        ${isVendor ? '🏪 ' : ''}${username || 'Guest'}
-      </span>
-      <p class="text-sm text-white break-words leading-snug mt-0.5">${message}</p>
-    </div>`;
+  div.style.cssText='text-align:left;padding:2px 0;';
+  div.innerHTML=`<span style="font-size:11px;color:rgba(255,255,255,.4);background:rgba(0,0,0,.3);padding:3px 10px;border-radius:99px;">${text}</span>`;
   box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-  chatCount++;
-  document.getElementById('chat-count').textContent = chatCount;
-  while (box.children.length > 102) box.removeChild(box.children[1]);
+  box.scrollTop=box.scrollHeight;
 }
 
-function addGiftBubble(username, emoji, amount) {
-  const box = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'chat-bubble rounded-xl px-3 py-2 bg-gradient-to-r from-purple-900/50 to-pink-900/50';
-  div.innerHTML = `<p class="text-sm text-white">🎁 <strong>${username}</strong> sent ${emoji}${amount ? ` (GHS ${amount})` : ''}</p>`;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
+function esc(str){
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function floatReaction(emoji) {
-  const zone = document.getElementById('reaction-zone');
-  const el   = document.createElement('div');
-  el.className = 'reaction-float';
-  el.style.left   = Math.random() * 80 + 10 + '%';
-  el.style.bottom = '80px';
-  el.textContent  = emoji;
-  zone.appendChild(el);
-  setTimeout(() => el.remove(), 2500);
+function startTimer() {
+  timerInterval = setInterval(()=>{
+    const s=Math.floor((Date.now()-startTime)/1000);
+    const m=String(Math.floor(s/60)).padStart(2,'0');
+    const sec=String(s%60).padStart(2,'0');
+    document.getElementById('timer').textContent=`${m}:${sec}`;
+  },1000);
 }
 
-function setStatus(msg, color) {
-  const el = document.getElementById('connection-status');
-  el.textContent = msg;
-  const cls = {
-    red:    'bg-red-600/80 text-white',
-    yellow: 'bg-yellow-500/80 text-black',
-    gray:   'bg-gray-600/80 text-white',
-    green:  'bg-green-500/80 text-white',
-  };
-  el.className = `absolute bottom-4 right-4 z-10 text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm ${cls[color] || cls.gray}`;
-}
-
-// ── DURATION TIMER ────────────────────────────────────────
-function startDurationTimer() {
-  setInterval(() => {
-    if (!startTime) return;
-    const s = Math.floor((Date.now() - startTime) / 1000);
-    const m = String(Math.floor(s / 60)).padStart(2, '0');
-    const sec = String(s % 60).padStart(2, '0');
-    document.getElementById('duration').textContent = `${m}:${sec}`;
-  }, 1000);
-}
-
-// Restore pinned product state from server
+// Restore pinned state
 {% for pid in pinned_ids %}
-(function() {
-  const btn = document.querySelector('[data-id="{{ pid }}"]');
-  if (btn) {
-    btn.classList.add('active');
-    const label = btn.querySelector('.pin-label');
-    if (label) { label.textContent = '✓ Pinned'; label.className = 'pin-label text-xs text-gold font-bold flex-shrink-0'; }
-  }
-})();
+currentPinnedId = {{ pid }};
+const _pb = document.querySelector('[data-id="{{ pid }}"]');
+if(_pb){
+  _pb.style.borderColor='#F5A623';_pb.style.background='rgba(245,166,35,.08)';
+  const _l=_pb.querySelector('.pin-label');
+  if(_l){_l.textContent='✓ Pinned';_l.style.color='#F5A623';}
+}
 {% endfor %}
 
-// Responsive chat panel height
-function resizeChatPanel() {
-  const panel = document.getElementById('chat-panel');
-  if (window.innerWidth >= 1024) {
-    panel.style.height = '100vh';
-    panel.style.flexShrink = '0';
-  } else {
-    panel.style.height = '280px';
-    panel.style.flexShrink = '0';
-  }
-}
-window.addEventListener('resize', resizeChatPanel);
-resizeChatPanel();
-
 // Prevent accidental close
-window.addEventListener('beforeunload', e => {
-  if (localStream) {
-    e.preventDefault();
-    e.returnValue = 'Your stream is live. Leave?';
-  }
+window.addEventListener('beforeunload', e=>{
+  if(localStream){e.preventDefault();e.returnValue='Your stream is live. Leave?';}
 });
 </script>
 {% endblock %}
