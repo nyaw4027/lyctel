@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 {% block title %}{{ stream.vendor.shop_name }} is Live{% endblock %}
 
@@ -8,29 +7,14 @@
   body, html { margin:0; padding:0; background:#000; overflow:hidden; height:100%; }
   #mobile-nav, header#navbar { display:none !important; }
 
-  /* ── Root container ──────────────────────────────────── */
-  #root {
-    position: fixed; inset: 0;
-    display: flex; flex-direction: column;
-    background: #000;
-  }
+  #root { position: fixed; inset: 0; display: flex; flex-direction: column; background: #000; }
 
-  /* ── Video layer (fullscreen background) ─────────────── */
-  #video-bg {
-    position: absolute; inset: 0; z-index: 1;
-    background: #000;
-    display: flex; align-items: center; justify-content: center;
-  }
-  #remote-video {
-    width: 100%; height: 100%;
-    object-fit: cover;
-  }
+  #video-bg { position: absolute; inset: 0; z-index: 1; background: #000; display: flex; align-items: center; justify-content: center; }
+  #remote-video, #vod-video { width: 100%; height: 100%; object-fit: cover; }
 
-  /* ── All UI overlays are above video ─────────────────── */
   #ui-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
   #ui-layer > * { pointer-events: auto; }
 
-  /* ── Top bar ─────────────────────────────────────────── */
   #top-bar {
     position: absolute; top: 0; left: 0; right: 0;
     padding: env(safe-area-inset-top, 12px) 16px 12px;
@@ -39,189 +23,120 @@
     pointer-events: auto;
   }
 
-  /* ── Right action rail ───────────────────────────────── */
   #action-rail {
     position: absolute; right: 12px; bottom: 160px;
     display: flex; flex-direction: column; align-items: center; gap: 20px;
     pointer-events: auto;
   }
-  .rail-btn {
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-    background: none; border: none; color: white; cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .rail-icon {
-    width: 48px; height: 48px;
-    background: rgba(255,255,255,.15);
-    backdrop-filter: blur(8px);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px;
-    transition: transform .15s cubic-bezier(.34,1.56,.64,1);
-  }
+  .rail-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: white; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .rail-icon { width: 48px; height: 48px; background: rgba(255,255,255,.15); backdrop-filter: blur(8px); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; transition: transform .15s cubic-bezier(.34,1.56,.64,1); }
   .rail-btn:active .rail-icon { transform: scale(.85); }
   .rail-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.85); }
 
-  /* ── Chat overlay (bottom, scrollable) ───────────────── */
   #chat-overlay {
     position: absolute; left: 0; right: 72px; bottom: 80px;
-    max-height: 45vh;
-    display: flex; flex-direction: column;
-    justify-content: flex-end;
-    pointer-events: none;
-    padding: 0 12px;
+    max-height: 45vh; display: flex; flex-direction: column; justify-content: flex-end;
+    pointer-events: none; padding: 0 12px;
     mask-image: linear-gradient(to bottom, transparent 0%, black 30%);
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 30%);
   }
-  #chat-messages {
-    overflow-y: auto; max-height: 40vh;
-    display: flex; flex-direction: column; gap: 6px;
-    scrollbar-width: none;
-  }
+  #chat-messages { overflow-y: auto; max-height: 40vh; display: flex; flex-direction: column; gap: 6px; scrollbar-width: none; }
   #chat-messages::-webkit-scrollbar { display: none; }
+  .chat-bubble { display: inline-flex; align-items: flex-start; gap: 6px; max-width: 85%; animation: bubbleIn .2s ease; pointer-events: auto; }
+  @keyframes bubbleIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .chat-text-wrap { background: rgba(0,0,0,.5); backdrop-filter: blur(6px); border-radius: 18px 18px 18px 4px; padding: 7px 12px; }
 
-  .chat-bubble {
-    display: inline-flex; align-items: flex-start; gap: 6px;
-    max-width: 85%;
-    animation: bubbleIn .2s ease;
-    pointer-events: auto;
-  }
-  @keyframes bubbleIn {
-    from { opacity:0; transform:translateY(6px); }
-    to   { opacity:1; transform:translateY(0); }
-  }
-  .chat-text-wrap {
-    background: rgba(0,0,0,.5);
-    backdrop-filter: blur(6px);
-    border-radius: 18px 18px 18px 4px;
-    padding: 7px 12px;
-  }
-
-  /* ── Chat input bar (bottom) ─────────────────────────── */
   #chat-bar {
     position: absolute; left: 0; right: 0; bottom: 0;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(to top, rgba(0,0,0,.85) 0%, transparent 100%);
-    display: flex; align-items: center; gap: 8px;
-    pointer-events: auto;
+    display: flex; align-items: center; gap: 8px; pointer-events: auto;
   }
   #chat-input-field {
-    flex: 1; background: rgba(255,255,255,.15);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,.2);
-    border-radius: 24px; padding: 10px 16px;
-    color: white; font-size: 14px; outline: none;
-    -webkit-appearance: none;
+    flex: 1; background: rgba(255,255,255,.15); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.2); border-radius: 24px; padding: 10px 16px;
+    color: white; font-size: 14px; outline: none; -webkit-appearance: none;
   }
   #chat-input-field::placeholder { color: rgba(255,255,255,.55); }
   #chat-input-field:focus { border-color: rgba(245,166,35,.6); background: rgba(255,255,255,.2); }
 
-  /* ── Connecting overlay ──────────────────────────────── */
   #connecting-overlay {
     position: absolute; inset: 0; z-index: 10;
     background: linear-gradient(135deg, #0d0d0d 0%, #1a1020 100%);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
     pointer-events: auto;
   }
 
-  /* ── Gift panel (bottom sheet) ───────────────────────── */
   #gift-sheet {
     position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
-    background: #1a1a1a;
-    border-radius: 24px 24px 0 0;
+    background: #1a1a1a; border-radius: 24px 24px 0 0;
     padding: 12px 16px calc(20px + env(safe-area-inset-bottom, 0px));
-    transform: translateY(100%);
-    transition: transform .35s cubic-bezier(.4,0,.2,1);
+    transform: translateY(100%); transition: transform .35s cubic-bezier(.4,0,.2,1);
     pointer-events: auto;
   }
   #gift-sheet.open { transform: translateY(0); }
-  #gift-sheet-backdrop {
-    position: absolute; inset: 0; z-index: 19;
-    background: transparent;
-    display: none; pointer-events: auto;
-  }
+  #gift-sheet-backdrop { position: absolute; inset: 0; z-index: 19; background: transparent; display: none; pointer-events: auto; }
   #gift-sheet-backdrop.open { display: block; }
 
-  /* ── Float animations ────────────────────────────────── */
-  .gift-float {
-    position: fixed; z-index: 999; pointer-events: none;
-    font-size: 2.5rem;
-    animation: giftFloat 2.6s ease forwards;
-  }
-  @keyframes giftFloat {
-    0%   { opacity:1; transform:translateY(0) scale(1) rotate(0deg); }
-    40%  { opacity:1; transform:translateY(-120px) scale(1.4) rotate(12deg); }
-    100% { opacity:0; transform:translateY(-280px) scale(.6) rotate(-8deg); }
-  }
-  .like-float {
-    position: fixed; z-index: 999; pointer-events: none;
-    font-size: 2rem;
-    animation: likeFloat 1.4s ease forwards;
-  }
-  @keyframes likeFloat {
-    0%   { opacity:1; transform:translateY(0) scale(.8); }
-    20%  { transform:translateY(-20px) scale(1.3); }
-    100% { opacity:0; transform:translateY(-120px) scale(.9); }
-  }
+  .gift-float { position: fixed; z-index: 999; pointer-events: none; font-size: 2.5rem; animation: giftFloat 2.6s ease forwards; }
+  @keyframes giftFloat { 0% { opacity:1; transform:translateY(0) scale(1) rotate(0deg); } 40% { opacity:1; transform:translateY(-120px) scale(1.4) rotate(12deg); } 100% { opacity:0; transform:translateY(-280px) scale(.6) rotate(-8deg); } }
+  .like-float { position: fixed; z-index: 999; pointer-events: none; font-size: 2rem; animation: likeFloat 1.4s ease forwards; }
+  @keyframes likeFloat { 0% { opacity:1; transform:translateY(0) scale(.8); } 20% { transform:translateY(-20px) scale(1.3); } 100% { opacity:0; transform:translateY(-120px) scale(.9); } }
 
-  /* ── Combo badge ─────────────────────────────────────── */
   #gift-combo {
-    position: fixed; top: 50%; left: 50%;
-    transform: translate(-50%,-50%) scale(0);
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0);
     z-index: 999; pointer-events: none;
-    background: linear-gradient(135deg,#7c3aed,#ec4899);
-    color: white; font-size: 18px; font-weight: 800;
-    padding: 10px 22px; border-radius: 99px;
-    box-shadow: 0 8px 32px rgba(124,58,237,.5);
+    background: linear-gradient(135deg,#7c3aed,#ec4899); color: white; font-size: 18px; font-weight: 800;
+    padding: 10px 22px; border-radius: 99px; box-shadow: 0 8px 32px rgba(124,58,237,.5);
     transition: transform .3s cubic-bezier(.34,1.56,.64,1);
   }
   #gift-combo.show { transform: translate(-50%,-50%) scale(1); }
 
-  /* ── Like button pulse ───────────────────────────────── */
-  @keyframes heartPop {
-    0%,100% { transform: scale(1); }
-    40%     { transform: scale(1.5); }
-  }
+  @keyframes heartPop { 0%,100% { transform: scale(1); } 40% { transform: scale(1.5); } }
   .heart-pop { animation: heartPop .35s cubic-bezier(.34,1.56,.64,1); }
 
-  /* ── Products drawer ─────────────────────────────────── */
   #products-strip {
-    position: absolute; bottom: 80px; left: 0; right: 72px;
-    padding: 0 12px;
-    display: flex; gap: 10px; overflow-x: auto;
-    scrollbar-width: none; pointer-events: auto;
+    position: absolute; bottom: 80px; left: 0; right: 72px; padding: 0 12px;
+    display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; pointer-events: auto;
   }
   #products-strip::-webkit-scrollbar { display: none; }
   .live-product {
-    flex-shrink: 0; width: 108px;
-    background: rgba(0,0,0,.65); backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,.15);
-    border-radius: 14px; overflow: hidden;
-    cursor: pointer; transition: transform .2s ease;
-    animation: productPop .3s cubic-bezier(.34,1.56,.64,1);
+    flex-shrink: 0; width: 108px; background: rgba(0,0,0,.65); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.15); border-radius: 14px; overflow: hidden;
+    cursor: pointer; transition: transform .2s ease; animation: productPop .3s cubic-bezier(.34,1.56,.64,1);
   }
   .live-product:active { transform: scale(.95); }
-  @keyframes productPop {
-    from { opacity:0; transform:scale(.85) translateY(10px); }
-    to   { opacity:1; transform:scale(1) translateY(0); }
+  @keyframes productPop { from { opacity:0; transform:scale(.85) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+  .live-product.featured { border-color: #F5A623; box-shadow: 0 0 16px rgba(245,166,35,.35); }
+
+  /* ── Viewer poll widget (new) ────────────────────────── */
+  #viewer-poll-widget {
+    position: absolute; top: 70px; left: 14px; right: 84px; z-index: 6;
+    background: rgba(0,0,0,.65); backdrop-filter: blur(8px);
+    border-radius: 16px; padding: 12px 14px; display: none; pointer-events: auto;
   }
-  .live-product.featured {
-    border-color: #F5A623;
-    box-shadow: 0 0 16px rgba(245,166,35,.35);
+  #viewer-poll-widget.show { display: block; }
+  .vp-option {
+    display: block; width: 100%; text-align: left; background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 9px 12px;
+    color: white; font-size: 12.5px; font-weight: 600; margin-top: 8px; cursor: pointer;
+    position: relative; overflow: hidden;
+  }
+  .vp-option.voted { border-color: #F5A623; }
+  .vp-fill { position: absolute; inset: 0; background: rgba(245,166,35,.25); width: 0%; transition: width .4s ease; z-index: -1; }
+
+  /* ── Replay badge (new) ──────────────────────────────── */
+  #replay-badge {
+    display: none; align-items: center; gap: 5px;
+    background: rgba(59,130,246,.25); border: 1px solid rgba(59,130,246,.5);
+    color: #93c5fd; font-size: 10.5px; font-weight: 700; padding: 4px 9px; border-radius: 99px; flex-shrink: 0;
   }
 
-  /* ── Desktop: side panel ─────────────────────────────── */
   @media (min-width: 1024px) {
     body, html { overflow: hidden; }
     #root { flex-direction: row; }
     #video-section { flex: 1; position: relative; }
-    #desktop-side {
-      width: 360px; height: 100vh;
-      background: #111; border-left: 1px solid #222;
-      display: flex; flex-direction: column;
-      flex-shrink: 0;
-    }
+    #desktop-side { width: 360px; height: 100vh; background: #111; border-left: 1px solid #222; display: flex; flex-direction: column; flex-shrink: 0; }
     #action-rail { right: 16px; bottom: 80px; }
     #chat-overlay { right: 0; bottom: 60px; }
     #products-strip { bottom: 60px; right: 0; }
@@ -233,15 +148,15 @@
 {% block content %}
 <div id="root">
 
-  <!-- ── VIDEO SECTION ────────────────────────────────── -->
   <div id="video-section" style="position:relative;flex:1;overflow:hidden;">
 
-    <!-- Video background -->
     <div id="video-bg">
-      <video id="remote-video" autoplay playsinline></video>
+      <!-- Live viewer sees remote-video via WebRTC; ended streams with a
+           saved recording play vod-video instead — see initPlayback(). -->
+      <video id="remote-video" autoplay playsinline style="display:none;"></video>
+      <video id="vod-video" controls playsinline style="display:none;"></video>
     </div>
 
-    <!-- Connecting overlay -->
     <div id="connecting-overlay">
       <div class="relative mb-6">
         <div style="width:72px;height:72px;border:4px solid rgba(239,68,68,.3);border-top-color:#ef4444;border-radius:50%;animation:spin 1s linear infinite;"></div>
@@ -252,10 +167,8 @@
       <p id="connecting-hint" style="color:#4b5563;font-size:12px;max-width:220px;text-align:center;margin-top:8px;"></p>
     </div>
 
-    <!-- UI Layer -->
     <div id="ui-layer">
 
-      <!-- Top bar -->
       <div id="top-bar">
         <button onclick="history.back()"
                 style="width:36px;height:36px;background:rgba(0,0,0,.5);border:none;border-radius:50%;color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
@@ -273,6 +186,7 @@
         {% if stream.is_live %}
         <span style="background:#ef4444;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;animation:pulse 1.5s infinite;flex-shrink:0;">🔴 LIVE</span>
         {% endif %}
+        <span id="replay-badge">▶ REPLAY</span>
         <div id="viewer-badge"
              style="background:rgba(0,0,0,.5);backdrop-filter:blur(8px);color:rgba(255,255,255,.8);font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;flex-shrink:0;">
           👁 —
@@ -283,15 +197,19 @@
         </button>
       </div>
 
-      <!-- Pinned products strip -->
+      <!-- Viewer poll widget -->
+      <div id="viewer-poll-widget">
+        <p id="vp-question" style="color:white;font-weight:700;font-size:12.5px;margin:0;"></p>
+        <button class="vp-option" id="vp-btn-a" onclick="votePoll('a')"><div class="vp-fill" id="vp-fill-a"></div><span id="vp-label-a"></span></button>
+        <button class="vp-option" id="vp-btn-b" onclick="votePoll('b')"><div class="vp-fill" id="vp-fill-b"></div><span id="vp-label-b"></span></button>
+      </div>
+
       <div id="products-strip"></div>
 
-      <!-- Chat overlay -->
       <div id="chat-overlay">
         <div id="chat-messages"></div>
       </div>
 
-      <!-- Right action rail -->
       <div id="action-rail">
         <button class="rail-btn" onclick="sendLike()" id="like-btn">
           <div class="rail-icon" id="like-icon">♡</div>
@@ -316,7 +234,6 @@
         </button>
       </div>
 
-      <!-- Chat input bar -->
       <div id="chat-bar">
         {% if user.is_authenticated %}
         <input type="text" id="chat-input-field"
@@ -340,12 +257,10 @@
       </div>
     </div>
 
-    <!-- Gift combo badge -->
     <div id="gift-combo"></div>
 
   </div><!-- end video-section -->
 
-  <!-- ── DESKTOP SIDE PANEL ────────────────────────────── -->
   <div id="desktop-side" style="display:none;">
     <div style="padding:16px;border-bottom:1px solid #222;display:flex;align-items:center;justify-content:between;gap:10px;">
       <span style="color:white;font-weight:700;font-size:14px;">💬 Live Chat</span>
@@ -392,7 +307,6 @@
 
 </div><!-- end root -->
 
-<!-- ── GIFT BOTTOM SHEET ─────────────────────────────── -->
 <div id="gift-sheet-backdrop" onclick="closeGiftSheet()"></div>
 <div id="gift-sheet">
   <div style="width:40px;height:4px;background:#333;border-radius:99px;margin:0 auto 16px;"></div>
@@ -410,7 +324,6 @@
   </div>
 </div>
 
-<!-- Share toast -->
 <div id="share-toast"
      style="display:none;position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
             background:#1f2937;color:white;font-size:13px;font-weight:600;
@@ -427,15 +340,20 @@
 
 {% block extra_js %}
 <script>
-const STREAM_ID = '{{ stream.id|lower }}';
-const IS_AUTH   = {{ user.is_authenticated|yesno:'true,false' }};
-const WS_SCHEME = location.protocol === 'https:' ? 'wss' : 'ws';
-const wsUrl     = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
+const STREAM_ID       = '{{ stream.id|lower }}';
+const IS_AUTH         = {{ user.is_authenticated|yesno:'true,false' }};
+const IS_LIVE         = {{ stream.is_live|yesno:'true,false' }};
+const RECORDING_URL   = {{ stream.recording_url|default:"null"|safe }}; // null if no replay saved
+const HEARTBEAT_URL   = `/livestream/${STREAM_ID}/heartbeat/`;
+const WS_SCHEME       = location.protocol === 'https:' ? 'wss' : 'ws';
+const wsUrl           = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
 // CSRF_TOKEN declared in base.html
 
 let ws, pc, vendorChannel = null, connectTimeout = null;
 let chatCount = 0, likeCount = 0, likeTimer = null;
 let giftCombo = 0, lastGiftEmoji = '', giftComboTimer = null;
+let heartbeatInterval = null;
+let myPollVote = null;
 const isDesktop = window.innerWidth >= 1024;
 
 const iceConfig = {
@@ -445,10 +363,57 @@ const iceConfig = {
   ]
 };
 
-// ── DESKTOP LAYOUT ────────────────────────────────────────
 if (isDesktop) {
   document.getElementById('desktop-side').style.display = 'flex';
   document.getElementById('desktop-side').style.flexDirection = 'column';
+}
+
+// ── PLAYBACK ROUTING ───────────────────────────────────────
+// Live stream with no recording yet → WebRTC as before.
+// Ended stream with a saved recording → play it back directly, no
+// signaling/WebRTC needed at all (cheaper for both server and viewer).
+function initPlayback() {
+  if (!IS_LIVE && RECORDING_URL) {
+    document.getElementById('replay-badge').style.display = 'inline-flex';
+    const vod = document.getElementById('vod-video');
+    vod.src = RECORDING_URL;
+    vod.style.display = 'block';
+    vod.play().catch(() => {});
+    document.getElementById('connecting-overlay').style.display = 'none';
+    // Chat/gifts/likes are replayed as inert UI on a VOD — no live socket.
+    return;
+  }
+  if (!IS_LIVE && !RECORDING_URL) {
+    document.getElementById('connecting-overlay').innerHTML = `
+      <p style="font-size:48px;margin-bottom:16px;">📺</p>
+      <p style="color:white;font-weight:700;font-size:18px;margin-bottom:6px;">This stream has ended</p>
+      <p style="color:#9ca3af;font-size:13px;">No replay was saved for this one.</p>`;
+    return;
+  }
+  document.getElementById('remote-video').style.display = 'block';
+  connectWS();
+  startHeartbeat();
+}
+
+// ── VIEWER HEARTBEAT (so view counts persist server-side) ───
+// The WS 'viewer_count' broadcast is live-only and ephemeral — nothing
+// records it once the stream ends, which is why total/peak viewer counts
+// shown after a stream ends are unreliable. This posts a lightweight
+// "I'm still watching" ping every 20s so the backend can track unique
+// viewers and current concurrent count independently of socket state.
+function startHeartbeat() {
+  const ping = () => fetch(HEARTBEAT_URL, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN } }).catch(() => {});
+  ping();
+  heartbeatInterval = setInterval(ping, 20000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ping();
+  });
+  window.addEventListener('beforeunload', () => {
+    fetch(HEARTBEAT_URL, {
+      method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN },
+      body: new URLSearchParams({ leaving: '1' }), keepalive: true,
+    }).catch(() => {});
+  });
 }
 
 // ── WEBSOCKET ─────────────────────────────────────────────
@@ -482,6 +447,9 @@ function connectWS() {
       case 'pinned_products': renderProducts(msg.products); break;
       case 'product_pinned':  upsertProduct(msg.product); break;
       case 'product_unpinned':removeProduct(msg.product_id); break;
+      case 'poll_start':    showPoll(msg); break;
+      case 'poll_update':   updatePollBars(msg.tallies); break;
+      case 'poll_end':      hidePoll(); break;
       case 'stream_ended': showEnded(); break;
     }
   };
@@ -535,7 +503,6 @@ function appendChat(data) {
   const badge = document.getElementById('chat-count-badge');
   if(badge) badge.textContent = chatCount;
 
-  // Mobile overlay
   const mBox = document.getElementById('chat-messages');
   const mDiv = document.createElement('div');
   mDiv.className = 'chat-bubble';
@@ -556,7 +523,6 @@ function appendChat(data) {
   mBox.scrollTop = mBox.scrollHeight;
   while(mBox.children.length > 60) mBox.removeChild(mBox.children[0]);
 
-  // Desktop side panel
   if(isDesktop) {
     const dBox = document.getElementById('desktop-chat');
     const dDiv = document.createElement('div');
@@ -601,11 +567,44 @@ function sendLike() {
   setTimeout(()=>icon.classList.remove('heart-pop'),350);
   likeCount++;
   spawnFloat('❤️','like');
+  if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'like' }));
   clearTimeout(likeTimer);
   likeTimer = setTimeout(()=>{
     document.getElementById('like-count').textContent = likeCount + ' likes';
     setTimeout(()=>document.getElementById('like-count').textContent='Like',2500);
   },600);
+}
+
+// ── LIVE POLL (new) ───────────────────────────────────────
+function showPoll(msg) {
+  myPollVote = null;
+  document.getElementById('vp-question').textContent = msg.question;
+  document.getElementById('vp-label-a').textContent = msg.options.a;
+  document.getElementById('vp-label-b').textContent = msg.options.b;
+  document.getElementById('vp-fill-a').style.width = '0%';
+  document.getElementById('vp-fill-b').style.width = '0%';
+  document.getElementById('vp-btn-a').classList.remove('voted');
+  document.getElementById('vp-btn-b').classList.remove('voted');
+  document.getElementById('viewer-poll-widget').classList.add('show');
+}
+
+function votePoll(option) {
+  if (!IS_AUTH) { location.href = '/accounts/login/'; return; }
+  if (myPollVote) return; // one vote per poll
+  myPollVote = option;
+  document.getElementById('vp-btn-' + option).classList.add('voted');
+  ws?.readyState === 1 && ws.send(JSON.stringify({ type: 'poll_vote', option }));
+}
+
+function updatePollBars(tallies) {
+  if (!tallies) return;
+  const a = tallies.a || 0, b = tallies.b || 0, total = a + b || 1;
+  document.getElementById('vp-fill-a').style.width = Math.round((a/total)*100) + '%';
+  document.getElementById('vp-fill-b').style.width = Math.round((b/total)*100) + '%';
+}
+
+function hidePoll() {
+  document.getElementById('viewer-poll-widget').classList.remove('show');
 }
 
 // ── GIFTS ─────────────────────────────────────────────────
@@ -651,10 +650,7 @@ function handleGift(data) {
   appendSystem(`🎁 ${esc(data.username||'Someone')} sent ${emoji}${data.total_value?` (GHS ${data.total_value})`:''}`);
 }
 
-// ── REACTIONS (swipe-up feel) ─────────────────────────────
-function sendReaction(emoji) {
-  spawnFloat(emoji,'reaction');
-}
+function sendReaction(emoji) { spawnFloat(emoji,'reaction'); }
 
 function spawnFloat(emoji, kind) {
   const el  = document.createElement('div');
@@ -669,13 +665,11 @@ function spawnFloat(emoji, kind) {
   setTimeout(()=>el.remove(),2800);
 }
 
-// ── VIEWER COUNT ──────────────────────────────────────────
 function updateViewers(count) {
   const badge = document.getElementById('viewer-badge');
   if(badge){ badge.textContent=`👁 ${count}`; }
 }
 
-// ── PRODUCTS ──────────────────────────────────────────────
 function renderProducts(products) {
   document.getElementById('products-strip').innerHTML='';
   products.forEach(upsertProduct);
@@ -706,7 +700,6 @@ function removeProduct(id) {
   if(el) el.remove();
 }
 
-// ── SHARE ─────────────────────────────────────────────────
 async function shareStream() {
   const url = location.href;
   if(navigator.share){
@@ -720,7 +713,6 @@ async function shareStream() {
   }catch{}
 }
 
-// ── FULLSCREEN ────────────────────────────────────────────
 function toggleFullscreen() {
   const el=document.getElementById('video-section');
   if(!document.fullscreenElement){
@@ -732,7 +724,6 @@ function toggleFullscreen() {
   }
 }
 
-// ── SWIPE GESTURES ────────────────────────────────────────
 let touchStartY=0, touchStartX=0, touchStartTime=0;
 const videoEl = document.getElementById('video-section');
 
@@ -748,17 +739,11 @@ videoEl.addEventListener('touchend', e=>{
   const dt = Date.now()-touchStartTime;
 
   if(Math.abs(dy)>60 && dx<60 && dt<400){
-    if(dy>0){
-      // Swipe UP → open gift sheet
-      if(IS_AUTH) openGiftSheet();
-    } else {
-      // Swipe DOWN → go back
-      history.back();
-    }
+    if(dy>0){ if(IS_AUTH) openGiftSheet(); }
+    else { history.back(); }
   }
 },{passive:true});
 
-// Double-tap to like
 let lastTap=0;
 videoEl.addEventListener('touchend', e=>{
   const now=Date.now();
@@ -766,8 +751,8 @@ videoEl.addEventListener('touchend', e=>{
   lastTap=now;
 },{passive:false});
 
-// ── STREAM ENDED ──────────────────────────────────────────
 function showEnded() {
+  clearInterval(heartbeatInterval);
   const overlay=document.getElementById('connecting-overlay');
   overlay.style.display='flex';
   overlay.innerHTML=`
@@ -786,14 +771,12 @@ function showEnded() {
     </div>`;
 }
 
-// ── HELPERS ───────────────────────────────────────────────
 function esc(str){
   return String(str||'')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── INIT ─────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', connectWS);
+document.addEventListener('DOMContentLoaded', initPlayback);
 </script>
 {% endblock %}

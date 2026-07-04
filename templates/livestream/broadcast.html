@@ -121,6 +121,36 @@
   }
   #pin-sheet.open{transform:translateY(0);}
 
+  /* ── Poll modal (new) ─────────────────────────────────── */
+  #poll-backdrop{ position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.7);display:none; }
+  #poll-sheet{
+    position:fixed;bottom:0;left:0;right:0;z-index:41;
+    background:#1a1a1a;border-radius:24px 24px 0 0;
+    padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));
+    transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+  }
+  #poll-sheet.open{transform:translateY(0);}
+  #poll-sheet input{
+    width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;padding:10px 14px;color:white;font-size:13px;margin-bottom:8px;outline:none;
+  }
+  #poll-sheet input::placeholder{color:rgba(255,255,255,.4);}
+
+  /* Live poll widget shown to the broadcaster once a poll is running */
+  #live-poll-widget{
+    position:absolute;top:70px;left:14px;right:14px;z-index:12;
+    background:rgba(0,0,0,.65);backdrop-filter:blur(8px);
+    border-radius:16px;padding:12px 14px;display:none;pointer-events:auto;
+  }
+  #live-poll-widget.show{display:block;}
+  .poll-bar-track{
+    background:rgba(255,255,255,.12);border-radius:8px;height:26px;position:relative;overflow:hidden;margin-top:6px;
+  }
+  .poll-bar-fill{
+    background:#F5A623;height:100%;border-radius:8px;transition:width .3s ease;
+    display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:700;color:#0F1B2D;white-space:nowrap;
+  }
+
   /* ── Reaction floats ─────────────────────────────────── */
   .emoji-float{
     position:fixed;z-index:999;pointer-events:none;
@@ -139,6 +169,14 @@
     color:rgba(255,255,255,.85);font-size:11px;font-weight:600;
     padding:4px 10px;border-radius:99px;
   }
+
+  #rec-badge{
+    display:none;align-items:center;gap:5px;
+    background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.5);
+    color:#fca5a5;font-size:10.5px;font-weight:700;
+    padding:4px 9px;border-radius:99px;flex-shrink:0;
+  }
+  #rec-badge .rec-dot{ width:6px;height:6px;border-radius:50%;background:#ef4444;animation:pulse 1s infinite; }
 
   /* ── Desktop side panel ──────────────────────────────── */
   #desktop-side{
@@ -203,6 +241,7 @@
       <span id="live-badge" style="display:none;background:#ef4444;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;animation:pulse 1.5s infinite;flex-shrink:0;">
         🔴 LIVE
       </span>
+      <span id="rec-badge"><span class="rec-dot"></span> REC</span>
       <div class="stat-pill flex-shrink-0">
         👁 <span id="viewer-count">0</span>
       </div>
@@ -212,6 +251,22 @@
       <div class="stat-pill" style="font-family:monospace;">
         ⏱ <span id="timer">00:00</span>
       </div>
+    </div>
+
+    <!-- Live poll widget (visible to broadcaster while a poll is running) -->
+    <div id="live-poll-widget">
+      <p id="poll-question" style="color:white;font-weight:700;font-size:12.5px;margin:0;"></p>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:10.5px;color:rgba(255,255,255,.6);margin-top:8px;">
+          <span id="poll-label-a">Option A</span><span id="poll-pct-a">0%</span>
+        </div>
+        <div class="poll-bar-track"><div class="poll-bar-fill" id="poll-fill-a" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10.5px;color:rgba(255,255,255,.6);margin-top:8px;">
+          <span id="poll-label-b">Option B</span><span id="poll-pct-b">0%</span>
+        </div>
+        <div class="poll-bar-track"><div class="poll-bar-fill" id="poll-fill-b" style="width:0%;background:#3b82f6;"></div></div>
+      </div>
+      <button onclick="endPoll()" style="margin-top:10px;background:rgba(255,255,255,.1);border:none;border-radius:10px;color:white;font-size:11px;font-weight:600;padding:6px 12px;cursor:pointer;">End poll</button>
     </div>
 
     <!-- Bottom area -->
@@ -235,6 +290,12 @@
         </button>
         {% endfor %}
         <div style="flex:1;"></div>
+        <button onclick="document.getElementById('poll-backdrop').style.display='block';document.getElementById('poll-sheet').classList.add('open')"
+                style="background:rgba(59,130,246,.9);color:white;border:none;border-radius:20px;
+                       padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;
+                       display:flex;align-items:center;gap:5px;">
+          📊 Poll
+        </button>
         <button onclick="document.getElementById('pin-backdrop').style.display='block';document.getElementById('pin-sheet').classList.add('open')"
                 style="background:#F5A623;color:#0F1B2D;border:none;border-radius:20px;
                        padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;
@@ -361,18 +422,32 @@
   </div>
 </div>
 
+<!-- ── POLL SHEET (new) ──────────────────────────────── -->
+<div id="poll-backdrop" onclick="closePollSheet()" style="position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.7);display:none;"></div>
+<div id="poll-sheet">
+  <div style="width:40px;height:4px;background:#333;border-radius:99px;margin:0 auto 14px;"></div>
+  <p style="color:white;font-weight:700;font-size:15px;margin:0 0 12px;">📊 Start a Poll</p>
+  <input type="text" id="poll-question-input" placeholder="Ask your viewers something..." maxlength="80"/>
+  <input type="text" id="poll-option-a-input" placeholder="Option A" maxlength="24" value="Yes"/>
+  <input type="text" id="poll-option-b-input" placeholder="Option B" maxlength="24" value="No"/>
+  <button onclick="startPoll()"
+          style="width:100%;background:#3b82f6;border:none;border-radius:14px;color:white;font-weight:700;padding:13px;cursor:pointer;font-size:14px;margin-top:6px;">
+    Launch Poll
+  </button>
+</div>
+
 <!-- ── END CONFIRM MODAL ──────────────────────────────── -->
 <div id="end-modal" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px;">
   <div style="background:#1a1a1a;border-radius:24px;padding:28px;max-width:320px;width:100%;text-align:center;border:1px solid #333;">
     <p style="font-size:48px;margin-bottom:12px;">⏹</p>
     <p style="color:white;font-weight:700;font-size:18px;margin-bottom:8px;">End your stream?</p>
-    <p style="color:#9ca3af;font-size:14px;margin-bottom:24px;">All viewers will be disconnected.</p>
+    <p style="color:#9ca3af;font-size:14px;margin-bottom:24px;">All viewers will be disconnected. Your recording will be saved as a replay.</p>
     <div style="display:flex;gap:10px;">
       <button onclick="document.getElementById('end-modal').style.display='none'"
               style="flex:1;background:rgba(255,255,255,.1);border:none;border-radius:14px;color:white;font-weight:600;padding:14px;cursor:pointer;font-size:14px;">
         Cancel
       </button>
-      <button onclick="endStream()"
+      <button id="end-stream-btn" onclick="endStream()"
               style="flex:1;background:#ef4444;border:none;border-radius:14px;color:white;font-weight:700;padding:14px;cursor:pointer;font-size:14px;">
         End Stream
       </button>
@@ -388,6 +463,7 @@ const WS_SCHEME  = location.protocol === 'https:' ? 'wss' : 'ws';
 const WS_URL     = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
 const END_URL    = '/livestream/{{ stream.id|lower }}/end/';
 const PIN_URL    = '/livestream/{{ stream.id|lower }}/pin-product/';
+const UPLOAD_URL = '/livestream/{{ stream.id|lower }}/upload-recording/';
 // CSRF_TOKEN declared in base.html
 
 const pinnedSet = new Set({{ pinned_ids|default:"[]"|safe }});
@@ -398,6 +474,59 @@ let camOn = true, micOn = true;
 let startTime = null, timerInterval = null;
 let chatCount = 0, totalGifts = 0;
 let currentPinnedId = null;
+
+// ── RECORDING (client-side, until there's an SFU to record server-side) ──
+// There's no media server between broadcaster and viewers right now — it's
+// a straight peer-to-peer mesh — so nothing server-side ever "sees" one
+// unified stream to record. The only stream that reliably exists start to
+// finish is the broadcaster's own local camera feed, so that's what gets
+// recorded and uploaded here. This gives VOD playback; it does NOT fix the
+// mesh's scaling problem (see the bitrate-scaling note in handleViewerOffer).
+let mediaRecorder = null;
+let recordedChunks = [];
+
+function startRecording() {
+  if (!localStream || typeof MediaRecorder === 'undefined') return;
+  recordedChunks = [];
+  const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+    .find(t => MediaRecorder.isTypeSupported(t)) || '';
+  try {
+    mediaRecorder = new MediaRecorder(localStream, mimeType ? { mimeType } : undefined);
+  } catch (e) {
+    console.warn('[recording] MediaRecorder unavailable:', e);
+    return;
+  }
+  mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.start(1000); // 1s chunks so a crash doesn't lose the whole recording
+  document.getElementById('rec-badge').style.display = 'inline-flex';
+}
+
+function stopRecordingAndUpload() {
+  return new Promise((resolve) => {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') { resolve(null); return; }
+    mediaRecorder.onstop = async () => {
+      document.getElementById('rec-badge').style.display = 'none';
+      if (recordedChunks.length === 0) { resolve(null); return; }
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      try {
+        const fd = new FormData();
+        fd.append('recording', blob, `${STREAM_ID}.webm`);
+        const res = await fetch(UPLOAD_URL, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN }, body: fd });
+        const data = await res.json();
+        resolve(data.success ? data.recording_url : null);
+      } catch (e) {
+        console.error('[recording] upload failed:', e);
+        resolve(null);
+      }
+    };
+    mediaRecorder.stop();
+  });
+}
+
+// ── PEAK VIEWERS ──────────────────────────────────────────
+// So the recap and the streamer both see the real high-water mark, not
+// just whatever the live count happened to be at the moment someone looked.
+let peakViewers = 0;
 
 const iceConfig = {
   iceServers:[
@@ -419,6 +548,7 @@ async function startCamera() {
     startTime = Date.now();
     startTimer();
     connectWS();
+    startRecording();
   } catch(err) {
     alert('Camera error: ' + err.message);
   }
@@ -481,12 +611,16 @@ function connectWS() {
         break;
       case 'viewer_count':
         document.getElementById('viewer-count').textContent = msg.count;
+        if (msg.count > peakViewers) peakViewers = msg.count;
         break;
       case 'chat':
         appendChat(msg);
         break;
       case 'gift':
         handleGift(msg);
+        break;
+      case 'poll_vote':
+        recordPollVote(msg.option);
         break;
       case 'pinned_products':
         if(msg.products?.length){
@@ -503,6 +637,29 @@ function connectWS() {
 }
 
 // ── WEBRTC ────────────────────────────────────────────────
+// Rough bitrate scaling for the mesh: as more viewers connect, the
+// broadcaster's single upload pipe has to carry all of them at once, so
+// each additional connection gets capped a little lower. This buys some
+// headroom before the connection saturates — it does not remove the O(N)
+// upload cost itself. Past a handful of concurrent viewers this stops
+// being enough and you need an SFU (see note at the top of this file).
+function targetBitrateForViewerCount(count) {
+  if (count <= 3)  return 1_500_000; // ~1.5 Mbps — near-full quality
+  if (count <= 8)  return 900_000;
+  if (count <= 15) return 500_000;
+  return 300_000; // heavily degraded — this is the mesh telling you it needs an SFU
+}
+
+async function applyBitrateCap(pc) {
+  const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+  if (!sender) return;
+  const count = Object.keys(peerConnections).length;
+  const params = sender.getParameters();
+  if (!params.encodings) params.encodings = [{}];
+  params.encodings[0].maxBitrate = targetBitrateForViewerCount(count);
+  try { await sender.setParameters(params); } catch (e) { /* not fatal */ }
+}
+
 async function handleViewerOffer(sdp, viewerChannel) {
   if(!localStream || !viewerChannel) return;
   if(peerConnections[viewerChannel]) peerConnections[viewerChannel].close();
@@ -528,6 +685,10 @@ async function handleViewerOffer(sdp, viewerChannel) {
   ws?.readyState===1 && ws.send(JSON.stringify({
     type:'answer',sdp:answer.sdp,peer_id:viewerChannel,
   }));
+
+  await applyBitrateCap(pc);
+  // Re-balance everyone else too, since the viewer count just changed
+  Object.values(peerConnections).forEach(applyBitrateCap);
 }
 
 // ── CHAT ──────────────────────────────────────────────────
@@ -592,6 +753,56 @@ function handleGift(data) {
   appendSystemMsg(`🎁 ${esc(data.username||'Someone')} sent ${data.emoji} (GHS ${data.total_value||0})`);
 }
 
+// ── LIVE POLL (new) ────────────────────────────────────────
+let activePoll = null; // { question, options: {a: {label, votes}, b: {label, votes}} }
+
+function closePollSheet() {
+  document.getElementById('poll-backdrop').style.display = 'none';
+  document.getElementById('poll-sheet').classList.remove('open');
+}
+
+function startPoll() {
+  const question = document.getElementById('poll-question-input').value.trim();
+  const labelA   = document.getElementById('poll-option-a-input').value.trim() || 'Option A';
+  const labelB   = document.getElementById('poll-option-b-input').value.trim() || 'Option B';
+  if (!question) { alert('Add a question first.'); return; }
+
+  activePoll = { question, options: { a: { label: labelA, votes: 0 }, b: { label: labelB, votes: 0 } } };
+  document.getElementById('poll-question').textContent = question;
+  document.getElementById('poll-label-a').textContent = labelA;
+  document.getElementById('poll-label-b').textContent = labelB;
+  updatePollDisplay();
+  document.getElementById('live-poll-widget').classList.add('show');
+  closePollSheet();
+
+  ws?.readyState === 1 && ws.send(JSON.stringify({
+    type: 'poll_start', question, options: { a: labelA, b: labelB },
+  }));
+}
+
+function recordPollVote(option) {
+  if (!activePoll || !activePoll.options[option]) return;
+  activePoll.options[option].votes++;
+  updatePollDisplay();
+}
+
+function updatePollDisplay() {
+  if (!activePoll) return;
+  const a = activePoll.options.a.votes, b = activePoll.options.b.votes;
+  const total = a + b || 1;
+  const pctA = Math.round((a / total) * 100), pctB = 100 - pctA;
+  document.getElementById('poll-fill-a').style.width = pctA + '%';
+  document.getElementById('poll-fill-b').style.width = pctB + '%';
+  document.getElementById('poll-pct-a').textContent = pctA + '% (' + a + ')';
+  document.getElementById('poll-pct-b').textContent = pctB + '% (' + b + ')';
+}
+
+function endPoll() {
+  ws?.readyState === 1 && ws.send(JSON.stringify({ type: 'poll_end' }));
+  document.getElementById('live-poll-widget').classList.remove('show');
+  activePoll = null;
+}
+
 // ── PIN PRODUCT ───────────────────────────────────────────
 function closePinSheet() {
   document.getElementById('pin-backdrop').style.display = 'none';
@@ -609,7 +820,6 @@ async function pinProduct(productId, btn) {
     const data = await res.json();
     if(!data.success) return;
 
-    // Reset all pin buttons
     document.querySelectorAll('.pin-btn').forEach(b=>{
       b.style.borderColor='rgba(255,255,255,.08)';
       b.style.background='rgba(255,255,255,.05)';
@@ -653,15 +863,27 @@ function confirmEnd() {
 }
 
 async function endStream() {
+  const btn = document.getElementById('end-stream-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving recording…';
+
   ws?.readyState===1 && ws.send(JSON.stringify({type:'end_stream'}));
+
+  const recordingUrl = await stopRecordingAndUpload();
+
   localStream?.getTracks().forEach(t=>t.stop());
   Object.values(peerConnections).forEach(pc=>pc.close());
   clearInterval(timerInterval);
+
   try {
-    const res  = await fetch(END_URL,{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN}});
+    const res  = await fetch(END_URL,{
+      method:'POST',
+      headers:{'X-CSRFToken':CSRF_TOKEN,'Content-Type':'application/json'},
+      body: JSON.stringify({ peak_viewers: peakViewers, recording_url: recordingUrl }),
+    });
     const data = await res.json();
     if(data.success){
-      alert(`Stream ended!\nViewers: ${data.total_viewers}\nGifts: GHS ${data.gifts_value}\nDuration: ${data.duration||0} mins`);
+      alert(`Stream ended!\nPeak viewers: ${peakViewers}\nGifts: GHS ${data.gifts_value}\nDuration: ${data.duration||0} mins` + (recordingUrl ? '\nReplay saved ✅' : '\nReplay could not be saved.'));
     }
   } catch(e){console.error(e);}
   window.location.href='/vendor/dashboard/';
