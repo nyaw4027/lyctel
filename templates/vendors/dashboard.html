@@ -349,14 +349,12 @@
               {{ item.order.order_ref }}
             </td>
             <td class="px-5 py-3.5 text-navy hidden md:table-cell">
-              {# Use the live FK, not a cached snapshot field that may not exist #}
               {{ item.product.name|default:"—" }}
             </td>
             <td class="px-5 py-3.5 text-right text-gray-600 hidden md:table-cell">
               × {{ item.quantity }}
             </td>
             <td class="px-5 py-3.5 text-right font-display font-700 text-navy">
-              {# item.subtotal = quantity × unit_price; fall back to price if no property #}
               GHS {{ item.subtotal|default:item.price }}
             </td>
             <td class="px-5 py-3.5 text-center">
@@ -428,10 +426,6 @@
             <td class="px-5 py-3.5 text-right text-gray-500 hidden md:table-cell">
               GHS {{ earning.gross_amount }}
             </td>
-            <!-- FIXED: VendorEarning's field is `commission`, not
-                 `commission_amount` — the old name silently rendered blank
-                 instead of erroring, since Django template lookups fail
-                 quietly. -->
             <td class="px-5 py-3.5 text-right text-red-400 hidden md:table-cell">
               -GHS {{ earning.commission }}
             </td>
@@ -515,10 +509,6 @@
               <p class="text-white text-xs font-semibold truncate">{{ product.name }}</p>
               <p class="text-gold text-xs font-bold">GHS {{ product.final_price }}</p>
             </div>
-            {# FIXED (in vendors/views.py product_edit): this delete_videos
-               POST is now handled as its own action — it no longer falls
-               through into the full product-save logic, which previously
-               wiped the product's description/category as a side effect. #}
             <form method="POST" action="{% url 'vendors:product_edit' product.pk %}"
                   onsubmit="return confirm('Remove this video?')">
               {% csrf_token %}
@@ -537,12 +527,6 @@
     </div>
     {% endif %}
 
-    {# Empty state — toggled by JS after checking whether any .video-card
-       actually rendered above. (Removed a previous block here that tried
-       to detect this via nested {% with %} tags — Django templates can't
-       mutate a variable from inside a loop like that, so it was silently
-       inert dead code; the JS check below is the only thing that ever
-       actually worked.) #}
     <div id="no-videos-msg" class="hidden">
       <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
         <p class="text-5xl mb-4">🎬</p>
@@ -843,10 +827,6 @@
 {% endblock %}
 
 {% block extra_js %}
-{# Data passed to JS via json_script rather than |safe directly in a
-   <script> block — |safe on a template-rendered JS literal is an XSS risk
-   the moment any field in daily_sales ever contains a value influenced by
-   user input; json_script escapes it properly regardless. #}
 {{ daily_sales|json_script:"daily-sales-data" }}
 <script>
 // ── SALES CHART ──────────────────────────────────────────
