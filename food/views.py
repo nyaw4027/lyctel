@@ -188,8 +188,11 @@ def vendor_menu(request, slug):
 # ─────────────────────────────
 @login_required
 def register_restaurant(request):
+    # Redirect existing restaurant owners straight to their dashboard
     if FoodVendor.objects.filter(owner=request.user).exists():
         return redirect('food:restaurant_dashboard')
+
+    locationiq_key = getattr(settings, 'LOCATIONIQ_API_KEY', '')
 
     if request.method == 'POST':
         name         = request.POST.get('name', '').strip()
@@ -201,55 +204,86 @@ def register_restaurant(request):
         whatsapp     = request.POST.get('whatsapp', '').strip()
         opening_time = request.POST.get('opening_time', '08:00')
         closing_time = request.POST.get('closing_time', '22:00')
-        min_order    = request.POST.get('min_order', '10')
-        avg_prep     = request.POST.get('avg_prep_time', '20')
+        min_order    = request.POST.get('min_order', '10').strip() or '10'
+        avg_prep     = request.POST.get('avg_prep_time', '20').strip() or '20'
         latitude     = request.POST.get('latitude', '').strip()
         longitude    = request.POST.get('longitude', '').strip()
 
         errors = {}
         if not name:    errors['name']    = 'Restaurant name is required.'
+        if not cuisine: errors['cuisine'] = 'Please select a cuisine type.'
         if not address: errors['address'] = 'Address is required.'
         if not phone:   errors['phone']   = 'Phone number is required.'
-        if not cuisine: errors['cuisine'] = 'Please select a cuisine type.'
+
+        # Validate numeric fields before saving
+        try:
+            min_order_dec = Decimal(min_order)
+            if min_order_dec < 0:
+                errors['min_order'] = 'Minimum order must be 0 or more.'
+        except Exception:
+            min_order_dec = Decimal('10')
+            errors['min_order'] = 'Enter a valid minimum order amount.'
+
+        try:
+            avg_prep_int = max(0, int(avg_prep))
+        except (ValueError, TypeError):
+            avg_prep_int = 20
+
+        try:
+            lat = float(latitude)  if latitude  else None
+            lng = float(longitude) if longitude else None
+        except ValueError:
+            lat = lng = None
+            errors['location'] = 'Invalid coordinates. Please pin your restaurant on the map.'
 
         if errors:
             return render(request, 'food/register.html', {
-                'errors':     errors,
-                'form_data':  request.POST,
-                'cuisines':   FoodVendor.CuisineType.choices,
-                'cart_count': 0,
+                'errors':             errors,
+                'form_data':          request.POST,
+                'cuisines':           FoodVendor.CuisineType.choices,
+                'cart_count':         0,
+                'LOCATIONIQ_API_KEY': locationiq_key,
             })
 
-        restaurant = FoodVendor(
-            owner         = request.user,
-            name          = name,
-            description   = description,
-            cuisine       = cuisine,
-            address       = address,
-            city          = city,
-            phone         = phone,
-            whatsapp      = whatsapp,
-            opening_time  = opening_time,
-            closing_time  = closing_time,
-            min_order     = Decimal(min_order),
-            avg_prep_time = int(avg_prep),
-            latitude      = float(latitude)  if latitude  else None,
-            longitude     = float(longitude) if longitude else None,
-            status        = FoodVendor.Status.OPEN,
-        )
-        if 'logo'   in request.FILES: restaurant.logo   = request.FILES['logo']
-        if 'banner' in request.FILES: restaurant.banner = request.FILES['banner']
-        restaurant.save()
+        try:
+            restaurant = FoodVendor(
+                owner         = request.user,
+                name          = name,
+                description   = description,
+                cuisine       = cuisine,
+                address       = address,
+                city          = city,
+                phone         = phone,
+                whatsapp      = whatsapp,
+                opening_time  = opening_time,
+                closing_time  = closing_time,
+                min_order     = min_order_dec,
+                avg_prep_time = avg_prep_int,
+                latitude      = lat,
+                longitude     = lng,
+                status        = FoodVendor.Status.OPEN,
+            )
+            if 'logo'   in request.FILES: restaurant.logo   = request.FILES['logo']
+            if 'banner' in request.FILES: restaurant.banner = request.FILES['banner']
+            restaurant.save()
+        except Exception as e:
+            return render(request, 'food/register.html', {
+                'errors':             {'name': f'Could not save restaurant: {e}'},
+                'form_data':          request.POST,
+                'cuisines':           FoodVendor.CuisineType.choices,
+                'cart_count':         0,
+                'LOCATIONIQ_API_KEY': locationiq_key,
+            })
 
         messages.success(request, f'🎉 "{name}" is now live on Lynctel Food!')
         return redirect('food:restaurant_dashboard')
 
+    # GET
     return render(request, 'food/register.html', {
-        'cuisines':   FoodVendor.CuisineType.choices,
-        'cart_count': 0,
+        'cuisines':           FoodVendor.CuisineType.choices,
+        'cart_count':         0,
+        'LOCATIONIQ_API_KEY': locationiq_key,
     })
-
-
 # ─────────────────────────────
 # RESTAURANT DASHBOARD
 # ─────────────────────────────
