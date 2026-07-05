@@ -373,7 +373,8 @@
   //    would do since everything below used to run as one unbroken chain) ──
   let map = null;
   try {
-    const LOCATIONIQ_KEY = '{{ LOCATIONIQ_API_KEY|default:"" }}';
+   // LOCATIONIQ_KEY already declared globally in base.html
+// Using it directly here — no redeclaration needed.
     const defaultLat = 5.6037;
     const defaultLng = -0.1870;
 
