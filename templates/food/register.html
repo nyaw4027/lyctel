@@ -368,174 +368,196 @@
 
 {% block extra_js %}
 <script>
-  const LOCATIONIQ_KEY = '{{ LOCATIONIQ_API_KEY|default:"" }}';
-  const defaultLat = 5.6037;
-  const defaultLng = -0.1870;
+  // ── MAP (isolated — a failure in here must not take down the rest of
+  //    the page's JS, which is exactly what an unguarded top-level throw
+  //    would do since everything below used to run as one unbroken chain) ──
+  let map = null;
+  try {
+    const LOCATIONIQ_KEY = '{{ LOCATIONIQ_API_KEY|default:"" }}';
+    const defaultLat = 5.6037;
+    const defaultLng = -0.1870;
 
-  // ── MAP SETUP (fixed: was adding LocationIQ AND OSM tiles at once
-  //    whenever no key was set, firing a whole layer of doomed 401
-  //    requests underneath the OSM tiles that actually rendered) ──
-  const map = L.map('location-map').setView([defaultLat, defaultLng], 13);
+    const mapEl = document.getElementById('location-map');
+    if (!mapEl) throw new Error('#location-map element not found in DOM');
 
-  const streetLayer = LOCATIONIQ_KEY
-    ? L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
-        attribution: '© LocationIQ · © OpenStreetMap', maxZoom: 19,
-      })
-    : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap', maxZoom: 19,
-      });
+    map = L.map('location-map').setView([defaultLat, defaultLng], 13);
 
-  const satelliteLayer = L.tileLayer(
-    'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
-  );
+    const streetLayer = LOCATIONIQ_KEY
+      ? L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
+          attribution: '© LocationIQ · © OpenStreetMap', maxZoom: 19,
+        })
+      : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap', maxZoom: 19,
+        });
 
-  streetLayer.addTo(map);
-
-  let onSatellite = false;
-  document.getElementById('satellite-toggle-btn').addEventListener('click', function() {
-    onSatellite = !onSatellite;
-    if (onSatellite) {
-      map.removeLayer(streetLayer); satelliteLayer.addTo(map);
-      document.getElementById('sat-icon').textContent = '🗺️';
-      document.getElementById('sat-text').textContent = 'Street';
-    } else {
-      map.removeLayer(satelliteLayer); streetLayer.addTo(map);
-      document.getElementById('sat-icon').textContent = '🛰️';
-      document.getElementById('sat-text').textContent = 'Satellite';
-    }
-  });
-
-  // Tile-failure diagnostics + visible fallback (same pattern as the
-  // checkout maps elsewhere in this app)
-  const mapErrorBanner = document.getElementById('map-error-banner');
-  let tileFailCount = 0, tileOkCount = 0;
-  function handleTileError(e) {
-    tileFailCount++;
-    console.error('[restaurant-map] tile failed to load:', e.tile && e.tile.src);
-    if (tileFailCount >= 4 && tileOkCount === 0) mapErrorBanner.classList.add('show');
-  }
-  function handleTileLoad() { tileOkCount++; mapErrorBanner.classList.remove('show'); }
-  streetLayer.on('tileerror', handleTileError);
-  streetLayer.on('tileload', handleTileLoad);
-  satelliteLayer.on('tileerror', handleTileError);
-  satelliteLayer.on('tileload', handleTileLoad);
-  document.getElementById('map-retry-btn').addEventListener('click', function() {
-    tileFailCount = 0; mapErrorBanner.classList.remove('show');
-    (onSatellite ? satelliteLayer : streetLayer).redraw();
-  });
-
-  const pinIcon = L.divIcon({
-    className: '',
-    html: '<div style="font-size:2rem;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">📍</div>',
-    iconSize: [32, 32], iconAnchor: [16, 32],
-  });
-
-  let marker = null;
-
-  const savedLat = parseFloat(document.getElementById('lat-input').value);
-  const savedLng = parseFloat(document.getElementById('lng-input').value);
-  if (savedLat && savedLng) {
-    placePin(savedLat, savedLng, 'Saved location');
-    map.setView([savedLat, savedLng], 16);
-  }
-
-  map.on('click', function(e) {
-    placePin(e.latlng.lat, e.latlng.lng);
-    reverseGeocode(e.latlng.lat, e.latlng.lng);
-  });
-
-  function placePin(lat, lng, label) {
-    if (marker) map.removeLayer(marker);
-    marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(map);
-    document.getElementById('lat-input').value = lat.toFixed(6);
-    document.getElementById('lng-input').value = lng.toFixed(6);
-    document.getElementById('location-map').classList.add('has-pin');
-    setStatus(`✓ ${label || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}`, 'green');
-    updatePreview();
-
-    marker.on('dragend', function(e) {
-      const pos = e.target.getLatLng();
-      document.getElementById('lat-input').value = pos.lat.toFixed(6);
-      document.getElementById('lng-input').value = pos.lng.toFixed(6);
-      reverseGeocode(pos.lat, pos.lng);
-    });
-  }
-
-  function searchAddress() {
-    const query = document.getElementById('map-search').value.trim();
-    if (!query) return;
-    setStatus('Searching...', 'blue');
-    const baseQuery = query.toLowerCase().includes('ghana') ? query : query + ', Ghana';
-    const url = LOCATIONIQ_KEY
-      ? `https://us1.locationiq.com/v1/search.php?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(baseQuery)}&format=json&limit=1`
-      : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(baseQuery)}&format=json&limit=1`;
-
-    fetch(url)
-      .then(r => r.json())
-      .then(results => {
-        if (results && results.length > 0) {
-          const lat = parseFloat(results[0].lat);
-          const lng = parseFloat(results[0].lon);
-          map.setView([lat, lng], 16);
-          placePin(lat, lng, results[0].display_name?.split(',')[0] || query);
-        } else {
-          setStatus('⚠ No results found — try a more specific address', 'orange');
-        }
-      })
-      .catch(() => setStatus('⚠ Search failed — click on the map to pin manually', 'orange'));
-  }
-
-  function reverseGeocode(lat, lng) {
-    const url = LOCATIONIQ_KEY
-      ? `https://us1.locationiq.com/v1/reverse.php?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`
-      : `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
-
-    fetch(url)
-      .then(r => r.json())
-      .then(data => {
-        if (data && data.address) {
-          const addr = data.address;
-          const addressInput = document.getElementById('address-input');
-          const cityInput    = document.getElementById('city-input');
-          if (!addressInput.value) {
-            addressInput.value = [addr.road || addr.pedestrian, addr.neighbourhood || addr.suburb].filter(Boolean).join(', ');
-          }
-          if (!cityInput.value || cityInput.value === 'Accra') {
-            cityInput.value = addr.city || addr.town || addr.county || 'Accra';
-          }
-          setStatus(`✓ Pinned: ${data.display_name?.split(',')[0] || 'Location set'}`, 'green');
-          updatePreview();
-        }
-      })
-      .catch(() => {});
-  }
-
-  function useGPS() {
-    if (!navigator.geolocation) { setStatus('⚠ Geolocation not supported on this device', 'orange'); return; }
-    setStatus('Getting your location...', 'blue');
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const lat = pos.coords.latitude, lng = pos.coords.longitude;
-        map.setView([lat, lng], 16);
-        placePin(lat, lng, 'Your current location');
-        reverseGeocode(lat, lng);
-      },
-      () => setStatus('⚠ Could not get location — search or click the map instead', 'orange'),
-      { timeout: 8000 }
+    const satelliteLayer = L.tileLayer(
+      'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
     );
+
+    streetLayer.addTo(map);
+
+    let onSatellite = false;
+    document.getElementById('satellite-toggle-btn')?.addEventListener('click', function() {
+      onSatellite = !onSatellite;
+      if (onSatellite) {
+        map.removeLayer(streetLayer); satelliteLayer.addTo(map);
+        document.getElementById('sat-icon').textContent = '🗺️';
+        document.getElementById('sat-text').textContent = 'Street';
+      } else {
+        map.removeLayer(satelliteLayer); streetLayer.addTo(map);
+        document.getElementById('sat-icon').textContent = '🛰️';
+        document.getElementById('sat-text').textContent = 'Satellite';
+      }
+    });
+
+    const mapErrorBanner = document.getElementById('map-error-banner');
+    let tileFailCount = 0, tileOkCount = 0;
+    function handleTileError(e) {
+      tileFailCount++;
+      console.error('[restaurant-map] tile failed to load:', e.tile && e.tile.src);
+      if (tileFailCount >= 4 && tileOkCount === 0) mapErrorBanner?.classList.add('show');
+    }
+    function handleTileLoad() { tileOkCount++; mapErrorBanner?.classList.remove('show'); }
+    streetLayer.on('tileerror', handleTileError);
+    streetLayer.on('tileload', handleTileLoad);
+    satelliteLayer.on('tileerror', handleTileError);
+    satelliteLayer.on('tileload', handleTileLoad);
+    document.getElementById('map-retry-btn')?.addEventListener('click', function() {
+      tileFailCount = 0; mapErrorBanner?.classList.remove('show');
+      (onSatellite ? satelliteLayer : streetLayer).redraw();
+    });
+
+    const pinIcon = L.divIcon({
+      className: '',
+      html: '<div style="font-size:2rem;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">📍</div>',
+      iconSize: [32, 32], iconAnchor: [16, 32],
+    });
+
+    let marker = null;
+
+    window.placePin = function placePin(lat, lng, label) {
+      if (marker) map.removeLayer(marker);
+      marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(map);
+      document.getElementById('lat-input').value = lat.toFixed(6);
+      document.getElementById('lng-input').value = lng.toFixed(6);
+      document.getElementById('location-map').classList.add('has-pin');
+      setStatus(`✓ ${label || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}`, 'green');
+      if (typeof updatePreview === 'function') updatePreview();
+
+      marker.on('dragend', function(e) {
+        const pos = e.target.getLatLng();
+        document.getElementById('lat-input').value = pos.lat.toFixed(6);
+        document.getElementById('lng-input').value = pos.lng.toFixed(6);
+        reverseGeocode(pos.lat, pos.lng);
+      });
+    };
+
+    const savedLat = parseFloat(document.getElementById('lat-input').value);
+    const savedLng = parseFloat(document.getElementById('lng-input').value);
+    if (savedLat && savedLng) {
+      window.placePin(savedLat, savedLng, 'Saved location');
+      map.setView([savedLat, savedLng], 16);
+    }
+
+    map.on('click', function(e) {
+      window.placePin(e.latlng.lat, e.latlng.lng);
+      reverseGeocode(e.latlng.lat, e.latlng.lng);
+    });
+
+    window.searchAddress = function searchAddress() {
+      const query = document.getElementById('map-search').value.trim();
+      if (!query) return;
+      setStatus('Searching...', 'blue');
+      const baseQuery = query.toLowerCase().includes('ghana') ? query : query + ', Ghana';
+      const url = LOCATIONIQ_KEY
+        ? `https://us1.locationiq.com/v1/search.php?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(baseQuery)}&format=json&limit=1`
+        : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(baseQuery)}&format=json&limit=1`;
+
+      fetch(url)
+        .then(r => r.json())
+        .then(results => {
+          if (results && results.length > 0) {
+            const lat = parseFloat(results[0].lat);
+            const lng = parseFloat(results[0].lon);
+            map.setView([lat, lng], 16);
+            window.placePin(lat, lng, results[0].display_name?.split(',')[0] || query);
+          } else {
+            setStatus('⚠ No results found — try a more specific address', 'orange');
+          }
+        })
+        .catch(() => setStatus('⚠ Search failed — click on the map to pin manually', 'orange'));
+    };
+
+    function reverseGeocode(lat, lng) {
+      const url = LOCATIONIQ_KEY
+        ? `https://us1.locationiq.com/v1/reverse.php?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`
+        : `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.address) {
+            const addr = data.address;
+            const addressInput = document.getElementById('address-input');
+            const cityInput    = document.getElementById('city-input');
+            if (!addressInput.value) {
+              addressInput.value = [addr.road || addr.pedestrian, addr.neighbourhood || addr.suburb].filter(Boolean).join(', ');
+            }
+            if (!cityInput.value || cityInput.value === 'Accra') {
+              cityInput.value = addr.city || addr.town || addr.county || 'Accra';
+            }
+            setStatus(`✓ Pinned: ${data.display_name?.split(',')[0] || 'Location set'}`, 'green');
+            if (typeof updatePreview === 'function') updatePreview();
+          }
+        })
+        .catch(() => {});
+    }
+
+    window.useGPS = function useGPS() {
+      if (!navigator.geolocation) { setStatus('⚠ Geolocation not supported on this device', 'orange'); return; }
+      setStatus('Getting your location...', 'blue');
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          map.setView([lat, lng], 16);
+          window.placePin(lat, lng, 'Your current location');
+          reverseGeocode(lat, lng);
+        },
+        () => setStatus('⚠ Could not get location — search or click the map instead', 'orange'),
+        { timeout: 8000 }
+      );
+    };
+
+    document.getElementById('map-search')?.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); window.searchAddress(); }
+    });
+
+    window.setStatus = function setStatus(msg, color) {
+      const colors = { green: 'text-green-600', orange: 'text-orange-500', blue: 'text-blue-500', gray: 'text-gray-400' };
+      const el = document.getElementById('map-status');
+      if (!el) return;
+      el.className = `mt-2 text-xs ${colors[color] || colors.gray} flex items-center gap-1.5`;
+      el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full inline-block ${color === 'green' ? 'bg-green-500' : color === 'orange' ? 'bg-orange-500' : 'bg-blue-500'}"></span>${msg}`;
+    };
+
+    console.log('[restaurant-map] initialized OK');
+  } catch (err) {
+    console.error('[restaurant-map] FAILED TO INITIALIZE — this is why the map is blank, but the rest of the form below should still work:', err);
+    const banner = document.getElementById('map-error-banner');
+    if (banner) banner.classList.add('show');
+    // Fallback no-ops so calling these from onclick attributes or the
+    // form logic below doesn't throw if the map itself failed to init
+    window.searchAddress = window.searchAddress || function() { alert('Map failed to load — please enter your address in the text field above and contact support with the exact location if needed.'); };
+    window.useGPS = window.useGPS || window.searchAddress;
+    window.setStatus = window.setStatus || function() {};
+    window.placePin  = window.placePin  || function() {};
   }
 
-  document.getElementById('map-search').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') { e.preventDefault(); searchAddress(); }
-  });
-
-  function setStatus(msg, color) {
-    const colors = { green: 'text-green-600', orange: 'text-orange-500', blue: 'text-blue-500', gray: 'text-gray-400' };
-    const el = document.getElementById('map-status');
-    el.className = `mt-2 text-xs ${colors[color] || colors.gray} flex items-center gap-1.5`;
-    el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full inline-block ${color === 'green' ? 'bg-green-500' : color === 'orange' ? 'bg-orange-500' : 'bg-blue-500'}"></span>${msg}`;
-  }
+  // ── EVERYTHING BELOW IS INDEPENDENT OF THE MAP ───────────
+  // Wrapped separately so it runs regardless of whether the map above
+  // succeeded or failed.
+  try {
 
   // ── LIVE PREVIEW CARD ─────────────────────────────────────
   function updatePreview() {
@@ -704,7 +726,7 @@
       document.getElementById('draft-restored-banner').classList.add('show');
       if (saved['lat-input'] && saved['lng-input']) {
         const lat = parseFloat(saved['lat-input']), lng = parseFloat(saved['lng-input']);
-        if (lat && lng) { placePin(lat, lng, 'Restored from draft'); map.setView([lat, lng], 16); }
+        if (lat && lng) { window.placePin(lat, lng, 'Restored from draft'); if (map) map.setView([lat, lng], 16); }
       }
       updatePreview();
       refreshStepProgress();
@@ -726,7 +748,7 @@
     const lng = document.getElementById('lng-input').value;
     if (!lat || !lng) {
       e.preventDefault();
-      setStatus('⚠ Please pin your restaurant on the map before submitting', 'orange');
+      window.setStatus('⚠ Please pin your restaurant on the map before submitting', 'orange');
       document.getElementById('location-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
@@ -735,5 +757,10 @@
     document.getElementById('submit-btn-text').classList.add('hidden');
     document.getElementById('submit-btn-loader').classList.remove('hidden');
   });
+
+  console.log('[restaurant-form] form logic initialized OK');
+  } catch (err) {
+    console.error('[restaurant-form] form logic FAILED TO INITIALIZE:', err);
+  }
 </script>
 {% endblock %}
