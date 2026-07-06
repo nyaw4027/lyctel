@@ -2,93 +2,79 @@
 {% block title %}Register Your Restaurant — Lynctel Food{% endblock %}
 
 {% block extra_head %}
+<!-- FIXED: leaflet.js was sitting here as a render-blocking <script src>
+     in <head> — the exact same bug just fixed in base.html for the
+     Tailwind CDN script. A page-specific blocking script in <head> can
+     independently freeze the whole page even after base.html itself is
+     fixed, since the browser still has to get past this one first. The
+     stylesheet is fine to keep here (stylesheets block paint, not
+     parsing); the JS is moved to the very bottom of the page instead,
+     see extra_js below. -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   #location-map {
-    height: 260px;
-    border-radius: 16px;
-    border: 2px solid #e5e7eb;
-    z-index: 1;
-    background: #e9edf2;
+    height: 280px; border-radius: 16px;
+    border: 2px solid #e5e7eb; z-index: 1; background: #e9edf2;
   }
   #location-map.has-pin { border-color: #F5A623; }
   .leaflet-container { border-radius: 14px; }
-
-  /* Defensive re-assertion of Leaflet's own tile-sizing rules — Tailwind's
-     base reset applies img { max-width:100%; height:auto } globally, which
-     fights Leaflet's tile <img> elements if leaflet.css loses the race to
-     load first. Same fix as the other map pages in this app. */
   #location-map img, #location-map .leaflet-tile {
-    max-width: none !important;
-    max-height: none !important;
+    max-width: none !important; max-height: none !important;
   }
-
-  #map-relative { position: relative; }
-  .map-btn {
+  #map-wrap { position: relative; }
+  .map-fab {
     position: absolute; z-index: 400;
     background: white; border: none; border-radius: 10px;
-    padding: 7px 11px; font-size: 11.5px; font-weight: 600; color: #0F1B2D;
+    padding: 7px 11px; font-size: 12px; font-weight: 600; color: #0F1B2D;
     cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.15);
     display: flex; align-items: center; gap: 5px; transition: all .2s;
   }
-  .map-btn:hover { background: #f8fafc; }
-  #satellite-toggle-btn { bottom: 12px; left: 12px; }
-
-  .map-error-banner {
-    position: absolute; inset: 0; background: rgba(233,237,242,.97);
-    display: none; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 16px; z-index: 500; border-radius: 14px;
+  .map-fab:hover { background: #f8fafc; }
+  #sat-btn { bottom: 10px; left: 10px; }
+  .map-err {
+    position: absolute; inset: 0; background: rgba(233,237,242,.95);
+    display: none; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; padding: 16px;
+    z-index: 500; border-radius: 14px; font-size: 12px; color: #555;
   }
-  .map-error-banner.show { display: flex; }
-  .map-error-banner p { font-size: 12px; color: #45403a; max-width: 220px; margin: 0 0 10px; }
-  .map-error-banner button {
-    font-size: 11.5px; font-weight: 700; color: white; background: #0F1B2D;
-    border: none; border-radius: 10px; padding: 7px 14px; cursor: pointer;
-  }
-
-  /* Step progress */
+  .map-err.show { display: flex; }
   .step-dot {
-    width: 32px; height: 32px; border-radius: 999px; display: flex;
-    align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
-    background: #f3f4f6; color: #9ca3af; transition: all .25s ease; flex-shrink: 0;
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    background: #f3f4f6; color: #9ca3af;
+    transition: all .25s; flex-shrink: 0;
   }
   .step-dot.active { background: #0F1B2D; color: white; }
-  .step-dot.done    { background: #22c55e; color: white; }
-  .step-line { flex: 1; height: 2px; background: #f3f4f6; transition: background .3s ease; }
-  .step-line.done { background: #22c55e; }
-
-  /* Inline field validation */
-  .field-ok    { border-color: #22c55e !important; background: #f0fdf4 !important; }
-  .field-bad   { border-color: #fca5a5 !important; background: #fef2f2 !important; }
-
-  /* Drag & drop upload zones */
-  .dropzone { transition: border-color .2s ease, background .2s ease; }
-  .dropzone.dragover { border-color: #F5A623 !important; background: #FEF3D7; }
-
-  /* Live preview card */
+  .step-dot.done   { background: #22c55e; color: white; }
+  .step-line { flex: 1; height: 2px; background: #f3f4f6; transition: background .3s; }
+  .step-line.done  { background: #22c55e; }
+  .field-ok  { border-color: #22c55e !important; background: #f0fdf4 !important; }
+  .field-bad { border-color: #fca5a5 !important; background: #fef2f2 !important; }
+  .dropzone { transition: border-color .2s, background .2s; }
+  .dropzone.over { border-color: #F5A623 !important; background: #FEF3D7; }
   .preview-card {
     background: linear-gradient(160deg, #0F1B2D 0%, #1a2d47 100%);
-    border-radius: 20px; overflow: hidden; color: white; position: sticky; top: 90px;
+    border-radius: 20px; overflow: hidden; color: white;
+    position: sticky; top: 90px;
   }
-  .preview-banner {
-    height: 90px; background: #1a2d47; background-size: cover; background-position: center;
+  #preview-banner {
+    height: 90px; background: #1a2d47;
+    background-size: cover; background-position: center;
     display: flex; align-items: flex-end; padding: 12px;
   }
-  .preview-logo {
-    width: 52px; height: 52px; border-radius: 14px; background: #F5A623;
-    display: flex; align-items: center; justify-content: center; font-size: 22px;
-    border: 3px solid #0F1B2D; flex-shrink: 0; object-fit: cover;
+  .preview-logo-box {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: #F5A623; border: 3px solid #0F1B2D;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0; object-fit: cover;
   }
-
-  #draft-restored-banner { display: none; }
-  #draft-restored-banner.show { display: flex; }
-
-  #error-summary { display: none; }
-  #error-summary.show { display: block; }
 </style>
 {% endblock %}
 
 {% block content %}
+
+<!-- Hero -->
 <section class="bg-navy relative overflow-hidden">
   <div class="absolute inset-0 opacity-5"
        style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);background-size:28px 28px"></div>
@@ -101,19 +87,19 @@
   </div>
 </section>
 
-<div class="max-w-6xl mx-auto px-4 md:px-6 py-12">
+<div class="max-w-6xl mx-auto px-4 md:px-6 py-10">
 
-  <!-- Draft restored notice -->
-  <div id="draft-restored-banner"
-       class="mb-6 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 items-center justify-between gap-3 text-sm text-blue-700">
-    <span>📝 We restored your unsaved draft from last time.</span>
-    <button type="button" onclick="clearDraft()" class="text-xs font-semibold underline flex-shrink-0">Start fresh</button>
+  <!-- Draft restored banner -->
+  <div id="draft-banner" style="display:none"
+       class="mb-5 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 text-sm text-blue-700">
+    <span>📝 We restored your unsaved draft.</span>
+    <button type="button" onclick="clearDraft()" class="text-xs font-semibold underline">Start fresh</button>
   </div>
 
-  <!-- Error summary (only shown when the server round-tripped validation errors) -->
+  <!-- Server validation errors -->
   {% if errors %}
-  <div id="error-summary" class="show mb-6 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm text-red-700">
-    <p class="font-semibold mb-1">⚠ Please fix {{ errors|length }} field{{ errors|length|pluralize }} before submitting:</p>
+  <div class="mb-5 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm text-red-700">
+    <p class="font-semibold mb-1">⚠ Please fix the following before submitting:</p>
     <ul class="list-disc list-inside space-y-0.5 text-xs">
       {% for field, msg in errors.items %}<li>{{ msg }}</li>{% endfor %}
     </ul>
@@ -131,20 +117,22 @@
 
   <div class="grid lg:grid-cols-3 gap-8">
 
-    <form method="POST" enctype="multipart/form-data" class="space-y-6 lg:col-span-2" id="reg-form">
+    <!-- FORM -->
+    <form method="POST" enctype="multipart/form-data" id="reg-form" class="lg:col-span-2 space-y-6">
       {% csrf_token %}
 
-      <!-- STEP 1: Restaurant Details -->
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-step="1">
+      <!-- Step 1: Details -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
-          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">1</div>
+          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-bold">1</div>
           <h2 class="font-display font-700 text-navy">Restaurant Details</h2>
         </div>
         <div class="px-6 py-6 space-y-5">
 
           <div>
             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Restaurant Name *</label>
-            <input type="text" name="name" id="name-input" required value="{{ form_data.name|default:'' }}"
+            <input type="text" name="name" id="name-input" required
+                   value="{{ form_data.name|default:'' }}"
                    placeholder="e.g. Auntie Akos Kitchen"
                    class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.name %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
             {% if errors.name %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.name }}</p>{% endif %}
@@ -152,9 +140,9 @@
 
           <div>
             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Description <span id="desc-count" class="text-gray-300 font-normal">0/300</span>
+              Description <span id="desc-count" class="text-gray-300 font-normal normal-case">0/300</span>
             </label>
-            <textarea name="description" id="description-input" rows="3" maxlength="300"
+            <textarea name="description" id="desc-input" rows="3" maxlength="300"
                       placeholder="Tell customers what makes your food special..."
                       class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.description|default:'' }}</textarea>
           </div>
@@ -171,55 +159,55 @@
             {% if errors.cuisine %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.cuisine }}</p>{% endif %}
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Address *</label>
-              <input type="text" name="address" id="address-input" required value="{{ form_data.address|default:'' }}"
+              <input type="text" name="address" id="address-input" required
+                     value="{{ form_data.address|default:'' }}"
                      placeholder="Street, area"
                      class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.address %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
               {% if errors.address %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.address }}</p>{% endif %}
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">City</label>
-              <input type="text" name="city" id="city-input" value="{{ form_data.city|default:'Accra' }}"
+              <input type="text" name="city" id="city-input"
+                     value="{{ form_data.city|default:'Accra' }}"
                      class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
             </div>
           </div>
 
+          <!-- Map -->
           <div>
             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Pin Your Restaurant Location *
+              Pin Your Location *
             </label>
-
             <div class="flex gap-2 mb-3">
-              <input type="text" id="map-search" placeholder="Search for your restaurant address..."
-                     class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
-              <button type="button" onclick="searchAddress()"
-                      class="bg-navy text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-navy-700 transition-colors flex-shrink-0">
+              <input type="text" id="map-search" placeholder="Search address..."
+                     class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-navy outline-none"/>
+              <button type="button" onclick="doSearch()"
+                      class="bg-navy text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-navy-700 transition-colors">
                 Search
               </button>
-              <button type="button" onclick="useGPS()" title="Use my current location"
-                      class="bg-gold-light text-navy text-sm font-semibold px-3 py-2.5 rounded-xl hover:bg-gold/30 transition-colors flex-shrink-0">
+              <button type="button" onclick="doGPS()"
+                      class="bg-gold-light text-navy text-sm font-semibold px-3 py-2.5 rounded-xl hover:bg-gold/20 transition-colors">
                 📍 GPS
               </button>
             </div>
-
-            <div id="map-relative">
+            <div id="map-wrap">
               <div id="location-map"></div>
-              <button type="button" class="map-btn" id="satellite-toggle-btn">
-                <span id="sat-icon">🛰️</span> <span id="sat-text">Satellite</span>
+              <button type="button" class="map-fab" id="sat-btn">
+                <span id="sat-icon">🛰️</span><span id="sat-text">Satellite</span>
               </button>
-              <div class="map-error-banner" id="map-error-banner">
-                <p>The map couldn't load tiles right now. You can still type your address and coordinates manually below.</p>
-                <button type="button" id="map-retry-btn">Retry map</button>
+              <div class="map-err" id="map-err">
+                <p class="mb-2">Map tiles failed to load. Type your address above and coordinates will still be saved.</p>
+                <button type="button" onclick="retryMap()"
+                        class="text-xs font-bold bg-navy text-white px-4 py-2 rounded-lg">Retry</button>
               </div>
             </div>
-
-            <div id="map-status" class="mt-2 text-xs text-gray-400 flex items-center gap-1.5">
+            <p id="map-status" class="mt-2 text-xs text-gray-400 flex items-center gap-1.5">
               <span class="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
-              Click on the map or search to pin your restaurant location
-            </div>
-
+              Click map or search to pin your restaurant
+            </p>
             <input type="hidden" name="latitude"  id="lat-input"  value="{{ form_data.latitude|default:'' }}"/>
             <input type="hidden" name="longitude" id="lng-input"  value="{{ form_data.longitude|default:'' }}"/>
           </div>
@@ -227,17 +215,18 @@
         </div>
       </div>
 
-      <!-- STEP 2: Contact & Hours -->
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-step="2">
+      <!-- Step 2: Contact & Hours -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
-          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">2</div>
-          <h2 class="font-display font-700 text-navy">Contact & Operating Hours</h2>
+          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-bold">2</div>
+          <h2 class="font-display font-700 text-navy">Contact & Hours</h2>
         </div>
         <div class="px-6 py-6 space-y-5">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Phone *</label>
-              <input type="tel" name="phone" id="phone-input" required value="{{ form_data.phone|default:'' }}" placeholder="0241234567"
+              <input type="tel" name="phone" id="phone-input" required
+                     value="{{ form_data.phone|default:'' }}" placeholder="0241234567"
                      class="w-full px-4 py-3 border rounded-xl text-sm {% if errors.phone %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
               {% if errors.phone %}<p class="text-red-500 text-xs mt-1">⚠ {{ errors.phone }}</p>{% endif %}
             </div>
@@ -247,7 +236,7 @@
                      class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
             </div>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Opening Time</label>
               <input type="time" name="opening_time" value="{{ form_data.opening_time|default:'08:00' }}"
@@ -259,59 +248,65 @@
                      class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
             </div>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Minimum Order (GHS)</label>
-              <input type="number" step="0.01" name="min_order" value="{{ form_data.min_order|default:'10' }}"
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Min Order (GHS)</label>
+              <input type="number" step="0.01" min="0" name="min_order"
+                     value="{{ form_data.min_order|default:'10' }}"
                      class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Avg. Prep Time (mins)</label>
-              <input type="number" name="avg_prep_time" value="{{ form_data.avg_prep_time|default:'20' }}"
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Avg Prep Time (mins)</label>
+              <input type="number" min="0" name="avg_prep_time"
+                     value="{{ form_data.avg_prep_time|default:'20' }}"
                      class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- STEP 3: Branding -->
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-step="3">
+      <!-- Step 3: Branding -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
-          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700">3</div>
-          <h2 class="font-display font-700 text-navy">Branding</h2>
+          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-bold">3</div>
+          <h2 class="font-display font-700 text-navy">Branding <span class="text-gray-400 font-normal text-sm">(optional)</span></h2>
         </div>
-        <div class="px-6 py-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div class="px-6 py-6 grid sm:grid-cols-2 gap-5">
+          <!-- Logo -->
           <div>
             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Logo</label>
-            <div class="dropzone border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center hover:border-gold transition-colors cursor-pointer"
-                 id="logo-dropzone" onclick="document.getElementById('logo-input').click()">
+            <div class="dropzone border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center
+                        hover:border-gold cursor-pointer" id="logo-zone"
+                 onclick="document.getElementById('logo-file').click()">
               <p class="text-3xl mb-2">🖼️</p>
               <p class="text-sm font-medium text-navy">Upload logo</p>
-              <p class="text-xs text-gray-400 mt-1">or drag & drop · JPG/PNG, max 5MB</p>
-              <input type="file" id="logo-input" name="logo" accept="image/*" class="hidden"/>
+              <p class="text-xs text-gray-400 mt-1">JPG/PNG · max 5MB</p>
+              <input type="file" id="logo-file" name="logo" accept="image/*" class="hidden"/>
             </div>
-            <div class="relative inline-block mt-3">
-              <img id="logo-preview" class="hidden w-20 h-20 rounded-2xl object-cover border-2 border-gold/30 mx-auto"/>
-              <button type="button" id="logo-remove" onclick="removeImg('logo')"
-                      class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs items-center justify-center">✕</button>
+            <div class="mt-3 relative inline-block">
+              <img id="logo-preview" class="hidden w-20 h-20 rounded-2xl object-cover border-2 border-gold/30"/>
+              <button type="button" id="logo-rm" onclick="removeImg('logo')"
+                      class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">✕</button>
             </div>
-            <p id="logo-error" class="hidden text-red-500 text-xs mt-1"></p>
+            <p id="logo-err" class="hidden text-red-500 text-xs mt-1"></p>
           </div>
+          <!-- Banner -->
           <div>
             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Banner</label>
-            <div class="dropzone border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center hover:border-gold transition-colors cursor-pointer"
-                 id="banner-dropzone" onclick="document.getElementById('banner-input').click()">
+            <div class="dropzone border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center
+                        hover:border-gold cursor-pointer" id="banner-zone"
+                 onclick="document.getElementById('banner-file').click()">
               <p class="text-3xl mb-2">🏞️</p>
               <p class="text-sm font-medium text-navy">Upload banner</p>
-              <p class="text-xs text-gray-400 mt-1">or drag & drop · JPG/PNG, max 5MB</p>
-              <input type="file" id="banner-input" name="banner" accept="image/*" class="hidden"/>
+              <p class="text-xs text-gray-400 mt-1">JPG/PNG · max 5MB</p>
+              <input type="file" id="banner-file" name="banner" accept="image/*" class="hidden"/>
             </div>
-            <div class="relative mt-3">
+            <div class="mt-3 relative">
               <img id="banner-preview" class="hidden w-full h-20 rounded-xl object-cover border-2 border-gold/30"/>
-              <button type="button" id="banner-remove" onclick="removeImg('banner')"
-                      class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs items-center justify-center">✕</button>
+              <button type="button" id="banner-rm" onclick="removeImg('banner')"
+                      class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">✕</button>
             </div>
-            <p id="banner-error" class="hidden text-red-500 text-xs mt-1"></p>
+            <p id="banner-err" class="hidden text-red-500 text-xs mt-1"></p>
           </div>
         </div>
       </div>
@@ -328,8 +323,8 @@
         <button type="submit" id="submit-btn"
                 class="w-full bg-navy hover:bg-navy-700 text-white font-semibold py-4 rounded-2xl
                        transition-colors btn-press flex items-center justify-center gap-2 text-sm">
-          <span id="submit-btn-text">Launch My Restaurant 🚀</span>
-          <span id="submit-btn-loader" class="hidden">
+          <span id="submit-txt">Launch My Restaurant 🚀</span>
+          <span id="submit-spin" class="hidden">
             <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -341,24 +336,28 @@
 
     </form>
 
-    <!-- LIVE PREVIEW ─────────────────────────────────────── -->
+    <!-- LIVE PREVIEW -->
     <div class="lg:col-span-1">
       <div class="preview-card">
-        <div class="preview-banner" id="preview-banner-bg">
-          <img id="preview-logo" class="preview-logo" src="" style="display:none;"/>
-          <div id="preview-logo-fallback" class="preview-logo">🍽️</div>
+        <div id="preview-banner">
+          <img id="preview-logo-img" class="preview-logo-box" src="" style="display:none; border-radius:14px;"/>
+          <div id="preview-logo-icon" class="preview-logo-box">🍽️</div>
         </div>
         <div class="p-4">
           <p id="preview-name" class="font-display font-700 text-base">Your Restaurant Name</p>
           <p id="preview-cuisine" class="text-xs text-white/50 mt-0.5">Select a cuisine</p>
-          <p id="preview-address" class="text-xs text-white/40 mt-2 flex items-center gap-1">📍 <span>Pin your location</span></p>
+          <p id="preview-address" class="text-xs text-white/40 mt-2">📍 Pin your location</p>
           <div class="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
-            <span class="text-[10px] font-semibold bg-white/10 px-2 py-1 rounded-full">⏱ <span id="preview-prep">20</span> min</span>
-            <span class="text-[10px] font-semibold bg-white/10 px-2 py-1 rounded-full">Min GHS <span id="preview-min">10</span></span>
+            <span class="text-[10px] font-semibold bg-white/10 px-2 py-1 rounded-full">
+              ⏱ <span id="preview-prep">20</span> min
+            </span>
+            <span class="text-[10px] font-semibold bg-white/10 px-2 py-1 rounded-full">
+              Min GHS <span id="preview-min">10</span>
+            </span>
           </div>
         </div>
       </div>
-      <p class="text-xs text-gray-400 text-center mt-3">👀 This is roughly how customers will see your restaurant</p>
+      <p class="text-xs text-gray-400 text-center mt-3">👀 How customers will see your restaurant</p>
     </div>
 
   </div>
@@ -366,69 +365,42 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Moved down from extra_head (see fix note there). This still executes
+     before the map-init IIFE below since inline scripts run in document
+     order, and by this point the entire page above has already parsed
+     and rendered — a slow/blocked unpkg.com request can now only ever
+     delay the map itself, never the rest of the page. -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // ── MAP (isolated — a failure in here must not take down the rest of
-  //    the page's JS, which is exactly what an unguarded top-level throw
-  //    would do since everything below used to run as one unbroken chain) ──
-  let map = null;
+// ── MAP ────────────────────────────────────────────────────
+// LOCATIONIQ_KEY is declared globally in base.html — use it directly.
+let _map = null, _marker = null, _streetLayer = null, _satLayer = null, _onSat = false;
+let _tileFail = 0, _tileOk = 0;
+
+(function initMap() {
   try {
-    if (typeof L === 'undefined') throw new Error('Leaflet (L) is not defined — the leaflet.js script from unpkg.com never loaded. Check the Network tab for that request.');
+    const el = document.getElementById('location-map');
+    if (!el || typeof L === 'undefined') throw new Error('Leaflet not ready — check the Network tab for the leaflet.js request');
 
-    const LOCATIONIQ_KEY = '{{ LOCATIONIQ_API_KEY|default:"" }}';
-    const defaultLat = 5.6037;
-    const defaultLng = -0.1870;
+    _map = L.map('location-map').setView([5.6037, -0.1870], 13);
 
-    const mapEl = document.getElementById('location-map');
-    if (!mapEl) throw new Error('#location-map element not found in DOM');
-
-    map = L.map('location-map').setView([defaultLat, defaultLng], 13);
-
-    const streetLayer = LOCATIONIQ_KEY
+    _streetLayer = LOCATIONIQ_KEY
       ? L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
-          attribution: '© LocationIQ · © OpenStreetMap', maxZoom: 19,
+          attribution: '© LocationIQ · © OSM', maxZoom: 19,
         })
       : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap', maxZoom: 19,
         });
 
-    const satelliteLayer = L.tileLayer(
+    _satLayer = L.tileLayer(
       'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      { attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
+      { attribution: '© Esri', maxZoom: 19 }
     );
 
-    streetLayer.addTo(map);
+    _streetLayer.addTo(_map);
 
-    let onSatellite = false;
-    document.getElementById('satellite-toggle-btn')?.addEventListener('click', function() {
-      onSatellite = !onSatellite;
-      if (onSatellite) {
-        map.removeLayer(streetLayer); satelliteLayer.addTo(map);
-        document.getElementById('sat-icon').textContent = '🗺️';
-        document.getElementById('sat-text').textContent = 'Street';
-      } else {
-        map.removeLayer(satelliteLayer); streetLayer.addTo(map);
-        document.getElementById('sat-icon').textContent = '🛰️';
-        document.getElementById('sat-text').textContent = 'Satellite';
-      }
-    });
-
-    const mapErrorBanner = document.getElementById('map-error-banner');
-    let tileFailCount = 0, tileOkCount = 0;
-    function handleTileError(e) {
-      tileFailCount++;
-      console.error('[restaurant-map] tile failed to load:', e.tile && e.tile.src);
-      if (tileFailCount >= 4 && tileOkCount === 0) mapErrorBanner?.classList.add('show');
-    }
-    function handleTileLoad() { tileOkCount++; mapErrorBanner?.classList.remove('show'); }
-    streetLayer.on('tileerror', handleTileError);
-    streetLayer.on('tileload', handleTileLoad);
-    satelliteLayer.on('tileerror', handleTileError);
-    satelliteLayer.on('tileload', handleTileLoad);
-    document.getElementById('map-retry-btn')?.addEventListener('click', function() {
-      tileFailCount = 0; mapErrorBanner?.classList.remove('show');
-      (onSatellite ? satelliteLayer : streetLayer).redraw();
-    });
+    _streetLayer.on('tileerror', () => { _tileFail++; if (_tileFail >= 4 && !_tileOk) showMapErr(); });
+    _streetLayer.on('tileload', () => { _tileOk++; hideMapErr(); });
 
     const pinIcon = L.divIcon({
       className: '',
@@ -436,333 +408,271 @@
       iconSize: [32, 32], iconAnchor: [16, 32],
     });
 
-    let marker = null;
-
-    window.placePin = function placePin(lat, lng, label) {
-      if (marker) map.removeLayer(marker);
-      marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(map);
+    function placePin(lat, lng, label) {
+      if (_marker) _map.removeLayer(_marker);
+      _marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(_map);
       document.getElementById('lat-input').value = lat.toFixed(6);
       document.getElementById('lng-input').value = lng.toFixed(6);
       document.getElementById('location-map').classList.add('has-pin');
-      setStatus(`✓ ${label || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}`, 'green');
-      if (typeof updatePreview === 'function') updatePreview();
-
-      marker.on('dragend', function(e) {
-        const pos = e.target.getLatLng();
-        document.getElementById('lat-input').value = pos.lat.toFixed(6);
-        document.getElementById('lng-input').value = pos.lng.toFixed(6);
-        reverseGeocode(pos.lat, pos.lng);
-      });
-    };
-
-    const savedLat = parseFloat(document.getElementById('lat-input').value);
-    const savedLng = parseFloat(document.getElementById('lng-input').value);
-    if (savedLat && savedLng) {
-      window.placePin(savedLat, savedLng, 'Saved location');
-      map.setView([savedLat, savedLng], 16);
-    }
-
-    map.on('click', function(e) {
-      window.placePin(e.latlng.lat, e.latlng.lng);
-      reverseGeocode(e.latlng.lat, e.latlng.lng);
-    });
-
-    window.searchAddress = function searchAddress() {
-      const query = document.getElementById('map-search').value.trim();
-      if (!query) return;
-      setStatus('Searching...', 'blue');
-      const baseQuery = query.toLowerCase().includes('ghana') ? query : query + ', Ghana';
-      const url = LOCATIONIQ_KEY
-        ? `https://us1.locationiq.com/v1/search.php?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(baseQuery)}&format=json&limit=1`
-        : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(baseQuery)}&format=json&limit=1`;
-
-      fetch(url)
-        .then(r => r.json())
-        .then(results => {
-          if (results && results.length > 0) {
-            const lat = parseFloat(results[0].lat);
-            const lng = parseFloat(results[0].lon);
-            map.setView([lat, lng], 16);
-            window.placePin(lat, lng, results[0].display_name?.split(',')[0] || query);
-          } else {
-            setStatus('⚠ No results found — try a more specific address', 'orange');
-          }
-        })
-        .catch(() => setStatus('⚠ Search failed — click on the map to pin manually', 'orange'));
-    };
-
-    function reverseGeocode(lat, lng) {
-      const url = LOCATIONIQ_KEY
-        ? `https://us1.locationiq.com/v1/reverse.php?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`
-        : `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
-
-      fetch(url)
-        .then(r => r.json())
-        .then(data => {
-          if (data && data.address) {
-            const addr = data.address;
-            const addressInput = document.getElementById('address-input');
-            const cityInput    = document.getElementById('city-input');
-            if (!addressInput.value) {
-              addressInput.value = [addr.road || addr.pedestrian, addr.neighbourhood || addr.suburb].filter(Boolean).join(', ');
-            }
-            if (!cityInput.value || cityInput.value === 'Accra') {
-              cityInput.value = addr.city || addr.town || addr.county || 'Accra';
-            }
-            setStatus(`✓ Pinned: ${data.display_name?.split(',')[0] || 'Location set'}`, 'green');
-            if (typeof updatePreview === 'function') updatePreview();
-          }
-        })
-        .catch(() => {});
-    }
-
-    window.useGPS = function useGPS() {
-      if (!navigator.geolocation) { setStatus('⚠ Geolocation not supported on this device', 'orange'); return; }
-      setStatus('Getting your location...', 'blue');
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const lat = pos.coords.latitude, lng = pos.coords.longitude;
-          map.setView([lat, lng], 16);
-          window.placePin(lat, lng, 'Your current location');
-          reverseGeocode(lat, lng);
-        },
-        () => setStatus('⚠ Could not get location — search or click the map instead', 'orange'),
-        { timeout: 8000 }
-      );
-    };
-
-    document.getElementById('map-search')?.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { e.preventDefault(); window.searchAddress(); }
-    });
-
-    window.setStatus = function setStatus(msg, color) {
-      const colors = { green: 'text-green-600', orange: 'text-orange-500', blue: 'text-blue-500', gray: 'text-gray-400' };
-      const el = document.getElementById('map-status');
-      if (!el) return;
-      el.className = `mt-2 text-xs ${colors[color] || colors.gray} flex items-center gap-1.5`;
-      el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full inline-block ${color === 'green' ? 'bg-green-500' : color === 'orange' ? 'bg-orange-500' : 'bg-blue-500'}"></span>${msg}`;
-    };
-
-    console.log('[restaurant-map] initialized OK');
-  } catch (err) {
-    console.error('[restaurant-map] FAILED TO INITIALIZE — this is why the map is blank, but the rest of the form below should still work:', err);
-    const banner = document.getElementById('map-error-banner');
-    if (banner) banner.classList.add('show');
-    // Fallback no-ops so calling these from onclick attributes or the
-    // form logic below doesn't throw if the map itself failed to init
-    window.searchAddress = window.searchAddress || function() { alert('Map failed to load — please enter your address in the text field above and contact support with the exact location if needed.'); };
-    window.useGPS = window.useGPS || window.searchAddress;
-    window.setStatus = window.setStatus || function() {};
-    window.placePin  = window.placePin  || function() {};
-  }
-
-  // ── EVERYTHING BELOW IS INDEPENDENT OF THE MAP ───────────
-  // Wrapped separately so it runs regardless of whether the map above
-  // succeeded or failed.
-  try {
-
-  // ── LIVE PREVIEW CARD ─────────────────────────────────────
-  function updatePreview() {
-    const name    = document.getElementById('name-input').value.trim();
-    const cuisine = document.getElementById('cuisine-input');
-    const address = document.getElementById('address-input').value.trim();
-    const city    = document.getElementById('city-input').value.trim();
-    const minOrd  = document.querySelector('[name="min_order"]').value;
-    const prep    = document.querySelector('[name="avg_prep_time"]').value;
-
-    document.getElementById('preview-name').textContent = name || 'Your Restaurant Name';
-    document.getElementById('preview-cuisine').textContent =
-      (cuisine.selectedOptions[0] && cuisine.value) ? cuisine.selectedOptions[0].textContent : 'Select a cuisine';
-    document.getElementById('preview-address').querySelector('span').textContent =
-      (address || city) ? [address, city].filter(Boolean).join(', ') : 'Pin your location';
-    document.getElementById('preview-min').textContent  = minOrd || '10';
-    document.getElementById('preview-prep').textContent = prep || '20';
-  }
-  ['name-input','cuisine-input','address-input','city-input'].forEach(id => {
-    document.getElementById(id).addEventListener('input', updatePreview);
-    document.getElementById(id).addEventListener('change', updatePreview);
-  });
-  document.querySelector('[name="min_order"]').addEventListener('input', updatePreview);
-  document.querySelector('[name="avg_prep_time"]').addEventListener('input', updatePreview);
-
-  // ── STEP PROGRESS (fills in as each section's required fields are valid) ──
-  function refreshStepProgress() {
-    const step1ok = document.getElementById('name-input').value.trim()
-      && document.getElementById('cuisine-input').value
-      && document.getElementById('address-input').value.trim()
-      && document.getElementById('lat-input').value;
-    const step2ok = document.getElementById('phone-input').value.trim().length >= 9;
-
-    setStep(1, step1ok ? 'done' : 'active');
-    setStep(2, step2ok ? 'done' : (step1ok ? 'active' : ''));
-    setStep(3, (step1ok && step2ok) ? 'active' : '');
-    document.getElementById('line-1').classList.toggle('done', !!step1ok);
-    document.getElementById('line-2').classList.toggle('done', !!(step1ok && step2ok));
-  }
-  function setStep(n, state) {
-    const dot = document.getElementById('dot-' + n);
-    dot.classList.remove('active', 'done');
-    if (state) dot.classList.add(state);
-    dot.textContent = state === 'done' ? '✓' : n;
-  }
-  document.getElementById('reg-form').addEventListener('input', refreshStepProgress);
-  refreshStepProgress();
-
-  // ── INLINE FIELD VALIDATION (visual only — server still validates) ──
-  function wireInlineValidation(id, validator) {
-    const el = document.getElementById(id);
-    el.addEventListener('blur', () => {
-      el.classList.remove('field-ok', 'field-bad');
-      if (!el.value.trim()) return;
-      el.classList.add(validator(el.value.trim()) ? 'field-ok' : 'field-bad');
-    });
-  }
-  wireInlineValidation('name-input', v => v.length >= 2);
-  wireInlineValidation('address-input', v => v.length >= 5);
-  wireInlineValidation('phone-input', v => /^0\d{9}$/.test(v.replace(/\s/g, '')));
-
-  document.getElementById('description-input').addEventListener('input', function() {
-    document.getElementById('desc-count').textContent = this.value.length + '/300';
-  });
-  document.getElementById('description-input').dispatchEvent(new Event('input'));
-
-  // ── DRAG & DROP + VALIDATED IMAGE UPLOAD ─────────────────
-  const MAX_FILE_MB = 5;
-
-  function setupDropzone(zoneId, inputId, previewId, removeId, errorId) {
-    const zone = document.getElementById(zoneId);
-    const input = document.getElementById(inputId);
-    input.addEventListener('change', () => handleFile(input.files[0]));
-
-    ['dragenter', 'dragover'].forEach(evt =>
-      zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add('dragover'); }));
-    ['dragleave', 'drop'].forEach(evt =>
-      zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove('dragover'); }));
-    zone.addEventListener('drop', e => {
-      const file = e.dataTransfer.files[0];
-      if (file) { input.files = e.dataTransfer.files; handleFile(file); }
-    });
-
-    function handleFile(file) {
-      const errorEl = document.getElementById(errorId);
-      errorEl.classList.add('hidden');
-      if (!file) return;
-      if (!file.type.startsWith('image/')) {
-        errorEl.textContent = '⚠ Please choose an image file (JPG or PNG).';
-        errorEl.classList.remove('hidden');
-        input.value = '';
-        return;
-      }
-      if (file.size > MAX_FILE_MB * 1024 * 1024) {
-        errorEl.textContent = `⚠ File is too large — max ${MAX_FILE_MB}MB.`;
-        errorEl.classList.remove('hidden');
-        input.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = document.getElementById(previewId);
-        img.src = e.target.result;
-        img.classList.remove('hidden');
-        img.style.display = '';
-        document.getElementById(removeId).classList.remove('hidden');
-        document.getElementById(removeId).style.display = 'flex';
-        if (previewId === 'logo-preview') {
-          document.getElementById('preview-logo').src = e.target.result;
-          document.getElementById('preview-logo').style.display = '';
-          document.getElementById('preview-logo-fallback').style.display = 'none';
-        }
-        if (previewId === 'banner-preview') {
-          document.getElementById('preview-banner-bg').style.backgroundImage = `url(${e.target.result})`;
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  }
-  setupDropzone('logo-dropzone', 'logo-input', 'logo-preview', 'logo-remove', 'logo-error');
-  setupDropzone('banner-dropzone', 'banner-input', 'banner-preview', 'banner-remove', 'banner-error');
-
-  function removeImg(which) {
-    document.getElementById(which + '-input').value = '';
-    document.getElementById(which + '-preview').classList.add('hidden');
-    document.getElementById(which + '-remove').classList.add('hidden');
-    if (which === 'logo') {
-      document.getElementById('preview-logo').style.display = 'none';
-      document.getElementById('preview-logo-fallback').style.display = '';
-    }
-    if (which === 'banner') {
-      document.getElementById('preview-banner-bg').style.backgroundImage = '';
-    }
-  }
-
-  // ── DRAFT AUTOSAVE (localStorage; files can't be persisted this way,
-  //    so only text/select/time/number fields are saved) ──
-  const DRAFT_KEY = 'lynctel_food_register_draft';
-  const draftFieldIds = ['name-input','description-input','cuisine-input','address-input','city-input',
-    'phone-input','lat-input','lng-input'];
-  const draftFieldNames = ['whatsapp','opening_time','closing_time','min_order','avg_prep_time'];
-
-  function saveDraft() {
-    const data = {};
-    draftFieldIds.forEach(id => { const el = document.getElementById(id); if (el) data[id] = el.value; });
-    draftFieldNames.forEach(name => { const el = document.querySelector(`[name="${name}"]`); if (el) data[name] = el.value; });
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
-  }
-
-  function restoreDraft() {
-    // Don't clobber values the server already repopulated after a failed submit
-    if ({{ errors|length|default:0 }} > 0) return;
-    let saved;
-    try { saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch { return; }
-    if (!saved) return;
-    let restoredAny = false;
-    draftFieldIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (el && saved[id] && !el.value) { el.value = saved[id]; restoredAny = true; }
-    });
-    draftFieldNames.forEach(name => {
-      const el = document.querySelector(`[name="${name}"]`);
-      if (el && saved[name] && (!el.value || el.value === el.defaultValue)) { el.value = saved[name]; }
-    });
-    if (restoredAny) {
-      document.getElementById('draft-restored-banner').classList.add('show');
-      if (saved['lat-input'] && saved['lng-input']) {
-        const lat = parseFloat(saved['lat-input']), lng = parseFloat(saved['lng-input']);
-        if (lat && lng) { window.placePin(lat, lng, 'Restored from draft'); if (map) map.setView([lat, lng], 16); }
-      }
+      setMapStatus(`✓ ${label || lat.toFixed(4) + ', ' + lng.toFixed(4)}`, 'green');
       updatePreview();
-      refreshStepProgress();
+      _marker.on('dragend', e => {
+        const p = e.target.getLatLng();
+        document.getElementById('lat-input').value = p.lat.toFixed(6);
+        document.getElementById('lng-input').value = p.lng.toFixed(6);
+        reverseGeocode(p.lat, p.lng);
+      });
     }
-  }
-  function clearDraft() {
-    localStorage.removeItem(DRAFT_KEY);
-    document.getElementById('draft-restored-banner').classList.remove('show');
-  }
-  document.getElementById('reg-form').addEventListener('input', () => {
-    clearTimeout(window._draftTimer);
-    window._draftTimer = setTimeout(saveDraft, 600);
-  });
-  restoreDraft();
+    window._placePin = placePin;
 
-  // ── VALIDATE + SUBMIT ─────────────────────────────────────
-  document.getElementById('reg-form').addEventListener('submit', function(e) {
-    const lat = document.getElementById('lat-input').value;
-    const lng = document.getElementById('lng-input').value;
-    if (!lat || !lng) {
-      e.preventDefault();
-      window.setStatus('⚠ Please pin your restaurant on the map before submitting', 'orange');
-      document.getElementById('location-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
+    // Restore saved pin
+    const sLat = parseFloat(document.getElementById('lat-input').value);
+    const sLng = parseFloat(document.getElementById('lng-input').value);
+    if (sLat && sLng) { placePin(sLat, sLng, 'Saved'); _map.setView([sLat, sLng], 16); }
+
+    _map.on('click', e => { placePin(e.latlng.lat, e.latlng.lng); reverseGeocode(e.latlng.lat, e.latlng.lng); });
+
+    // Satellite toggle
+    document.getElementById('sat-btn').addEventListener('click', () => {
+      _onSat = !_onSat;
+      if (_onSat) { _map.removeLayer(_streetLayer); _satLayer.addTo(_map); document.getElementById('sat-icon').textContent='🗺️'; document.getElementById('sat-text').textContent='Street'; }
+      else { _map.removeLayer(_satLayer); _streetLayer.addTo(_map); document.getElementById('sat-icon').textContent='🛰️'; document.getElementById('sat-text').textContent='Satellite'; }
+    });
+
+  } catch(e) {
+    console.error('[map]', e);
+    showMapErr();
+  }
+})();
+
+function showMapErr() { document.getElementById('map-err').classList.add('show'); }
+function hideMapErr() { document.getElementById('map-err').classList.remove('show'); }
+function retryMap()   { _tileFail = 0; hideMapErr(); (_onSat ? _satLayer : _streetLayer)?.redraw(); }
+
+function reverseGeocode(lat, lng) {
+  const url = LOCATIONIQ_KEY
+    ? `https://us1.locationiq.com/v1/reverse.php?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`
+    : `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+  fetch(url).then(r=>r.json()).then(d => {
+    if (!d.address) return;
+    const a = d.address;
+    const addrEl = document.getElementById('address-input');
+    const cityEl = document.getElementById('city-input');
+    if (!addrEl.value) addrEl.value = [a.road||a.pedestrian, a.neighbourhood||a.suburb].filter(Boolean).join(', ');
+    if (!cityEl.value || cityEl.value === 'Accra') cityEl.value = a.city||a.town||a.county||'Accra';
+    setMapStatus(`✓ ${d.display_name?.split(',')[0]||'Location pinned'}`, 'green');
+    updatePreview();
+  }).catch(()=>{});
+}
+
+function doSearch() {
+  const q = document.getElementById('map-search').value.trim();
+  if (!q) return;
+  setMapStatus('Searching...', 'blue');
+  const query = q.toLowerCase().includes('ghana') ? q : q + ', Ghana';
+  const url = LOCATIONIQ_KEY
+    ? `https://us1.locationiq.com/v1/search.php?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(query)}&format=json&limit=1`
+    : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+  fetch(url).then(r=>r.json()).then(res => {
+    if (!res?.length) { setMapStatus('⚠ No results — try a different address', 'orange'); return; }
+    const lat = parseFloat(res[0].lat), lng = parseFloat(res[0].lon);
+    _map?.setView([lat, lng], 16);
+    window._placePin?.(lat, lng, res[0].display_name?.split(',')[0] || q);
+  }).catch(() => setMapStatus('⚠ Search failed — click the map manually', 'orange'));
+}
+
+function doGPS() {
+  if (!navigator.geolocation) { setMapStatus('⚠ GPS not supported', 'orange'); return; }
+  setMapStatus('Locating...', 'blue');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      _map?.setView([lat, lng], 16);
+      window._placePin?.(lat, lng, 'Your location');
+      reverseGeocode(lat, lng);
+    },
+    () => setMapStatus('⚠ Could not get location — click the map instead', 'orange'),
+    { timeout: 8000 }
+  );
+}
+
+function setMapStatus(msg, color) {
+  const el = document.getElementById('map-status');
+  if (!el) return;
+  const c = { green: 'text-green-600', orange: 'text-orange-500', blue: 'text-blue-500' }[color] || 'text-gray-400';
+  const dot = { green: 'bg-green-500', orange: 'bg-orange-400', blue: 'bg-blue-500' }[color] || 'bg-gray-300';
+  el.className = `mt-2 text-xs ${c} flex items-center gap-1.5`;
+  el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${dot}"></span>${msg}`;
+}
+
+document.getElementById('map-search')?.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();doSearch();} });
+
+// ── LIVE PREVIEW ──────────────────────────────────────────
+function updatePreview() {
+  const name    = document.getElementById('name-input').value.trim();
+  const cuisine = document.getElementById('cuisine-input');
+  const address = document.getElementById('address-input').value.trim();
+  const city    = document.getElementById('city-input').value.trim();
+  const minOrd  = document.querySelector('[name="min_order"]')?.value || '10';
+  const prep    = document.querySelector('[name="avg_prep_time"]')?.value || '20';
+
+  document.getElementById('preview-name').textContent    = name || 'Your Restaurant Name';
+  document.getElementById('preview-cuisine').textContent = cuisine.value && cuisine.selectedOptions[0] ? cuisine.selectedOptions[0].textContent : 'Select a cuisine';
+  document.getElementById('preview-address').textContent = '📍 ' + ([address, city].filter(Boolean).join(', ') || 'Pin your location');
+  document.getElementById('preview-min').textContent     = minOrd;
+  document.getElementById('preview-prep').textContent    = prep;
+}
+
+['name-input','cuisine-input','address-input','city-input'].forEach(id => {
+  const el = document.getElementById(id);
+  el?.addEventListener('input',  updatePreview);
+  el?.addEventListener('change', updatePreview);
+});
+document.querySelector('[name="min_order"]')?.addEventListener('input',  updatePreview);
+document.querySelector('[name="avg_prep_time"]')?.addEventListener('input', updatePreview);
+
+// ── STEP PROGRESS ─────────────────────────────────────────
+function refreshSteps() {
+  const s1 = document.getElementById('name-input').value.trim()
+           && document.getElementById('cuisine-input').value
+           && document.getElementById('address-input').value.trim()
+           && document.getElementById('lat-input').value;
+  const s2 = document.getElementById('phone-input').value.trim().length >= 9;
+
+  dot(1, s1 ? 'done' : 'active');
+  dot(2, s2 ? 'done' : s1 ? 'active' : '');
+  dot(3, s1 && s2 ? 'active' : '');
+  document.getElementById('line-1').classList.toggle('done', !!s1);
+  document.getElementById('line-2').classList.toggle('done', !!(s1 && s2));
+}
+function dot(n, state) {
+  const el = document.getElementById('dot-' + n);
+  el.classList.remove('active','done');
+  if (state) el.classList.add(state);
+  el.textContent = state === 'done' ? '✓' : n;
+}
+document.getElementById('reg-form').addEventListener('input', refreshSteps);
+refreshSteps();
+
+// ── INLINE VALIDATION ─────────────────────────────────────
+function wire(id, fn) {
+  const el = document.getElementById(id);
+  el?.addEventListener('blur', () => {
+    el.classList.remove('field-ok','field-bad');
+    if (el.value.trim()) el.classList.add(fn(el.value.trim()) ? 'field-ok' : 'field-bad');
+  });
+}
+wire('name-input',    v => v.length >= 2);
+wire('address-input', v => v.length >= 5);
+wire('phone-input',   v => /^0\d{9}$/.test(v.replace(/\s/g,'')));
+
+document.getElementById('desc-input')?.addEventListener('input', function() {
+  document.getElementById('desc-count').textContent = this.value.length + '/300';
+});
+document.getElementById('desc-input')?.dispatchEvent(new Event('input'));
+
+// ── IMAGE UPLOAD / DRAG-DROP ──────────────────────────────
+function setupDrop(zoneId, fileId, previewId, rmId, errId) {
+  const zone  = document.getElementById(zoneId);
+  const input = document.getElementById(fileId);
+  if (!zone || !input) return;
+
+  input.addEventListener('change', () => handleImg(input.files[0], previewId, rmId, errId, fileId));
+  ['dragenter','dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('over'); }));
+  zone.addEventListener('drop', e => {
+    const f = e.dataTransfer.files[0];
+    if (f) { input.files = e.dataTransfer.files; handleImg(f, previewId, rmId, errId, fileId); }
+  });
+}
+
+function handleImg(file, previewId, rmId, errId, fileId) {
+  const errEl = document.getElementById(errId);
+  errEl.classList.add('hidden');
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { errEl.textContent = '⚠ Please choose an image file.'; errEl.classList.remove('hidden'); document.getElementById(fileId).value=''; return; }
+  if (file.size > 5*1024*1024) { errEl.textContent = '⚠ File too large — max 5MB.'; errEl.classList.remove('hidden'); document.getElementById(fileId).value=''; return; }
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById(previewId);
+    img.src = ev.target.result; img.classList.remove('hidden'); img.style.display='';
+    const rm = document.getElementById(rmId);
+    rm.classList.remove('hidden'); rm.style.display='flex';
+    if (previewId === 'logo-preview') {
+      const pImg = document.getElementById('preview-logo-img');
+      pImg.src = ev.target.result; pImg.style.display='';
+      document.getElementById('preview-logo-icon').style.display='none';
     }
-    localStorage.removeItem(DRAFT_KEY); // form is being submitted for real now
-    document.getElementById('submit-btn').disabled = true;
-    document.getElementById('submit-btn-text').classList.add('hidden');
-    document.getElementById('submit-btn-loader').classList.remove('hidden');
-  });
+    if (previewId === 'banner-preview') {
+      document.getElementById('preview-banner').style.backgroundImage = `url(${ev.target.result})`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
 
-  console.log('[restaurant-form] form logic initialized OK');
-  } catch (err) {
-    console.error('[restaurant-form] form logic FAILED TO INITIALIZE:', err);
+function removeImg(which) {
+  document.getElementById(which+'-file').value = '';
+  const prev = document.getElementById(which+'-preview');
+  prev.classList.add('hidden'); prev.style.display='none';
+  document.getElementById(which+'-rm').classList.add('hidden');
+  if (which === 'logo') {
+    document.getElementById('preview-logo-img').style.display='none';
+    document.getElementById('preview-logo-icon').style.display='';
   }
+  if (which === 'banner') document.getElementById('preview-banner').style.backgroundImage='';
+}
+
+setupDrop('logo-zone',   'logo-file',   'logo-preview',   'logo-rm',   'logo-err');
+setupDrop('banner-zone', 'banner-file', 'banner-preview', 'banner-rm', 'banner-err');
+
+// ── DRAFT AUTOSAVE ────────────────────────────────────────
+const DKEY = 'lynctel_food_reg_draft';
+const D_IDS   = ['name-input','desc-input','cuisine-input','address-input','city-input','phone-input','lat-input','lng-input'];
+const D_NAMES = ['whatsapp','opening_time','closing_time','min_order','avg_prep_time'];
+
+function saveDraft() {
+  const d = {};
+  D_IDS.forEach(id => { const el=document.getElementById(id); if(el) d[id]=el.value; });
+  D_NAMES.forEach(n => { const el=document.querySelector(`[name="${n}"]`); if(el) d[n]=el.value; });
+  localStorage.setItem(DKEY, JSON.stringify(d));
+}
+
+function restoreDraft() {
+  if ({{ errors|length|default:0 }} > 0) return; // server already repopulated
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(DKEY)||'null'); } catch { return; }
+  if (!saved) return;
+  let any = false;
+  D_IDS.forEach(id => { const el=document.getElementById(id); if(el&&saved[id]&&!el.value){el.value=saved[id];any=true;} });
+  D_NAMES.forEach(n => { const el=document.querySelector(`[name="${n}"]`); if(el&&saved[n]&&(!el.value||el.value===el.defaultValue))el.value=saved[n]; });
+  if (any) {
+    document.getElementById('draft-banner').style.display='flex';
+    const sLat=parseFloat(saved['lat-input']), sLng=parseFloat(saved['lng-input']);
+    if(sLat&&sLng){ window._placePin?.(sLat,sLng,'Restored'); _map?.setView([sLat,sLng],16); }
+    updatePreview(); refreshSteps();
+  }
+}
+function clearDraft() { localStorage.removeItem(DKEY); document.getElementById('draft-banner').style.display='none'; }
+
+document.getElementById('reg-form').addEventListener('input', () => {
+  clearTimeout(window._dt); window._dt = setTimeout(saveDraft, 600);
+});
+restoreDraft();
+
+// ── SUBMIT GUARD ──────────────────────────────────────────
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  if (!document.getElementById('lat-input').value || !document.getElementById('lng-input').value) {
+    e.preventDefault();
+    setMapStatus('⚠ Please pin your restaurant on the map before submitting', 'orange');
+    document.getElementById('location-map').scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
+  localStorage.removeItem(DKEY);
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  document.getElementById('submit-txt').classList.add('hidden');
+  document.getElementById('submit-spin').classList.remove('hidden');
+});
 </script>
 {% endblock %}
