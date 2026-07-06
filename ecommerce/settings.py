@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     'ecommerce',
     'products',
     'cart',
-    'order',   # instead of just 'order'
+    'order.apps.OrderConfig',  
     'payment',
     'delivery.apps.DeliveryConfig',
 

@@ -1,23 +1,20 @@
 """
-Termii SMS service wrapper.
+notifications/sms.py
 
-Termii's API: https://developers.termii.com/messaging
-Requires TERMII_API_KEY and TERMII_SENDER_ID in settings.py — both already
-exist as unused config per the audit. This module is the missing piece
-that actually calls the API.
+SMS service via Arkesel (https://arkesel.com).
+Reads ARKESEL_API_KEY and ARKESEL_SENDER_ID from settings.
+
+Both keys are already in your .env:
+    ARKESEL_API_KEY=UlZDTVpkbHpRamRsdmRBV3diU0o
+    ARKESEL_SENDER_ID=Lynctel
+
+And in settings.py:
+    ARKESEL_API_KEY   = config('ARKESEL_API_KEY',   default='')
+    ARKESEL_SENDER_ID = config('ARKESEL_SENDER_ID', default='Lynctel')
 
 Usage:
     from notifications.sms import send_sms
-    send_sms(to='0558040216', message='Your order ORD-A1B2C3 has shipped!')
-
-Design notes:
-- Never raises on failure — a failed SMS should never break the request
-  that triggered it (e.g. an order status update). Logs and returns False
-  instead.
-- Phone numbers are normalized to Termii's expected international format
-  (233XXXXXXXXX, no '+', no leading 0) regardless of how they're stored
-  locally (your User.phone field normalizes to "0XXXXXXXXX" per
-  accounts/models.py's normalize_phone()).
+    send_sms(to='0558040216', message='Your order is confirmed!')
 """
 import logging
 
@@ -26,101 +23,154 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-TERMII_BASE_URL = 'https://api.ng.termii.com/api/sms/send'
+ARKESEL_URL = 'https://sms.arkesel.com/api/v2/sms/send'
 
 
-def _to_termii_format(phone):
+def _normalise_phone(phone):
     """
-    Converts a Ghana phone number in any of these forms:
-      0558040216 / 233558040216 / +233558040216
-    into Termii's expected format: 233558040216
+    Normalises a Ghana phone number to the format Arkesel expects.
+    Arkesel accepts: 0XXXXXXXXX or 233XXXXXXXXX
+    Handles all common formats:
+        0558040216      → 0558040216
+        +233558040216   → 0558040216
+        233558040216    → 0558040216
     """
     if not phone:
         return None
-    digits = ''.join(c for c in phone if c.isdigit())
-    if digits.startswith('233'):
-        return digits
+
+    digits = ''.join(c for c in str(phone) if c.isdigit())
+
+    if digits.startswith('233') and len(digits) == 12:
+        return '0' + digits[3:]
+
     if digits.startswith('0') and len(digits) == 10:
-        return '233' + digits[1:]
-    # Already looks international or malformed — pass through and let
-    # Termii's API reject it explicitly rather than guessing further.
+        return digits
+
+    # Unrecognised format — pass through and let Arkesel reject explicitly
     return digits
 
 
 def send_sms(to, message):
     """
-    Sends a single SMS via Termii. Returns True on success, False on any
-    failure (missing config, network error, non-2xx response). Never
-    raises — callers (e.g. order status signals) should not have their
-    own logic interrupted by an SMS failure.
+    Sends a single SMS via Arkesel API v2.
+
+    Returns True on success, False on any failure.
+    Never raises — a failed SMS must never break the caller
+    (e.g. an order status signal or payment webhook).
     """
-    api_key   = getattr(settings, 'TERMII_API_KEY', None)
-    sender_id = getattr(settings, 'TERMII_SENDER_ID', None)
+    api_key   = getattr(settings, 'ARKESEL_API_KEY',   None)
+    sender_id = getattr(settings, 'ARKESEL_SENDER_ID', None)
 
-    if not api_key or not sender_id:
-        logger.warning('[SMS] TERMII_API_KEY or TERMII_SENDER_ID not configured — skipping SMS.')
+    if not api_key:
+        logger.warning('[SMS] ARKESEL_API_KEY not configured — SMS skipped.')
         return False
 
-    phone = _to_termii_format(to)
+    if not sender_id:
+        logger.warning('[SMS] ARKESEL_SENDER_ID not configured — SMS skipped.')
+        return False
+
+    phone = _normalise_phone(to)
     if not phone:
-        logger.warning('[SMS] No valid phone number to send to: %r', to)
+        logger.warning('[SMS] No valid phone number supplied: %r', to)
         return False
+
+    headers = {
+        'api-key':      api_key,
+        'Content-Type': 'application/json',
+        'Accept':       'application/json',
+    }
 
     payload = {
-        'to':      phone,
-        'from':    sender_id,
-        'sms':     message,
-        'type':    'plain',
-        'channel': 'generic',
-        'api_key': api_key,
+        'sender':     sender_id,
+        'message':    message,
+        'recipients': [phone],
     }
 
     try:
-        response = requests.post(TERMII_BASE_URL, json=payload, timeout=10)
+        response = requests.post(
+            ARKESEL_URL,
+            json=payload,
+            headers=headers,
+            timeout=10,
+        )
         response.raise_for_status()
         data = response.json()
-        if data.get('code') == 'ok' or 'message_id' in data:
-            logger.info('[SMS] Sent to %s: %s', phone, message[:50])
+
+        # Arkesel returns {"status": "success", ...} on success
+        if data.get('status') == 'success':
+            logger.info('[SMS] ✓ Sent to %s — "%s..."', phone, message[:40])
             return True
-        logger.warning('[SMS] Termii returned non-ok response for %s: %s', phone, data)
+
+        logger.warning('[SMS] Arkesel non-success for %s: %s', phone, data)
         return False
-    except requests.RequestException as exc:
-        logger.error('[SMS] Failed to send to %s: %s', phone, exc)
+
+    except requests.exceptions.Timeout:
+        logger.error('[SMS] Request timed out for %s', phone)
+        return False
+    except requests.exceptions.ConnectionError:
+        logger.error('[SMS] Connection error — Arkesel unreachable')
+        return False
+    except requests.exceptions.HTTPError as exc:
+        logger.error('[SMS] HTTP error for %s: %s', phone, exc)
         return False
     except (ValueError, KeyError) as exc:
-        logger.error('[SMS] Unexpected Termii response format: %s', exc)
+        logger.error('[SMS] Unexpected Arkesel response format: %s', exc)
         return False
 
 
-# ── ORDER-SPECIFIC MESSAGE TEMPLATES ───────────────────────
-# Centralized here so wording stays consistent and signals.py stays thin.
+# ── ORDER SMS TEMPLATES ───────────────────────────────────
+# One function per status — keeps signals.py thin and wording centralised.
 
 def sms_order_confirmed(order):
     return send_sms(
         order.delivery_phone,
-        f"Lynctel: Order {order.order_ref} confirmed! Total GHS {order.total_amount}. "
-        f"We'll text you when it's on the way."
+        f'Lynctel: Hi! Your order {order.order_ref} is confirmed. '
+        f'Total: GHS {order.total_amount}. '
+        f'We will text you when your rider is on the way.'
     )
 
 
 def sms_order_dispatched(order):
     return send_sms(
         order.delivery_phone,
-        f"Lynctel: Order {order.order_ref} is on its way! "
-        f"A rider will call {order.delivery_phone} on arrival."
+        f'Lynctel: Great news! Order {order.order_ref} is on its way. '
+        f'Your rider will call {order.delivery_phone} on arrival.'
     )
 
 
 def sms_order_delivered(order):
     return send_sms(
         order.delivery_phone,
-        f"Lynctel: Order {order.order_ref} has been delivered. Thank you for shopping with us! 🎉"
+        f'Lynctel: Order {order.order_ref} has been delivered. '
+        f'Thank you for shopping with us! '
+        f'Rate your experience at lynctel.up.railway.app'
     )
 
 
 def sms_order_cancelled(order):
     return send_sms(
         order.delivery_phone,
-        f"Lynctel: Order {order.order_ref} has been cancelled. "
-        f"Contact support if this wasn't expected."
+        f'Lynctel: Your order {order.order_ref} has been cancelled. '
+        f'Contact us on WhatsApp: +233558040216 if this was unexpected.'
+    )
+
+
+def sms_vendor_low_stock(vendor, products):
+    """
+    Sends a single low-stock alert to a vendor covering all their
+    affected products. Called from order/signals.py after payment.
+    """
+    if not vendor.phone:
+        return False
+
+    names = ', '.join(
+        f'{p.name} ({p.stock_qty} left)' for p in products
+    )
+    plural = 'products are' if len(products) > 1 else 'product is'
+
+    return send_sms(
+        vendor.phone,
+        f'Lynctel Stock Alert: The following {plural} running low '
+        f'in your shop: {names}. '
+        f'Restock soon to avoid missed orders.'
     )
