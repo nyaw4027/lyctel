@@ -186,104 +186,193 @@ def vendor_menu(request, slug):
 # ─────────────────────────────
 # RESTAURANT REGISTRATION
 # ─────────────────────────────
+
 @login_required
 def register_restaurant(request):
-    # Redirect existing restaurant owners straight to their dashboard
+    """
+    Register a new restaurant.
+    """
+
+    # Prevent duplicate restaurant registrations
     if FoodVendor.objects.filter(owner=request.user).exists():
-        return redirect('food:restaurant_dashboard')
+        return redirect("food:restaurant_dashboard")
 
-    locationiq_key = getattr(settings, 'LOCATIONIQ_API_KEY', '')
+    locationiq_key = getattr(settings, "LOCATIONIQ_API_KEY", "")
 
-    if request.method == 'POST':
-        name         = request.POST.get('name', '').strip()
-        description  = request.POST.get('description', '').strip()
-        cuisine      = request.POST.get('cuisine', '')
-        address      = request.POST.get('address', '').strip()
-        city         = request.POST.get('city', 'Accra').strip()
-        phone        = request.POST.get('phone', '').strip()
-        whatsapp     = request.POST.get('whatsapp', '').strip()
-        opening_time = request.POST.get('opening_time', '08:00')
-        closing_time = request.POST.get('closing_time', '22:00')
-        min_order    = request.POST.get('min_order', '10').strip() or '10'
-        avg_prep     = request.POST.get('avg_prep_time', '20').strip() or '20'
-        latitude     = request.POST.get('latitude', '').strip()
-        longitude    = request.POST.get('longitude', '').strip()
+    context = {
+        "cuisines": FoodVendor.CuisineType.choices,
+        "cart_count": 0,
+        "LOCATIONIQ_API_KEY": locationiq_key,
+    }
 
-        errors = {}
-        if not name:    errors['name']    = 'Restaurant name is required.'
-        if not cuisine: errors['cuisine'] = 'Please select a cuisine type.'
-        if not address: errors['address'] = 'Address is required.'
-        if not phone:   errors['phone']   = 'Phone number is required.'
+    if request.method != "POST":
+        return render(request, "food/register.html", context)
 
-        # Validate numeric fields before saving
-        try:
-            min_order_dec = Decimal(min_order)
-            if min_order_dec < 0:
-                errors['min_order'] = 'Minimum order must be 0 or more.'
-        except Exception:
-            min_order_dec = Decimal('10')
-            errors['min_order'] = 'Enter a valid minimum order amount.'
+    # ------------------------------------------------------------------
+    # Read form data
+    # ------------------------------------------------------------------
+    form_data = request.POST
 
-        try:
-            avg_prep_int = max(0, int(avg_prep))
-        except (ValueError, TypeError):
+    name = form_data.get("name", "").strip()
+    description = form_data.get("description", "").strip()
+    cuisine = form_data.get("cuisine", "").strip()
+    address = form_data.get("address", "").strip()
+    city = form_data.get("city", "Accra").strip()
+
+    phone = form_data.get("phone", "").strip()
+    whatsapp = form_data.get("whatsapp", "").strip()
+
+    opening_time = form_data.get("opening_time", "08:00")
+    closing_time = form_data.get("closing_time", "22:00")
+
+    min_order = form_data.get("min_order", "10").strip()
+    avg_prep = form_data.get("avg_prep_time", "20").strip()
+
+    latitude = form_data.get("latitude", "").strip()
+    longitude = form_data.get("longitude", "").strip()
+
+    # ------------------------------------------------------------------
+    # Debug (Remove in production)
+    # ------------------------------------------------------------------
+    print("=" * 80)
+    print("POST:", request.POST)
+    print("FILES:", request.FILES)
+    print("Latitude:", latitude)
+    print("Longitude:", longitude)
+    print("=" * 80)
+
+    errors = {}
+
+    # ------------------------------------------------------------------
+    # Validation
+    # ------------------------------------------------------------------
+    if not name:
+        errors["name"] = "Restaurant name is required."
+
+    if not cuisine:
+        errors["cuisine"] = "Please select a cuisine."
+
+    if not address:
+        errors["address"] = "Restaurant address is required."
+
+    if not phone:
+        errors["phone"] = "Phone number is required."
+
+    # ------------------------------------------------------------------
+    # Minimum Order
+    # ------------------------------------------------------------------
+    try:
+        min_order_dec = Decimal(min_order)
+
+        if min_order_dec < 0:
+            errors["min_order"] = "Minimum order cannot be negative."
+
+    except (InvalidOperation, TypeError):
+        min_order_dec = Decimal("10")
+        errors["min_order"] = "Enter a valid minimum order."
+
+    # ------------------------------------------------------------------
+    # Average Preparation Time
+    # ------------------------------------------------------------------
+    try:
+        avg_prep_int = int(avg_prep)
+
+        if avg_prep_int < 0:
             avg_prep_int = 20
 
+    except (ValueError, TypeError):
+        avg_prep_int = 20
+
+    # ------------------------------------------------------------------
+    # Coordinates
+    # ------------------------------------------------------------------
+    lat = None
+    lng = None
+
+    if latitude and longitude:
+
         try:
-            lat = float(latitude)  if latitude  else None
-            lng = float(longitude) if longitude else None
+            lat = float(latitude)
+            lng = float(longitude)
+
+            if not (-90 <= lat <= 90):
+                errors["location"] = "Latitude is invalid."
+
+            if not (-180 <= lng <= 180):
+                errors["location"] = "Longitude is invalid."
+
         except ValueError:
-            lat = lng = None
-            errors['location'] = 'Invalid coordinates. Please pin your restaurant on the map.'
+            errors["location"] = "Invalid map coordinates."
 
-        if errors:
-            return render(request, 'food/register.html', {
-                'errors':             errors,
-                'form_data':          request.POST,
-                'cuisines':           FoodVendor.CuisineType.choices,
-                'cart_count':         0,
-                'LOCATIONIQ_API_KEY': locationiq_key,
-            })
+    else:
+        errors["location"] = "Please select your restaurant location on the map."
 
-        try:
+    # ------------------------------------------------------------------
+    # Return validation errors
+    # ------------------------------------------------------------------
+    if errors:
+
+        context.update({
+            "errors": errors,
+            "form_data": request.POST,
+        })
+
+        return render(request, "food/register.html", context)
+
+    # ------------------------------------------------------------------
+    # Save Restaurant
+    # ------------------------------------------------------------------
+    try:
+
+        with transaction.atomic():
+
             restaurant = FoodVendor(
-                owner         = request.user,
-                name          = name,
-                description   = description,
-                cuisine       = cuisine,
-                address       = address,
-                city          = city,
-                phone         = phone,
-                whatsapp      = whatsapp,
-                opening_time  = opening_time,
-                closing_time  = closing_time,
-                min_order     = min_order_dec,
-                avg_prep_time = avg_prep_int,
-                latitude      = lat,
-                longitude     = lng,
-                status        = FoodVendor.Status.OPEN,
+
+                owner=request.user,
+                name=name,
+                description=description,
+                cuisine=cuisine,
+                address=address,
+                city=city,
+                phone=phone,
+                whatsapp=whatsapp,
+                opening_time=opening_time,
+                closing_time=closing_time,
+                min_order=min_order_dec,
+                avg_prep_time=avg_prep_int,
+                latitude=lat,
+                longitude=lng,
+                status=FoodVendor.Status.OPEN,
+
             )
-            if 'logo'   in request.FILES: restaurant.logo   = request.FILES['logo']
-            if 'banner' in request.FILES: restaurant.banner = request.FILES['banner']
+
+            if request.FILES.get("logo"):
+                restaurant.logo = request.FILES["logo"]
+
+            if request.FILES.get("banner"):
+                restaurant.banner = request.FILES["banner"]
+
             restaurant.save()
-        except Exception as e:
-            return render(request, 'food/register.html', {
-                'errors':             {'name': f'Could not save restaurant: {e}'},
-                'form_data':          request.POST,
-                'cuisines':           FoodVendor.CuisineType.choices,
-                'cart_count':         0,
-                'LOCATIONIQ_API_KEY': locationiq_key,
-            })
 
-        messages.success(request, f'🎉 "{name}" is now live on Lynctel Food!')
-        return redirect('food:restaurant_dashboard')
+    except Exception as e:
 
-    # GET
-    return render(request, 'food/register.html', {
-        'cuisines':           FoodVendor.CuisineType.choices,
-        'cart_count':         0,
-        'LOCATIONIQ_API_KEY': locationiq_key,
-    })
+        print("Restaurant Save Error:", e)
+
+        context.update({
+            "errors": {
+                "general": str(e),
+            },
+            "form_data": request.POST,
+        })
+
+        return render(request, "food/register.html", context)
+
+    messages.success(
+        request,
+        f'🎉 "{restaurant.name}" has been registered successfully!'
+    )
+
+    return redirect("food:restaurant_dashboard")
 # ─────────────────────────────
 # RESTAURANT DASHBOARD
 # ─────────────────────────────

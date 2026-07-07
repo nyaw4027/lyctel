@@ -248,8 +248,8 @@
               <span class="w-1.5 h-1.5 bg-gray-300 rounded-full flex-shrink-0"></span>
               Click the map, search, or use GPS to pin your restaurant
             </p>
-            <input type="hidden" name="latitude"  id="lat-input"  value="{{ form_data.latitude|default:'' }}"/>
-            <input type="hidden" name="longitude" id="lng-input"  value="{{ form_data.longitude|default:'' }}"/>
+          <input type="hidden" name="latitude" id="lat-input" value="{{ form_data.latitude|default:'' }}">
+          <input type="hidden" name="longitude" id="lng-input" value="{{ form_data.longitude|default:'' }}">
           </div>
 
         </div>
@@ -497,9 +497,15 @@ var _tf = 0, _tok = 0;
     if (typeof L === 'undefined') throw new Error('Leaflet not loaded');
     var el = document.getElementById('location-map');
     if (!el) throw new Error('#location-map missing');
+_map = L.map('location-map').setView([5.6037, -0.1870], 13);
 
-    _map = L.map('location-map').setView([5.6037, -0.1870], 13);
-    var key = (typeof LOCATIONIQ_KEY !== 'undefined' && LOCATIONIQ_KEY) ? LOCATIONIQ_KEY : '';
+setTimeout(function () {
+    _map.invalidateSize();
+}, 200);
+
+var key = (typeof LOCATIONIQ_KEY !== 'undefined' && LOCATIONIQ_KEY)
+    ? LOCATIONIQ_KEY
+    : '';
 
     _sl = key
       ? L.tileLayer('https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=' + key, {
