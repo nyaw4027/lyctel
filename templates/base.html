@@ -39,25 +39,34 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind config must be set on window BEFORE the deferred CDN
+       script loads, otherwise tailwind.config = {...} throws because
+       the tailwind object doesn't exist yet at inline-script time. -->
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            display: ['Syne', 'sans-serif'],
-            body:    ['DM Sans', 'sans-serif'],
-          },
-          colors: {
-            navy: { DEFAULT: '#0F1B2D', 700: '#1a2d47', 500: '#243d5c' },
-            gold: { DEFAULT: '#F5A623', light: '#FEF3D7', dark: '#c8841a' },
-            cream: '#FAFAF7',
-          },
+    window.tailwind = {
+      config: {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ['Syne', 'sans-serif'],
+              body:    ['DM Sans', 'sans-serif'],
+            },
+            colors: {
+              navy: { DEFAULT: '#0F1B2D', 700: '#1a2d47', 500: '#243d5c' },
+              gold: { DEFAULT: '#F5A623', light: '#FEF3D7', dark: '#c8841a' },
+              cream: '#FAFAF7',
+            },
+          }
         }
       }
-    }
+    };
   </script>
+  <!-- defer prevents this render-blocking script from freezing the page
+       while cdn.tailwindcss.com is fetched. Styles apply after HTML parses
+       rather than blocking it — slight FOUC tradeoff vs. site freeze. -->
+  <script src="https://cdn.tailwindcss.com" defer></script>
+
 
   <style>
     /* ── Dark mode CSS variables ─────────────────────── */
@@ -948,7 +957,7 @@
     const LOCATIONIQ_KEY   = '{{ LOCATIONIQ_API_KEY|default:"" }}';
 
     // ── PWA PUSH NOTIFICATIONS ────────────────────────────
-    const VAPID_PUBLIC_KEY = 'BMUQH_ok6OLwx7C5PWI6-A27DnmbV97psRcHglz7uNch-qbz9S3ik0o65cLtIcKsab1MbNi0qPZA29MS2cSVjVQ';
+    const VAPID_PUBLIC_KEY = 'BAEw351eT-whUPpELa7PRDNEM0E_qzbKy6V9pI2jMjjHIS_JQx6cUj9hPahI9k86eCuG1QntOHnGi_1Yi_fWVwM';
 
     function urlBase64ToUint8Array(base64String) {
       const padding = '='.repeat((4 - base64String.length % 4) % 4);
