@@ -7,3 +7,6 @@
 *.env
 *.venv
 *vscode
+staticfiles/
+*.json.br
+*.json.gz
