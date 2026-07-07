@@ -249,9 +249,9 @@ FLW_WEBHOOK_SECRET = config('FLW_WEBHOOK_SECRET', default='')
 PAYSTACK_PUBLIC_KEY = config('PAYSTACK_PUBLIC_KEY', default='')
 PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
 
-# ── SMS (Termii) ───────────────────────────────────────────
-TERMII_API_KEY   = config('TERMII_API_KEY',   default='')
-TERMII_SENDER_ID = config('TERMII_SENDER_ID', default='Lynctel')
+# ── SMS (Arkesel) ───────────────────────────────────────────
+ARKESEL_API_KEY   = config('ARKESEL_API_KEY',   default='')
+ARKESEL_SENDER_ID = config('ARKESEL_SENDER_ID', default='Lynctel')
 
 
 
