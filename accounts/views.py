@@ -258,78 +258,81 @@ def _send_otp_email(email: str, otp: str, phone: str) -> bool:
  
  
 # ── STEP 1: enter phone ───────────────────────────────────
- 
 def forget_password(request):
     """
     User enters their phone number.
     OTP is sent via SMS (always) and also via email if the account has one.
+    SMS and email are sent in background threads so they never block the response.
     """
     if request.user.is_authenticated:
         return redirect('frontend:home')
- 
+
     if request.method == 'POST':
         phone = normalize_phone(request.POST.get('phone', '').strip())
- 
+
         if not phone:
             messages.error(request, 'Please enter your phone number.')
             return redirect('accounts:forget_password')
- 
+
         try:
             user = User.objects.filter(phone=phone).first()
- 
+
             # Generic message prevents account enumeration
             generic_msg = (
                 'If that number is registered, a reset code has been sent '
                 'via SMS and email (if you have one on file).'
             )
- 
+
             if not user:
                 messages.info(request, generic_msg)
                 return redirect('accounts:forget_password')
- 
+
             # Generate 6-digit OTP
             otp = get_random_string(length=6, allowed_chars='0123456789')
- 
-            # Store OTP + delivery channels used in cache (10 min)
+
+            # Store OTP in cache (10 min) and phone in session
             cache.set(f'pwd_reset_otp_{phone}', otp, timeout=600)
             request.session['pwd_reset_phone'] = phone
- 
-            # Attempt delivery via SMS and email
-            sms_sent   = _send_otp_sms(phone, otp)
-            email_sent = _send_otp_email(user.email, otp, phone) if user.email else False
- 
-            # Build a user-friendly delivery summary
-            delivery_parts = []
-            if sms_sent:
-                masked_phone = f'{phone[:4]}****{phone[-3:]}'
-                delivery_parts.append(f'SMS to {masked_phone}')
-            if email_sent and user.email:
-                domain      = user.email.split('@')[-1]
-                masked_email = f'{user.email[:2]}****@{domain}'
-                delivery_parts.append(f'email to {masked_email}')
- 
-            if delivery_parts:
-                messages.success(
-                    request,
-                    f'Reset code sent via {" and ".join(delivery_parts)}.'
-                )
-            else:
-                # Both channels failed — still don't reveal if account exists
-                messages.info(request, generic_msg)
- 
+
+            # ── Send SMS in background thread (non-blocking) ──────
+            # _send_otp_sms makes an HTTP request to Arkesel which
+            # blocks under ASGI/Daphne if called synchronously.
+            import threading
+            threading.Thread(
+                target=_send_otp_sms,
+                args=(phone, otp),
+                daemon=True,
+            ).start()
+
+            # ── Send email in background thread (non-blocking) ────
+            # send_mail uses SMTP which is also a blocking call.
+            if user.email:
+                threading.Thread(
+                    target=_send_otp_email,
+                    args=(user.email, otp, phone),
+                    daemon=True,
+                ).start()
+
+            # Respond immediately — don't wait for SMS/email to finish
+            masked_phone = f'{phone[:4]}****{phone[-3:]}'
+            messages.success(
+                request,
+                f'Reset code sent to {masked_phone}.'
+                + (f' Also sent to your email.' if user.email else '')
+            )
+
             # Always show OTP in DEBUG mode for easy testing
             if settings.DEBUG:
                 messages.warning(request, f'[DEBUG] OTP: {otp}')
- 
+
             return redirect('accounts:verify_otp')
- 
+
         except Exception:
             logger.exception('Forgot password error for phone=%s', phone)
             messages.error(request, 'Something went wrong. Please try again.')
             return redirect('accounts:forget_password')
- 
+
     return render(request, 'accounts/forget_password.html')
- 
  
 # ── STEP 2: verify OTP ────────────────────────────────────
  
