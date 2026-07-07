@@ -4,144 +4,115 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  #location-map {
-    height: 300px; border-radius: 16px;
-    border: 2px solid #e5e7eb; z-index: 1; background: #e9edf2;
-  }
-  #location-map.has-pin { border-color: #F5A623; }
-  .leaflet-container { border-radius: 14px; }
+  /* Leaflet tile-sizing fix — Tailwind's img reset fights Leaflet */
   #location-map img, #location-map .leaflet-tile {
     max-width: none !important; max-height: none !important;
   }
+  #location-map {
+    height: 280px; border-radius: 16px; border: 2px solid #e5e7eb;
+    background: #e9edf2; z-index: 1;
+  }
+  #location-map.pinned { border-color: #F5A623; }
+  .leaflet-container { border-radius: 14px; }
   #map-wrap { position: relative; }
   .map-fab {
-    position: absolute; z-index: 400; background: white; border: none;
-    border-radius: 10px; padding: 7px 12px; font-size: 12px; font-weight: 600;
-    color: #0F1B2D; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.15);
-    display: flex; align-items: center; gap: 5px; transition: all .2s;
+    position: absolute; z-index: 400; bottom: 12px; left: 12px;
+    background: white; border: none; border-radius: 10px;
+    padding: 7px 12px; font-size: 12px; font-weight: 600; color: #0F1B2D;
+    cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.14);
+    display: flex; align-items: center; gap: 5px; transition: box-shadow .2s;
   }
-  .map-fab:hover { background: #f8fafc; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
-  #sat-btn { bottom: 12px; left: 12px; }
+  .map-fab:hover { box-shadow: 0 4px 18px rgba(0,0,0,.2); }
   .map-err {
-    position: absolute; inset: 0; background: rgba(233,237,242,.96);
+    position: absolute; inset: 0; border-radius: 14px; z-index: 500;
+    background: rgba(233,237,242,.95);
     display: none; flex-direction: column; align-items: center;
-    justify-content: center; text-align: center; padding: 20px;
-    z-index: 500; border-radius: 14px;
+    justify-content: center; text-align: center; padding: 20px; gap: 10px;
   }
   .map-err.show { display: flex; }
+  /* Step dots */
   .step-dot {
-    width: 34px; height: 34px; border-radius: 50%;
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700; flex-shrink: 0;
-    background: #f3f4f6; color: #9ca3af; transition: all .3s;
+    font-size: 13px; font-weight: 700;
+    background: #f3f4f6; color: #9ca3af; transition: all .25s;
   }
-  .step-dot.active { background: #0F1B2D; color: white; box-shadow: 0 0 0 4px rgba(15,27,45,.15); }
+  .step-dot.active { background: #0F1B2D; color: white; }
   .step-dot.done   { background: #22c55e; color: white; }
-  .step-line { flex: 1; height: 2px; background: #f3f4f6; transition: background .4s; }
-  .step-line.done  { background: #22c55e; }
-  .field-ok  { border-color: #22c55e !important; background: #f0fdf4 !important; }
-  .field-bad { border-color: #fca5a5 !important; background: #fef2f2 !important; }
+  .step-line { flex: 1; height: 2px; background: #f3f4f6; transition: background .3s; }
+  .step-line.done { background: #22c55e; }
+  /* Inline validation */
+  .f-ok  { border-color: #22c55e !important; background: #f0fdf4 !important; }
+  .f-bad { border-color: #fca5a5 !important; background: #fef2f2 !important; }
+  /* Drag/drop */
   .dropzone { transition: border-color .2s, background .2s; }
   .dropzone.over { border-color: #F5A623 !important; background: #FEF3D7 !important; }
-  .dropzone:hover { border-color: #F5A623; }
+  /* Preview card */
   .preview-card {
     background: linear-gradient(160deg, #0F1B2D 0%, #1a2d47 100%);
     border-radius: 20px; overflow: hidden; color: white; position: sticky; top: 90px;
-    box-shadow: 0 8px 40px rgba(15,27,45,.25);
+    box-shadow: 0 8px 32px rgba(15,27,45,.22);
   }
-  #preview-banner {
-    height: 100px; background: #1a2d47;
-    background-size: cover; background-position: center;
-    display: flex; align-items: flex-end; padding: 14px; position: relative;
+  #preview-banner-bg {
+    height: 88px; background: #1a2d47; background-size: cover; background-position: center;
+    display: flex; align-items: flex-end; padding: 12px;
+    background-image: none;
   }
-  #preview-banner::after {
-    content: ''; position: absolute; inset: 0;
-    background: linear-gradient(to top, rgba(15,27,45,.6) 0%, transparent 60%);
+  .preview-logo {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: #F5A623; border: 3px solid #0F1B2D; object-fit: cover;
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+    flex-shrink: 0;
   }
-  .preview-logo-box {
-    width: 54px; height: 54px; border-radius: 14px; background: #F5A623;
-    border: 3px solid #0F1B2D; display: flex; align-items: center;
-    justify-content: center; font-size: 22px; flex-shrink: 0;
-    object-fit: cover; position: relative; z-index: 1;
-  }
-  .section-card {
-    background: white; border-radius: 20px;
-    border: 1px solid #f3f4f6; box-shadow: 0 1px 4px rgba(15,27,45,.06);
-    overflow: hidden;
-  }
-  .section-header {
-    padding: 16px 24px; border-bottom: 1px solid #f9fafb;
-    display: flex; align-items: center; gap: 12px;
-  }
-  .section-num {
-    width: 32px; height: 32px; background: #0F1B2D; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    color: white; font-size: 13px; font-weight: 700; flex-shrink: 0;
-  }
-  label.field-label {
-    display: block; font-size: 11px; font-weight: 700;
-    color: #9ca3af; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px;
-  }
-  .field-input {
-    width: 100%; padding: 12px 16px; border: 1.5px solid #e5e7eb;
-    border-radius: 12px; font-size: 14px; color: #0F1B2D;
-    transition: border-color .15s, box-shadow .15s; background: white;
-    outline: none;
-  }
-  .field-input:focus {
-    border-color: #F5A623 !important;
-    box-shadow: 0 0 0 3px rgba(245,166,35,.15) !important;
-  }
-  .field-input.error { border-color: #fca5a5 !important; background: #fef2f2; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Hero -->
+<!-- Hero — matches base.html bg-navy pattern -->
 <section class="bg-navy relative overflow-hidden">
   <div class="absolute inset-0 opacity-5"
        style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);background-size:28px 28px"></div>
-  <div class="relative max-w-3xl mx-auto px-4 py-16 text-center">
-    <div class="inline-flex items-center gap-2 bg-white/10 text-gold text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-5">
-      🍔 Lynctel Food
-    </div>
-    <h1 class="font-display font-700 text-3xl md:text-4xl text-white mb-4 leading-tight">
+  <div class="relative max-w-3xl mx-auto px-4 md:px-6 py-16 text-center">
+    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-3">Lynctel Food</p>
+    <h1 class="font-display font-700 text-3xl md:text-4xl text-white mb-3 leading-tight">
       List Your Restaurant
     </h1>
-    <p class="text-gray-300 text-sm max-w-md mx-auto leading-relaxed">
-      Reach thousands of hungry customers across Ghana.<br/>
-      Free to join — we only earn when you do.
+    <p class="text-gray-400 text-sm max-w-md mx-auto leading-relaxed">
+      Reach thousands of hungry customers across Ghana. Free to join — we only earn when you do.
     </p>
-    <div class="flex items-center justify-center gap-6 mt-8 text-xs text-gray-400">
-      <span class="flex items-center gap-1.5">✅ Free setup</span>
-      <span class="flex items-center gap-1.5">✅ 96% revenue to you</span>
-      <span class="flex items-center gap-1.5">✅ Go live in minutes</span>
+    <div class="flex items-center justify-center gap-6 mt-8 text-xs text-gray-500">
+      <span>✅ Zero setup cost</span>
+      <span>✅ 96% revenue to you</span>
+      <span>✅ Live in minutes</span>
     </div>
   </div>
 </section>
 
 <div class="max-w-6xl mx-auto px-4 md:px-6 py-10">
 
-  <!-- Draft restored banner -->
-  <div id="draft-banner" style="display:none"
-       class="mb-6 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3.5 flex items-center justify-between gap-3 text-sm text-blue-700">
-    <span class="flex items-center gap-2">📝 <span>We restored your unsaved draft from last time.</span></span>
-    <button type="button" onclick="clearDraft()" class="text-xs font-bold underline flex-shrink-0 hover:text-blue-900">Start fresh</button>
+  <!-- Draft restored -->
+  <div id="draft-banner"
+       class="hidden mb-6 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3
+              flex items-center justify-between gap-3 text-sm text-blue-700">
+    <span>📝 We restored your unsaved draft from last time.</span>
+    <button type="button" onclick="clearDraft()" class="text-xs font-semibold underline flex-shrink-0">
+      Start fresh
+    </button>
   </div>
 
-  <!-- Server validation errors -->
+  <!-- Server errors -->
   {% if errors %}
-  <div class="mb-6 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 text-sm text-red-700">
-    <p class="font-bold mb-2 flex items-center gap-2">⚠️ Please fix {{ errors|length }} issue{{ errors|length|pluralize }} before submitting:</p>
-    <ul class="space-y-1 text-xs list-disc list-inside">
+  <div class="mb-6 bg-red-50 border border-red-200 rounded-2xl px-4 py-4 text-sm text-red-700">
+    <p class="font-semibold mb-1.5">⚠ Please fix {{ errors|length }} issue{{ errors|length|pluralize }} before submitting:</p>
+    <ul class="list-disc list-inside space-y-0.5 text-xs">
       {% for field, msg in errors.items %}<li>{{ msg }}</li>{% endfor %}
     </ul>
   </div>
   {% endif %}
 
   <!-- Step progress -->
-  <div class="flex items-center gap-2 mb-10 max-w-sm mx-auto">
+  <div class="flex items-center gap-2 mb-10 max-w-xs mx-auto">
     <div class="step-dot active" id="dot-1">1</div>
     <div class="step-line" id="line-1"></div>
     <div class="step-dot" id="dot-2">2</div>
@@ -149,88 +120,110 @@
     <div class="step-dot" id="dot-3">3</div>
   </div>
 
-  <div class="grid lg:grid-cols-3 gap-8">
+  <div class="grid lg:grid-cols-3 gap-8 items-start">
 
-    <!-- FORM -->
-    <form method="POST" enctype="multipart/form-data" id="reg-form" class="lg:col-span-2 space-y-6">
+    <!-- ── FORM ────────────────────────────────────────── -->
+    <form method="POST" enctype="multipart/form-data" id="reg-form"
+          class="lg:col-span-2 space-y-6">
       {% csrf_token %}
 
-      <!-- ── STEP 1: Details ────────────────────────────── -->
-      <div class="section-card">
-        <div class="section-header">
-          <div class="section-num">1</div>
+      <!-- Step 1: Details -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700 flex-shrink-0">1</div>
           <div>
             <h2 class="font-display font-700 text-navy text-base">Restaurant Details</h2>
-            <p class="text-xs text-gray-400 mt-0.5">Name, cuisine, and location</p>
+            <p class="text-xs text-gray-400">Name, cuisine type, and location</p>
           </div>
         </div>
         <div class="px-6 py-6 space-y-5">
 
           <!-- Name -->
           <div>
-            <label class="field-label" for="name-input">Restaurant Name *</label>
-            <input type="text" name="name" id="name-input" required autocomplete="organization"
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Restaurant Name *
+            </label>
+            <input type="text" name="name" id="name-input" required
                    value="{{ form_data.name|default:'' }}"
                    placeholder="e.g. Auntie Akos Kitchen"
-                   class="field-input {% if errors.name %}error{% endif %}"/>
-            {% if errors.name %}<p class="text-red-500 text-xs mt-1.5 flex items-center gap-1">⚠ {{ errors.name }}</p>{% endif %}
+                   class="w-full px-4 py-3 border rounded-xl text-sm transition-all
+                          {% if errors.name %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+            {% if errors.name %}
+            <p class="text-red-500 text-xs mt-1">⚠ {{ errors.name }}</p>
+            {% endif %}
           </div>
 
           <!-- Description -->
           <div>
-            <label class="field-label" for="desc-input">
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
               Description
               <span id="desc-count" class="text-gray-300 font-normal normal-case ml-1">0/300</span>
             </label>
             <textarea name="description" id="desc-input" rows="3" maxlength="300"
-                      placeholder="Tell customers what makes your food special — specialties, vibe, opening hours..."
-                      class="field-input resize-none">{{ form_data.description|default:'' }}</textarea>
+                      placeholder="Tell customers what makes your food special..."
+                      class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none transition-all">{{ form_data.description|default:'' }}</textarea>
           </div>
 
           <!-- Cuisine -->
           <div>
-            <label class="field-label" for="cuisine-input">Cuisine Type *</label>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Cuisine Type *
+            </label>
             <select name="cuisine" id="cuisine-input" required
-                    class="field-input {% if errors.cuisine %}error{% endif %}">
+                    class="w-full px-4 py-3 border rounded-xl text-sm bg-white transition-all
+                           {% if errors.cuisine %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}">
               <option value="">Select cuisine...</option>
               {% for value, label in cuisines %}
               <option value="{{ value }}" {% if form_data.cuisine == value %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
-            {% if errors.cuisine %}<p class="text-red-500 text-xs mt-1.5 flex items-center gap-1">⚠ {{ errors.cuisine }}</p>{% endif %}
+            {% if errors.cuisine %}
+            <p class="text-red-500 text-xs mt-1">⚠ {{ errors.cuisine }}</p>
+            {% endif %}
           </div>
 
           <!-- Address + City -->
           <div class="grid sm:grid-cols-2 gap-4">
             <div>
-              <label class="field-label" for="address-input">Address *</label>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Address *
+              </label>
               <input type="text" name="address" id="address-input" required
                      value="{{ form_data.address|default:'' }}"
                      placeholder="Street name, area"
-                     class="field-input {% if errors.address %}error{% endif %}"/>
-              {% if errors.address %}<p class="text-red-500 text-xs mt-1.5">⚠ {{ errors.address }}</p>{% endif %}
+                     class="w-full px-4 py-3 border rounded-xl text-sm transition-all
+                            {% if errors.address %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+              {% if errors.address %}
+              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.address }}</p>
+              {% endif %}
             </div>
             <div>
-              <label class="field-label" for="city-input">City</label>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                City
+              </label>
               <input type="text" name="city" id="city-input"
                      value="{{ form_data.city|default:'Accra' }}"
-                     class="field-input"/>
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm transition-all"/>
             </div>
           </div>
 
           <!-- Map -->
           <div>
-            <label class="field-label">Pin Your Location on Map *</label>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Pin Your Location *
+            </label>
             <div class="flex gap-2 mb-3">
               <input type="text" id="map-search"
                      placeholder="Search your restaurant address..."
-                     class="field-input flex-1"/>
+                     class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm transition-all"/>
               <button type="button" onclick="doSearch()"
-                      class="flex-shrink-0 bg-navy text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-navy-700 transition-colors">
+                      class="flex-shrink-0 bg-navy hover:bg-navy-700 text-white text-sm font-semibold
+                             px-4 py-2.5 rounded-xl transition-colors btn-press">
                 Search
               </button>
-              <button type="button" onclick="doGPS()" title="Use my GPS location"
-                      class="flex-shrink-0 bg-gold-light text-navy text-sm font-semibold px-3 py-2.5 rounded-xl hover:bg-gold/25 transition-colors">
+              <button type="button" onclick="doGPS()"
+                      class="flex-shrink-0 bg-gold-light hover:bg-gold/25 text-navy text-sm font-semibold
+                             px-3 py-2.5 rounded-xl transition-colors btn-press">
                 📍 GPS
               </button>
             </div>
@@ -240,17 +233,21 @@
                 <span id="sat-icon">🛰️</span><span id="sat-text">Satellite</span>
               </button>
               <div class="map-err" id="map-err">
-                <div class="text-3xl mb-3">🗺️</div>
-                <p class="text-sm font-semibold text-gray-700 mb-1">Map couldn't load</p>
-                <p class="text-xs text-gray-500 mb-3 max-w-xs">Enter your address in the text fields above — your restaurant will still be saved correctly.</p>
+                <p class="text-2xl">🗺️</p>
+                <p class="text-sm font-semibold text-navy">Map couldn't load</p>
+                <p class="text-xs text-gray-500 max-w-xs">
+                  Enter your address above — coordinates are still saved correctly.
+                </p>
                 <button type="button" onclick="retryMap()"
-                        class="text-xs font-bold bg-navy text-white px-5 py-2.5 rounded-xl">↺ Retry</button>
+                        class="text-xs font-bold bg-navy text-white px-5 py-2 rounded-xl">
+                  ↺ Retry
+                </button>
               </div>
             </div>
-            <div id="map-status" class="mt-2 text-xs text-gray-400 flex items-center gap-1.5">
+            <p id="map-status" class="mt-2 text-xs text-gray-400 flex items-center gap-1.5">
               <span class="w-1.5 h-1.5 bg-gray-300 rounded-full flex-shrink-0"></span>
-              Click on the map, search, or use GPS to pin your restaurant
-            </div>
+              Click the map, search, or use GPS to pin your restaurant
+            </p>
             <input type="hidden" name="latitude"  id="lat-input"  value="{{ form_data.latitude|default:'' }}"/>
             <input type="hidden" name="longitude" id="lng-input"  value="{{ form_data.longitude|default:'' }}"/>
           </div>
@@ -258,113 +255,137 @@
         </div>
       </div>
 
-      <!-- ── STEP 2: Contact & Hours ───────────────────── -->
-      <div class="section-card">
-        <div class="section-header">
-          <div class="section-num">2</div>
+      <!-- Step 2: Contact & Hours -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700 flex-shrink-0">2</div>
           <div>
             <h2 class="font-display font-700 text-navy text-base">Contact & Hours</h2>
-            <p class="text-xs text-gray-400 mt-0.5">How customers reach you</p>
+            <p class="text-xs text-gray-400">Phone, WhatsApp, opening times</p>
           </div>
         </div>
         <div class="px-6 py-6 space-y-5">
 
           <div class="grid sm:grid-cols-2 gap-4">
             <div>
-              <label class="field-label" for="phone-input">Phone Number *</label>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Phone *
+              </label>
               <input type="tel" name="phone" id="phone-input" required
                      value="{{ form_data.phone|default:'' }}" placeholder="0241234567"
-                     autocomplete="tel"
-                     class="field-input {% if errors.phone %}error{% endif %}"/>
-              {% if errors.phone %}<p class="text-red-500 text-xs mt-1.5">⚠ {{ errors.phone }}</p>{% endif %}
+                     class="w-full px-4 py-3 border rounded-xl text-sm transition-all
+                            {% if errors.phone %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+              {% if errors.phone %}
+              <p class="text-red-500 text-xs mt-1">⚠ {{ errors.phone }}</p>
+              {% endif %}
             </div>
             <div>
-              <label class="field-label">WhatsApp <span class="text-gray-300 font-normal normal-case">(optional)</span></label>
-              <input type="tel" name="whatsapp" value="{{ form_data.whatsapp|default:'' }}"
-                     placeholder="0241234567" class="field-input"/>
-            </div>
-          </div>
-
-          <div class="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label class="field-label">Opening Time</label>
-              <input type="time" name="opening_time" value="{{ form_data.opening_time|default:'08:00' }}"
-                     class="field-input"/>
-            </div>
-            <div>
-              <label class="field-label">Closing Time</label>
-              <input type="time" name="closing_time" value="{{ form_data.closing_time|default:'22:00' }}"
-                     class="field-input"/>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                WhatsApp <span class="text-gray-300 font-normal normal-case">(optional)</span>
+              </label>
+              <input type="tel" name="whatsapp"
+                     value="{{ form_data.whatsapp|default:'' }}" placeholder="0241234567"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm transition-all"/>
             </div>
           </div>
 
           <div class="grid sm:grid-cols-2 gap-4">
             <div>
-              <label class="field-label">Minimum Order (GHS)</label>
-              <div class="relative">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold pointer-events-none">GHS</span>
-                <input type="number" step="0.01" min="0" name="min_order"
-                       value="{{ form_data.min_order|default:'10' }}"
-                       class="field-input pl-12"/>
-              </div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Opening Time
+              </label>
+              <input type="time" name="opening_time"
+                     value="{{ form_data.opening_time|default:'08:00' }}"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm transition-all"/>
             </div>
             <div>
-              <label class="field-label">Avg. Prep Time</label>
-              <div class="relative">
-                <input type="number" min="0" max="180" name="avg_prep_time"
-                       value="{{ form_data.avg_prep_time|default:'20' }}"
-                       class="field-input pr-14"/>
-                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">mins</span>
-              </div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Closing Time
+              </label>
+              <input type="time" name="closing_time"
+                     value="{{ form_data.closing_time|default:'22:00' }}"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm transition-all"/>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Min Order (GHS)
+              </label>
+              <input type="number" step="0.01" min="0" name="min_order"
+                     value="{{ form_data.min_order|default:'10' }}"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm transition-all"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Avg Prep Time (mins)
+              </label>
+              <input type="number" min="1" max="180" name="avg_prep_time"
+                     value="{{ form_data.avg_prep_time|default:'20' }}"
+                     class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm transition-all"/>
             </div>
           </div>
 
         </div>
       </div>
 
-      <!-- ── STEP 3: Branding ──────────────────────────── -->
-      <div class="section-card">
-        <div class="section-header">
-          <div class="section-num">3</div>
+      <!-- Step 3: Branding -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center text-white text-sm font-display font-700 flex-shrink-0">3</div>
           <div>
-            <h2 class="font-display font-700 text-navy text-base">Branding <span class="text-gray-400 font-normal text-sm">(optional)</span></h2>
-            <p class="text-xs text-gray-400 mt-0.5">Logo and banner photo</p>
+            <h2 class="font-display font-700 text-navy text-base">
+              Branding
+              <span class="text-gray-400 font-normal text-sm ml-1">(optional)</span>
+            </h2>
+            <p class="text-xs text-gray-400">Logo and banner — restaurants with photos get 3× more clicks</p>
           </div>
         </div>
-        <div class="px-6 py-6 grid sm:grid-cols-2 gap-6">
+        <div class="px-6 py-6 grid sm:grid-cols-2 gap-5">
 
           <!-- Logo -->
           <div>
-            <label class="field-label">Logo</label>
-            <div class="dropzone border-2 border-dashed border-gray-200 rounded-2xl px-4 py-6 text-center cursor-pointer"
-                 id="logo-zone" onclick="document.getElementById('logo-file').click()">
-              <div class="text-4xl mb-2">🖼️</div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Logo
+            </label>
+            <div class="dropzone border-2 border-dashed border-gray-200 rounded-xl px-4 py-6 text-center
+                        hover:border-gold cursor-pointer transition-colors"
+                 id="logo-zone"
+                 onclick="document.getElementById('logo-file').click()">
+              <p class="text-3xl mb-2">🖼️</p>
               <p class="text-sm font-semibold text-navy">Upload logo</p>
               <p class="text-xs text-gray-400 mt-1">or drag & drop · JPG/PNG · max 5MB</p>
               <input type="file" id="logo-file" name="logo" accept="image/*" class="hidden"/>
             </div>
-            <div class="mt-3 relative inline-block">
-              <img id="logo-preview" class="hidden w-20 h-20 rounded-2xl object-cover border-2 border-gold/30 shadow-sm"/>
+            <div class="relative inline-block mt-3">
+              <img id="logo-preview" class="hidden w-20 h-20 rounded-2xl object-cover border-2 border-gold/30"/>
               <button type="button" id="logo-rm" onclick="removeImg('logo')"
-                      class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs items-center justify-center shadow-sm">✕</button>
+                      class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white
+                             rounded-full text-xs items-center justify-center shadow-sm">✕</button>
             </div>
             <p id="logo-err" class="hidden text-red-500 text-xs mt-1.5"></p>
           </div>
 
           <!-- Banner -->
           <div>
-            <label class="field-label">Banner Photo</label>
-            <div class="dropzone border-2 border-dashed border-gray-200 rounded-2xl px-4 py-6 text-center cursor-pointer"
-                 id="banner-zone" onclick="document.getElementById('banner-file').click()">
-              <div class="text-4xl mb-2">🏞️</div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Banner Photo
+            </label>
+            <div class="dropzone border-2 border-dashed border-gray-200 rounded-xl px-4 py-6 text-center
+                        hover:border-gold cursor-pointer transition-colors"
+                 id="banner-zone"
+                 onclick="document.getElementById('banner-file').click()">
+              <p class="text-3xl mb-2">🏞️</p>
               <p class="text-sm font-semibold text-navy">Upload banner</p>
               <p class="text-xs text-gray-400 mt-1">or drag & drop · JPG/PNG · max 5MB</p>
               <input type="file" id="banner-file" name="banner" accept="image/*" class="hidden"/>
             </div>
-            <div class="mt-3 relative">
-              <img id="banner-preview" class="hidden w-full h-24 rounded-xl object-cover border-2 border-gold/30 shadow-sm"/>
+            <div class="relative mt-3">
+              <img id="banner-preview" class="hidden w-full h-20 rounded-xl object-cover border-2 border-gold/30"/>
               <button type="button" id="banner-rm" onclick="removeImg('banner')"
-                      class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs items-center justify-center shadow-sm">✕</button>
+                      class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white
+                             rounded-full text-xs items-center justify-center shadow-sm">✕</button>
             </div>
             <p id="banner-err" class="hidden text-red-500 text-xs mt-1.5"></p>
           </div>
@@ -372,27 +393,24 @@
         </div>
       </div>
 
-      <!-- ── Submit ─────────────────────────────────────── -->
-      <div class="section-card p-6">
-        <div class="flex items-center justify-between mb-5 pb-5 border-b border-gray-100">
+      <!-- Submit -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div class="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
           <div>
-            <p class="font-display font-700 text-navy text-lg">Free to List</p>
-            <p class="text-xs text-gray-400 mt-0.5">No signup fees, no monthly charges — ever</p>
+            <p class="font-display font-700 text-navy">Free to List</p>
+            <p class="text-xs text-gray-400 mt-0.5">No setup fees — we only earn when you do</p>
           </div>
-          <div class="text-right">
-            <p class="font-display font-700 text-3xl text-green-600">GHS 0</p>
-            <p class="text-xs text-gray-400">setup cost</p>
-          </div>
+          <p class="font-display font-700 text-2xl text-green-600">GHS 0</p>
         </div>
-        <p class="text-xs text-gray-400 mb-4 leading-relaxed">
-          By listing, you agree to Lynctel's <a href="/terms/" class="underline hover:text-navy">Terms of Service</a>.
-          Lynctel takes a 4% platform fee per order — you keep 96%.
+        <p class="text-xs text-gray-400 mb-4">
+          By submitting you agree to Lynctel's
+          <a href="{% url 'frontend:terms' %}" class="underline hover:text-navy" target="_blank">Terms of Service</a>.
+          Lynctel keeps 4% per order — you keep 96%.
         </p>
         <button type="submit" id="submit-btn"
-                class="w-full bg-navy hover:bg-navy-700 text-white font-bold py-4 rounded-2xl
-                       transition-all btn-press flex items-center justify-center gap-2.5 text-sm
-                       shadow-lg shadow-navy/20 hover:shadow-navy/30">
-          <span id="submit-txt" class="flex items-center gap-2">🚀 Launch My Restaurant</span>
+                class="w-full bg-navy hover:bg-navy-700 text-white font-semibold py-4 rounded-2xl
+                       transition-colors btn-press shadow-sm flex items-center justify-center gap-2 text-sm">
+          <span id="submit-txt">🚀 Launch My Restaurant</span>
           <span id="submit-spin" class="hidden flex items-center gap-2">
             <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -405,39 +423,58 @@
 
     </form>
 
-    <!-- ── LIVE PREVIEW ───────────────────────────────── -->
+    <!-- ── LIVE PREVIEW + TIPS ──────────────────────────── -->
     <div class="lg:col-span-1 space-y-4">
-      <div class="preview-card">
-        <div id="preview-banner">
-          <img id="preview-logo-img" class="preview-logo-box" src="" style="display:none;border-radius:14px;"/>
-          <div id="preview-logo-icon" class="preview-logo-box">🍽️</div>
+
+      <!-- Preview card -->
+      <div class="preview-card card-hover">
+        <div id="preview-banner-bg">
+          <img id="preview-logo-img" src="" alt=""
+               class="preview-logo hidden" style="display:none;border-radius:14px;"/>
+          <div id="preview-logo-fallback" class="preview-logo">🍽️</div>
         </div>
-        <div class="p-5">
-          <p id="preview-name" class="font-display font-700 text-base leading-snug">Your Restaurant Name</p>
-          <p id="preview-cuisine" class="text-xs text-white/50 mt-1">Select a cuisine type</p>
-          <p id="preview-address" class="text-xs text-white/40 mt-2 flex items-center gap-1.5 truncate">
-            📍 <span>Pin your location on the map</span>
-          </p>
-          <div class="flex items-center gap-2 mt-4 pt-4 border-t border-white/10">
-            <span class="text-[11px] font-semibold bg-white/10 px-2.5 py-1.5 rounded-full">
+        <div class="p-4">
+          <p id="preview-name"    class="font-display font-700 text-base leading-snug">Your Restaurant Name</p>
+          <p id="preview-cuisine" class="text-xs text-white/50 mt-0.5">Select a cuisine</p>
+          <p id="preview-address" class="text-xs text-white/40 mt-2 truncate">📍 Pin your location</p>
+          <div class="flex items-center gap-2 mt-3 pt-3 border-t border-white/10 flex-wrap">
+            <span class="text-[10px] font-semibold bg-white/10 px-2 py-1 rounded-full">
               ⏱ <span id="preview-prep">20</span> min
             </span>
-            <span class="text-[11px] font-semibold bg-white/10 px-2.5 py-1.5 rounded-full">
+            <span class="text-[10px] font-semibold bg-white/10 px-2 py-1 rounded-full">
               Min GHS <span id="preview-min">10</span>
             </span>
-            <span class="ml-auto text-[10px] text-green-400 font-bold bg-green-400/15 px-2 py-1 rounded-full">● Open</span>
+            <span class="ml-auto text-[10px] font-bold text-green-400 bg-green-400/15 px-2 py-1 rounded-full">
+              ● Open
+            </span>
           </div>
         </div>
       </div>
       <p class="text-xs text-gray-400 text-center">👀 Live preview — updates as you type</p>
 
-      <!-- Tips card -->
-      <div class="bg-gold-light border border-gold/20 rounded-2xl p-4 space-y-2.5">
-        <p class="text-xs font-bold text-navy uppercase tracking-wide">💡 Tips for more orders</p>
-        <p class="text-xs text-gray-600 flex items-start gap-2"><span>📸</span> Upload a clear banner photo — restaurants with photos get 3× more clicks</p>
-        <p class="text-xs text-gray-600 flex items-start gap-2"><span>📍</span> Pin your exact location so riders find you quickly</p>
-        <p class="text-xs text-gray-600 flex items-start gap-2"><span>⏱</span> Set realistic prep times — accurate ETAs get better reviews</p>
+      <!-- Tips -->
+      <div class="bg-gold-light border border-gold/20 rounded-2xl p-4 space-y-3">
+        <p class="text-xs font-bold text-navy uppercase tracking-wider">💡 Tips for more orders</p>
+        <div class="space-y-2 text-xs text-gray-600">
+          <p class="flex items-start gap-2">
+            <span class="flex-shrink-0 mt-0.5">📸</span>
+            Upload a clear banner — restaurants with photos get 3× more orders
+          </p>
+          <p class="flex items-start gap-2">
+            <span class="flex-shrink-0 mt-0.5">📍</span>
+            Pin your exact map location so riders find you fast
+          </p>
+          <p class="flex items-start gap-2">
+            <span class="flex-shrink-0 mt-0.5">⏱</span>
+            Set realistic prep times — accurate ETAs earn better reviews
+          </p>
+          <p class="flex items-start gap-2">
+            <span class="flex-shrink-0 mt-0.5">🍔</span>
+            Add your menu items right after registering to start taking orders
+          </p>
+        </div>
       </div>
+
     </div>
 
   </div>
@@ -445,275 +482,249 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Leaflet loaded here (not in <head>) so it never blocks page rendering -->
+<!-- Leaflet loaded at bottom — never blocks page render -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ── MAP ────────────────────────────────────────────────────
-// LOCATIONIQ_KEY declared globally in base.html as:
+// LOCATIONIQ_KEY is declared globally in base.html:
 //   const LOCATIONIQ_KEY = '{{ LOCATIONIQ_API_KEY|default:"" }}';
-// If it's empty (key not in view context or missing env var), we fall
-// back to OpenStreetMap tiles which work without a key.
+// We use it here; if empty we fall back to free OSM tiles.
+var _map = null, _marker = null, _sl = null, _sat = null, _onSat = false;
+var _tf = 0, _tok = 0;
 
-let _map = null, _marker = null, _streetLayer = null, _satLayer = null, _onSat = false;
-let _tileFail = 0, _tileOk = 0;
-
-(function initMap() {
+(function() {
   try {
-    if (typeof L === 'undefined') throw new Error('Leaflet script not loaded');
-    const el = document.getElementById('location-map');
-    if (!el) throw new Error('#location-map not found');
+    if (typeof L === 'undefined') throw new Error('Leaflet not loaded');
+    var el = document.getElementById('location-map');
+    if (!el) throw new Error('#location-map missing');
 
-    _map = L.map('location-map', { zoomControl: true }).setView([5.6037, -0.1870], 13);
+    _map = L.map('location-map').setView([5.6037, -0.1870], 13);
+    var key = (typeof LOCATIONIQ_KEY !== 'undefined' && LOCATIONIQ_KEY) ? LOCATIONIQ_KEY : '';
 
-    const key = (typeof LOCATIONIQ_KEY !== 'undefined') ? LOCATIONIQ_KEY : '';
-
-    _streetLayer = key
-      ? L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${key}`, {
-          attribution: '© LocationIQ · © OpenStreetMap', maxZoom: 19,
-        })
+    _sl = key
+      ? L.tileLayer('https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=' + key, {
+          attribution: '© LocationIQ · © OpenStreetMap', maxZoom: 19 })
       : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors', maxZoom: 19,
-        });
+          attribution: '© OpenStreetMap contributors', maxZoom: 19 });
 
-    _satLayer = L.tileLayer(
+    _sat = L.tileLayer(
       'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      { attribution: '© Esri · Maxar · GeoEye', maxZoom: 19 }
+      { attribution: '© Esri · Maxar', maxZoom: 19 }
     );
 
-    _streetLayer.addTo(_map);
-    _streetLayer.on('tileerror', () => { if (++_tileFail >= 4 && !_tileOk) showMapErr(); });
-    _streetLayer.on('tileload',  () => { _tileOk++; hideMapErr(); });
+    _sl.addTo(_map);
+    _sl.on('tileerror', function() { if (++_tf >= 4 && !_tok) showMapErr(); });
+    _sl.on('tileload',  function() { _tok++; hideMapErr(); });
 
-    const pinIcon = L.divIcon({
+    var pin = L.divIcon({
       className: '',
-      html: '<div style="font-size:2.2rem;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.4));transform:translateY(-4px)">📍</div>',
-      iconSize: [36, 36], iconAnchor: [18, 36],
+      html: '<div style="font-size:2rem;line-height:1;filter:drop-shadow(0 2px 5px rgba(0,0,0,.35))">📍</div>',
+      iconSize: [32,32], iconAnchor: [16,32]
     });
 
-    function placePin(lat, lng, label) {
+    window.placePin = function(lat, lng, label) {
       if (_marker) _map.removeLayer(_marker);
-      _marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(_map);
-      document.getElementById('lat-input').value = lat.toFixed(7);
-      document.getElementById('lng-input').value = lng.toFixed(7);
-      document.getElementById('location-map').classList.add('has-pin');
-      setMapStatus(`✓ ${label || lat.toFixed(4) + ', ' + lng.toFixed(4)}`, 'green');
+      _marker = L.marker([lat, lng], { icon: pin, draggable: true }).addTo(_map);
+      document.getElementById('lat-input').value = lat.toFixed(6);
+      document.getElementById('lng-input').value = lng.toFixed(6);
+      document.getElementById('location-map').classList.add('pinned');
+      mapStatus((label || (lat.toFixed(4) + ', ' + lng.toFixed(4))), 'green');
       updatePreview();
       _marker.on('dragend', function(e) {
-        const p = e.target.getLatLng();
-        document.getElementById('lat-input').value = p.lat.toFixed(7);
-        document.getElementById('lng-input').value = p.lng.toFixed(7);
+        var p = e.target.getLatLng();
+        document.getElementById('lat-input').value = p.lat.toFixed(6);
+        document.getElementById('lng-input').value = p.lng.toFixed(6);
         reverseGeocode(p.lat, p.lng);
       });
-    }
-    window._placePin = placePin;
+    };
 
-    // Restore previously saved/submitted pin
-    const sLat = parseFloat(document.getElementById('lat-input').value);
-    const sLng = parseFloat(document.getElementById('lng-input').value);
-    if (!isNaN(sLat) && !isNaN(sLng) && sLat !== 0 && sLng !== 0) {
-      placePin(sLat, sLng, 'Saved location');
+    // Restore pin from server-returned form_data
+    var sLat = parseFloat(document.getElementById('lat-input').value);
+    var sLng = parseFloat(document.getElementById('lng-input').value);
+    if (!isNaN(sLat) && !isNaN(sLng) && sLat !== 0) {
+      window.placePin(sLat, sLng, 'Saved location');
       _map.setView([sLat, sLng], 16);
     }
 
-    _map.on('click', function(e) {
-      placePin(e.latlng.lat, e.latlng.lng);
-      reverseGeocode(e.latlng.lat, e.latlng.lng);
-    });
+    _map.on('click', function(e) { window.placePin(e.latlng.lat, e.latlng.lng); reverseGeocode(e.latlng.lat, e.latlng.lng); });
 
     document.getElementById('sat-btn').addEventListener('click', function() {
       _onSat = !_onSat;
-      if (_onSat) {
-        _map.removeLayer(_streetLayer); _satLayer.addTo(_map);
-        document.getElementById('sat-icon').textContent = '🗺️';
-        document.getElementById('sat-text').textContent = 'Street';
-      } else {
-        _map.removeLayer(_satLayer); _streetLayer.addTo(_map);
-        document.getElementById('sat-icon').textContent = '🛰️';
-        document.getElementById('sat-text').textContent = 'Satellite';
-      }
+      if (_onSat) { _map.removeLayer(_sl); _sat.addTo(_map); document.getElementById('sat-icon').textContent='🗺️'; document.getElementById('sat-text').textContent='Street'; }
+      else        { _map.removeLayer(_sat); _sl.addTo(_map);  document.getElementById('sat-icon').textContent='🛰️'; document.getElementById('sat-text').textContent='Satellite'; }
     });
 
-    console.log('[food-map] initialized OK — tiles: ' + (key ? 'LocationIQ' : 'OpenStreetMap fallback'));
-  } catch (err) {
-    console.error('[food-map] init failed:', err.message);
+  } catch(e) {
+    console.error('[food-map]', e.message);
     showMapErr();
-    // Safe no-ops so onclick= attributes never throw
-    if (!window._placePin) window._placePin = function() {};
+    if (!window.placePin) window.placePin = function() {};
   }
 })();
 
-function showMapErr() { document.getElementById('map-err').classList.add('show'); }
-function hideMapErr() { document.getElementById('map-err').classList.remove('show'); }
-function retryMap()   { _tileFail = 0; _tileOk = 0; hideMapErr(); (_onSat ? _satLayer : _streetLayer)?.redraw(); }
+function showMapErr() { var el=document.getElementById('map-err'); if(el) el.classList.add('show'); }
+function hideMapErr() { var el=document.getElementById('map-err'); if(el) el.classList.remove('show'); }
+function retryMap()   { _tf=0; _tok=0; hideMapErr(); (_onSat?_sat:_sl)&&(_onSat?_sat:_sl).redraw(); }
 
 function reverseGeocode(lat, lng) {
-  const key = (typeof LOCATIONIQ_KEY !== 'undefined') ? LOCATIONIQ_KEY : '';
-  const url = key
-    ? `https://us1.locationiq.com/v1/reverse.php?key=${key}&lat=${lat}&lon=${lng}&format=json`
-    : `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
-  fetch(url)
-    .then(r => r.json())
-    .then(function(d) {
-      if (!d || !d.address) return;
-      const a = d.address;
-      const addrEl = document.getElementById('address-input');
-      const cityEl = document.getElementById('city-input');
-      const road   = a.road || a.pedestrian || a.highway || '';
-      const area   = a.neighbourhood || a.suburb || a.quarter || '';
-      if (!addrEl.value && (road || area)) addrEl.value = [road, area].filter(Boolean).join(', ');
-      const city = a.city || a.town || a.municipality || a.county || '';
-      if (city && (!cityEl.value || cityEl.value === 'Accra')) cityEl.value = city;
-      const placeName = (d.display_name || '').split(',')[0] || '';
-      setMapStatus('✓ ' + (placeName || 'Location pinned'), 'green');
-      updatePreview();
-    })
-    .catch(function() {});
+  var key = (typeof LOCATIONIQ_KEY !== 'undefined') ? LOCATIONIQ_KEY : '';
+  var url = key
+    ? 'https://us1.locationiq.com/v1/reverse.php?key='+key+'&lat='+lat+'&lon='+lng+'&format=json'
+    : 'https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json';
+  fetch(url).then(function(r){return r.json();}).then(function(d) {
+    if (!d || !d.address) return;
+    var a = d.address;
+    var addrEl = document.getElementById('address-input');
+    var cityEl = document.getElementById('city-input');
+    var road   = a.road||a.pedestrian||'', area = a.neighbourhood||a.suburb||'';
+    if (!addrEl.value && (road||area)) addrEl.value = [road,area].filter(Boolean).join(', ');
+    var city = a.city||a.town||a.municipality||a.county||'';
+    if (city && (!cityEl.value||cityEl.value==='Accra')) cityEl.value = city;
+    mapStatus('✓ ' + ((d.display_name||'').split(',')[0]||'Location pinned'), 'green');
+    updatePreview();
+  }).catch(function(){});
 }
 
 function doSearch() {
-  const q = document.getElementById('map-search').value.trim();
+  var q = document.getElementById('map-search').value.trim();
   if (!q) return;
-  setMapStatus('Searching...', 'blue');
-  const query = q.toLowerCase().includes('ghana') ? q : q + ', Ghana';
-  const key   = (typeof LOCATIONIQ_KEY !== 'undefined') ? LOCATIONIQ_KEY : '';
-  const url   = key
-    ? `https://us1.locationiq.com/v1/search.php?key=${key}&q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=gh`
-    : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=gh`;
-  fetch(url)
-    .then(r => r.json())
-    .then(function(res) {
-      if (!res || !res.length) { setMapStatus('⚠ No results — try a more specific address', 'orange'); return; }
-      const lat = parseFloat(res[0].lat), lng = parseFloat(res[0].lon);
-      _map?.setView([lat, lng], 17);
-      window._placePin(lat, lng, (res[0].display_name || q).split(',')[0]);
-    })
-    .catch(function() { setMapStatus('⚠ Search failed — click the map to pin manually', 'orange'); });
+  mapStatus('Searching...', 'blue');
+  var query = q.toLowerCase().indexOf('ghana') >= 0 ? q : q + ', Ghana';
+  var key   = (typeof LOCATIONIQ_KEY !== 'undefined') ? LOCATIONIQ_KEY : '';
+  var url   = key
+    ? 'https://us1.locationiq.com/v1/search.php?key='+key+'&q='+encodeURIComponent(query)+'&format=json&limit=1&countrycodes=gh'
+    : 'https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(query)+'&format=json&limit=1&countrycodes=gh';
+  fetch(url).then(function(r){return r.json();}).then(function(res) {
+    if (!res||!res.length) { mapStatus('⚠ No results — try a more specific address', 'orange'); return; }
+    var lat = parseFloat(res[0].lat), lng = parseFloat(res[0].lon);
+    _map&&_map.setView([lat,lng],17);
+    window.placePin(lat, lng, (res[0].display_name||q).split(',')[0]);
+  }).catch(function() { mapStatus('⚠ Search failed — click the map to pin manually', 'orange'); });
 }
 
 function doGPS() {
-  if (!navigator.geolocation) { setMapStatus('⚠ GPS not supported by your browser', 'orange'); return; }
-  setMapStatus('Getting your location...', 'blue');
+  if (!navigator.geolocation) { mapStatus('⚠ GPS not supported by this browser', 'orange'); return; }
+  mapStatus('Getting your location...', 'blue');
   navigator.geolocation.getCurrentPosition(
     function(pos) {
-      const lat = pos.coords.latitude, lng = pos.coords.longitude;
-      _map?.setView([lat, lng], 17);
-      window._placePin(lat, lng, 'Your current location');
+      var lat = pos.coords.latitude, lng = pos.coords.longitude;
+      _map&&_map.setView([lat,lng],17);
+      window.placePin(lat, lng, 'Your location');
       reverseGeocode(lat, lng);
     },
-    function() { setMapStatus('⚠ Location access denied — click the map instead', 'orange'); },
+    function() { mapStatus('⚠ Location access denied — click the map instead', 'orange'); },
     { timeout: 10000, enableHighAccuracy: true }
   );
 }
 
-function setMapStatus(msg, color) {
-  const el = document.getElementById('map-status');
+function mapStatus(msg, color) {
+  var el = document.getElementById('map-status');
   if (!el) return;
-  const cls = { green:'text-green-600', orange:'text-orange-500', blue:'text-blue-500' };
-  const dot = { green:'bg-green-500', orange:'bg-orange-400', blue:'bg-blue-500' };
-  el.className = `mt-2 text-xs flex items-center gap-1.5 ${cls[color]||'text-gray-400'}`;
-  el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot[color]||'bg-gray-300'}"></span>${msg}`;
+  var tc = {green:'text-green-600', orange:'text-orange-500', blue:'text-blue-500'};
+  var dc = {green:'bg-green-500',   orange:'bg-orange-400',   blue:'bg-blue-500'};
+  el.className = 'mt-2 text-xs flex items-center gap-1.5 ' + (tc[color]||'text-gray-400');
+  el.innerHTML = '<span class="w-1.5 h-1.5 rounded-full flex-shrink-0 '+(dc[color]||'bg-gray-300')+'"></span>' + msg;
 }
 
-document.getElementById('map-search')?.addEventListener('keydown', function(e) {
+document.getElementById('map-search')&&document.getElementById('map-search').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
 });
 
 // ── LIVE PREVIEW ──────────────────────────────────────────
 function updatePreview() {
-  const name    = document.getElementById('name-input')?.value.trim()    || '';
-  const cuisine = document.getElementById('cuisine-input');
-  const address = document.getElementById('address-input')?.value.trim() || '';
-  const city    = document.getElementById('city-input')?.value.trim()    || '';
-  const minOrd  = document.querySelector('[name="min_order"]')?.value     || '10';
-  const prep    = document.querySelector('[name="avg_prep_time"]')?.value || '20';
+  var name    = (document.getElementById('name-input')||{}).value||'';
+  var cuisine = document.getElementById('cuisine-input');
+  var address = (document.getElementById('address-input')||{}).value||'';
+  var city    = (document.getElementById('city-input')||{}).value||'';
+  var minOrd  = (document.querySelector('[name="min_order"]')||{}).value||'10';
+  var prep    = (document.querySelector('[name="avg_prep_time"]')||{}).value||'20';
 
-  document.getElementById('preview-name').textContent = name || 'Your Restaurant Name';
-  document.getElementById('preview-cuisine').textContent =
-    cuisine?.value ? cuisine.selectedOptions[0]?.textContent : 'Select a cuisine type';
-  const loc = [address, city].filter(Boolean).join(', ');
-  document.getElementById('preview-address').querySelector('span').textContent =
-    loc || 'Pin your location on the map';
-  document.getElementById('preview-min').textContent  = parseFloat(minOrd)||10;
-  document.getElementById('preview-prep').textContent = parseInt(prep)||20;
+  document.getElementById('preview-name').textContent    = name.trim() || 'Your Restaurant Name';
+  document.getElementById('preview-cuisine').textContent = (cuisine&&cuisine.value&&cuisine.selectedOptions[0]) ? cuisine.selectedOptions[0].textContent : 'Select a cuisine';
+  var loc = [address.trim(),city.trim()].filter(Boolean).join(', ');
+  document.getElementById('preview-address').textContent = '📍 ' + (loc||'Pin your location');
+  document.getElementById('preview-min').textContent     = parseFloat(minOrd)||10;
+  document.getElementById('preview-prep').textContent    = parseInt(prep)||20;
 }
 
 ['name-input','cuisine-input','address-input','city-input'].forEach(function(id) {
-  const el = document.getElementById(id);
+  var el = document.getElementById(id);
   if (!el) return;
   el.addEventListener('input',  updatePreview);
   el.addEventListener('change', updatePreview);
 });
-document.querySelector('[name="min_order"]')?.addEventListener('input',     updatePreview);
-document.querySelector('[name="avg_prep_time"]')?.addEventListener('input', updatePreview);
+var minEl  = document.querySelector('[name="min_order"]');
+var prepEl = document.querySelector('[name="avg_prep_time"]');
+if (minEl)  minEl.addEventListener('input',  updatePreview);
+if (prepEl) prepEl.addEventListener('input', updatePreview);
 updatePreview();
 
 // ── STEP PROGRESS ─────────────────────────────────────────
 function refreshSteps() {
-  const s1 = !!(document.getElementById('name-input')?.value.trim()
-             && document.getElementById('cuisine-input')?.value
-             && document.getElementById('address-input')?.value.trim()
-             && document.getElementById('lat-input')?.value);
-  const s2 = document.getElementById('phone-input')?.value.trim().replace(/\s/g,'').length >= 9;
-
+  var s1 = !!(
+    document.getElementById('name-input').value.trim() &&
+    document.getElementById('cuisine-input').value &&
+    document.getElementById('address-input').value.trim() &&
+    document.getElementById('lat-input').value
+  );
+  var s2 = document.getElementById('phone-input').value.trim().replace(/\s/g,'').length >= 9;
   setDot(1, s1 ? 'done' : 'active');
   setDot(2, s2 ? 'done' : s1 ? 'active' : '');
-  setDot(3, (s1 && s2) ? 'active' : '');
-  document.getElementById('line-1').classList.toggle('done', s1);
-  document.getElementById('line-2').classList.toggle('done', !!(s1 && s2));
+  setDot(3, (s1&&s2) ? 'active' : '');
+  document.getElementById('line-1').classList.toggle('done', !!s1);
+  document.getElementById('line-2').classList.toggle('done', !!(s1&&s2));
 }
 function setDot(n, state) {
-  const el = document.getElementById('dot-' + n);
-  if (!el) return;
+  var el = document.getElementById('dot-'+n);
   el.classList.remove('active','done');
   if (state) el.classList.add(state);
   el.textContent = state === 'done' ? '✓' : String(n);
 }
-document.getElementById('reg-form')?.addEventListener('input', refreshSteps);
+document.getElementById('reg-form').addEventListener('input', refreshSteps);
 refreshSteps();
 
 // ── INLINE VALIDATION ─────────────────────────────────────
-function wireValidation(id, testFn) {
-  const el = document.getElementById(id);
+function wireVal(id, fn) {
+  var el = document.getElementById(id);
   if (!el) return;
   el.addEventListener('blur', function() {
-    if (!el.value.trim()) { el.classList.remove('field-ok','field-bad'); return; }
-    el.classList.toggle('field-ok',  testFn(el.value.trim()));
-    el.classList.toggle('field-bad', !testFn(el.value.trim()));
+    el.classList.remove('f-ok','f-bad');
+    if (el.value.trim()) el.classList.add(fn(el.value.trim()) ? 'f-ok' : 'f-bad');
   });
 }
-wireValidation('name-input',    function(v) { return v.length >= 2; });
-wireValidation('address-input', function(v) { return v.length >= 5; });
-wireValidation('phone-input',   function(v) { return /^0\d{9}$/.test(v.replace(/\s/g,'')); });
+wireVal('name-input',    function(v){ return v.length >= 2; });
+wireVal('address-input', function(v){ return v.length >= 5; });
+wireVal('phone-input',   function(v){ return /^0\d{9}$/.test(v.replace(/\s/g,'')); });
 
-document.getElementById('desc-input')?.addEventListener('input', function() {
-  const count = document.getElementById('desc-count');
-  if (count) count.textContent = this.value.length + '/300';
-});
-// Trigger initial count
-document.getElementById('desc-input')?.dispatchEvent(new Event('input'));
+var descEl = document.getElementById('desc-input');
+if (descEl) {
+  descEl.addEventListener('input', function() {
+    var c = document.getElementById('desc-count');
+    if (c) c.textContent = this.value.length + '/300';
+  });
+  descEl.dispatchEvent(new Event('input'));
+}
 
 // ── IMAGE UPLOAD + DRAG/DROP ──────────────────────────────
-function setupDropzone(zoneId, fileId, previewId, rmId, errId) {
-  const zone  = document.getElementById(zoneId);
-  const input = document.getElementById(fileId);
-  if (!zone || !input) return;
+function setupDrop(zoneId, fileId, prevId, rmId, errId) {
+  var zone  = document.getElementById(zoneId);
+  var input = document.getElementById(fileId);
+  if (!zone||!input) return;
 
-  input.addEventListener('change', function() { processImage(input.files[0], previewId, rmId, errId, fileId); });
-
+  input.addEventListener('change', function() { doImg(input.files[0], prevId, rmId, errId, fileId); });
   ['dragenter','dragover'].forEach(function(ev) {
-    zone.addEventListener(ev, function(e) { e.preventDefault(); zone.classList.add('over'); });
+    zone.addEventListener(ev, function(e){ e.preventDefault(); zone.classList.add('over'); });
   });
   ['dragleave','drop'].forEach(function(ev) {
-    zone.addEventListener(ev, function(e) { e.preventDefault(); zone.classList.remove('over'); });
+    zone.addEventListener(ev, function(e){ e.preventDefault(); zone.classList.remove('over'); });
   });
   zone.addEventListener('drop', function(e) {
-    const f = e.dataTransfer.files[0];
-    if (f) { input.files = e.dataTransfer.files; processImage(f, previewId, rmId, errId, fileId); }
+    var f = e.dataTransfer.files[0];
+    if (f) { input.files = e.dataTransfer.files; doImg(f, prevId, rmId, errId, fileId); }
   });
 }
 
-function processImage(file, previewId, rmId, errId, fileId) {
-  const errEl = document.getElementById(errId);
+function doImg(file, prevId, rmId, errId, fileId) {
+  var errEl = document.getElementById(errId);
   if (!errEl) return;
   errEl.classList.add('hidden');
   if (!file) return;
@@ -723,88 +734,87 @@ function processImage(file, previewId, rmId, errId, fileId) {
     document.getElementById(fileId).value = '';
     return;
   }
-  if (file.size > 5 * 1024 * 1024) {
-    errEl.textContent = '⚠ File is too large — maximum size is 5MB.';
+  if (file.size > 5*1024*1024) {
+    errEl.textContent = '⚠ File is too large — max 5MB.';
     errEl.classList.remove('hidden');
     document.getElementById(fileId).value = '';
     return;
   }
-  const reader = new FileReader();
+  var reader = new FileReader();
   reader.onload = function(ev) {
-    const src = ev.target.result;
-    const img = document.getElementById(previewId);
-    if (img) { img.src = src; img.classList.remove('hidden'); img.style.display = ''; }
-    const rm  = document.getElementById(rmId);
-    if (rm)  { rm.classList.remove('hidden'); rm.style.display = 'flex'; }
-    if (previewId === 'logo-preview') {
-      const pImg = document.getElementById('preview-logo-img');
-      if (pImg) { pImg.src = src; pImg.style.display = ''; }
-      const pIco = document.getElementById('preview-logo-icon');
-      if (pIco) pIco.style.display = 'none';
+    var src = ev.target.result;
+    var img = document.getElementById(prevId);
+    if (img) { img.src = src; img.classList.remove('hidden'); img.style.display=''; }
+    var rm  = document.getElementById(rmId);
+    if (rm)  { rm.classList.remove('hidden'); rm.style.display='flex'; }
+    if (prevId === 'logo-preview') {
+      var pImg = document.getElementById('preview-logo-img');
+      var pFal = document.getElementById('preview-logo-fallback');
+      if (pImg) { pImg.src = src; pImg.style.display=''; pImg.classList.remove('hidden'); }
+      if (pFal) pFal.style.display = 'none';
     }
-    if (previewId === 'banner-preview') {
-      const pb = document.getElementById('preview-banner');
-      if (pb) pb.style.backgroundImage = `url(${src})`;
+    if (prevId === 'banner-preview') {
+      var pb = document.getElementById('preview-banner-bg');
+      if (pb) pb.style.backgroundImage = 'url('+src+')';
     }
   };
   reader.readAsDataURL(file);
 }
 
 function removeImg(which) {
-  const fileEl    = document.getElementById(which + '-file');
-  const previewEl = document.getElementById(which + '-preview');
-  const rmEl      = document.getElementById(which + '-rm');
-  if (fileEl)    fileEl.value = '';
-  if (previewEl) { previewEl.classList.add('hidden'); previewEl.style.display = 'none'; }
-  if (rmEl)      rmEl.classList.add('hidden');
+  document.getElementById(which+'-file').value = '';
+  var prev = document.getElementById(which+'-preview');
+  if (prev) { prev.classList.add('hidden'); prev.style.display='none'; }
+  var rm   = document.getElementById(which+'-rm');
+  if (rm)  { rm.classList.add('hidden'); rm.style.display='none'; }
   if (which === 'logo') {
-    const pImg = document.getElementById('preview-logo-img');
-    const pIco = document.getElementById('preview-logo-icon');
+    var pImg = document.getElementById('preview-logo-img');
+    var pFal = document.getElementById('preview-logo-fallback');
     if (pImg) pImg.style.display = 'none';
-    if (pIco) pIco.style.display = '';
+    if (pFal) pFal.style.display = '';
   }
   if (which === 'banner') {
-    const pb = document.getElementById('preview-banner');
+    var pb = document.getElementById('preview-banner-bg');
     if (pb) pb.style.backgroundImage = '';
   }
 }
 
-setupDropzone('logo-zone',   'logo-file',   'logo-preview',   'logo-rm',   'logo-err');
-setupDropzone('banner-zone', 'banner-file', 'banner-preview', 'banner-rm', 'banner-err');
+setupDrop('logo-zone',   'logo-file',   'logo-preview',   'logo-rm',   'logo-err');
+setupDrop('banner-zone', 'banner-file', 'banner-preview', 'banner-rm', 'banner-err');
 
 // ── DRAFT AUTOSAVE ────────────────────────────────────────
-const DKEY    = 'lynctel_food_reg_v2';
-const D_IDS   = ['name-input','desc-input','cuisine-input','address-input','city-input','phone-input','lat-input','lng-input'];
-const D_NAMES = ['whatsapp','opening_time','closing_time','min_order','avg_prep_time'];
+var DKEY    = 'lynctel_food_reg_v2';
+var D_IDS   = ['name-input','desc-input','cuisine-input','address-input','city-input','phone-input','lat-input','lng-input'];
+var D_NAMES = ['whatsapp','opening_time','closing_time','min_order','avg_prep_time'];
 
 function saveDraft() {
-  const d = {};
-  D_IDS.forEach(function(id)   { const el = document.getElementById(id);           if (el) d[id]   = el.value; });
-  D_NAMES.forEach(function(n)  { const el = document.querySelector('[name="'+n+'"]'); if (el) d[n] = el.value; });
-  try { localStorage.setItem(DKEY, JSON.stringify(d)); } catch(e) {}
+  var d = {};
+  D_IDS.forEach(function(id) { var el=document.getElementById(id); if(el) d[id]=el.value; });
+  D_NAMES.forEach(function(n){ var el=document.querySelector('[name="'+n+'"]'); if(el) d[n]=el.value; });
+  try { localStorage.setItem(DKEY, JSON.stringify(d)); } catch(e){}
 }
 
 function restoreDraft() {
-  // Don't clobber server-repopulated values after a failed submit
   if ({{ errors|length|default:0 }} > 0) return;
-  let saved;
-  try { saved = JSON.parse(localStorage.getItem(DKEY) || 'null'); } catch(e) { return; }
+  var saved;
+  try { saved = JSON.parse(localStorage.getItem(DKEY)||'null'); } catch(e){ return; }
   if (!saved) return;
-  let any = false;
+  var any = false;
   D_IDS.forEach(function(id) {
-    const el = document.getElementById(id);
-    if (el && saved[id] && !el.value) { el.value = saved[id]; any = true; }
+    var el=document.getElementById(id);
+    if(el&&saved[id]&&!el.value){ el.value=saved[id]; any=true; }
   });
   D_NAMES.forEach(function(n) {
-    const el = document.querySelector('[name="'+n+'"]');
-    if (el && saved[n] && (!el.value || el.value === el.defaultValue)) el.value = saved[n];
+    var el=document.querySelector('[name="'+n+'"]');
+    if(el&&saved[n]&&(!el.value||el.value===el.defaultValue)) el.value=saved[n];
   });
   if (any) {
-    document.getElementById('draft-banner').style.display = 'flex';
-    const sLat = parseFloat(saved['lat-input']), sLng = parseFloat(saved['lng-input']);
-    if (!isNaN(sLat) && !isNaN(sLng) && sLat !== 0) {
-      window._placePin?.(sLat, sLng, 'Restored from draft');
-      _map?.setView([sLat, sLng], 16);
+    var db = document.getElementById('draft-banner');
+    if (db) db.classList.remove('hidden');
+    var sLat=parseFloat(saved['lat-input']), sLng=parseFloat(saved['lng-input']);
+    if (!isNaN(sLat)&&!isNaN(sLng)&&sLat!==0) {
+      window.placePin(sLat, sLng, 'Restored from draft');
+      if (_map) _map.setView([sLat,sLng],16);
     }
     updatePreview();
     refreshSteps();
@@ -812,30 +822,26 @@ function restoreDraft() {
 }
 
 function clearDraft() {
-  try { localStorage.removeItem(DKEY); } catch(e) {}
-  document.getElementById('draft-banner').style.display = 'none';
+  try { localStorage.removeItem(DKEY); } catch(e){}
+  var db = document.getElementById('draft-banner');
+  if (db) db.classList.add('hidden');
 }
 
-document.getElementById('reg-form')?.addEventListener('input', function() {
-  clearTimeout(window._draftTimer);
-  window._draftTimer = setTimeout(saveDraft, 700);
+document.getElementById('reg-form').addEventListener('input', function() {
+  clearTimeout(window._dt); window._dt = setTimeout(saveDraft, 700);
 });
 restoreDraft();
 
 // ── SUBMIT GUARD ──────────────────────────────────────────
-document.getElementById('reg-form')?.addEventListener('submit', function(e) {
-  const lat = document.getElementById('lat-input').value;
-  const lng = document.getElementById('lng-input').value;
-  if (!lat || !lng) {
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  if (!document.getElementById('lat-input').value || !document.getElementById('lng-input').value) {
     e.preventDefault();
-    setMapStatus('⚠ Please pin your restaurant location on the map before submitting', 'orange');
-    document.getElementById('location-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    mapStatus('⚠ Please pin your restaurant on the map before submitting', 'orange');
+    document.getElementById('location-map').scrollIntoView({ behavior:'smooth', block:'center' });
     return;
   }
-  // Clear draft — form is being submitted for real
-  try { localStorage.removeItem(DKEY); } catch(e) {}
-  const btn = document.getElementById('submit-btn');
-  btn.disabled = true;
+  try { localStorage.removeItem(DKEY); } catch(e){}
+  document.getElementById('submit-btn').disabled = true;
   document.getElementById('submit-txt').classList.add('hidden');
   document.getElementById('submit-spin').classList.remove('hidden');
 });
