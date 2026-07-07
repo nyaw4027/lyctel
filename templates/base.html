@@ -946,7 +946,6 @@
     const IS_AUTHENTICATED = {{ user.is_authenticated|yesno:"true,false" }};
     const LOGIN_URL        = "{% url 'accounts:login' %}";
     const LOCATIONIQ_KEY   = '{{ LOCATIONIQ_API_KEY|default:"" }}';
-
     // ── PWA PUSH NOTIFICATIONS ────────────────────────────
     const VAPID_PUBLIC_KEY = 'BMUQH_ok6OLwx7C5PWI6-A27DnmbV97psRcHglz7uNch-qbz9S3ik0o65cLtIcKsab1MbNi0qPZA29MS2cSVjVQ';
 

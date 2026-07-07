@@ -229,32 +229,34 @@ def _send_otp_sms(phone: str, otp: str) -> bool:
         logger.error('Arkesel SMS failed for %s: %s', phone, exc)
         return False
  
- 
 def _send_otp_email(email: str, otp: str, phone: str) -> bool:
-    """Send OTP via email.
-    Returns True if the email was sent, False otherwise.
+    """Send OTP via email in a daemon thread so a blocked/unreachable SMTP
+    server never stalls the HTTP response or kills Daphne workers.
+    Returns True immediately (fire-and-forget); failures are logged.
     """
     if not email:
         logger.warning('No email provided for OTP email to %s', phone)
         return False
 
-    subject = 'Your Lynctel password reset code'
-    message = (
+    subject    = 'Your Lynctel password reset code'
+    message    = (
         f'Hello,\n\n'
         f'Your Lynctel password reset code is: {otp}. It expires in 10 minutes.\n\n'
         'If you did not request this, please ignore this email.\n\n'
-        'Thank you,\n'
-        'Lynctel Team'
+        'Thank you,\nLynctel Team'
     )
     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or 'no-reply@lynctel.com'
 
-    try:
-        send_mail(subject, message, from_email, [email], fail_silently=False)
-        logger.info('OTP email sent to %s for phone %s', email, phone)
-        return True
-    except Exception as exc:
-        logger.error('OTP email failed for %s: %s', email, exc, exc_info=True)
-        return False
+    def _send():
+        try:
+            send_mail(subject, message, from_email, [email], fail_silently=False)
+            logger.info('OTP email sent to %s for phone %s', email, phone)
+        except Exception as exc:
+            logger.error('OTP email failed for %s: %s', email, exc, exc_info=True)
+
+    import threading
+    threading.Thread(target=_send, daemon=True, name=f'otp-{phone}').start()
+    return True   # caller gets True immediately; result logged in background
  
  
 # ── STEP 1: enter phone ───────────────────────────────────
