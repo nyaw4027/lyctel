@@ -41,35 +41,156 @@
   .ac-row:hover { background: #f9fafb; }
   .ac-main { font-weight: 600; color: #0F1B2D; font-size: 13px; }
   .ac-sub  { font-size: 11px; color: #9ca3af; }
+/* ─────────────────────────────────────────────
+   Upload Zones (Desktop + Mobile Friendly)
+───────────────────────────────────────────── */
 
-  /* ── Upload zones ── */
-  .up-zone {
-    border: 2px dashed #e5e7eb; border-radius: 14px;
-    padding: 20px 12px; text-align: center; cursor: pointer;
-    transition: border-color .2s, background .2s;
-    position: relative;
-    min-height: 130px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-  }
-  .up-zone:hover, .up-zone.over { border-color: #F5A623; background: #FFFBF0; }
-  .up-zone input[type=file] { display: none; }
-  .up-preview {
-    width: 100%; height: 90px; object-fit: cover;
-    border-radius: 10px; margin-top: 10px;
-    border: 2px solid #F5A623; display: none;
-  }
-  .up-preview.logo-prev {
-    width: 72px; height: 72px; border-radius: 12px; margin: 10px auto 0;
-  }
-  .up-rm {
-    position: absolute; top: 8px; right: 8px;
-    width: 22px; height: 22px; background: #ef4444; color: white;
-    border: none; border-radius: 50%; cursor: pointer;
-    font-size: 11px; display: none; align-items: center; justify-content: center;
-    line-height: 1; z-index: 1;
-  }
-  .up-rm.show { display: flex; }
+.up-zone{
+    position:relative;
+    overflow:hidden;
 
+    border:2px dashed #e5e7eb;
+    border-radius:14px;
+
+    padding:20px 12px;
+    min-height:130px;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+
+    cursor:pointer;
+
+    transition:
+        border-color .25s,
+        background .25s,
+        transform .2s;
+}
+
+.up-zone:hover{
+    border-color:#F5A623;
+    background:#FFFBF0;
+}
+
+.up-zone.over{
+    border-color:#F5A623;
+    background:#FFF7E5;
+    transform:scale(.98);
+}
+
+/* Mobile fix */
+.up-zone input[type="file"]{
+
+    position:absolute;
+    inset:0;
+
+    width:100%;
+    height:100%;
+
+    opacity:0;
+
+    cursor:pointer;
+
+    z-index:5;
+
+    display:block;
+}
+
+/* Preview */
+
+.up-preview{
+
+    width:100%;
+    height:90px;
+
+    margin-top:10px;
+
+    object-fit:cover;
+
+    border-radius:10px;
+
+    border:2px solid #F5A623;
+
+    display:none;
+}
+
+.up-preview.logo-prev{
+
+    width:72px;
+    height:72px;
+
+    margin:10px auto 0;
+
+    border-radius:12px;
+
+    object-fit:cover;
+}
+
+/* Remove Button */
+
+.up-rm{
+
+    position:absolute;
+
+    top:8px;
+    right:8px;
+
+    width:24px;
+    height:24px;
+
+    display:none;
+
+    justify-content:center;
+    align-items:center;
+
+    border:none;
+    border-radius:50%;
+
+    background:#ef4444;
+    color:#fff;
+
+    font-size:12px;
+    font-weight:bold;
+
+    cursor:pointer;
+
+    z-index:20;
+
+    transition:background .2s;
+}
+
+.up-rm:hover{
+    background:#dc2626;
+}
+
+.up-rm.show{
+    display:flex;
+}
+
+/* Mobile */
+
+@media (max-width:640px){
+
+    .up-zone{
+
+        min-height:120px;
+
+        padding:16px 10px;
+    }
+
+    .up-preview{
+
+        height:80px;
+    }
+
+    .up-preview.logo-prev{
+
+        width:64px;
+        height:64px;
+    }
+}
   /* ── Field styles ── */
   .f-label {
     display: block; font-size: 11px; font-weight: 700;
@@ -428,8 +549,11 @@
                   <p style="font-size:2rem;margin-bottom:4px">🖼️</p>
                   <p style="font-size:13px;font-weight:600;color:#0F1B2D">Upload logo</p>
                   <p style="font-size:11px;color:#9ca3af;margin-top:2px">or drag & drop · PNG/JPG · max 5MB</p>
-                  <input type="file" id="logo-file" name="logo" accept="image/*"
-                         onchange="handleFile(this,'logo')"/>
+                <input type="file"
+       id="logo-file"
+       name="logo"
+       accept="image/*"
+       onchange="handleFile(this,'logo')">
                 </div>
                 <img id="logo-prev" class="up-preview logo-prev" alt=""/>
                 <p id="logo-err" class="err-msg hidden"></p>
@@ -1034,61 +1158,90 @@ _wire('f-address',function(v){return v.length>=5;});
 _wire('f-phone',  function(v){return /^0\d{9}$/.test(v.replace(/\s/g,''));});
 
 // ── IMAGE UPLOAD (file input + drag/drop) ──────────────────────────────
-function handleFile(input, which){
-  var file=input.files[0]; if(!file)return;
-  _doImg(file, which);
-}
-function handleDrop(e, which){
-    e.preventDefault();
+function handleFile(input, which) {
 
-    var zone = document.getElementById(which + '-zone');
-    if(zone) zone.classList.remove('over');
-
-    var file = e.dataTransfer.files[0];
-    if(!file) return;
-
-    var input = document.getElementById(which + '-file');
-
-    try{
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        input.files = dt.files;
-    }catch(err){
-        console.warn("Browser doesn't support DataTransfer.");
+    if (!input.files || !input.files.length) {
+        return;
     }
+
+    const file = input.files[0];
 
     _doImg(file, which);
-}
-function _doImg(file, which){
-  var errEl=document.getElementById(which+'-err');
-  errEl.classList.add('hidden'); errEl.textContent='';
-  if(!file.type.startsWith('image/')){
-    errEl.textContent='⚠ Please choose a JPG or PNG image.';
-    errEl.classList.remove('hidden'); return;
-  }
-  if(file.size>5*1024*1024){
-    errEl.textContent='⚠ File is too large — max 5MB.';
-    errEl.classList.remove('hidden'); return;
-  }
-  var reader=new FileReader();
-  reader.onload=function(ev){
-    var src=ev.target.result;
-    var prev=document.getElementById(which+'-prev');
-    prev.src=src; prev.style.display='block';
-    document.getElementById(which+'-rm').classList.add('show');
-    if(which==='logo'){
-      var pi=document.getElementById('prev-logo-img');
-      var pf=document.getElementById('prev-logo-icon');
-      if(pi){pi.src=src;pi.style.display='';pi.classList.remove('hidden');}
-      if(pf) pf.style.display='none';
-    }
-    if(which==='banner'){
-      var pb=document.getElementById('prev-banner');
-      if(pb) pb.style.backgroundImage='url('+src+')';
-    }
+
     _refreshChecklist();
-  };
-  reader.readAsDataURL(file);
+}
+function handleDrop(e, which) {
+
+    e.preventDefault();
+
+    const zone = document.getElementById(which + '-zone');
+    zone.classList.remove('over');
+
+    const input = document.getElementById(which + '-file');
+
+    if (!e.dataTransfer.files.length) {
+        return;
+    }
+
+    // Copy dropped files into the input
+    const dt = new DataTransfer();
+
+    dt.items.add(e.dataTransfer.files[0]);
+
+    input.files = dt.files;
+
+    handleFile(input, which);
+}
+function _doImg(file, which) {
+
+    const err = document.getElementById(which + '-err');
+
+    err.textContent = '';
+    err.classList.add('hidden');
+
+    if (!file.type.startsWith('image/')) {
+        err.textContent = 'Please select an image.';
+        err.classList.remove('hidden');
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        err.textContent = 'Image must be smaller than 5MB.';
+        err.classList.remove('hidden');
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+
+        const preview = document.getElementById(which + '-prev');
+
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+
+        document
+            .getElementById(which + '-rm')
+            .classList.add('show');
+
+        if (which === 'logo') {
+
+            document.getElementById('prev-logo-img').src = e.target.result;
+            document.getElementById('prev-logo-img').style.display = 'block';
+
+            document.getElementById('prev-logo-icon').style.display = 'none';
+        }
+
+        if (which === 'banner') {
+
+            document.getElementById('prev-banner').style.backgroundImage =
+                'url("' + e.target.result + '")';
+        }
+
+        _refreshChecklist();
+    };
+
+    reader.readAsDataURL(file);
 }
 function removeImg(which){
   document.getElementById(which+'-file').value='';
