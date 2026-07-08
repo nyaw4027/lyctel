@@ -520,62 +520,86 @@
             </div>
           </div>
         </div>
-<!-- 3 · Branding -->
+<!-- ==========================================================
+     3 • BRANDING
+=========================================================== -->
 <div class="reg-card">
+
     <div class="reg-head">
         <div class="reg-num">3</div>
+
         <div>
-            <h2 class="font-display font-700 text-navy" style="font-size:16px">
+            <h2 class="font-display font-700 text-navy" style="font-size:16px;">
                 Branding
-                <span class="text-gray-400 font-normal" style="font-size:13px">(optional)</span>
+                <span style="font-size:13px;font-weight:400;color:#9ca3af;">
+                    (Optional)
+                </span>
             </h2>
+
             <p class="text-xs text-gray-400 mt-0.5">
-                Photos get 3× more clicks
+                Restaurants with photos receive more orders.
             </p>
         </div>
     </div>
 
     <div class="reg-body">
+
         <div class="grid sm:grid-cols-2 gap-5">
 
-            <!-- ================= LOGO ================= -->
+            <!-- ======================================================
+                 LOGO
+            ======================================================= -->
 
             <div>
 
-                <label class="f-label">Restaurant Logo</label>
+                <label class="f-label">
+                    Restaurant Logo
+                </label>
 
-                <label for="logo-file"
-                       class="up-zone"
-                       id="logo-zone">
+                <label
+                    for="logo-file"
+                    id="logo-zone"
+                    class="up-zone">
 
                     <button
                         type="button"
-                        class="up-rm"
                         id="logo-rm"
+                        class="up-rm"
                         onclick="event.preventDefault();event.stopPropagation();removeImg('logo')">
                         ✕
                     </button>
 
-                    <div style="font-size:2rem;">🖼️</div>
-
-                    <div style="font-size:13px;font-weight:700;color:#0F1B2D;margin-top:6px;">
-                        Tap to upload logo
+                    <div style="font-size:42px;">
+                        🖼️
                     </div>
 
-                    <div style="font-size:11px;color:#9ca3af;margin-top:4px;">
-                        PNG, JPG or WEBP • Max 5MB
+                    <div
+                        style="margin-top:8px;
+                               font-size:14px;
+                               font-weight:700;
+                               color:#0F1B2D;">
+
+                        Tap to choose logo
+
+                    </div>
+
+                    <div
+                        style="margin-top:5px;
+                               font-size:12px;
+                               color:#9ca3af;">
+
+                        PNG • JPG • WEBP
                     </div>
 
                 </label>
 
                 <input
-                    type="file"
                     id="logo-file"
                     name="logo"
+                    type="file"
                     accept="image/*"
-                    capture="environment"
                     onchange="handleFile(this,'logo')"
-                    hidden>
+                    style="position:absolute;left:-9999px;">
 
                 <img
                     id="logo-prev"
@@ -589,44 +613,60 @@
 
             </div>
 
-            <!-- ================= BANNER ================= -->
+            <!-- ======================================================
+                 BANNER
+            ======================================================= -->
 
             <div>
 
-                <label class="f-label">Restaurant Banner</label>
+                <label class="f-label">
+                    Restaurant Banner
+                </label>
 
-                <label for="banner-file"
-                       class="up-zone"
-                       id="banner-zone">
+                <label
+                    for="banner-file"
+                    id="banner-zone"
+                    class="up-zone">
 
                     <button
                         type="button"
-                        class="up-rm"
                         id="banner-rm"
+                        class="up-rm"
                         onclick="event.preventDefault();event.stopPropagation();removeImg('banner')">
                         ✕
                     </button>
 
-                    <div style="font-size:2rem;">🏞️</div>
-
-                    <div style="font-size:13px;font-weight:700;color:#0F1B2D;margin-top:6px;">
-                        Tap to upload banner
+                    <div style="font-size:42px;">
+                        🏞️
                     </div>
 
-                    <div style="font-size:11px;color:#9ca3af;margin-top:4px;">
-                        PNG, JPG or WEBP • Max 5MB
+                    <div
+                        style="margin-top:8px;
+                               font-size:14px;
+                               font-weight:700;
+                               color:#0F1B2D;">
+
+                        Tap to choose banner
+
+                    </div>
+
+                    <div
+                        style="margin-top:5px;
+                               font-size:12px;
+                               color:#9ca3af;">
+
+                        PNG • JPG • WEBP
                     </div>
 
                 </label>
 
                 <input
-                    type="file"
                     id="banner-file"
                     name="banner"
+                    type="file"
                     accept="image/*"
-                    capture="environment"
                     onchange="handleFile(this,'banner')"
-                    hidden>
+                    style="position:absolute;left:-9999px;">
 
                 <img
                     id="banner-prev"
@@ -642,7 +682,9 @@
             </div>
 
         </div>
+
     </div>
+
 </div>
         <!-- Submit -->
         <div class="reg-card">
