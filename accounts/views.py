@@ -16,6 +16,7 @@ from django.utils.crypto import get_random_string
 
 from order.models import Order
 from ecommerce.models import User, normalize_phone
+from django.db import IntegrityError  # add this import at the top of accounts/views.py, if not already present
 
 logger = logging.getLogger(__name__)
 
@@ -482,6 +483,8 @@ def profile(request):
     })
 
 
+
+
 # ── UPDATE PROFILE ────────────────────────────────────────
 @login_required
 def update_profile(request):
@@ -489,21 +492,33 @@ def update_profile(request):
         user            = request.user
         user.first_name = request.POST.get('first_name', user.first_name).strip()
         user.last_name  = request.POST.get('last_name', '').strip()
-        user.email      = request.POST.get('email', '').strip() or None
         user.address    = request.POST.get('address', '').strip()
+
+        new_email = request.POST.get('email', '').strip() or None
+        if new_email and new_email.lower() != (user.email or '').lower():
+            if user.__class__.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
+                messages.error(request, 'That email address is already in use by another account.')
+                return redirect('/accounts/profile/#profile')
+        user.email = new_email
+
         try:
             user.save()
             messages.success(request, 'Profile updated successfully.')
+            return redirect('/accounts/profile/?profile_saved=1#profile')
+        except IntegrityError:
+            # Belt-and-suspenders: catches the rare race where two people
+            # save the same email between our check above and this save.
+            messages.error(request, 'That email address is already in use by another account.')
+            return redirect('/accounts/profile/#profile')
         except Exception as e:
             logger.error(
                 'Update profile error for user=%s: %s', user.pk, str(e),
                 exc_info=True,
             )
-            messages.error(request, f'Could not update profile: {e}')
-        return redirect('/accounts/profile/?profile_saved=1#profile')
+            messages.error(request, 'Could not update profile. Please try again.')
+            return redirect('/accounts/profile/#profile')
+
     return redirect('accounts:profile')
-
-
 # ── UPDATE PROFILE PICTURE ────────────────────────────────
 @login_required
 def update_picture(request):
