@@ -441,63 +441,167 @@
             </div>
           </div>
         </div>
+<!-- ===========================
+     3 · BRANDING
+=========================== -->
 
-        <!-- 3 · Branding -->
-        <div class="reg-card">
-          <div class="reg-head">
-            <div class="reg-num">3</div>
-            <div>
-              <h2 class="font-display font-700 text-navy" style="font-size:16px">
+<div class="reg-card">
+
+    <div class="reg-head">
+
+        <div class="reg-num">3</div>
+
+        <div>
+
+            <h2 class="font-display font-700 text-navy" style="font-size:16px">
+
                 Branding
-                <span style="font-size:13px;font-weight:400;color:#9ca3af">(Optional)</span>
-              </h2>
-              <p class="text-xs text-gray-400 mt-0.5">Restaurants with photos receive more orders.</p>
-            </div>
-          </div>
 
-          <div class="reg-body">
-            <div class="grid sm:grid-cols-2 gap-5">
+                <span style="font-size:13px;font-weight:400;color:#9ca3af">
 
-              <!-- LOGO -->
-              <div class="up-wrap">
-                <label class="f-label">Restaurant Logo</label>
-                <label class="up-zone" id="logo-zone">
-                  <input type="file" id="logo-file" name="logo" accept="image/*"
-                         onchange="handleFile(this,'logo')"/>
-                  <div style="font-size:42px">🖼️</div>
-                  <div style="margin-top:8px;font-size:14px;font-weight:700;color:#0F1B2D">
-                    Tap to choose logo
-                  </div>
-                  <div style="margin-top:5px;font-size:12px;color:#9ca3af">PNG • JPG • WEBP</div>
-                </label>
-                <button type="button" id="logo-rm" class="up-rm"
-                        onclick="removeImg('logo')">✕</button>
-                <img id="logo-prev" class="up-preview logo-prev" alt="Logo Preview"/>
-                <p id="logo-err" class="err-msg hidden"></p>
-              </div>
+                    (Optional)
 
-              <!-- BANNER -->
-              <div class="up-wrap">
-                <label class="f-label">Restaurant Banner</label>
-                <label class="up-zone" id="banner-zone">
-                  <input type="file" id="banner-file" name="banner" accept="image/*"
-                         onchange="handleFile(this,'banner')"/>
-                  <div style="font-size:42px">🏞️</div>
-                  <div style="margin-top:8px;font-size:14px;font-weight:700;color:#0F1B2D">
-                    Tap to choose banner
-                  </div>
-                  <div style="margin-top:5px;font-size:12px;color:#9ca3af">PNG • JPG • WEBP</div>
-                </label>
-                <button type="button" id="banner-rm" class="up-rm"
-                        onclick="removeImg('banner')">✕</button>
-                <img id="banner-prev" class="up-preview" alt="Banner Preview" style="margin-top:10px"/>
-                <p id="banner-err" class="err-msg hidden"></p>
-              </div>
+                </span>
 
-            </div>
-          </div>
+            </h2>
+
+            <p class="text-xs text-gray-400 mt-0.5">
+
+                Restaurants with photos receive more orders.
+
+            </p>
+
         </div>
 
+    </div>
+
+    <div class="reg-body">
+
+        <div class="grid sm:grid-cols-2 gap-5">
+
+            <!-- ================= LOGO ================= -->
+
+            <div class="up-wrap">
+
+                <label class="f-label">
+
+                    Restaurant Logo
+
+                </label>
+
+                <input
+                    type="file"
+                    id="logo-file"
+                    name="logo"
+                    accept="image/*"
+                    style="display:none;">
+
+                <div class="up-zone"
+                     id="logo-zone">
+
+                    <div style="font-size:42px;">🖼️</div>
+
+                    <div style="margin-top:8px;font-size:14px;font-weight:700;color:#0F1B2D;">
+
+                        Tap to choose logo
+
+                    </div>
+
+                    <div style="margin-top:4px;font-size:12px;color:#9ca3af;">
+
+                        PNG • JPG • WEBP
+
+                    </div>
+
+                </div>
+
+                <button
+                    type="button"
+                    id="logo-rm"
+                    class="up-rm"
+                    onclick="removeImg('logo')">
+
+                    ✕
+
+                </button>
+
+                <img
+                    id="logo-prev"
+                    class="up-preview logo-prev"
+                    alt="Logo Preview">
+
+                <p
+                    id="logo-err"
+                    class="err-msg hidden">
+
+                </p>
+
+            </div>
+
+            <!-- ================= BANNER ================= -->
+
+            <div class="up-wrap">
+
+                <label class="f-label">
+
+                    Restaurant Banner
+
+                </label>
+
+                <input
+                    type="file"
+                    id="banner-file"
+                    name="banner"
+                    accept="image/*"
+                    style="display:none;">
+
+                <div class="up-zone"
+                     id="banner-zone">
+
+                    <div style="font-size:42px;">🏞️</div>
+
+                    <div style="margin-top:8px;font-size:14px;font-weight:700;color:#0F1B2D;">
+
+                        Tap to choose banner
+
+                    </div>
+
+                    <div style="margin-top:4px;font-size:12px;color:#9ca3af;">
+
+                        PNG • JPG • WEBP
+
+                    </div>
+
+                </div>
+
+                <button
+                    type="button"
+                    id="banner-rm"
+                    class="up-rm"
+                    onclick="removeImg('banner')">
+
+                    ✕
+
+                </button>
+
+                <img
+                    id="banner-prev"
+                    class="up-preview"
+                    alt="Banner Preview">
+
+                <p
+                    id="banner-err"
+                    class="err-msg hidden">
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
         <!-- Submit -->
         <div class="reg-card">
           <div class="reg-body">
@@ -971,88 +1075,194 @@ function _wire(id, fn) {
 _wire('f-name',    function(v){ return v.length >= 2; });
 _wire('f-address', function(v){ return v.length >= 5; });
 _wire('f-phone',   function(v){ return /^0\d{9}$/.test(v.replace(/\s/g,'')); });
+// =========================================
+// IMAGE UPLOAD
+// Mobile + Desktop Compatible
+// =========================================
 
-// ── IMAGE UPLOAD (input change + drag/drop) ─────────────────────────────
-function handleFile(input, which) {
-  if (!input.files || !input.files.length) return;
-  _doImg(input.files[0], which);
-  _refreshChecklist();
-}
+["logo", "banner"].forEach(function(which){
 
-function _doImg(file, which) {
-  var err = document.getElementById(which + '-err');
-  err.textContent = '';
-  err.classList.add('hidden');
+    const zone  = document.getElementById(which + "-zone");
+    const input = document.getElementById(which + "-file");
 
-  if (!file.type.startsWith('image/')) {
-    err.textContent = 'Please select an image.';
-    err.classList.remove('hidden');
-    return;
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    err.textContent = 'Image must be smaller than 5MB.';
-    err.classList.remove('hidden');
-    return;
-  }
+    if(!zone || !input) return;
 
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var preview = document.getElementById(which + '-prev');
-    preview.src = e.target.result;
-    preview.style.display = 'block';
-    document.getElementById(which + '-rm').classList.add('show');
+    zone.addEventListener("click", function(){
 
-    if (which === 'logo') {
-      document.getElementById('prev-logo-img').src = e.target.result;
-      document.getElementById('prev-logo-img').style.display = 'block';
-      document.getElementById('prev-logo-icon').style.display = 'none';
-    }
-    if (which === 'banner') {
-      document.getElementById('prev-banner').style.backgroundImage = 'url("' + e.target.result + '")';
-    }
-    _refreshChecklist();
-  };
-  reader.readAsDataURL(file);
-}
+        input.click();
 
-function removeImg(which) {
-  document.getElementById(which + '-file').value = '';
-  var prev = document.getElementById(which + '-prev');
-  prev.src = ''; prev.style.display = 'none';
-  document.getElementById(which + '-rm').classList.remove('show');
-  if (which === 'logo') {
-    var pi = document.getElementById('prev-logo-img');
-    var pf = document.getElementById('prev-logo-icon');
-    if (pi) pi.style.display = 'none'; if (pf) pf.style.display = '';
-  }
-  if (which === 'banner') {
-    var pb = document.getElementById('prev-banner');
-    if (pb) pb.style.backgroundImage = '';
-  }
-  _refreshChecklist();
-}
+    });
 
-// Drag-and-drop — previously defined (handleDrop) but never actually wired
-// to any event on the zone elements, so it was dead code. Wiring it up here.
-['logo', 'banner'].forEach(function(which) {
-  var zone  = document.getElementById(which + '-zone');
-  var input = document.getElementById(which + '-file');
-  if (!zone || !input) return;
+    input.addEventListener("change", function(){
 
-  ['dragenter','dragover'].forEach(function(ev) {
-    zone.addEventListener(ev, function(e) { e.preventDefault(); zone.classList.add('over'); });
-  });
-  ['dragleave','drop'].forEach(function(ev) {
-    zone.addEventListener(ev, function(e) { e.preventDefault(); zone.classList.remove('over'); });
-  });
-  zone.addEventListener('drop', function(e) {
-    if (!e.dataTransfer.files.length) return;
-    var dt = new DataTransfer();
-    dt.items.add(e.dataTransfer.files[0]);
-    input.files = dt.files;
-    handleFile(input, which);
-  });
+        handleFile(this, which);
+
+    });
+
+    ["dragenter","dragover"].forEach(function(event){
+
+        zone.addEventListener(event,function(e){
+
+            e.preventDefault();
+
+            zone.classList.add("over");
+
+        });
+
+    });
+
+    ["dragleave","drop"].forEach(function(event){
+
+        zone.addEventListener(event,function(e){
+
+            e.preventDefault();
+
+            zone.classList.remove("over");
+
+        });
+
+    });
+
+    zone.addEventListener("drop",function(e){
+
+        if(!e.dataTransfer.files.length) return;
+
+        const dt = new DataTransfer();
+
+        dt.items.add(e.dataTransfer.files[0]);
+
+        input.files = dt.files;
+
+        handleFile(input, which);
+
+    });
+
 });
+
+
+function handleFile(input, which){
+
+    if(!input.files.length) return;
+
+    const file = input.files[0];
+
+    if(!file.type.startsWith("image/")){
+
+        showUploadError(which,"Please choose an image.");
+
+        return;
+
+    }
+
+    if(file.size > 5 * 1024 * 1024){
+
+        showUploadError(which,"Image must be below 5MB.");
+
+        return;
+
+    }
+
+    hideUploadError(which);
+
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+
+        const src = e.target.result;
+
+        const preview = document.getElementById(which + "-prev");
+
+        preview.src = src;
+
+        preview.style.display = "block";
+
+        document
+            .getElementById(which + "-rm")
+            .classList.add("show");
+
+        if(which==="logo"){
+
+            document.getElementById("prev-logo-img").src = src;
+
+            document.getElementById("prev-logo-img").style.display = "block";
+
+            document.getElementById("prev-logo-icon").style.display = "none";
+
+        }
+
+        if(which==="banner"){
+
+            document
+                .getElementById("prev-banner")
+                .style.backgroundImage =
+                'url("' + src + '")';
+
+        }
+
+        _refreshChecklist();
+
+    };
+
+    reader.readAsDataURL(file);
+
+}
+
+
+function removeImg(which){
+
+    const input = document.getElementById(which+"-file");
+
+    input.value = "";
+
+    const preview = document.getElementById(which+"-prev");
+
+    preview.src = "";
+
+    preview.style.display = "none";
+
+    document
+        .getElementById(which+"-rm")
+        .classList.remove("show");
+
+    if(which==="logo"){
+
+        document.getElementById("prev-logo-img").style.display = "none";
+
+        document.getElementById("prev-logo-icon").style.display = "flex";
+
+    }
+
+    if(which==="banner"){
+
+        document.getElementById("prev-banner").style.backgroundImage = "";
+
+    }
+
+    _refreshChecklist();
+
+}
+
+
+function showUploadError(which,message){
+
+    const err = document.getElementById(which+"-err");
+
+    err.textContent = message;
+
+    err.classList.remove("hidden");
+
+}
+
+
+function hideUploadError(which){
+
+    const err = document.getElementById(which+"-err");
+
+    err.textContent = "";
+
+    err.classList.add("hidden");
+
+}
 
 // ── DRAFT AUTOSAVE ─────────────────────────────────────────────────────
 var DKEY = 'lynctel_food_reg_v4';
