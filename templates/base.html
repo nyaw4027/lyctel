@@ -947,42 +947,96 @@
     const LOGIN_URL        = "{% url 'accounts:login' %}";
     const LOCATIONIQ_KEY   = '{{ LOCATIONIQ_API_KEY|default:"" }}';
     // ── PWA PUSH NOTIFICATIONS ────────────────────────────
-    const VAPID_PUBLIC_KEY = 'BMUQH_ok6OLwx7C5PWI6-A27DnmbV97psRcHglz7uNch-qbz9S3ik0o65cLtIcKsab1MbNi0qPZA29MS2cSVjVQ';
+    // ── PWA PUSH NOTIFICATIONS ────────────────────────────
 
-    function urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-      const raw     = window.atob(base64);
-      const output  = new Uint8Array(raw.length);
-      for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
-      return output;
+const VAPID_PUBLIC_KEY ='BAEw351eT-whUPpELa7PRDNEM0E_qzbKy6V9pI2jMjjHIS_JQx6cUj9hPahI9k86eCuG1QntOHnGi_1Yi_fWVwM';
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+
+    const base64 = (base64String + padding)
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+
+    const raw = window.atob(base64);
+
+    const output = new Uint8Array(raw.length);
+
+    for (let i = 0; i < raw.length; ++i) {
+        output[i] = raw.charCodeAt(i);
     }
 
-    async function subscribeToPush() {
-      if (!IS_AUTHENTICATED) return;
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        let sub   = await reg.pushManager.getSubscription();
-        if (!sub) {
-          const permission = await Notification.requestPermission();
-          if (permission !== 'granted') return;
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly:      true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-          });
+    return output;
+}
+
+async function subscribeToPush() {
+
+    if (!IS_AUTHENTICATED) return;
+
+    if (!('serviceWorker' in navigator)) return;
+
+    if (!('PushManager' in window)) return;
+
+    try {
+
+        const registration = await navigator.serviceWorker.ready;
+
+        let subscription =
+            await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+
+            const permission =
+                await Notification.requestPermission();
+
+            if (permission !== 'granted') return;
+
+            subscription =
+                await registration.pushManager.subscribe({
+
+                    userVisibleOnly: true,
+
+                    applicationServerKey:
+                        urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+
+                });
+
         }
-        await fetch('/push/subscribe/', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-          body:    JSON.stringify(sub.toJSON()),
+
+        const response = await fetch('/push/subscribe/', {
+
+            method: 'POST',
+
+            credentials: 'same-origin',
+
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF_TOKEN,
+            },
+
+            body: JSON.stringify(subscription.toJSON()),
+
         });
-      } catch (err) {
-        console.warn('[Push] Subscription failed:', err);
-      }
+
+        if (!response.ok) {
+            throw new Error('Subscription could not be saved.');
+        }
+
+        console.log('[Push] Notifications enabled.');
+
+    } catch (err) {
+
+        console.error('[Push]', err);
+
     }
 
-    if (IS_AUTHENTICATED) { setTimeout(subscribeToPush, 3000); }
+}
+
+if (IS_AUTHENTICATED) {
+    window.addEventListener('load', () => {
+        setTimeout(subscribeToPush, 3000);
+    });
+}
 
     // ── DARK MODE ─────────────────────────────────────────
     const THEME_KEY = 'lynctel-theme';

@@ -185,3 +185,48 @@ def push_payment_confirmed(order):
         body=f'GHS {order.total_amount} received for order {order.order_ref}.',
         url=f'/order/{order.order_ref}/confirm/',
     )
+
+
+
+def push_vendor_message(message):
+    """
+    Notify a customer when a vendor sends a chat message.
+    """
+    room = message.room
+    if not room:
+        return 0
+
+    sender = message.sender.get_full_name() or "Vendor"
+
+    preview = message.content.strip() if message.content else "📷 Image"
+
+    if len(preview) > 80:
+        preview = preview[:77] + "..."
+
+    return send_push_notification(
+        user=room.buyer,
+        title="New message from Vendor",
+        body=f"{sender}: {preview}",
+        url=f"/chat/{room.id}/",
+    )
+
+
+def push_customer_message(message):
+    """
+    Notify the vendor when a customer sends a message.
+    """
+    room = message.room
+    if not room:
+        return 0
+
+    preview = message.content.strip() if message.content else "📷 Image"
+
+    if len(preview) > 80:
+        preview = preview[:77] + "..."
+
+    return send_push_notification(
+        user=room.vendor.owner,
+        title="New message from Customer",
+        body=preview,
+        url=f"/vendor/chat/{room.id}/",
+    )

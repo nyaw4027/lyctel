@@ -267,33 +267,37 @@ class User(AbstractUser):
 
 
 
-
 class PushSubscription(models.Model):
     """Stores browser push subscription info per user per device."""
-    user       = models.ForeignKey(
+
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='push_subscriptions',
+        related_name="push_subscriptions",
     )
-    endpoint   = models.TextField(unique=True)
-    p256dh     = models.TextField()
-    auth       = models.TextField()
-    is_active  = models.BooleanField(default=True)
+
+    endpoint = models.TextField(unique=True)
+    p256dh = models.TextField()
+    auth = models.TextField()
+
+    is_active = models.BooleanField(default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def to_dict(self):
-        """Returns subscription info dict for pywebpush."""
+        """Return subscription data in pywebpush format."""
         return {
-            'endpoint': self.endpoint,
-            'keys': {
-                'p256dh': self.p256dh,
-                'auth':   self.auth,
+            "endpoint": self.endpoint,
+            "keys": {
+                "p256dh": self.p256dh,
+                "auth": self.auth,
             },
         }
 
     def __str__(self):
-        return f"{self.user.username} - {self.endpoint[:50]}"
+        username = getattr(self.user, "username", None) or str(self.user)
+        return f"{username} - {self.endpoint[:50]}"
