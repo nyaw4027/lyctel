@@ -114,37 +114,35 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-# ── Channel Layers ─────────────────────────────────────────
-from urllib.parse import urlparse
+# ───────────────────────────────────────────────
+# CHANNEL LAYERS
+# ───────────────────────────────────────────────
 
-REDIS_URL = os.getenv("REDIS_URL", "").strip()
+import os
+
+REDIS_URL = os.getenv("REDIS_URL")
 
 if REDIS_URL:
-    parsed = urlparse(REDIS_URL)
+    print("✅ Redis enabled")
 
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
                 "hosts": [
-                    (
-                        parsed.hostname,
-                        parsed.port or 6379,
-                    )
+                    REDIS_URL,
                 ],
-                "capacity": 1500,
-                "expiry": 60,
-                "group_expiry": 86400,
             },
         },
     }
+
 else:
-    print("⚠️ REDIS_URL not found. Using InMemoryChannelLayer.")
+    print("⚠️ Redis disabled. Using InMemoryChannelLayer.")
 
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
-        }
+        },
     }
 # ── Password validation ────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
