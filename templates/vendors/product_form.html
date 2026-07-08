@@ -161,7 +161,7 @@
           </div>
           <form method="POST" action="{% url 'products:video_delete' vid.pk %}"
                 onsubmit="return confirm('Remove this video?')"
-                class="flex-shrink-0">
+                class="flex-shrink-0" enctype="multipart/form-data">
             {% csrf_token %}
             <button type="submit"
                     class="text-xs text-red-500 hover:text-red-700 font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors">

@@ -294,7 +294,7 @@
                   Edit
                 </a>
                 <form method="POST" action="{% url 'vendors:product_delete' product.pk %}"
-                      onsubmit="return confirm('Delete {{ product.name|escapejs }}?')">
+                      onsubmit="return confirm('Delete {{ product.name|escapejs }}?')" enctype="multipart/form-data">
                   {% csrf_token %}
                   <button type="submit"
                           class="text-xs border border-red-200 hover:bg-red-500 hover:border-red-500
@@ -510,7 +510,7 @@
               <p class="text-gold text-xs font-bold">GHS {{ product.final_price }}</p>
             </div>
             <form method="POST" action="{% url 'vendors:product_edit' product.pk %}"
-                  onsubmit="return confirm('Remove this video?')">
+                  onsubmit="return confirm('Remove this video?')" enctype="multipart/form-data">
               {% csrf_token %}
               <input type="hidden" name="delete_videos" value="{{ video.pk }}">
               <button type="submit"

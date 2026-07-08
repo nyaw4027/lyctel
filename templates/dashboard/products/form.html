@@ -107,7 +107,7 @@
           <form method="POST" action="{% url 'dashboard:product_image_delete' img.pk %}"
                 class="absolute inset-0 bg-black bg-opacity-50 rounded-xl opacity-0 group-hover:opacity-100
                        flex items-center justify-center transition-opacity"
-                onsubmit="return confirm('Remove this image?')">
+                onsubmit="return confirm('Remove this image?')" enctype="multipart/form-data">
             {% csrf_token %}
             <button type="submit" class="text-white text-xs font-bold bg-red-500 px-3 py-1 rounded-lg">Remove</button>
           </form>
