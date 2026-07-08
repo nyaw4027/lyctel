@@ -115,27 +115,35 @@ else:
         }
     }
 # ── Channel Layers ─────────────────────────────────────────
-_redis_url = os.environ.get('REDIS_URL', '').strip()
+from urllib.parse import urlparse
 
-if _redis_url:
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+
+if REDIS_URL:
+    parsed = urlparse(REDIS_URL)
+
     CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                 'hosts': [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
-                'capacity':     1500,
-                'expiry':       60,
-                'group_expiry': 86400,
-                # Keep the pub-sub connection alive so Railway's internal
-                # network doesn't drop it after 60s of inactivity.
-                
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [
+                    (
+                        parsed.hostname,
+                        parsed.port or 6379,
+                    )
+                ],
+                "capacity": 1500,
+                "expiry": 60,
+                "group_expiry": 86400,
             },
-        }
+        },
     }
 else:
+    print("⚠️ REDIS_URL not found. Using InMemoryChannelLayer.")
+
     CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
         }
     }
 # ── Password validation ────────────────────────────────────
