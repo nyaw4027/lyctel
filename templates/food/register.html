@@ -336,7 +336,7 @@
                   <span id="sat-icon">🛰️</span><span id="sat-txt">Satellite</span>
                 </button>
                 <!-- Offline banner -->
-                <div class="map-offline" id="map-offline">
+                <div id="map-offline" class="show">
                   <p style="font-size:1.5rem">🗺️</p>
                   <p style="font-size:13px;font-weight:700;color:#0F1B2D">Map tiles failed to load</p>
                   <p style="font-size:12px;color:#6b7280;max-width:220px">
@@ -608,78 +608,227 @@ var _tf=0, _tok=0;
     if (typeof L === 'undefined') throw new Error('Leaflet not loaded yet');
     var el = document.getElementById('reg-map');
     if (!el) throw new Error('#reg-map not found');
+_map = L.map("reg-map",{
+    center:[5.6037,-0.1870],
+    zoom:13,
+    zoomControl:true,
+    preferCanvas:true
+});
 
-    _map = L.map('reg-map', { zoomControl:true }).setView([5.6037,-0.1870], 13);
+// Debugging
+console.log("Leaflet loaded:", typeof L);
+console.log("Map element:", document.getElementById("reg-map"));
+console.log("Map height:", document.getElementById("reg-map").offsetHeight);
 
-    _sl = MAP_KEY
-      ? L.tileLayer('https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key='+MAP_KEY,
-          { attribution:'© LocationIQ · © OSM', maxZoom:19, subdomains:['a','b','c'] })
-      : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          { attribution:'© OpenStreetMap contributors', maxZoom:19 });
+// OpenStreetMap Street Layer
+_sl = L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+    }
+);
 
-    _sat = L.tileLayer(
-      'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      { attribution:'© Esri · Maxar', maxZoom:19 }
+// Satellite Layer
+_sat = L.tileLayer(
+    'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {
+        attribution: '&copy; Esri &mdash; Maxar',
+        maxZoom: 19
+    }
+);
+
+// Add street layer
+_sl.addTo(_map);
+
+console.log("Street layer added.");
+
+// Handle tile loading
+_sl.on('tileload', function () {
+    _tok++;
+    document.getElementById('map-offline').classList.remove('show');
+});
+
+// Handle tile errors
+_sl.on('tileerror', function () {
+    _tf++;
+
+    if (_tf >= 4 && !_tok) {
+        console.warn("Tile loading failed.");
+        document.getElementById('map-offline').classList.add('show');
+    }
+});
+
+// Ensure Leaflet sizes correctly
+window.addEventListener('load', function () {
+    setTimeout(function () {
+        if (_map) {
+            _map.invalidateSize();
+        }
+    }, 300);
+});
+
+window.addEventListener('resize', function () {
+    if (_map) {
+        _map.invalidateSize();
+    }
+});
+
+// Satellite toggle
+document.getElementById('sat-btn').addEventListener('click', function () {
+
+    _onSat = !_onSat;
+
+    if (_onSat) {
+
+        if (_map.hasLayer(_sl)) {
+            _map.removeLayer(_sl);
+        }
+
+        _sat.addTo(_map);
+
+        document.getElementById('sat-icon').textContent = '🗺️';
+        document.getElementById('sat-txt').textContent = 'Street';
+
+    } else {
+
+        if (_map.hasLayer(_sat)) {
+            _map.removeLayer(_sat);
+        }
+
+        _sl.addTo(_map);
+
+        document.getElementById('sat-icon').textContent = '🛰️';
+        document.getElementById('sat-txt').textContent = 'Satellite';
+    }
+});
+
+// Pin icon
+var pinIcon = L.divIcon({
+    className: '',
+    html: '<div style="font-size:2rem;line-height:1;filter:drop-shadow(0 2px 5px rgba(0,0,0,.35))">📍</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32]
+});
+function bindTileEvents(layer){
+
+    layer.on("tileload",function(){
+
+        _tok++;
+
+        document
+            .getElementById("map-offline")
+            .classList.remove("show");
+
+    });
+
+    layer.on("tileerror",function(){
+
+        _tf++;
+
+        if(_tf>4 && !_tok){
+
+            document
+                .getElementById("map-offline")
+                .classList.add("show");
+
+        }
+
+    });
+
+}
+
+bindTileEvents(_sl);
+bindTileEvents(_sat);
+
+// Restore saved pin after validation errors
+var sLat = parseFloat(document.getElementById('lat-h').value);
+var sLng = parseFloat(document.getElementById('lng-h').value);
+
+if (!isNaN(sLat) && !isNaN(sLng) && sLat !== 0 && sLng !== 0) {
+
+    window.placePin(sLat, sLng, 'Saved location');
+
+} else if (navigator.geolocation) {
+
+    navigator.geolocation.getCurrentPosition(
+
+        function (pos) {
+
+            if (_map) {
+                _map.setView(
+                    [pos.coords.latitude, pos.coords.longitude],
+                    14
+                );
+            }
+
+        },
+
+        function () {
+            // Ignore GPS errors
+        },
+
+        {
+            enableHighAccuracy: true,
+            timeout: 5000
+        }
+
+    );
+}
+
+
+// Click on map to place marker
+_map.on('click', function (e) {
+
+    window.placePin(
+        e.latlng.lat,
+        e.latlng.lng
     );
 
-    _sl.addTo(_map);
-    _sl.on('tileerror', function(){ if(++_tf>=4&&!_tok) document.getElementById('map-offline').classList.add('show'); });
-    _sl.on('tileload',  function(){ _tok++; document.getElementById('map-offline').classList.remove('show'); });
+    _revGeo(
+        e.latlng.lat,
+        e.latlng.lng
+    );
 
-    // Force correct sizing after any CSS layout shift
-    setTimeout(function(){ _map&&_map.invalidateSize(); }, 250);
-    window.addEventListener('resize', function(){ _map&&_map.invalidateSize(); });
+});
 
-    // Satellite toggle
-    document.getElementById('sat-btn').addEventListener('click', function(){
-      _onSat=!_onSat;
-      if(_onSat){ _map.removeLayer(_sl);  _sat.addTo(_map); document.getElementById('sat-icon').textContent='🗺️'; document.getElementById('sat-txt').textContent='Street'; }
-      else      { _map.removeLayer(_sat); _sl.addTo(_map);  document.getElementById('sat-icon').textContent='🛰️'; document.getElementById('sat-txt').textContent='Satellite'; }
-    });
+} catch (e) {
 
-    var pinIcon = L.divIcon({
-      className:'',
-      html:'<div style="font-size:2rem;line-height:1;filter:drop-shadow(0 2px 5px rgba(0,0,0,.35))">📍</div>',
-      iconSize:[32,32], iconAnchor:[16,32]
-    });
+    console.error('[Map Error]', e);
 
-    window.placePin = function(lat, lng, label){
-      if(_marker){ _marker.setLatLng([lat,lng]); }
-      else {
-        _marker = L.marker([lat,lng],{icon:pinIcon,draggable:true}).addTo(_map);
-        _marker.on('dragend', function(e){
-          var p=e.target.getLatLng();
-          _setCoords(p.lat,p.lng);
-          _revGeo(p.lat,p.lng);
-        });
-      }
-      _map.setView([lat,lng],16);
-      _setCoords(lat, lng, label);
-    };
+    var offline = document.getElementById('map-offline');
 
-    // Restore pin on page reload after validation error
-    var sLat=parseFloat(document.getElementById('lat-h').value);
-    var sLng=parseFloat(document.getElementById('lng-h').value);
-    if(!isNaN(sLat)&&sLat!==0){ window.placePin(sLat,sLng,'Saved location'); }
-    else if(navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(function(p){
-        _map&&_map.setView([p.coords.latitude,p.coords.longitude],14);
-      }, null, {timeout:5000});
+    if (offline) {
+        offline.classList.add('show');
     }
 
-    _map.on('click', function(e){ window.placePin(e.latlng.lat,e.latlng.lng); _revGeo(e.latlng.lat,e.latlng.lng); });
+    if (!window.placePin) {
+        window.placePin = function () {};
+    }
 
-  } catch(e){
-    console.error('[map]', e.message);
-    document.getElementById('map-offline').classList.add('show');
-    if(!window.placePin) window.placePin=function(){};
-  }
+}
+
 })();
-
 function retryTiles(){
-  _tf=0; _tok=0;
-  document.getElementById('map-offline').classList.remove('show');
-  if(_onSat){ _sat&&_sat.redraw(); } else { _sl&&_sl.redraw(); }
+
+    if(!_map) return;
+
+    _tf = 0;
+    _tok = 0;
+
+    document.getElementById("map-offline").classList.remove("show");
+
+    if(_onSat && _sat){
+
+        _sat.redraw();
+
+    }else if(_sl){
+
+        _sl.redraw();
+
+    }
+
+    _map.invalidateSize();
 }
 
 function _setCoords(lat,lng,label){
@@ -890,12 +1039,25 @@ function handleFile(input, which){
   _doImg(file, which);
 }
 function handleDrop(e, which){
-  e.preventDefault();
-  document.getElementById(which+'-zone').classList.remove('over');
-  var file=e.dataTransfer.files[0]; if(!file)return;
-  var inp=document.getElementById(which+'-file');
-  // Can't assign FileList directly on all browsers, so validate & preview manually
-  _doImg(file, which);
+    e.preventDefault();
+
+    var zone = document.getElementById(which + '-zone');
+    if(zone) zone.classList.remove('over');
+
+    var file = e.dataTransfer.files[0];
+    if(!file) return;
+
+    var input = document.getElementById(which + '-file');
+
+    try{
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+    }catch(err){
+        console.warn("Browser doesn't support DataTransfer.");
+    }
+
+    _doImg(file, which);
 }
 function _doImg(file, which){
   var errEl=document.getElementById(which+'-err');
