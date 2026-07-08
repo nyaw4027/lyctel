@@ -76,8 +76,10 @@
       </label>
       <form id="pic-form-mobile" method="POST" action="{% url 'accounts:update_picture' %}" enctype="multipart/form-data">
         {% csrf_token %}
-        <input type="file" id="pic-input-mobile" name="profile_pic" accept="image/*"
-               class="hidden" onchange="document.getElementById('pic-form-mobile').submit()"/>
+       <input type="file" id="pic-input-mobile" name="profile_pic" accept="image/*"
+       style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+              overflow:hidden;white-space:nowrap;border:0;clip:rect(0,0,0,0);"
+       onchange="document.getElementById('pic-form-mobile').submit()"/>
       </form>
     </div>
     <h2 class="font-display font-700 text-navy text-sm">{{ user.get_full_name|default:"Update your name" }}</h2>
