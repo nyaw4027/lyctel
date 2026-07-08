@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{% load static %}
+{% load static i18n %}
 <html lang="{{ LANGUAGE_CODE|default:'en' }}" data-theme="light">
 <head>
   <meta charset="UTF-8"/>
@@ -949,7 +949,8 @@
     // ── PWA PUSH NOTIFICATIONS ────────────────────────────
     // ── PWA PUSH NOTIFICATIONS ────────────────────────────
 
-const VAPID_PUBLIC_KEY ='BAEw351eT-whUPpELa7PRDNEM0E_qzbKy6V9pI2jMjjHIS_JQx6cUj9hPahI9k86eCuG1QntOHnGi_1Yi_fWVwM';
+const VAPID_PUBLIC_KEY =
+'BAEw351eT-whUPpELa7PRDNEM0E_qzbKy6V9pI2jMjjHIS_JQx6cUj9hPahI9k86eCuG1QntOHnGi_1Yi_fWVwM';
 
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
