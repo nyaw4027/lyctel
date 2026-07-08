@@ -520,69 +520,130 @@
             </div>
           </div>
         </div>
-
-        <!-- 3 · Branding -->
-        <div class="reg-card">
-          <div class="reg-head">
-            <div class="reg-num">3</div>
-            <div>
-              <h2 class="font-display font-700 text-navy" style="font-size:16px">
+<!-- 3 · Branding -->
+<div class="reg-card">
+    <div class="reg-head">
+        <div class="reg-num">3</div>
+        <div>
+            <h2 class="font-display font-700 text-navy" style="font-size:16px">
                 Branding
                 <span class="text-gray-400 font-normal" style="font-size:13px">(optional)</span>
-              </h2>
-              <p class="text-xs text-gray-400 mt-0.5">Photos get 3× more clicks</p>
-            </div>
-          </div>
-          <div class="reg-body">
-            <div class="grid sm:grid-cols-2 gap-5">
-
-              <!-- Logo -->
-              <div>
-                <label class="f-label">Logo</label>
-                <div class="up-zone" id="logo-zone"
-                     onclick="document.getElementById('logo-file').click()"
-                     ondragover="event.preventDefault();this.classList.add('over')"
-                     ondragleave="this.classList.remove('over')"
-                     ondrop="handleDrop(event,'logo')">
-                  <button type="button" class="up-rm" id="logo-rm"
-                          onclick="event.stopPropagation();removeImg('logo')">✕</button>
-                  <p style="font-size:2rem;margin-bottom:4px">🖼️</p>
-                  <p style="font-size:13px;font-weight:600;color:#0F1B2D">Upload logo</p>
-                  <p style="font-size:11px;color:#9ca3af;margin-top:2px">or drag & drop · PNG/JPG · max 5MB</p>
-                <input type="file"
-       id="logo-file"
-       name="logo"
-       accept="image/*"
-       onchange="handleFile(this,'logo')">
-                </div>
-                <img id="logo-prev" class="up-preview logo-prev" alt=""/>
-                <p id="logo-err" class="err-msg hidden"></p>
-              </div>
-
-              <!-- Banner -->
-              <div>
-                <label class="f-label">Banner Photo</label>
-                <div class="up-zone" id="banner-zone"
-                     onclick="document.getElementById('banner-file').click()"
-                     ondragover="event.preventDefault();this.classList.add('over')"
-                     ondragleave="this.classList.remove('over')"
-                     ondrop="handleDrop(event,'banner')">
-                  <button type="button" class="up-rm" id="banner-rm"
-                          onclick="event.stopPropagation();removeImg('banner')">✕</button>
-                  <p style="font-size:2rem;margin-bottom:4px">🏞️</p>
-                  <p style="font-size:13px;font-weight:600;color:#0F1B2D">Upload banner</p>
-                  <p style="font-size:11px;color:#9ca3af;margin-top:2px">or drag & drop · PNG/JPG · max 5MB</p>
-                  <input type="file" id="banner-file" name="banner" accept="image/*"
-                         onchange="handleFile(this,'banner')"/>
-                </div>
-                <img id="banner-prev" class="up-preview" alt="" style="margin-top:10px"/>
-                <p id="banner-err" class="err-msg hidden"></p>
-              </div>
-
-            </div>
-          </div>
+            </h2>
+            <p class="text-xs text-gray-400 mt-0.5">
+                Photos get 3× more clicks
+            </p>
         </div>
+    </div>
 
+    <div class="reg-body">
+        <div class="grid sm:grid-cols-2 gap-5">
+
+            <!-- ================= LOGO ================= -->
+
+            <div>
+
+                <label class="f-label">Restaurant Logo</label>
+
+                <label for="logo-file"
+                       class="up-zone"
+                       id="logo-zone">
+
+                    <button
+                        type="button"
+                        class="up-rm"
+                        id="logo-rm"
+                        onclick="event.preventDefault();event.stopPropagation();removeImg('logo')">
+                        ✕
+                    </button>
+
+                    <div style="font-size:2rem;">🖼️</div>
+
+                    <div style="font-size:13px;font-weight:700;color:#0F1B2D;margin-top:6px;">
+                        Tap to upload logo
+                    </div>
+
+                    <div style="font-size:11px;color:#9ca3af;margin-top:4px;">
+                        PNG, JPG or WEBP • Max 5MB
+                    </div>
+
+                </label>
+
+                <input
+                    type="file"
+                    id="logo-file"
+                    name="logo"
+                    accept="image/*"
+                    capture="environment"
+                    onchange="handleFile(this,'logo')"
+                    hidden>
+
+                <img
+                    id="logo-prev"
+                    class="up-preview logo-prev"
+                    alt="Logo Preview">
+
+                <p
+                    id="logo-err"
+                    class="err-msg hidden">
+                </p>
+
+            </div>
+
+            <!-- ================= BANNER ================= -->
+
+            <div>
+
+                <label class="f-label">Restaurant Banner</label>
+
+                <label for="banner-file"
+                       class="up-zone"
+                       id="banner-zone">
+
+                    <button
+                        type="button"
+                        class="up-rm"
+                        id="banner-rm"
+                        onclick="event.preventDefault();event.stopPropagation();removeImg('banner')">
+                        ✕
+                    </button>
+
+                    <div style="font-size:2rem;">🏞️</div>
+
+                    <div style="font-size:13px;font-weight:700;color:#0F1B2D;margin-top:6px;">
+                        Tap to upload banner
+                    </div>
+
+                    <div style="font-size:11px;color:#9ca3af;margin-top:4px;">
+                        PNG, JPG or WEBP • Max 5MB
+                    </div>
+
+                </label>
+
+                <input
+                    type="file"
+                    id="banner-file"
+                    name="banner"
+                    accept="image/*"
+                    capture="environment"
+                    onchange="handleFile(this,'banner')"
+                    hidden>
+
+                <img
+                    id="banner-prev"
+                    class="up-preview"
+                    alt="Banner Preview"
+                    style="margin-top:10px;">
+
+                <p
+                    id="banner-err"
+                    class="err-msg hidden">
+                </p>
+
+            </div>
+
+        </div>
+    </div>
+</div>
         <!-- Submit -->
         <div class="reg-card">
           <div class="reg-body">
