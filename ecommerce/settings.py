@@ -318,3 +318,8 @@ VAPID_PUBLIC_KEY  = config('VAPID_PUBLIC_KEY',  default='')
 VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default='')
 VAPID_ADMIN_EMAIL = config('VAPID_ADMIN_EMAIL', default='admin@lynctel.com')
 
+
+# Allow larger file uploads for mobile photos/videos
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10MB
+
