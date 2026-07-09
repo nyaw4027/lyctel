@@ -1,0 +1,355 @@
+/* ==========================================================
+   Lynctel Upload Components
+   Version: 1.0
+   Mobile First
+   ========================================================== */
+
+/* Wrapper */
+
+.up-wrap{
+    position:relative;
+    width:100%;
+}
+
+/* Upload Zone */
+
+.up-zone{
+
+    position:relative;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+
+    width:100%;
+    min-height:180px;
+
+    padding:24px;
+
+    background:#ffffff;
+
+    border:2px dashed #d1d5db;
+    border-radius:18px;
+
+    cursor:pointer;
+
+    transition:.25s ease;
+
+    overflow:hidden;
+
+    text-align:center;
+}
+
+.up-zone:hover{
+
+    border-color:#0F1B2D;
+
+    background:#fcfcfc;
+}
+
+.up-zone.over{
+
+    border-color:#F5A623;
+
+    background:#FFF8EC;
+}
+
+/* Invisible native file input */
+
+.up-zone input[type="file"]{
+
+    position:absolute;
+
+    inset:0;
+
+    width:100%;
+    height:100%;
+
+    opacity:0;
+
+    cursor:pointer;
+
+    z-index:10;
+
+    display:block;
+}
+
+/* Upload icon */
+
+.up-icon{
+
+    font-size:46px;
+
+    margin-bottom:10px;
+}
+
+/* Main title */
+
+.up-title{
+
+    font-size:15px;
+
+    font-weight:700;
+
+    color:#0F1B2D;
+}
+
+/* Subtitle */
+
+.up-subtitle{
+
+    margin-top:6px;
+
+    font-size:12px;
+
+    color:#9ca3af;
+
+    line-height:1.5;
+}
+
+/* Preview image */
+
+.up-preview{
+
+    display:none;
+
+    width:100%;
+
+    margin-top:14px;
+
+    border-radius:16px;
+
+    border:1px solid #e5e7eb;
+
+    object-fit:cover;
+
+    max-height:240px;
+
+    background:#fff;
+}
+
+/* Logo preview */
+
+.logo-prev{
+
+    width:140px;
+
+    height:140px;
+
+    margin:auto;
+
+    object-fit:contain;
+}
+
+/* Remove Button */
+
+.up-rm{
+
+    position:absolute;
+
+    top:12px;
+
+    right:12px;
+
+    width:34px;
+
+    height:34px;
+
+    border:none;
+
+    border-radius:50%;
+
+    background:#ef4444;
+
+    color:#fff;
+
+    font-size:15px;
+
+    display:none;
+
+    align-items:center;
+
+    justify-content:center;
+
+    cursor:pointer;
+
+    z-index:20;
+
+    box-shadow:0 8px 18px rgba(0,0,0,.18);
+}
+
+.up-rm.show{
+
+    display:flex;
+}
+
+/* Error */
+
+.err-msg{
+
+    margin-top:8px;
+
+    font-size:13px;
+
+    color:#dc2626;
+}
+
+/* Success */
+
+.success-msg{
+
+    margin-top:8px;
+
+    font-size:13px;
+
+    color:#16a34a;
+}
+
+/* Progress */
+
+.up-progress{
+
+    width:100%;
+
+    height:6px;
+
+    background:#edf2f7;
+
+    border-radius:999px;
+
+    overflow:hidden;
+
+    margin-top:12px;
+
+    display:none;
+}
+
+.up-progress span{
+
+    display:block;
+
+    height:100%;
+
+    width:0;
+
+    background:#F5A623;
+
+    transition:.25s;
+}
+
+/* Disabled */
+
+.up-disabled{
+
+    opacity:.55;
+
+    pointer-events:none;
+}
+
+/* ===========================
+   Mobile
+=========================== */
+
+@media (max-width:768px){
+
+    .up-zone{
+
+        min-height:160px;
+
+        padding:20px;
+    }
+
+    .up-icon{
+
+        font-size:42px;
+    }
+
+    .up-title{
+
+        font-size:14px;
+    }
+
+    .up-subtitle{
+
+        font-size:11px;
+    }
+
+    .up-preview{
+
+        max-height:180px;
+    }
+
+}
+
+/* ===========================
+   Small Phones
+=========================== */
+
+@media (max-width:420px){
+
+    .up-zone{
+
+        min-height:145px;
+
+        padding:16px;
+    }
+
+    .up-icon{
+
+        font-size:38px;
+    }
+
+}
+
+/* ===========================
+   Touch Devices
+=========================== */
+
+@media (hover:none){
+
+    .up-zone:hover{
+
+        border-color:#d1d5db;
+
+        background:#fff;
+    }
+
+}
+
+/* ==========================================================
+   Mobile Fixes
+   ========================================================== */
+
+input[type="file"]{
+
+    -webkit-appearance:none;
+
+    appearance:none;
+
+    pointer-events:auto !important;
+
+    touch-action:manipulation;
+}
+
+.up-zone{
+
+    touch-action:manipulation;
+
+    -webkit-tap-highlight-color:transparent;
+}
+
+.up-zone *{
+
+    pointer-events:none;
+}
+
+.up-zone input{
+
+    pointer-events:auto !important;
+}
+
+label{
+
+    cursor:pointer;
+}
