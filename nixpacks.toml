@@ -1,0 +1,5 @@
+[phases.setup]
+nixPkgs = ["python311", "python311Packages.pip"]
+
+[start]
+cmd = "python3 manage.py collectstatic --noinput && python3 manage.py migrate && daphne -b 0.0.0.0 -p $PORT ecommerce.asgi:application"
