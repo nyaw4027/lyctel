@@ -1,2 +1,5 @@
+[variables]
+NIXPACKS_NO_BUILD_ENV = "1"
+
 [phases.setup]
 nixPkgs = ["python3", "gcc", "gettext", "nodejs"]
