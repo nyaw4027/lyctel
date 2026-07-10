@@ -1,5 +1,14 @@
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip"]
+nixPkgs = ["python311", "python311Packages.pip", "nodejs_20"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "npm ci"
+]
+
+[phases.build]
+cmds = ["npm run build:css"]
 
 [start]
 cmd = "python3 manage.py collectstatic --noinput && python3 manage.py migrate && daphne -b 0.0.0.0 -p $PORT ecommerce.asgi:application"
