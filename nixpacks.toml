@@ -1,5 +1,14 @@
-[variables]
+﻿[variables]
 NIXPACKS_NO_BUILD_ENV = "1"
 
 [phases.setup]
 nixPkgs = ["python3", "gcc", "gettext", "nodejs"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.build]
+cmds = ["python manage.py collectstatic --noinput"]
+
+[start]
+cmd = "daphne -b 0.0.0.0 -p $PORT ecommerce.asgi:application"
