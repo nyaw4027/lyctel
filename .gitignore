@@ -10,3 +10,5 @@
 staticfiles/
 *.json.br
 *.json.gz
+tailwindcss.exe
+node_modules/
