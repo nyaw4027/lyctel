@@ -1,1 +1,1 @@
-web: python3 manage.py migrate && daphne -b 0.0.0.0 -p $PORT ecommerce.asgi:application
+web: python3 manage.py collectstatic --noinput && python3 manage.py migrate && python3 -m daphne -b 0.0.0.0 -p  ecommerce.asgi:application
