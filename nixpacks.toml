@@ -8,7 +8,7 @@ cmds = [
 ]
 
 [phases.build]
-cmds = ["npm run build:css"]
+cmds = ["npx tailwindcss -i ./static/css/input.css -o ./static/css/output.css --minify"]
 
 [start]
 cmd = "python3 manage.py collectstatic --noinput && python3 manage.py migrate && daphne -b 0.0.0.0 -p $PORT ecommerce.asgi:application"
