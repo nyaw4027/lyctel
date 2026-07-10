@@ -1286,11 +1286,13 @@ if (IS_AUTHENTICATED) {
     });
   </script>
 {% block extra_js %}{% endblock %}
-
-  <script>
+<script>
   (function(){
+
     function fixFileInputs(){
       document.querySelectorAll('input[type="file"]').forEach(function(inp){
+
+        // ── Fix 1: display:none / visibility:hidden ──────────
         var cs = window.getComputedStyle(inp);
         if(cs.display==='none'||cs.visibility==='hidden'){
           inp.style.setProperty('display','block','important');
@@ -1303,6 +1305,33 @@ if (IS_AUTHENTICATED) {
           inp.style.setProperty('pointer-events','none','important');
           inp.style.setProperty('z-index','-1','important');
         }
+
+        // ── Fix 2: sibling label (label[for=id] not wrapping input) ──
+        // iOS requires the input to be INSIDE the label element.
+        // If the input is a sibling of its label, move it inside.
+        var id = inp.id;
+        if(id){
+          var label = document.querySelector('label[for="'+id+'"]');
+          if(label && !label.contains(inp)){
+            // Make label the positioning context
+            label.style.position   = 'relative';
+            label.style.overflow   = 'visible';
+            label.style.display    = label.style.display || 'inline-flex';
+            // Style input as full-size transparent overlay inside label
+            inp.style.cssText = [
+              'position:absolute',
+              'inset:0',
+              'width:100%',
+              'height:100%',
+              'opacity:0',
+              'cursor:pointer',
+              'z-index:99',
+              'display:block'
+            ].join(';') + ';';
+            label.appendChild(inp);
+          }
+        }
+
       });
     }
 
@@ -1325,7 +1354,6 @@ if (IS_AUTHENTICATED) {
         if(needs) fixFileInputs();
       }).observe(document.documentElement,{childList:true,subtree:true});
     }
+
   })();
   </script>
-</body>
-</html>
