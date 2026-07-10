@@ -1,1 +1,1 @@
-web: python manage.py migrate && daphne -b 0.0.0.0 -p $PORT ecommerce.asgi:application
+web: python3 manage.py migrate && daphne -b 0.0.0.0 -p $PORT ecommerce.asgi:application
