@@ -1285,7 +1285,47 @@ if (IS_AUTHENTICATED) {
       document.getElementById('navbar').classList.toggle('nav-scrolled',window.scrollY>10);
     });
   </script>
+{% block extra_js %}{% endblock %}
 
-  {% block extra_js %}{% endblock %}
+  <script>
+  (function(){
+    function fixFileInputs(){
+      document.querySelectorAll('input[type="file"]').forEach(function(inp){
+        var cs = window.getComputedStyle(inp);
+        if(cs.display==='none'||cs.visibility==='hidden'){
+          inp.style.setProperty('display','block','important');
+          inp.style.setProperty('position','fixed','important');
+          inp.style.setProperty('top','-200px','important');
+          inp.style.setProperty('left','-200px','important');
+          inp.style.setProperty('width','1px','important');
+          inp.style.setProperty('height','1px','important');
+          inp.style.setProperty('opacity','0','important');
+          inp.style.setProperty('pointer-events','none','important');
+          inp.style.setProperty('z-index','-1','important');
+        }
+      });
+    }
+
+    if(document.readyState==='loading'){
+      document.addEventListener('DOMContentLoaded', fixFileInputs);
+    } else {
+      fixFileInputs();
+    }
+
+    if(window.MutationObserver){
+      new MutationObserver(function(mutations){
+        var needs = mutations.some(function(m){
+          return Array.from(m.addedNodes).some(function(n){
+            return n.nodeType===1&&(
+              (n.tagName==='INPUT'&&n.type==='file')||
+              (n.querySelector&&n.querySelector('input[type="file"]'))
+            );
+          });
+        });
+        if(needs) fixFileInputs();
+      }).observe(document.documentElement,{childList:true,subtree:true});
+    }
+  })();
+  </script>
 </body>
 </html>
