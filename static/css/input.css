@@ -1,0 +1,14 @@
+﻿@import "tailwindcss";
+@source "../templates";
+
+@theme {
+  --font-display: Syne, sans-serif;
+  --font-body: DM Sans, sans-serif;
+  --color-navy: #0F1B2D;
+  --color-navy-700: #1a2d47;
+  --color-navy-500: #243d5c;
+  --color-gold: #F5A623;
+  --color-gold-light: #FEF3D7;
+  --color-gold-dark: #c8841a;
+  --color-cream: #FAFAF7;
+}

@@ -1,4 +1,4 @@
-module.exports = {
+﻿module.exports = {
   content: [
     './**/templates/**/*.html',
     './**/*.py',

@@ -40,25 +40,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            display: ['Syne', 'sans-serif'],
-            body:    ['DM Sans', 'sans-serif'],
-          },
-          colors: {
-            navy: { DEFAULT: '#0F1B2D', 700: '#1a2d47', 500: '#243d5c' },
-            gold: { DEFAULT: '#F5A623', light: '#FEF3D7', dark: '#c8841a' },
-            cream: '#FAFAF7',
-          },
-        }
-      }
-    }
-  </script>
+ <link rel="stylesheet" href="{% static 'css/output.css' %}"/>
 
   <style>
     /* ── Dark mode CSS variables ─────────────────────── */
