@@ -106,7 +106,7 @@
             {% if item.image %}Change photo{% else %}Upload photo{% endif %}
           </p>
           <p class="text-xs text-gray-400 mt-0.5">PNG or JPG, up to 5MB</p>
-          <input type="file" id="img-input" name="image" accept="image/*" class="hidden" onchange="previewImg(this)"/>
+          <input type="file" id="img-input" name="image" accept="image/*" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:1;" onchange="previewImg(this)"/>
         </div>
         <img id="img-preview"
              src="{% if item.image %}{{ item.image.url }}{% endif %}"
