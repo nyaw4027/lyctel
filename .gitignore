@@ -12,3 +12,8 @@ staticfiles/
 *.json.gz
 tailwindcss.exe
 node_modules/
+
+node_modules/
+tailwindcss.exe
+package.json
+package-lock.json
