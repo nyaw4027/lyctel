@@ -5,7 +5,7 @@
 *Pipfile.lock
 *Pipfile
 *.env
-*.venv
+venv/
 *vscode
 staticfiles/
 *.json.br
@@ -17,3 +17,4 @@ node_modules/
 tailwindcss.exe
 package.json
 package-lock.json
+
