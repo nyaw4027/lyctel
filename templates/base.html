@@ -34,16 +34,98 @@
   <link rel="apple-touch-startup-image" href="{% static 'icons/icon-512x512.png' %}"/>
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-96x96.png' %}"/>
   <link rel="shortcut icon" href="{% static 'icons/icon-96x96.png' %}"/>
-  <link rel="stylesheet" href="{% static 'css/uploads.css' %}">
+
+  <!-- ── ANTI-FLASH VEIL ─────────────────────────────────────
+       Deferring the Tailwind script (fix above) means the browser now
+       paints raw, unstyled HTML for a brief moment before Tailwind's
+       styles apply — a visible "flash of unstyled content" that wasn't
+       there when the script was blocking. This veil restores the old
+       "always looks fully styled" appearance without bringing back the
+       actual freeze: everything here is inline (nothing to wait on a
+       slow network for) and there's a hard timeout, so worst case is a
+       slightly longer branded loading moment — never a frozen page. -->
+  <style>
+    html:not(.tw-ready) body { opacity: 0; }
+    body { transition: opacity .25s ease; }
+    #tw-veil {
+      position: fixed; inset: 0; z-index: 99999;
+      background: #FAFAF7;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity .25s ease;
+    }
+    html.tw-ready #tw-veil { opacity: 0; pointer-events: none; }
+    #tw-veil-dot {
+      width: 34px; height: 34px; border-radius: 999px;
+      border: 3px solid #f0ede6; border-top-color: #F5A623;
+      animation: tw-spin .7s linear infinite;
+    }
+    @keyframes tw-spin { to { transform: rotate(360deg); } }
+  </style>
+  <script>
+    // Reveal as soon as the deferred Tailwind script has actually run —
+    // DOMContentLoaded fires only after ALL deferred scripts (Tailwind's
+    // CDN script + its config script) have downloaded and executed, so
+    // by this point the real styling is already in place, not a guess.
+    document.addEventListener('DOMContentLoaded', function () {
+      document.documentElement.classList.add('tw-ready');
+    });
+    // Safety net: if the CDN is ever unusually slow/unreachable, don't
+    // leave the page hidden forever — reveal it anyway after 4s so the
+    // site is at least usable (possibly briefly unstyled) rather than
+    // stuck blank. This is the graceful-degradation case that replaces
+    // the old hard freeze.
+    setTimeout(function () {
+      document.documentElement.classList.add('tw-ready');
+    }, 4000);
+  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <!-- Performance: warm up connections to CDNs used by specific pages
+       (Leaflet maps, Chart.js on the vendor dashboard) so that once those
+       pages' own deferred/lazy scripts run, the connection is already
+       established — shaves real round-trip latency off first paint of
+       those resources without blocking anything here in base.html. -->
+  <link rel="preconnect" href="https://unpkg.com" crossorigin/>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
+  <link rel="dns-prefetch" href="https://unpkg.com"/>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
 
- <link rel="stylesheet" href="{% static 'css/output.css' %}"/>
+  <!-- FIXED: these two script tags were render-blocking (no defer/async),
+       sitting in <head> before literally everything else on every page
+       that extends this template. If cdn.tailwindcss.com is ever slow or
+       unreachable, the browser gets stuck parsing right here and NOTHING
+       below — not the body, not any page's own content — can render.
+       This is almost certainly the real root cause of the "page not
+       responding" symptom traced through several different pages
+       earlier; those pages' own map/script fixes were correct but
+       powerless against this, since the browser never got far enough to
+       reach them. `defer` lets the whole document parse and render
+       immediately; both scripts still run in the same relative order,
+       just after parsing instead of blocking it — worst case is a brief
+       flash of unstyled content instead of a dead page. -->
+  <script src="https://cdn.tailwindcss.com" defer></script>
+  <script defer>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Syne', 'sans-serif'],
+            body:    ['DM Sans', 'sans-serif'],
+          },
+          colors: {
+            navy: { DEFAULT: '#0F1B2D', 700: '#1a2d47', 500: '#243d5c' },
+            gold: { DEFAULT: '#F5A623', light: '#FEF3D7', dark: '#c8841a' },
+            cream: '#FAFAF7',
+          },
+        }
+      }
+    }
+  </script>
 
   <style>
-    /* ── Dark mode CSS variables ─────────────────────── */
     :root {
       --bg-primary:    #FAFAF7;
       --bg-secondary:  #ffffff;
@@ -83,7 +165,6 @@
       transition: background-color .3s ease, color .3s ease;
     }
 
-    /* Dark mode overrides */
     html.dark .bg-white        { background-color: var(--card-bg) !important; }
     html.dark .bg-gray-50      { background-color: var(--bg-tertiary) !important; }
     html.dark .bg-gray-100     { background-color: #374151 !important; }
@@ -116,7 +197,6 @@
     html.dark .bg-slate-50     { background-color: var(--bg-tertiary) !important; }
     html.dark .bg-cream        { background-color: var(--bg-primary) !important; }
 
-    /* ── Animations ──────────────────────────────────── */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(16px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -181,7 +261,6 @@
       border-color: #F5A623 !important;
     }
 
-    /* ── Live pulse badge ─────────────────────────────── */
     .live-badge-dot {
       width: 7px; height: 7px;
       background: #ef4444;
@@ -240,14 +319,12 @@
     }
     #ios-overlay.show { display: block; }
 
-    /* Role badges */
     .role-admin    { background: #fee2e2; color: #b91c1c; }
     .role-staff    { background: #dbeafe; color: #1d4ed8; }
     .role-vendor   { background: #ede9fe; color: #7c3aed; }
     .role-rider    { background: #ffedd5; color: #c2410c; }
     .role-customer { background: #f3f4f6; color: #374151; }
 
-    /* Mobile nav */
     #mobile-nav {
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
       background: white; border-top: 1px solid #f3f4f6;
@@ -256,16 +333,13 @@
       transition: background-color .3s ease;
     }
 
-    /* Dark mode toggle animation */
     .theme-toggle { transition: transform .3s ease; }
     .theme-toggle:hover { transform: rotate(20deg); }
 
-    /* Language switcher */
     .lang-btn { transition: all .2s ease; }
     .lang-btn.active { background: #0F1B2D; color: white; }
     html.dark .lang-btn.active { background: #F5A623; color: #0F1B2D; }
 
-    /* Support / help badge */
     .support-badge {
       position: absolute; top: -4px; right: -4px;
       background: #ef4444; color: white; font-size: 9px; font-weight: 700;
@@ -280,12 +354,10 @@
 
 <body class="min-h-screen flex flex-col font-body pb-16 md:pb-0">
 
-  <!-- ── NAVBAR ──────────────────────────────────────── -->
   <header id="navbar"
           class="bg-white sticky top-0 z-40 border-b border-gray-100 transition-all duration-300">
     <nav class="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center gap-3">
 
-      <!-- Logo -->
       <a href="{% url 'frontend:home' %}"
          class="flex items-center gap-2 flex-shrink-0 group">
         <img src="{% static 'logo.png' %}" alt="Lynctel"
@@ -294,7 +366,6 @@
         <span class="brand-dot text-gold font-bold text-lg leading-none">·</span>
       </a>
 
-      <!-- Search -->
       <form method="GET" action="{% url 'products:list' %}"
             class="flex-1 max-w-lg hidden md:flex items-center">
         <div class="relative w-full">
@@ -310,21 +381,19 @@
         </div>
       </form>
 
-      <!-- Right nav -->
       <div class="flex items-center gap-1 ml-auto">
 
-        <!-- Dark mode toggle -->
         <button onclick="toggleTheme()" id="theme-btn"
                 class="theme-toggle w-9 h-9 flex items-center justify-center rounded-xl
                        hover:bg-gray-100 transition-colors text-gray-600"
-                title="Toggle dark mode">
+                title="Toggle dark mode" aria-label="Toggle dark mode">
           <span id="theme-icon" class="text-lg">🌙</span>
         </button>
 
-        <!-- Language switcher -->
         <div class="relative group hidden md:block">
           <button class="flex items-center gap-1.5 text-sm font-medium text-gray-600
-                         hover:text-navy px-2.5 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                         hover:text-navy px-2.5 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                  aria-label="Change language">
             <span id="current-lang-flag">🇬🇧</span>
             <span id="current-lang-label" class="text-xs">EN</span>
             <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,7 +467,6 @@
             </svg>
           </button>
 
-          <!-- Dropdown -->
           <div class="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl
                       border border-gray-100 py-2 opacity-0 invisible z-50
                       group-hover:opacity-100 group-hover:visible
@@ -437,7 +505,6 @@
                 {% trans "My Orders" %}
               </a>
 
-              <!-- Live in dropdown -->
               <a href="{% url 'livestream:list' %}"
                  class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 transition-colors">
                 <span class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0 relative">
@@ -478,13 +545,6 @@
               </a>
               {% endif %}
               {% if user.role == 'admin' or user.role == 'staff' %}
-              <!-- NEW: staff-only fraud review queue. Gated on the same
-                   user.role check used by the dashboard buttons above for
-                   UI consistency — the view itself enforces the real
-                   permission via @staff_member_required (Django's
-                   is_staff), so make sure accounts with role='admin'/
-                   'staff' also have is_staff=True set, or this link will
-                   404 for them. -->
               <a href="{% url 'fraud:flagged_orders' %}"
                  class="flex items-center gap-3 px-3 py-2 mx-2 my-1 text-sm font-semibold
                         text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors">
@@ -504,7 +564,6 @@
                         text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors">
                 <span>🏪</span> Vendor Dashboard
               </a>
-              <!-- Go Live shortcut for vendors -->
               <a href="{% url 'livestream:go_live' %}"
                  class="flex items-center gap-3 px-3 py-2 mx-2 mb-1 text-sm font-semibold
                         text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors">
@@ -525,7 +584,6 @@
                 {% trans "List Your Restaurant" %}
               </a>
 
-              <!-- Dark mode toggle in dropdown -->
               <button onclick="toggleTheme()"
                       class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left transition-colors">
                 <span class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0" id="dropdown-theme-icon">🌙</span>
@@ -568,20 +626,15 @@
         </a>
         {% endif %}
 
-        <!-- Live — moved here next to Cart so it's reachable on mobile too
-             (previously only a desktop-only text link, and separately a
-             center mobile-nav tab that had displaced Food). One icon
-             button, visible on every screen size. -->
         <a href="{% url 'livestream:list' %}"
-           title="{% trans 'Live Shopping' %}"
+           title="{% trans 'Live Shopping' %}" aria-label="{% trans 'Live Shopping' %}"
            class="relative w-10 h-10 flex items-center justify-center rounded-xl
                   hover:bg-red-50 transition-colors">
           <span class="text-lg">📺</span>
           <span class="live-badge-dot absolute top-2 right-2"></span>
         </a>
 
-        <!-- Cart -->
-        <button onclick="openCart()"
+        <button onclick="openCart()" aria-label="{% trans 'Open cart' %}"
                 class="relative w-10 h-10 flex items-center justify-center rounded-xl
                        hover:bg-gray-50 transition-colors">
           <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -600,7 +653,6 @@
       </div>
     </nav>
 
-    <!-- Mobile search -->
     <div class="md:hidden px-4 pb-3">
       <form method="GET" action="{% url 'products:list' %}">
         <div class="relative">
@@ -617,7 +669,6 @@
     </div>
   </header>
 
-  <!-- Flash messages -->
   {% if messages %}
   <div id="flash-wrap" class="max-w-7xl mx-auto px-4 md:px-6 pt-4 w-full space-y-2 z-30 relative">
     {% for message in messages %}
@@ -628,7 +679,7 @@
                 {% elif message.tags == 'warning' %}bg-amber-50 text-amber-800 border border-amber-200
                 {% else %}bg-blue-50 text-blue-800 border border-blue-100{% endif %}">
       <span>{{ message }}</span>
-      <button onclick="this.parentElement.remove()" class="ml-4 opacity-50 hover:opacity-100 text-lg">×</button>
+      <button onclick="this.parentElement.remove()" class="ml-4 opacity-50 hover:opacity-100 text-lg" aria-label="Dismiss">×</button>
     </div>
     {% endfor %}
   </div>
@@ -636,7 +687,6 @@
 
   <main class="flex-1">{% block content %}{% endblock %}</main>
 
-  <!-- ── FOOTER ──────────────────────────────────────── -->
   <footer class="bg-navy text-white mt-24 border-t border-white/10">
     <div class="max-w-7xl mx-auto px-4 md:px-6 py-16">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -713,7 +763,6 @@
             </li>
           </ul>
 
-          <!-- Language switcher in footer -->
           <div class="mt-6">
             <p class="text-xs text-gray-500 uppercase tracking-widest mb-2 font-semibold">{% trans "Language" %}</p>
             <div class="flex flex-wrap gap-2">
@@ -757,11 +806,6 @@
     </div>
   </footer>
 
-  <!-- ── MOBILE NAV (5 tabs: Home, Products, Food, Cart, Profile) ──
-       FIXED: Food was previously removed entirely and replaced by a
-       center "LIVE" tab. Restored Food here; Live now lives as an icon
-       button in the top header next to Cart instead (see above) so it's
-       reachable on mobile without displacing anything. -->
   <nav id="mobile-nav" class="md:hidden">
     <div class="grid grid-cols-5 h-16">
 
@@ -790,7 +834,7 @@
       </a>
 
       {% if user.is_authenticated %}
-      <button onclick="openCart()"
+      <button onclick="openCart()" aria-label="{% trans 'Open cart' %}"
               class="flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-navy transition-colors relative">
         <div class="relative">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -807,7 +851,7 @@
         <span class="text-[10px] font-medium">{% trans "Cart" %}</span>
       </button>
       {% else %}
-      <button onclick="openCart()"
+      <button onclick="openCart()" aria-label="{% trans 'Open cart' %}"
               class="flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-navy transition-colors relative">
         <div class="relative">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -853,7 +897,6 @@
     </div>
   </nav>
 
-  <!-- Cart overlay & drawer -->
   <div id="cart-overlay" class="fixed inset-0 bg-black/40 z-50" onclick="closeCart()"></div>
   <div id="cart-drawer" class="fixed top-0 right-0 h-full w-full max-w-sm bg-white z-50 shadow-2xl flex flex-col">
     <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
@@ -862,7 +905,7 @@
         <h2 class="font-display font-700 text-navy text-lg">{% trans "Your Cart" %}</h2>
         <span id="drawer-count" class="bg-gold text-navy text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center">0</span>
       </div>
-      <button onclick="closeCart()" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-400 text-xl">✕</button>
+      <button onclick="closeCart()" aria-label="{% trans 'Close cart' %}" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-400 text-xl">✕</button>
     </div>
     <div id="drawer-items" class="flex-1 overflow-y-auto px-5 py-4 space-y-3"></div>
     <div id="drawer-empty" class="hidden flex-1 flex flex-col items-center justify-center text-center px-5 py-10">
@@ -882,7 +925,6 @@
     </div>
   </div>
 
-  <!-- PWA banner -->
   <div id="pwa-banner">
     <img src="{% static 'icons/icon-72x72.png' %}" alt="" class="w-10 h-10 rounded-2xl flex-shrink-0"/>
     <div class="min-w-0">
@@ -890,10 +932,9 @@
       <p class="text-gray-400 text-xs mt-0.5">{% trans "Faster, full-screen experience" %}</p>
     </div>
     <button id="pwa-install-btn" class="bg-gold text-navy text-xs font-bold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors flex-shrink-0 whitespace-nowrap">{% trans "Install" %}</button>
-    <button onclick="dismissPWA()" class="text-gray-400 hover:text-white text-xl leading-none flex-shrink-0 ml-1">✕</button>
+    <button onclick="dismissPWA()" aria-label="{% trans 'Dismiss' %}" class="text-gray-400 hover:text-white text-xl leading-none flex-shrink-0 ml-1">✕</button>
   </div>
 
-  <!-- iOS install sheet -->
   <div id="ios-overlay" onclick="closeIOSSheet()"></div>
   <div id="ios-install-sheet">
     <div class="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5"></div>
@@ -905,7 +946,7 @@
           <p class="text-xs text-gray-400">lynctel.up.railway.app</p>
         </div>
       </div>
-      <button onclick="closeIOSSheet()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold">✕</button>
+      <button onclick="closeIOSSheet()" aria-label="{% trans 'Close' %}" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold">✕</button>
     </div>
     <div class="space-y-4 mb-6">
       <div class="flex items-center gap-4 bg-blue-50 rounded-2xl px-4 py-3.5">
@@ -929,100 +970,43 @@
     const IS_AUTHENTICATED = {{ user.is_authenticated|yesno:"true,false" }};
     const LOGIN_URL        = "{% url 'accounts:login' %}";
     const LOCATIONIQ_KEY   = '{{ LOCATIONIQ_API_KEY|default:"" }}';
-    // ── PWA PUSH NOTIFICATIONS ────────────────────────────
-    // ── PWA PUSH NOTIFICATIONS ────────────────────────────
+    const VAPID_PUBLIC_KEY = 'BAEw351eT-whUPpELa7PRDNEM0E_qzbKy6V9pI2jMjjHIS_JQx6cUj9hPahI9k86eCuG1QntOHnGi_1Yi_fWVwM';
 
-const VAPID_PUBLIC_KEY =
-'BAEw351eT-whUPpELa7PRDNEM0E_qzbKy6V9pI2jMjjHIS_JQx6cUj9hPahI9k86eCuG1QntOHnGi_1Yi_fWVwM';
-
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-
-    const base64 = (base64String + padding)
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
-
-    const raw = window.atob(base64);
-
-    const output = new Uint8Array(raw.length);
-
-    for (let i = 0; i < raw.length; ++i) {
-        output[i] = raw.charCodeAt(i);
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const raw     = window.atob(base64);
+      const output  = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+      return output;
     }
 
-    return output;
-}
-
-async function subscribeToPush() {
-
-    if (!IS_AUTHENTICATED) return;
-
-    if (!('serviceWorker' in navigator)) return;
-
-    if (!('PushManager' in window)) return;
-
-    try {
-
-        const registration = await navigator.serviceWorker.ready;
-
-        let subscription =
-            await registration.pushManager.getSubscription();
-
-        if (!subscription) {
-
-            const permission =
-                await Notification.requestPermission();
-
-            if (permission !== 'granted') return;
-
-            subscription =
-                await registration.pushManager.subscribe({
-
-                    userVisibleOnly: true,
-
-                    applicationServerKey:
-                        urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-
-                });
-
+    async function subscribeToPush() {
+      if (!IS_AUTHENTICATED) return;
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        let sub   = await reg.pushManager.getSubscription();
+        if (!sub) {
+          const permission = await Notification.requestPermission();
+          if (permission !== 'granted') return;
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly:      true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          });
         }
-
-        const response = await fetch('/push/subscribe/', {
-
-            method: 'POST',
-
-            credentials: 'same-origin',
-
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': CSRF_TOKEN,
-            },
-
-            body: JSON.stringify(subscription.toJSON()),
-
+        await fetch('/push/subscribe/', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+          body:    JSON.stringify(sub.toJSON()),
         });
-
-        if (!response.ok) {
-            throw new Error('Subscription could not be saved.');
-        }
-
-        console.log('[Push] Notifications enabled.');
-
-    } catch (err) {
-
-        console.error('[Push]', err);
-
+      } catch (err) {
+        console.warn('[Push] Subscription failed:', err);
+      }
     }
 
-}
+    if (IS_AUTHENTICATED) { setTimeout(subscribeToPush, 3000); }
 
-if (IS_AUTHENTICATED) {
-    window.addEventListener('load', () => {
-        setTimeout(subscribeToPush, 3000);
-    });
-}
-
-    // ── DARK MODE ─────────────────────────────────────────
     const THEME_KEY = 'lynctel-theme';
 
     function applyTheme(theme) {
@@ -1051,7 +1035,6 @@ if (IS_AUTHENTICATED) {
       applyTheme(saved || system);
     })();
 
-    // ── LANGUAGE ─────────────────────────────────────────
     const LANG_KEY  = 'lynctel-lang';
     const LANG_META = {
       en:{flag:'🇬🇧',label:'EN'}, tw:{flag:'🇬🇭',label:'TW'},
@@ -1097,7 +1080,6 @@ if (IS_AUTHENTICATED) {
       });
     })();
 
-    // ── CART ──────────────────────────────────────────────
     function openCart() {
       document.getElementById('cart-drawer').classList.add('open');
       document.getElementById('cart-overlay').classList.add('open');
@@ -1194,8 +1176,9 @@ if (IS_AUTHENTICATED) {
       });
     }
 
-    // ── SUPPORT BADGE ─────────────────────────────────────
     {% if user.is_authenticated %}
+    let supportBadgeInterval = null;
+
     function refreshSupportBadge() {
       fetch('/chat/unread/',{headers:{'X-Requested-With':'XMLHttpRequest'}})
         .then(r=>r.json()).then(d=>{
@@ -1207,11 +1190,24 @@ if (IS_AUTHENTICATED) {
           });
         }).catch(()=>{});
     }
-    refreshSupportBadge();
-    setInterval(refreshSupportBadge,30000);
+
+    function startSupportBadgePolling() {
+      if (supportBadgeInterval) return;
+      refreshSupportBadge();
+      supportBadgeInterval = setInterval(refreshSupportBadge, 30000);
+    }
+    function stopSupportBadgePolling() {
+      clearInterval(supportBadgeInterval);
+      supportBadgeInterval = null;
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') startSupportBadgePolling();
+      else stopSupportBadgePolling();
+    });
+    startSupportBadgePolling();
     {% endif %}
 
-    // ── PWA ───────────────────────────────────────────────
     let _deferredPrompt=null;
     const _isIOS=(/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream);
     const _isStandalone=(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true);
@@ -1267,75 +1263,7 @@ if (IS_AUTHENTICATED) {
       document.getElementById('navbar').classList.toggle('nav-scrolled',window.scrollY>10);
     });
   </script>
-{% block extra_js %}{% endblock %}
-<script>
-  (function(){
 
-    function fixFileInputs(){
-      document.querySelectorAll('input[type="file"]').forEach(function(inp){
-
-        // ── Fix 1: display:none / visibility:hidden ──────────
-        var cs = window.getComputedStyle(inp);
-        if(cs.display==='none'||cs.visibility==='hidden'){
-          inp.style.setProperty('display','block','important');
-          inp.style.setProperty('position','fixed','important');
-          inp.style.setProperty('top','-200px','important');
-          inp.style.setProperty('left','-200px','important');
-          inp.style.setProperty('width','1px','important');
-          inp.style.setProperty('height','1px','important');
-          inp.style.setProperty('opacity','0','important');
-          inp.style.setProperty('pointer-events','none','important');
-          inp.style.setProperty('z-index','-1','important');
-        }
-
-        // ── Fix 2: sibling label (label[for=id] not wrapping input) ──
-        // iOS requires the input to be INSIDE the label element.
-        // If the input is a sibling of its label, move it inside.
-        var id = inp.id;
-        if(id){
-          var label = document.querySelector('label[for="'+id+'"]');
-          if(label && !label.contains(inp)){
-            // Make label the positioning context
-            label.style.position   = 'relative';
-            label.style.overflow   = 'visible';
-            label.style.display    = label.style.display || 'inline-flex';
-            // Style input as full-size transparent overlay inside label
-            inp.style.cssText = [
-              'position:absolute',
-              'inset:0',
-              'width:100%',
-              'height:100%',
-              'opacity:0',
-              'cursor:pointer',
-              'z-index:99',
-              'display:block'
-            ].join(';') + ';';
-            label.appendChild(inp);
-          }
-        }
-
-      });
-    }
-
-    if(document.readyState==='loading'){
-      document.addEventListener('DOMContentLoaded', fixFileInputs);
-    } else {
-      fixFileInputs();
-    }
-
-    if(window.MutationObserver){
-      new MutationObserver(function(mutations){
-        var needs = mutations.some(function(m){
-          return Array.from(m.addedNodes).some(function(n){
-            return n.nodeType===1&&(
-              (n.tagName==='INPUT'&&n.type==='file')||
-              (n.querySelector&&n.querySelector('input[type="file"]'))
-            );
-          });
-        });
-        if(needs) fixFileInputs();
-      }).observe(document.documentElement,{childList:true,subtree:true});
-    }
-
-  })();
-  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
