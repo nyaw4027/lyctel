@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 {% load static i18n %}
 <html lang="{{ LANGUAGE_CODE|default:'en' }}" data-theme="light">
 <head>
@@ -91,6 +91,8 @@
   <link rel="dns-prefetch" href="https://unpkg.com"/>
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/css/output.css">
+  <link rel="stylesheet" href="/static/css/uploads.css">
 
   <!-- FIXED: these two script tags were render-blocking (no defer/async),
        sitting in <head> before literally everything else on every page
@@ -105,25 +107,9 @@
        immediately; both scripts still run in the same relative order,
        just after parsing instead of blocking it — worst case is a brief
        flash of unstyled content instead of a dead page. -->
-  <script src="https://cdn.tailwindcss.com" defer></script>
-  <script defer>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            display: ['Syne', 'sans-serif'],
-            body:    ['DM Sans', 'sans-serif'],
-          },
-          colors: {
-            navy: { DEFAULT: '#0F1B2D', 700: '#1a2d47', 500: '#243d5c' },
-            gold: { DEFAULT: '#F5A623', light: '#FEF3D7', dark: '#c8841a' },
-            cream: '#FAFAF7',
-          },
-        }
-      }
-    }
-  </script>
+<link href="https://fonts.googleapis.com/...&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/css/output.css">
+<link rel="stylesheet" href="/static/css/uploads.css">
 
   <style>
     :root {
