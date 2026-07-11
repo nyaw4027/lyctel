@@ -23,7 +23,7 @@
   <meta name="twitter:image"       content="{% static 'icons/icon-512x512.png' %}"/>
 
   <link rel="manifest" href="/manifest.json"/>
-  <meta name="theme-color" content="#0F1B2D"/>
+  <meta name="theme-color" content="#1B2E4D"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable"          content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -116,9 +116,51 @@
             body:    ['DM Sans', 'sans-serif'],
           },
           colors: {
-            navy: { DEFAULT: '#0F1B2D', 700: '#1a2d47', 500: '#243d5c' },
+            /* ── NAVY ──────────────────────────────────────────
+               FIXED: the old DEFAULT (#0F1B2D) sits at ~12% lightness —
+               below roughly 15%, a dark blue and pure black become
+               nearly indistinguishable on most phone screens, especially
+               budget Android displays with weak black levels. That's why
+               "navy" was reading as flat black on the footer/hero
+               sections. Brightened DEFAULT to ~19% lightness with a
+               touch more blue saturation — still reads as a premium dark
+               tone, still passes WCAG AA easily as both text-on-white
+               (~9:1) and background-with-white-text (~9:1), but is now
+               unmistakably blue rather than black.
+               Usage guide:
+                 navy / navy-500 — primary surfaces: footer, hero sections,
+                                    primary buttons, text-navy on light bg
+                 navy-700        — hover/active state for navy buttons
+                                    (bg-navy hover:bg-navy-700 — darker
+                                    than DEFAULT so hover is actually
+                                    visible; this used to be the OLD
+                                    DEFAULT value, repurposed here)
+                 navy-900        — reserved for shadows/depth accents only,
+                                    NEVER a large flat surface (too close
+                                    to true black — the original bug) */
+            navy: {
+              DEFAULT: '#1B2E4D',
+              900: '#0B1424',   /* depth/shadow accents only — not a surface color */
+              800: '#0F1B2D',   /* the old DEFAULT — kept as a darker accent shade */
+              700: '#152540',   /* hover/active state — darker than DEFAULT */
+              600: '#24406B',
+              500: '#1B2E4D',   /* = DEFAULT, kept explicit for bg-navy-500 etc. */
+              400: '#5678A8',   /* borders/dividers on dark backgrounds */
+            },
+            /* ── GOLD ──────────────────────────────────────────
+               Usage guide:
+                 gold        — icons, buttons, large accents, badges
+                 gold-dark   — small TEXT specifically (e.g. "Sell Here"
+                                pill, links). The bright DEFAULT gold is
+                                fine at icon/button size but can look
+                                washed out or vibrate uncomfortably as
+                                small text — gold-dark keeps the same
+                                warm hue with better legibility at
+                                text sizes.
+                 gold-light  — backgrounds behind gold-dark text (pills,
+                                highlight cards) */
             gold: { DEFAULT: '#F5A623', light: '#FEF3D7', dark: '#c8841a' },
-            cream: '#1d1d0b',
+            cream: '#FAFAF7',
           },
         }
       }
@@ -130,14 +172,14 @@
       --bg-primary:    #FAFAF7;
       --bg-secondary:  #ffffff;
       --bg-tertiary:   #f3f4f6;
-      --text-primary:  #0F1B2D;
+      --text-primary:  #1B2E4D;
       --text-secondary:#6b7280;
       --text-muted:    #9ca3af;
       --border-color:  #e5e7eb;
       --navbar-bg:     #ffffff;
       --card-bg:       #ffffff;
       --input-bg:      #f9fafb;
-      --footer-bg:     #0F1B2D;
+      --footer-bg:     #1B2E4D;
       --shadow-color:  rgba(15,27,45,.10);
     }
 
@@ -223,7 +265,7 @@
     }
 
     @keyframes brandGlow {
-      0%, 100% { color: #0F1B2D; text-shadow: none; }
+      0%, 100% { color: #1B2E4D; text-shadow: none; }
       50%       { color: #c8841a; text-shadow: 0 0 12px rgba(245,166,35,.35); }
     }
     html.dark .brand-name { animation: none; color: #f9fafb; }
@@ -232,7 +274,7 @@
       font-weight: 800;
       font-size: 1.2rem;
       letter-spacing: -0.02em;
-      color: #0F1B2D;
+      color: #1B2E4D;
       animation: brandGlow 3.5s ease-in-out infinite;
       display: inline-block;
     }
@@ -278,7 +320,7 @@
       position: fixed;
       bottom: 80px; left: 16px; right: 16px;
       z-index: 9999;
-      background: #0F1B2D;
+      background: #1B2E4D;
       color: white;
       padding: 14px 16px;
       border-radius: 20px;
@@ -337,8 +379,8 @@
     .theme-toggle:hover { transform: rotate(20deg); }
 
     .lang-btn { transition: all .2s ease; }
-    .lang-btn.active { background: #0F1B2D; color: white; }
-    html.dark .lang-btn.active { background: #F5A623; color: #0F1B2D; }
+    .lang-btn.active { background: #1B2E4D; color: white; }
+    html.dark .lang-btn.active { background: #F5A623; color: #1B2E4D; }
 
     .support-badge {
       position: absolute; top: -4px; right: -4px;
@@ -374,7 +416,7 @@
     .map-fab {
       position: absolute; z-index: 400;
       background: white; border: none; border-radius: 10px;
-      padding: 7px 11px; font-size: 12px; font-weight: 600; color: #0F1B2D;
+      padding: 7px 11px; font-size: 12px; font-weight: 600; color: #1B2E4D;
       cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.15);
       display: flex; align-items: center; gap: 5px; transition: all .2s;
     }
@@ -388,7 +430,7 @@
     .map-error-banner.show { display: flex; }
     .map-error-banner p { font-size: 12.5px; color: #45403a; max-width: 240px; margin: 0 0 10px; }
     .map-error-banner button {
-      font-size: 12px; font-weight: 700; color: white; background: #0F1B2D;
+      font-size: 12px; font-weight: 700; color: white; background: #1B2E4D;
       border: none; border-radius: 10px; padding: 7px 16px; cursor: pointer;
     }
 
@@ -403,7 +445,7 @@
     .f-inp {
       width: 100%; padding: 11px 14px;
       border: 1.5px solid #e5e7eb; border-radius: 12px;
-      font-size: 14px; color: #0F1B2D; background: white;
+      font-size: 14px; color: #1B2E4D; background: white;
       outline: none; transition: border-color .15s, box-shadow .15s;
       font-family: 'DM Sans', sans-serif; box-sizing: border-box;
     }
@@ -426,7 +468,7 @@
       display: flex; align-items: center; gap: 12px;
     }
     .panel-num {
-      width: 32px; height: 32px; background: #0F1B2D; border-radius: 10px;
+      width: 32px; height: 32px; background: #1B2E4D; border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
       color: white; font-size: 13px; font-weight: 700; flex-shrink: 0;
     }
@@ -442,7 +484,7 @@
       font-size: 12px; font-weight: 700; transition: all .3s;
       background: #f3f4f6; color: #9ca3af;
     }
-    .step-dot.active { background: #0F1B2D; color: white; }
+    .step-dot.active { background: #1B2E4D; color: white; }
     .step-dot.done   { background: #22c55e; color: white; }
     .step-line { flex: 1; height: 2px; background: #f3f4f6; transition: background .3s; }
     .step-line.done { background: #22c55e; }
@@ -481,13 +523,13 @@
        Real-time "here's how customers will see this" card used by
        food/register.html; reusable for any onboarding flow. */
     .preview-card {
-      background: linear-gradient(160deg, #0F1B2D 0%, #1a2d47 100%);
+      background: linear-gradient(160deg, #1B2E4D 0%, #1a2d47 100%);
       border-radius: 20px; overflow: hidden; color: white;
       box-shadow: 0 8px 32px rgba(15,27,45,.22);
     }
     .preview-card .prev-logo-box {
       width: 50px; height: 50px; border-radius: 12px;
-      background: #F5A623; border: 3px solid #0F1B2D;
+      background: #F5A623; border: 3px solid #1B2E4D;
       display: flex; align-items: center; justify-content: center;
       font-size: 20px; flex-shrink: 0; object-fit: cover;
     }
@@ -860,8 +902,15 @@
 
   <main class="flex-1">{% block content %}{% endblock %}</main>
 
-  <footer class="bg-navy text-white mt-24 border-t border-white/10">
-    <div class="max-w-7xl mx-auto px-4 md:px-6 py-16">
+  <footer class="bg-navy text-white mt-24 border-t border-white/10 relative overflow-hidden">
+    <!-- Subtle top glow: reinforces "this is navy, not black" with a
+         soft gold-tinted gradient line, and gives the footer a bit of
+         designed depth instead of a flat color block. -->
+    <div class="absolute top-0 left-0 right-0 h-px"
+         style="background:linear-gradient(90deg,transparent,rgba(245,166,35,.35),transparent)"></div>
+    <div class="absolute inset-0 opacity-[0.03] pointer-events-none"
+         style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);background-size:32px 32px"></div>
+    <div class="max-w-7xl mx-auto px-4 md:px-6 py-16 relative">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
 
         <div class="lg:col-span-4">
