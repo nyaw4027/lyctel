@@ -1,24 +1,24 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 {% load static i18n %}
 <html lang="{{ LANGUAGE_CODE|default:'en' }}" data-theme="light">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>{% block title %}Lynctel — Quality Products Delivered{% endblock %}</title>
+  <title>{% block title %}Lynctel � Quality Products Delivered{% endblock %}</title>
 
-  <meta name="description" content="Lynctel — Quality products delivered fast across Ghana. Shop electronics, gadgets, food and more."/>
+  <meta name="description" content="Lynctel � Quality products delivered fast across Ghana. Shop electronics, gadgets, food and more."/>
   <meta name="keywords" content="Lynctel, Ghana, online shopping, food delivery, electronics, fast delivery, MoMo payment"/>
   <meta name="author" content="Lynctel"/>
   <meta name="robots" content="index, follow"/>
 
   <meta property="og:type"        content="website"/>
   <meta property="og:url"         content="https://lynctel.up.railway.app/"/>
-  <meta property="og:title"       content="Lynctel — Quality Products Delivered"/>
+  <meta property="og:title"       content="Lynctel � Quality Products Delivered"/>
   <meta property="og:description" content="Shop electronics, gadgets, food and more. Fast delivery across Ghana."/>
   <meta property="og:image"       content="{% static 'icons/icon-512x512.png' %}"/>
   <meta property="og:locale"      content="en_GH"/>
   <meta name="twitter:card"        content="summary_large_image"/>
-  <meta name="twitter:title"       content="Lynctel — Quality Products Delivered"/>
+  <meta name="twitter:title"       content="Lynctel � Quality Products Delivered"/>
   <meta name="twitter:description" content="Shop electronics, gadgets, food and more."/>
   <meta name="twitter:image"       content="{% static 'icons/icon-512x512.png' %}"/>
 
@@ -35,15 +35,15 @@
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-96x96.png' %}"/>
   <link rel="shortcut icon" href="{% static 'icons/icon-96x96.png' %}"/>
 
-  <!-- ── ANTI-FLASH VEIL ─────────────────────────────────────
+  <!-- -- ANTI-FLASH VEIL -------------------------------------
        Deferring the Tailwind script (fix above) means the browser now
        paints raw, unstyled HTML for a brief moment before Tailwind's
-       styles apply — a visible "flash of unstyled content" that wasn't
+       styles apply � a visible "flash of unstyled content" that wasn't
        there when the script was blocking. This veil restores the old
        "always looks fully styled" appearance without bringing back the
        actual freeze: everything here is inline (nothing to wait on a
        slow network for) and there's a hard timeout, so worst case is a
-       slightly longer branded loading moment — never a frozen page. -->
+       slightly longer branded loading moment � never a frozen page. -->
   <style>
     html:not(.tw-ready) body { opacity: 0; }
     body { transition: opacity .25s ease; }
@@ -62,7 +62,7 @@
     @keyframes tw-spin { to { transform: rotate(360deg); } }
   </style>
   <script>
-    // Reveal as soon as the deferred Tailwind script has actually run —
+    // Reveal as soon as the deferred Tailwind script has actually run �
     // DOMContentLoaded fires only after ALL deferred scripts (Tailwind's
     // CDN script + its config script) have downloaded and executed, so
     // by this point the real styling is already in place, not a guess.
@@ -70,7 +70,7 @@
       document.documentElement.classList.add('tw-ready');
     });
     // Safety net: if the CDN is ever unusually slow/unreachable, don't
-    // leave the page hidden forever — reveal it anyway after 4s so the
+    // leave the page hidden forever � reveal it anyway after 4s so the
     // site is at least usable (possibly briefly unstyled) rather than
     // stuck blank. This is the graceful-degradation case that replaces
     // the old hard freeze.
@@ -84,22 +84,25 @@
   <!-- Performance: warm up connections to CDNs used by specific pages
        (Leaflet maps, Chart.js on the vendor dashboard) so that once those
        pages' own deferred/lazy scripts run, the connection is already
-       established — shaves real round-trip latency off first paint of
+       established � shaves real round-trip latency off first paint of
        those resources without blocking anything here in base.html. -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin/>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
   <link rel="dns-prefetch" href="https://unpkg.com"/>
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{% static 'css/output.css' %}"/>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}"/>
+  <link rel="stylesheet" href="{% static 'css/uploads.css' %}"/>
 
   <!-- FIXED: the Tailwind CDN script tag was render-blocking (no
        defer/async), sitting in <head> before literally everything else
        on every page that extends this template. If cdn.tailwindcss.com
        is ever slow or unreachable, the browser gets stuck parsing right
-       here and NOTHING below — not the body, not any page's own content
-       — can render. `defer` on the CDN script lets the whole document
+       here and NOTHING below � not the body, not any page's own content
+       � can render. `defer` on the CDN script lets the whole document
        parse and render immediately regardless of that network request's
-       fate. The config below is intentionally NOT deferred — it's a
+       fate. The config below is intentionally NOT deferred � it's a
        plain local object assignment with no network dependency, so it
        costs nothing to run immediately, and doing so is what guarantees
        it exists before the deferred CDN script initializes (see the
@@ -107,7 +110,7 @@
   <!-- FIXED: custom Tailwind colors (navy/gold/cream) were silently
        failing to generate as CSS classes, causing bg-navy etc. to have
        no effect (revealing the page's cream background underneath,
-       while text-white — a built-in color, unaffected by our config —
+       while text-white � a built-in color, unaffected by our config �
        kept working, which is exactly why the footer looked "cream with
        unreadable white text"). Root cause: the Tailwind Play CDN needs
        its custom config to exist BEFORE it initializes. Marking both the
@@ -116,7 +119,7 @@
        deferred script had assigned tailwind.config, so the very first
        (and often only) style-generation pass used defaults only.
        Fix: predefine window.tailwind.config in a plain, non-deferred,
-       inline script — no network dependency, executes instantly — so
+       inline script � no network dependency, executes instantly � so
        the config exists before the deferred CDN script ever runs, no
        race possible. The CDN script itself stays `defer`, so the
        original page-freeze bug this was fixed for stays fixed too. -->
@@ -131,48 +134,48 @@
             body:    ['DM Sans', 'sans-serif'],
           },
           colors: {
-            /* ── NAVY ──────────────────────────────────────────
-               FIXED: the old DEFAULT (#0F1B2D) sits at ~12% lightness —
+            /* -- NAVY ------------------------------------------
+               FIXED: the old DEFAULT (#0F1B2D) sits at ~12% lightness �
                below roughly 15%, a dark blue and pure black become
                nearly indistinguishable on most phone screens, especially
                budget Android displays with weak black levels. That's why
                "navy" was reading as flat black on the footer/hero
                sections. Brightened DEFAULT to ~19% lightness with a
-               touch more blue saturation — still reads as a premium dark
+               touch more blue saturation � still reads as a premium dark
                tone, still passes WCAG AA easily as both text-on-white
                (~9:1) and background-with-white-text (~9:1), but is now
                unmistakably blue rather than black.
                Usage guide:
-                 navy / navy-500 — primary surfaces: footer, hero sections,
+                 navy / navy-500 � primary surfaces: footer, hero sections,
                                     primary buttons, text-navy on light bg
-                 navy-700        — hover/active state for navy buttons
-                                    (bg-navy hover:bg-navy-700 — darker
+                 navy-700        � hover/active state for navy buttons
+                                    (bg-navy hover:bg-navy-700 � darker
                                     than DEFAULT so hover is actually
                                     visible; this used to be the OLD
                                     DEFAULT value, repurposed here)
-                 navy-900        — reserved for shadows/depth accents only,
+                 navy-900        � reserved for shadows/depth accents only,
                                     NEVER a large flat surface (too close
-                                    to true black — the original bug) */
+                                    to true black � the original bug) */
             navy: {
               DEFAULT: '#1B2E4D',
-              900: '#0B1424',   /* depth/shadow accents only — not a surface color */
-              800: '#0F1B2D',   /* the old DEFAULT — kept as a darker accent shade */
-              700: '#152540',   /* hover/active state — darker than DEFAULT */
+              900: '#0B1424',   /* depth/shadow accents only � not a surface color */
+              800: '#0F1B2D',   /* the old DEFAULT � kept as a darker accent shade */
+              700: '#152540',   /* hover/active state � darker than DEFAULT */
               600: '#24406B',
               500: '#1B2E4D',   /* = DEFAULT, kept explicit for bg-navy-500 etc. */
               400: '#5678A8',   /* borders/dividers on dark backgrounds */
             },
-            /* ── GOLD ──────────────────────────────────────────
+            /* -- GOLD ------------------------------------------
                Usage guide:
-                 gold        — icons, buttons, large accents, badges
-                 gold-dark   — small TEXT specifically (e.g. "Sell Here"
+                 gold        � icons, buttons, large accents, badges
+                 gold-dark   � small TEXT specifically (e.g. "Sell Here"
                                 pill, links). The bright DEFAULT gold is
                                 fine at icon/button size but can look
                                 washed out or vibrate uncomfortably as
-                                small text — gold-dark keeps the same
+                                small text � gold-dark keeps the same
                                 warm hue with better legibility at
                                 text sizes.
-                 gold-light  — backgrounds behind gold-dark text (pills,
+                 gold-light  � backgrounds behind gold-dark text (pills,
                                 highlight cards) */
             gold: { DEFAULT: '#F5A623', light: '#FEF3D7', dark: '#c8841a' },
             cream: '#FAFAF7',
@@ -406,16 +409,16 @@
     }
     .support-badge.hidden { display: none; }
 
-    /* ═══════════════════════════════════════════════════════
+    /* -------------------------------------------------------
        SHARED COMPONENT LIBRARY
        Consolidated here because these exact patterns were being
        independently copy-pasted (and slowly drifting out of sync)
        across order/checkout, food/checkout, food/register,
        vendors/dashboard, and livestream/*. Any page can use these
        classes directly without redeclaring them locally.
-    ═══════════════════════════════════════════════════════ */
+    ------------------------------------------------------- */
 
-    /* ── Leaflet map fix ──────────────────────────────────────
+    /* -- Leaflet map fix --------------------------------------
        Tailwind's base reset applies `img { max-width:100%; height:auto }`
        globally, which fights Leaflet's tile <img> elements. leaflet.css
        normally beats this with !important, but if it loses the load-order
@@ -427,7 +430,7 @@
     .leaflet-map { background: #e9edf2; border-radius: 14px; }
     .leaflet-map .leaflet-container { border-radius: 12px; }
 
-    /* Reusable map chrome: satellite toggle, error banner, retry —
+    /* Reusable map chrome: satellite toggle, error banner, retry �
        give the map wrapper position:relative and drop these in. */
     .map-fab {
       position: absolute; z-index: 400;
@@ -450,7 +453,7 @@
       border: none; border-radius: 10px; padding: 7px 16px; cursor: pointer;
     }
 
-    /* ── Form field system ────────────────────────────────────
+    /* -- Form field system ------------------------------------
        Standard input/label/error styling used by every registration
        and settings form in the app. */
     .f-label {
@@ -470,7 +473,7 @@
     .f-inp.f-ok  { border-color: #22c55e !important; background: #f0fdf4 !important; }
     .err-msg { color: #ef4444; font-size: 11px; margin-top: 4px; }
 
-    /* ── Panel / card system ──────────────────────────────────
+    /* -- Panel / card system ----------------------------------
        The bordered white card-with-header pattern used by the vendor
        dashboard tabs and every multi-step registration form. */
     .panel-card {
@@ -492,7 +495,7 @@
     .stat-card { transition: transform .2s, box-shadow .2s; }
     .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(15,27,45,.10); }
 
-    /* ── Step progress dots ───────────────────────────────────
+    /* -- Step progress dots -----------------------------------
        Multi-step form indicator (food register, vendor onboarding). */
     .step-dot {
       width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
@@ -505,9 +508,9 @@
     .step-line { flex: 1; height: 2px; background: #f3f4f6; transition: background .3s; }
     .step-line.done { background: #22c55e; }
 
-    /* ── Upload dropzone ──────────────────────────────────────
+    /* -- Upload dropzone --------------------------------------
        Standard mobile-safe file-upload pattern: input lives INSIDE the
-       label at opacity:0 covering the whole zone (not off-screen —
+       label at opacity:0 covering the whole zone (not off-screen �
        off-screen positioning combined with a separate remove button
        inside the same label is what caused the iOS upload bug fixed in
        food/register.html). Keep the remove button outside the label. */
@@ -535,7 +538,7 @@
     .up-rm:hover { background: #dc2626; }
     .up-rm.show { display: flex; }
 
-    /* ── Live preview card ────────────────────────────────────
+    /* -- Live preview card ------------------------------------
        Real-time "here's how customers will see this" card used by
        food/register.html; reusable for any onboarding flow. */
     .preview-card {
@@ -550,7 +553,7 @@
       font-size: 20px; flex-shrink: 0; object-fit: cover;
     }
 
-    /* ── Chat bubbles ─────────────────────────────────────────
+    /* -- Chat bubbles -----------------------------------------
        Shared by livestream go_live/watch and (if added later) any other
        real-time chat surface. */
     .chat-bubble {
@@ -563,7 +566,7 @@
       border-radius: 18px 18px 18px 4px; padding: 7px 12px;
     }
 
-    /* ── Floating reactions/gifts ─────────────────────────────
+    /* -- Floating reactions/gifts -----------------------------
        Emoji-rise animation used by livestream go_live/watch reactions
        and gift sends. */
     .emoji-float {
@@ -576,7 +579,7 @@
       100% { opacity:0; transform:translateY(-280px) scale(.6); }
     }
 
-    /* ── Generic fade-in for dynamically injected sections ───── */
+    /* -- Generic fade-in for dynamically injected sections ----- */
     .fade-in { animation: fadeUp .4s ease both; }
   </style>
 
@@ -594,7 +597,7 @@
         <img src="{% static 'logo.png' %}" alt="Lynctel"
              class="h-8 w-auto object-contain group-hover:scale-105 transition-transform duration-200"/>
         <span class="brand-name">Lynctel</span>
-        <span class="brand-dot text-gold font-bold text-lg leading-none">·</span>
+        <span class="brand-dot text-gold font-bold text-lg leading-none">�</span>
       </a>
 
       <form method="GET" action="{% url 'products:list' %}"
@@ -618,14 +621,14 @@
                 class="theme-toggle w-9 h-9 flex items-center justify-center rounded-xl
                        hover:bg-gray-100 transition-colors text-gray-600"
                 title="Toggle dark mode" aria-label="Toggle dark mode">
-          <span id="theme-icon" class="text-lg">🌙</span>
+          <span id="theme-icon" class="text-lg">??</span>
         </button>
 
         <div class="relative group hidden md:block">
           <button class="flex items-center gap-1.5 text-sm font-medium text-gray-600
                          hover:text-navy px-2.5 py-2 rounded-lg hover:bg-gray-50 transition-colors"
                   aria-label="Change language">
-            <span id="current-lang-flag">🇬🇧</span>
+            <span id="current-lang-flag">????</span>
             <span id="current-lang-label" class="text-xs">EN</span>
             <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -635,10 +638,10 @@
                       border border-gray-100 py-2 opacity-0 invisible z-50
                       group-hover:opacity-100 group-hover:visible transition-all duration-150">
             <p class="text-xs text-gray-400 px-3 py-1 font-semibold uppercase tracking-wider">Language</p>
-            <button onclick="setLang('en')"  data-lang="en"  class="lang-btn w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">🇬🇧 English</button>
-            <button onclick="setLang('tw')"  data-lang="tw"  class="lang-btn w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">🇬🇭 Twi</button>
-            <button onclick="setLang('ga')"  data-lang="ga"  class="lang-btn w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">🇬🇭 Ga</button>
-            <button onclick="setLang('ha')"  data-lang="ha"  class="lang-btn w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">🇬🇭 Hausa</button>
+            <button onclick="setLang('en')"  data-lang="en"  class="lang-btn w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">???? English</button>
+            <button onclick="setLang('tw')"  data-lang="tw"  class="lang-btn w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">???? Twi</button>
+            <button onclick="setLang('ga')"  data-lang="ga"  class="lang-btn w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">???? Ga</button>
+            <button onclick="setLang('ha')"  data-lang="ha"  class="lang-btn w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">???? Hausa</button>
           </div>
         </div>
 
@@ -651,7 +654,7 @@
         <a href="{% url 'food:home' %}"
            class="hidden md:flex items-center gap-1.5 text-sm font-medium text-gray-600
                   hover:text-orange-500 px-3 py-2 rounded-lg hover:bg-orange-50 transition-colors">
-          🍔 {% trans "Food" %}
+          ?? {% trans "Food" %}
         </a>
 
         {% if user.is_authenticated %}
@@ -727,19 +730,19 @@
             <div class="py-1">
               <a href="{% url 'accounts:profile' %}"
                  class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                <span class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">👤</span>
+                <span class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">??</span>
                 {% trans "My Profile" %}
               </a>
               <a href="{% url 'order:history' %}"
                  class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                <span class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">📦</span>
+                <span class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">??</span>
                 {% trans "My Orders" %}
               </a>
 
               <a href="{% url 'livestream:list' %}"
                  class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 transition-colors">
                 <span class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0 relative">
-                  📺
+                  ??
                   <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                 </span>
                 {% trans "Live Shopping" %}
@@ -748,14 +751,14 @@
               {% if user.role == 'admin' or user.role == 'staff' %}
               <a href="{% url 'chat:support_admin_inbox' %}"
                  class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors relative">
-                <span class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">🛟</span>
+                <span class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">??</span>
                 {% trans "Support Inbox" %}
                 <span id="support-badge-dropdown" class="support-badge hidden" style="position:static;margin-left:auto;">0</span>
               </a>
               {% else %}
               <a href="{% url 'chat:support_my_inbox' %}"
                  class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors relative">
-                <span class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">🛟</span>
+                <span class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">??</span>
                 {% trans "Get Help" %}
                 <span id="support-badge-dropdown" class="support-badge hidden" style="position:static;margin-left:auto;">0</span>
               </a>
@@ -765,35 +768,35 @@
               <a href="{% url 'dashboard:home' %}"
                  class="flex items-center gap-3 px-3 py-2 mx-2 my-1 text-sm font-semibold
                         text-white bg-navy hover:bg-navy-700 rounded-xl transition-colors">
-                <span>⚡</span> Admin Dashboard
+                <span>?</span> Admin Dashboard
               </a>
               {% endif %}
               {% if user.role == 'staff' %}
               <a href="{% url 'dashboard:home' %}"
                  class="flex items-center gap-3 px-3 py-2 mx-2 my-1 text-sm font-semibold
                         text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors">
-                <span>⚡</span> Staff Dashboard
+                <span>?</span> Staff Dashboard
               </a>
               {% endif %}
               {% if user.role == 'admin' or user.role == 'staff' %}
               <a href="{% url 'fraud:flagged_orders' %}"
                  class="flex items-center gap-3 px-3 py-2 mx-2 my-1 text-sm font-semibold
                         text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors">
-                <span>🛡</span> Fraud Review
+                <span>??</span> Fraud Review
               </a>
               {% endif %}
               {% if user.role == 'rider' %}
               <a href="{% url 'rider:dashboard' %}"
                  class="flex items-center gap-3 px-3 py-2 mx-2 my-1 text-sm font-semibold
                         text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-colors">
-                <span>🛵</span> Rider Dashboard
+                <span>??</span> Rider Dashboard
               </a>
               {% endif %}
               {% if user.role == 'vendor' %}
               <a href="{% url 'vendors:dashboard' %}"
                  class="flex items-center gap-3 px-3 py-2 mx-2 my-1 text-sm font-semibold
                         text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors">
-                <span>🏪</span> Vendor Dashboard
+                <span>??</span> Vendor Dashboard
               </a>
               <a href="{% url 'livestream:go_live' %}"
                  class="flex items-center gap-3 px-3 py-2 mx-2 mb-1 text-sm font-semibold
@@ -804,26 +807,26 @@
               {% if user.role == 'customer' %}
               <a href="{% url 'vendors:apply' %}"
                  class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                <span class="w-8 h-8 bg-gold-light rounded-lg flex items-center justify-center flex-shrink-0">🏪</span>
+                <span class="w-8 h-8 bg-gold-light rounded-lg flex items-center justify-center flex-shrink-0">??</span>
                 {% trans "Sell on Lynctel" %}
               </a>
               {% endif %}
 
               <a href="{% url 'food:register' %}"
                  class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                <span class="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center flex-shrink-0">🍴</span>
+                <span class="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center flex-shrink-0">??</span>
                 {% trans "List Your Restaurant" %}
               </a>
 
               <button onclick="toggleTheme()"
                       class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left transition-colors">
-                <span class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0" id="dropdown-theme-icon">🌙</span>
+                <span class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0" id="dropdown-theme-icon">??</span>
                 <span id="dropdown-theme-label">{% trans "Dark Mode" %}</span>
               </button>
 
               <button onclick="showInstallPrompt()"
                       class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left transition-colors">
-                <span class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">📲</span>
+                <span class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">??</span>
                 {% trans "Install App" %}
               </button>
             </div>
@@ -861,7 +864,7 @@
            title="{% trans 'Live Shopping' %}" aria-label="{% trans 'Live Shopping' %}"
            class="relative w-10 h-10 flex items-center justify-center rounded-xl
                   hover:bg-red-50 transition-colors">
-          <span class="text-lg">📺</span>
+          <span class="text-lg">??</span>
           <span class="live-badge-dot absolute top-2 right-2"></span>
         </a>
 
@@ -910,7 +913,7 @@
                 {% elif message.tags == 'warning' %}bg-amber-50 text-amber-800 border border-amber-200
                 {% else %}bg-blue-50 text-blue-800 border border-blue-100{% endif %}">
       <span>{{ message }}</span>
-      <button onclick="this.parentElement.remove()" class="ml-4 opacity-50 hover:opacity-100 text-lg" aria-label="Dismiss">×</button>
+      <button onclick="this.parentElement.remove()" class="ml-4 opacity-50 hover:opacity-100 text-lg" aria-label="Dismiss">�</button>
     </div>
     {% endfor %}
   </div>
@@ -934,20 +937,20 @@
             <img src="{% static 'logo.png' %}" alt="Lynctel"
                  class="h-10 w-auto object-contain brightness-0 invert"/>
             <span class="font-display font-800 text-xl text-white tracking-tight">Lynctel</span>
-            <span class="text-gold font-bold text-xl">·</span>
+            <span class="text-gold font-bold text-xl">�</span>
           </div>
           <p class="text-gray-400 leading-relaxed text-sm max-w-md mb-6">
             {% trans "Lynctel connects customers, vendors, and riders across Ghana through fast delivery, secure payments, and a premium ecommerce experience." %}
           </p>
           <div class="space-y-3 text-sm">
             <a href="tel:+233558040216" class="flex items-center gap-3 text-gray-300 hover:text-gold transition-colors">
-              <span>📞</span> +233 55 804 0216
+              <span>??</span> +233 55 804 0216
             </a>
             <a href="https://wa.me/233558040216" target="_blank" class="flex items-center gap-3 text-gray-300 hover:text-gold transition-colors">
-              <span>💬</span> WhatsApp Support
+              <span>??</span> WhatsApp Support
             </a>
             <a href="https://www.google.com/maps/search/?api=1&query=Accra,Ghana" target="_blank" class="flex items-center gap-3 text-gray-300 hover:text-gold transition-colors">
-              <span>📍</span> Accra, Ghana
+              <span>??</span> Accra, Ghana
             </a>
           </div>
         </div>
@@ -956,7 +959,7 @@
           <h3 class="font-bold text-sm uppercase tracking-widest text-gray-300 mb-5">{% trans "Marketplace" %}</h3>
           <ul class="space-y-3 text-sm text-gray-400">
             <li><a href="{% url 'products:list' %}" class="hover:text-gold transition-colors">{% trans "All Products" %}</a></li>
-            <li><a href="{% url 'food:home' %}" class="hover:text-gold transition-colors">🍔 {% trans "Food Delivery" %}</a></li>
+            <li><a href="{% url 'food:home' %}" class="hover:text-gold transition-colors">?? {% trans "Food Delivery" %}</a></li>
             <li>
               <a href="{% url 'livestream:list' %}" class="hover:text-red-400 transition-colors flex items-center gap-2">
                 <span class="live-badge-dot"></span> {% trans "Live Shopping" %}
@@ -976,7 +979,7 @@
             <li><a href="{% url 'frontend:how_it_works' %}" class="hover:text-gold transition-colors">{% trans "How It Works" %}</a></li>
             <li><a href="{% url 'vendors:apply' %}" class="hover:text-gold transition-colors">{% trans "Become a Vendor" %}</a></li>
             <li><a href="{% url 'rider:apply' %}" class="hover:text-gold transition-colors">{% trans "Become a Rider" %}</a></li>
-            <li><a href="{% url 'food:register' %}" class="hover:text-gold transition-colors">🍴 {% trans "List Your Restaurant" %}</a></li>
+            <li><a href="{% url 'food:register' %}" class="hover:text-gold transition-colors">?? {% trans "List Your Restaurant" %}</a></li>
           </ul>
         </div>
 
@@ -988,7 +991,7 @@
             <li><a href="{% url 'order:history' %}" class="hover:text-gold transition-colors">{% trans "Order History" %}</a></li>
             <li>
               <a href="{% if user.role == 'admin' or user.role == 'staff' %}{% url 'chat:support_admin_inbox' %}{% else %}{% url 'chat:support_my_inbox' %}{% endif %}"
-                 class="hover:text-gold transition-colors">🛟 {% trans "Get Help" %}</a>
+                 class="hover:text-gold transition-colors">?? {% trans "Get Help" %}</a>
             </li>
             {% else %}
             <li><a href="{% url 'accounts:login' %}" class="hover:text-gold transition-colors">{% trans "Sign In" %}</a></li>
@@ -996,7 +999,7 @@
             {% endif %}
             <li>
               <button onclick="toggleTheme()" class="hover:text-gold transition-colors text-left flex items-center gap-2">
-                <span id="footer-theme-icon">🌙</span> <span id="footer-theme-label">{% trans "Dark Mode" %}</span>
+                <span id="footer-theme-icon">??</span> <span id="footer-theme-label">{% trans "Dark Mode" %}</span>
               </button>
             </li>
           </ul>
@@ -1004,10 +1007,10 @@
           <div class="mt-6">
             <p class="text-xs text-gray-500 uppercase tracking-widest mb-2 font-semibold">{% trans "Language" %}</p>
             <div class="flex flex-wrap gap-2">
-              <button onclick="setLang('en')" data-lang="en" class="lang-btn text-xs px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">🇬🇧 EN</button>
-              <button onclick="setLang('tw')" data-lang="tw" class="lang-btn text-xs px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">🇬🇭 TW</button>
-              <button onclick="setLang('ga')" data-lang="ga" class="lang-btn text-xs px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">🇬🇭 GA</button>
-              <button onclick="setLang('ha')" data-lang="ha" class="lang-btn text-xs px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">🇬🇭 HA</button>
+              <button onclick="setLang('en')" data-lang="en" class="lang-btn text-xs px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">???? EN</button>
+              <button onclick="setLang('tw')" data-lang="tw" class="lang-btn text-xs px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">???? TW</button>
+              <button onclick="setLang('ga')" data-lang="ga" class="lang-btn text-xs px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">???? GA</button>
+              <button onclick="setLang('ha')" data-lang="ha" class="lang-btn text-xs px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">???? HA</button>
             </div>
           </div>
         </div>
@@ -1033,7 +1036,7 @@
     <div class="border-t border-white/10">
       <div class="max-w-7xl mx-auto px-4 md:px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
         <p class="text-xs text-gray-500 text-center md:text-left">
-          &copy; {% now "Y" %} Lynctel. {% trans "All rights reserved." %} 🇬🇭
+          &copy; {% now "Y" %} Lynctel. {% trans "All rights reserved." %} ????
         </p>
         <div class="flex flex-wrap items-center justify-center gap-5 text-xs text-gray-500">
           <a href="{% url 'frontend:privacy_policy' %}" class="hover:text-gold transition-colors">{% trans "Privacy Policy" %}</a>
@@ -1067,7 +1070,7 @@
 
       <a href="{% url 'food:home' %}"
          class="flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-orange-500 transition-colors">
-        <span class="text-lg leading-none">🍔</span>
+        <span class="text-lg leading-none">??</span>
         <span class="text-[10px] font-medium">{% trans "Food" %}</span>
       </a>
 
@@ -1143,14 +1146,14 @@
         <h2 class="font-display font-700 text-navy text-lg">{% trans "Your Cart" %}</h2>
         <span id="drawer-count" class="bg-gold text-navy text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center">0</span>
       </div>
-      <button onclick="closeCart()" aria-label="{% trans 'Close cart' %}" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-400 text-xl">✕</button>
+      <button onclick="closeCart()" aria-label="{% trans 'Close cart' %}" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-400 text-xl">?</button>
     </div>
     <div id="drawer-items" class="flex-1 overflow-y-auto px-5 py-4 space-y-3"></div>
     <div id="drawer-empty" class="hidden flex-1 flex flex-col items-center justify-center text-center px-5 py-10">
-      <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center text-4xl mb-4">🛒</div>
+      <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center text-4xl mb-4">??</div>
       <p class="font-display font-700 text-navy mb-1">{% trans "Your cart is empty" %}</p>
       <p class="text-gray-400 text-sm mb-4">{% trans "Add items to get started" %}</p>
-      <button onclick="closeCart()" class="text-sm text-gold-dark font-semibold hover:underline">{% trans "Continue Shopping" %} →</button>
+      <button onclick="closeCart()" class="text-sm text-gold-dark font-semibold hover:underline">{% trans "Continue Shopping" %} ?</button>
     </div>
     <div id="drawer-footer" class="border-t border-gray-100 px-5 py-4 space-y-3 flex-shrink-0">
       <div class="flex items-center justify-between">
@@ -1158,7 +1161,7 @@
         <span id="drawer-subtotal" class="font-display font-700 text-navy text-xl">GHS 0.00</span>
       </div>
       <p class="text-xs text-gray-400">{% trans "Delivery fee calculated at checkout" %}</p>
-      <a href="{% url 'order:checkout' %}" class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold text-center py-3.5 rounded-xl transition-colors btn-press text-sm">{% trans "Proceed to Checkout" %} →</a>
+      <a href="{% url 'order:checkout' %}" class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold text-center py-3.5 rounded-xl transition-colors btn-press text-sm">{% trans "Proceed to Checkout" %} ?</a>
       <a href="{% url 'cart:detail' %}" class="block w-full text-center text-sm text-gray-500 hover:text-navy font-medium transition-colors py-1">{% trans "View Full Cart" %}</a>
     </div>
   </div>
@@ -1170,7 +1173,7 @@
       <p class="text-gray-400 text-xs mt-0.5">{% trans "Faster, full-screen experience" %}</p>
     </div>
     <button id="pwa-install-btn" class="bg-gold text-navy text-xs font-bold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors flex-shrink-0 whitespace-nowrap">{% trans "Install" %}</button>
-    <button onclick="dismissPWA()" aria-label="{% trans 'Dismiss' %}" class="text-gray-400 hover:text-white text-xl leading-none flex-shrink-0 ml-1">✕</button>
+    <button onclick="dismissPWA()" aria-label="{% trans 'Dismiss' %}" class="text-gray-400 hover:text-white text-xl leading-none flex-shrink-0 ml-1">?</button>
   </div>
 
   <div id="ios-overlay" onclick="closeIOSSheet()"></div>
@@ -1184,23 +1187,23 @@
           <p class="text-xs text-gray-400">lynctel.up.railway.app</p>
         </div>
       </div>
-      <button onclick="closeIOSSheet()" aria-label="{% trans 'Close' %}" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold">✕</button>
+      <button onclick="closeIOSSheet()" aria-label="{% trans 'Close' %}" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold">?</button>
     </div>
     <div class="space-y-4 mb-6">
       <div class="flex items-center gap-4 bg-blue-50 rounded-2xl px-4 py-3.5">
         <div class="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold">1</div>
-        <div><p class="font-semibold text-navy text-sm">{% trans "Tap the Share button" %} ⬆</p><p class="text-xs text-gray-500 mt-0.5">{% trans "At the bottom of Safari's browser bar" %}</p></div>
+        <div><p class="font-semibold text-navy text-sm">{% trans "Tap the Share button" %} ?</p><p class="text-xs text-gray-500 mt-0.5">{% trans "At the bottom of Safari's browser bar" %}</p></div>
       </div>
       <div class="flex items-center gap-4 bg-green-50 rounded-2xl px-4 py-3.5">
         <div class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold">2</div>
         <div><p class="font-semibold text-navy text-sm">{% trans "Tap 'Add to Home Screen'" %}</p><p class="text-xs text-gray-500 mt-0.5">{% trans "Scroll down in the Share menu" %}</p></div>
       </div>
       <div class="flex items-center gap-4 bg-gold-light rounded-2xl px-4 py-3.5">
-        <div class="w-10 h-10 bg-gold rounded-xl flex items-center justify-center flex-shrink-0 text-navy font-bold">✓</div>
-        <div><p class="font-semibold text-navy text-sm">{% trans "Tap 'Add' — you're done!" %}</p><p class="text-xs text-gray-500 mt-0.5">{% trans "Lynctel appears on your home screen" %}</p></div>
+        <div class="w-10 h-10 bg-gold rounded-xl flex items-center justify-center flex-shrink-0 text-navy font-bold">?</div>
+        <div><p class="font-semibold text-navy text-sm">{% trans "Tap 'Add' � you're done!" %}</p><p class="text-xs text-gray-500 mt-0.5">{% trans "Lynctel appears on your home screen" %}</p></div>
       </div>
     </div>
-    <button onclick="closeIOSSheet()" class="w-full bg-navy text-white font-semibold py-4 rounded-2xl transition-colors hover:bg-navy-700 text-sm">{% trans "Got it, thanks!" %} 👍</button>
+    <button onclick="closeIOSSheet()" class="w-full bg-navy text-white font-semibold py-4 rounded-2xl transition-colors hover:bg-navy-700 text-sm">{% trans "Got it, thanks!" %} ??</button>
   </div>
 
   <script>
@@ -1251,7 +1254,7 @@
       const html   = document.documentElement;
       const isDark = theme === 'dark';
       isDark ? html.classList.add('dark') : html.classList.remove('dark');
-      const icon  = isDark ? '☀️' : '🌙';
+      const icon  = isDark ? '??' : '??';
       const label = isDark ? 'Light Mode' : 'Dark Mode';
       ['theme-icon','dropdown-theme-icon','footer-theme-icon'].forEach(id=>{
         const el=document.getElementById(id); if(el) el.textContent=icon;
@@ -1275,13 +1278,13 @@
 
     const LANG_KEY  = 'lynctel-lang';
     const LANG_META = {
-      en:{flag:'🇬🇧',label:'EN'}, tw:{flag:'🇬🇭',label:'TW'},
-      ga:{flag:'🇬🇭',label:'GA'}, ha:{flag:'🇬🇭',label:'HA'},
+      en:{flag:'????',label:'EN'}, tw:{flag:'????',label:'TW'},
+      ga:{flag:'????',label:'GA'}, ha:{flag:'????',label:'HA'},
     };
     const TRANSLATIONS = {
       en:{ search_placeholder:'Search products, shops, vendors...', home:'Home', products:'Products', cart:'Cart', food:'Food', profile:'Profile', sign_in:'Sign In', sign_up:'Sign Up', sell_here:'Sell Here', my_shop:'My Shop', shops:'Shops', my_orders:'My Orders', sign_out:'Sign Out', my_profile:'My Profile', install_app:'Install App', dark_mode:'Dark Mode', light_mode:'Light Mode', your_cart:'Your Cart', cart_empty:'Your cart is empty', checkout:'Proceed to Checkout', subtotal:'Subtotal', live:'Live' },
-      tw:{ search_placeholder:'Hwehwɛ adeɛ, dukan, nneɛma...', home:'Fie', products:'Nneɛma', cart:'Basket', food:'Aduane', profile:'Me Ho', sign_in:'Wo Kɔ Mu', sign_up:'Kɔ Wɔ Ho', sell_here:'To Wɔ Ha', my_shop:'Me Dukan', shops:'Adukan', my_orders:'Me Nsɛm', sign_out:'Pue', my_profile:'Me Ho Nsɛm', install_app:'Fa App No', dark_mode:'Sum Nhyehyɛe', light_mode:'Hann Nhyehyɛe', your_cart:'Wo Basket', cart_empty:'Wo basket no yɛ huu', checkout:'Tua Sika', subtotal:'Akatua', live:'Live' },
-      ga:{ search_placeholder:'Lɛ ŋmɛ, shia, adeɛ...', home:'Fie', products:'Ŋmɛŋmɛi', cart:'Basket', food:'Nyɔŋmɔ', profile:'Mi Hɛ', sign_in:'Kɛ Mu', sign_up:'Bɔ Wɔ', sell_here:'Fɛ Hɛ', my_shop:'Mi Shia', shops:'Shiani', my_orders:'Mi Ŋmɛi', sign_out:'Tsu', my_profile:'Mi Hɛ Nsɛm', install_app:'Kɛ App', dark_mode:'Blema Nhyehyɛe', light_mode:'Haŋ Nhyehyɛe', your_cart:'Wɔ Basket', cart_empty:'Wɔ basket mli', checkout:'Tua Fɛɛ', subtotal:'Fɛɛ', live:'Live' },
+      tw:{ search_placeholder:'Hwehw? ade?, dukan, nne?ma...', home:'Fie', products:'Nne?ma', cart:'Basket', food:'Aduane', profile:'Me Ho', sign_in:'Wo K? Mu', sign_up:'K? W? Ho', sell_here:'To W? Ha', my_shop:'Me Dukan', shops:'Adukan', my_orders:'Me Ns?m', sign_out:'Pue', my_profile:'Me Ho Ns?m', install_app:'Fa App No', dark_mode:'Sum Nhyehy?e', light_mode:'Hann Nhyehy?e', your_cart:'Wo Basket', cart_empty:'Wo basket no y? huu', checkout:'Tua Sika', subtotal:'Akatua', live:'Live' },
+      ga:{ search_placeholder:'L? ?m?, shia, ade?...', home:'Fie', products:'?m??m?i', cart:'Basket', food:'Ny??m?', profile:'Mi H?', sign_in:'K? Mu', sign_up:'B? W?', sell_here:'F? H?', my_shop:'Mi Shia', shops:'Shiani', my_orders:'Mi ?m?i', sign_out:'Tsu', my_profile:'Mi H? Ns?m', install_app:'K? App', dark_mode:'Blema Nhyehy?e', light_mode:'Ha? Nhyehy?e', your_cart:'W? Basket', cart_empty:'W? basket mli', checkout:'Tua F??', subtotal:'F??', live:'Live' },
       ha:{ search_placeholder:'Nemi kaya, shago, dilali...', home:'Gida', products:'Kaya', cart:'Kwando', food:'Abinci', profile:'Bayani', sign_in:'Shiga', sign_up:'Yi Rajista', sell_here:'Sayar Nan', my_shop:'Shagona', shops:'Shaguna', my_orders:'Odocina', sign_out:'Fita', my_profile:'Bayanina', install_app:'Sauke App', dark_mode:'Yanayin Dare', light_mode:'Yanayin Rana', your_cart:'Kwandanka', cart_empty:'Kwandanka a fanko', checkout:'Biya', subtotal:'Jimla', live:'Live' },
     };
 
@@ -1353,16 +1356,16 @@
       itemsEl.innerHTML=data.items.map(item=>`
         <div id="ditem-${item.id}" class="flex items-start gap-3 bg-gray-50 rounded-2xl p-3 transition-opacity duration-300">
           <a href="/products/${item.slug}/" class="flex-shrink-0">
-            ${item.image?`<img src="${item.image}" alt="${item.name}" class="w-16 h-16 rounded-xl object-cover bg-gray-200"/>`:`<div class="w-16 h-16 rounded-xl bg-gray-200 flex items-center justify-center text-2xl">📦</div>`}
+            ${item.image?`<img src="${item.image}" alt="${item.name}" class="w-16 h-16 rounded-xl object-cover bg-gray-200"/>`:`<div class="w-16 h-16 rounded-xl bg-gray-200 flex items-center justify-center text-2xl">??</div>`}
           </a>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold text-navy line-clamp-2 leading-snug">${item.name}</p>
-            ${item.vendor?`<p class="text-xs text-gray-400 mt-0.5">🏪 ${item.vendor}</p>`:''}
+            ${item.vendor?`<p class="text-xs text-gray-400 mt-0.5">?? ${item.vendor}</p>`:''}
             <p class="text-sm font-display font-700 text-navy mt-1">GHS ${item.price}</p>
           </div>
           <div class="flex flex-col items-end gap-2 flex-shrink-0">
             <div class="flex items-center gap-1.5">
-              <button onclick="drawerQty(${item.id},${item.quantity},-1)" class="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-navy font-bold text-sm hover:bg-navy hover:text-white hover:border-navy transition-colors">−</button>
+              <button onclick="drawerQty(${item.id},${item.quantity},-1)" class="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-navy font-bold text-sm hover:bg-navy hover:text-white hover:border-navy transition-colors">-</button>
               <span class="w-6 text-center text-sm font-semibold text-navy">${item.quantity}</span>
               <button onclick="drawerQty(${item.id},${item.quantity},1)" class="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-navy font-bold text-sm hover:bg-navy hover:text-white hover:border-navy transition-colors">+</button>
             </div>
@@ -1380,7 +1383,7 @@
         .then(r=>r.json()).then(d=>{
           if(d.success){
             updateCartBadge(d.cart_count);
-            if(btn){btn.innerHTML='✓ Added';btn.classList.add('bg-green-500');btn.classList.remove('bg-navy');
+            if(btn){btn.innerHTML='? Added';btn.classList.add('bg-green-500');btn.classList.remove('bg-navy');
               setTimeout(()=>{btn.innerHTML=orig;btn.disabled=false;btn.classList.remove('bg-green-500');btn.classList.add('bg-navy');},1200);}
             setTimeout(openCart,350);
           }
@@ -1468,7 +1471,7 @@
 
     function dismissPWA(){document.getElementById('pwa-banner').classList.remove('show');localStorage.setItem('pwa-dismissed','1');}
     function showInstallPrompt(){
-      if(_isStandalone){alert('Lynctel is already installed! ✅');return;}
+      if(_isStandalone){alert('Lynctel is already installed! ?');return;}
       document.getElementById('ios-install-sheet').classList.add('show');
       document.getElementById('ios-overlay').classList.add('show');
       document.body.style.overflow='hidden';
