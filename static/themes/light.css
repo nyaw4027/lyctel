@@ -1,0 +1,16 @@
+
+/* ============================================================
+   LYNCTEL — LIGHT THEME (DEFAULT)
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+  --bg-primary:    white;
+  --bg-secondary:  var(--cream);
+  --bg-tertiary:   var(--gray-50);
+  --text-primary:  var(--navy);
+  --text-secondary:var(--gray-600);
+  --text-muted:    var(--gray-400);
+  --border-color:  var(--gray-100);
+  --border-strong: var(--gray-200);
+}

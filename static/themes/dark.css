@@ -1,0 +1,27 @@
+
+/* ============================================================
+   LYNCTEL — DARK THEME
+   ============================================================ */
+
+.dark {
+  color-scheme: dark;
+  --bg-primary:    #111827;
+  --bg-secondary:  #0a0f1a;
+  --bg-tertiary:   #1f2937;
+  --text-primary:  rgba(255,255,255,.92);
+  --text-secondary:rgba(255,255,255,.6);
+  --text-muted:    rgba(255,255,255,.35);
+  --border-color:  rgba(255,255,255,.06);
+  --border-strong: rgba(255,255,255,.10);
+}
+.dark body        { background: var(--bg-secondary); color: var(--text-primary); }
+.dark .card,
+.dark .modal,
+.dark .sheet      { background: var(--bg-primary) !important; border-color: var(--border-color) !important; }
+.dark h1,.dark h2,.dark h3,.dark h4 { color: white !important; }
+.dark .form-input,.dark .form-select,.dark .form-textarea {
+  background: var(--bg-tertiary); border-color: var(--border-strong); color: white;
+}
+.dark #navbar     { background: rgba(10,15,26,.96) !important; border-color: var(--border-color); }
+.dark #mobile-nav { background: rgba(17,24,39,.97) !important; border-color: var(--border-color); }
+.dark .product-card,.dark .vendor-card { background: var(--bg-primary); border-color: var(--border-color); }
