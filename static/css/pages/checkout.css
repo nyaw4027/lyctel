@@ -1,0 +1,43 @@
+
+/* ============================================================
+   LYNCTEL — CHECKOUT
+   ============================================================ */
+
+.checkout-layout {
+  display: grid; gap: 24px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1024px) {
+  .checkout-layout { grid-template-columns: 1fr 380px; }
+}
+
+.checkout-section {
+  background: white; border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-100); overflow: hidden;
+}
+.checkout-section__header {
+  padding: 16px 20px; border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: center; gap: 12px;
+}
+.checkout-section__num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--navy); color: white;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.checkout-section__body { padding: 20px; }
+
+.order-summary { background: white; border-radius: var(--radius-xl); border: 1px solid var(--gray-100); }
+.order-summary__header {
+  padding: 16px 20px; border-bottom: 1px solid var(--gray-100);
+  font-family: var(--font-display); font-weight: 700; font-size: var(--text-lg); color: var(--navy);
+}
+.order-summary__body { padding: 16px 20px; }
+.order-summary__row {
+  display: flex; justify-content: space-between;
+  font-size: var(--text-sm); padding: 6px 0; color: var(--gray-600);
+}
+.order-summary__row--total {
+  font-weight: 700; font-size: var(--text-lg); color: var(--navy);
+  border-top: 1px solid var(--gray-100); padding-top: 12px; margin-top: 6px;
+}

@@ -1,0 +1,26 @@
+/* ============================================================
+   LYNCTEL — RIDER
+   ============================================================ */
+
+.rider-map-wrap {
+  height: 60vh; border-radius: var(--radius-xl);
+  overflow: hidden; position: relative;
+  border: 2px solid var(--gray-100);
+}
+.rider-order-card {
+  background: white; border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-100); box-shadow: var(--shadow-md);
+  padding: 20px; margin-bottom: 16px;
+}
+.rider-order-card__header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+}
+.rider-status-bar {
+  display: flex; align-items: center; gap: 8px; margin: 16px 0;
+}
+.rider-status-step {
+  flex: 1; height: 4px; border-radius: 99px;
+  background: var(--gray-200); transition: background .4s;
+}
+.rider-status-step.done { background: var(--success); }
+.rider-status-step.active { background: var(--gold); }

@@ -1,0 +1,155 @@
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — BUTTONS
+   ============================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-base);
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px; /* iOS tap target */
+  text-decoration: none;
+}
+.btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Sizes ──────────────────────────────────────────── */
+.btn-xs  { padding: 5px 12px; font-size: var(--text-xs); min-height: 32px; border-radius: var(--radius-sm); }
+.btn-sm  { padding: 7px 14px; font-size: var(--text-xs); min-height: 36px; border-radius: var(--radius-sm); }
+.btn-lg  { padding: 14px 28px; font-size: var(--text-md); min-height: 52px; border-radius: var(--radius-lg); }
+.btn-xl  { padding: 16px 36px; font-size: var(--text-lg); min-height: 58px; border-radius: var(--radius-lg); }
+.btn-full { width: 100%; }
+
+/* ── Variants ───────────────────────────────────────── */
+.btn-primary {
+  background: var(--navy);
+  color: white;
+  box-shadow: 0 4px 14px rgba(15,27,45,.2);
+}
+.btn-primary:hover {
+  background: var(--navy-700);
+  box-shadow: 0 6px 20px rgba(15,27,45,.28);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: scale(.97); }
+
+.btn-gold {
+  background: var(--gold);
+  color: var(--navy);
+  box-shadow: var(--shadow-gold);
+  font-weight: 700;
+}
+.btn-gold:hover {
+  background: var(--gold-dark);
+  box-shadow: 0 6px 24px rgba(245,166,35,.4);
+  transform: translateY(-1px);
+}
+.btn-gold:active { transform: scale(.97); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--navy);
+  border: 1.5px solid var(--gray-200);
+}
+.btn-outline:hover {
+  border-color: var(--navy);
+  background: var(--gray-50);
+}
+
+.btn-outline-gold {
+  background: transparent;
+  color: var(--gold-dark);
+  border: 1.5px solid var(--gold);
+}
+.btn-outline-gold:hover {
+  background: var(--gold-light);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--navy);
+}
+.btn-ghost:hover {
+  background: var(--gray-100);
+}
+
+.btn-danger {
+  background: var(--error);
+  color: white;
+  box-shadow: 0 4px 14px rgba(239,68,68,.2);
+}
+.btn-danger:hover {
+  background: #dc2626;
+  box-shadow: 0 6px 20px rgba(239,68,68,.3);
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+.btn-success:hover { background: #16a34a; }
+
+.btn-white {
+  background: white;
+  color: var(--navy);
+  box-shadow: var(--shadow-md);
+}
+.btn-white:hover {
+  background: var(--gray-50);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Icon buttons ───────────────────────────────────── */
+.btn-icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-icon-sm { width: 32px; height: 32px; border-radius: var(--radius-sm); }
+.btn-icon-lg { width: 48px; height: 48px; border-radius: var(--radius-lg); }
+.btn-icon-round { border-radius: var(--radius-full); }
+
+/* ── Loading state ──────────────────────────────────── */
+.btn-loading {
+  pointer-events: none;
+  opacity: .8;
+}
+.btn-loading::after {
+  content: '';
+  width: 14px; height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin-left: 8px;
+}
+
+/* ── Add to cart ────────────────────────────────────── */
+.btn-cart {
+  background: var(--navy);
+  color: white;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  width: 100%;
+  padding: 10px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-base);
+  font-family: var(--font-body);
+}
+.btn-cart:hover { background: var(--gold); color: var(--navy); }

@@ -1,0 +1,167 @@
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — FORMS
+   ============================================================ */
+
+.form-group { margin-bottom: var(--space-4); }
+
+.form-input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--navy);
+  background: white;
+  font-family: var(--font-body);
+  transition: var(--transition-fast);
+  -webkit-appearance: none;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 3px rgba(245,166,35,.18);
+}
+.form-input:disabled {
+  background: var(--gray-50);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+.form-input.error  { border-color: var(--error) !important; background: var(--error-bg); }
+.form-input.success{ border-color: var(--success) !important; background: var(--success-bg); }
+
+.form-select {
+  width: 100%;
+  padding: 11px 36px 11px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--navy);
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.form-select:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245,166,35,.18);
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--navy);
+  background: white;
+  font-family: var(--font-body);
+  resize: vertical;
+  min-height: 100px;
+  transition: var(--transition-fast);
+}
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245,166,35,.18);
+}
+
+/* ── Upload zone ────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition-base);
+  position: relative;
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.upload-zone:hover, .upload-zone.over {
+  border-color: var(--gold);
+  background: var(--gold-50);
+}
+.upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.upload-zone__icon  { font-size: 2rem; }
+.upload-zone__title { font-size: var(--text-sm); font-weight: 600; color: var(--navy); }
+.upload-zone__sub   { font-size: var(--text-xs); color: var(--gray-400); }
+
+/* ── Checkbox / Radio ───────────────────────────────── */
+.form-check {
+  display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+}
+.form-check input[type="checkbox"],
+.form-check input[type="radio"] {
+  width: 18px; height: 18px; min-width: 18px;
+  border: 2px solid var(--gray-300);
+  border-radius: 5px;
+  cursor: pointer;
+  accent-color: var(--navy);
+  margin-top: 1px;
+}
+.form-check input[type="radio"] { border-radius: 50%; }
+.form-check__label { font-size: var(--text-sm); color: var(--gray-600); line-height: 1.4; }
+
+/* ── Toggle switch ──────────────────────────────────── */
+.toggle {
+  position: relative; display: inline-block;
+  width: 44px; height: 24px;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle__slider {
+  position: absolute; inset: 0;
+  background: var(--gray-200); border-radius: 24px;
+  cursor: pointer; transition: var(--transition-base);
+}
+.toggle__slider::before {
+  content: ''; position: absolute;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: white; left: 3px; bottom: 3px;
+  transition: var(--transition-base);
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle input:checked + .toggle__slider { background: var(--navy); }
+.toggle input:checked + .toggle__slider::before { transform: translateX(20px); }
+
+/* ── Search input ───────────────────────────────────── */
+.search-input {
+  display: flex; align-items: center;
+  background: white; border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-full); overflow: hidden;
+  transition: var(--transition-fast);
+}
+.search-input:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245,166,35,.15);
+}
+.search-input input {
+  flex: 1; padding: 10px 16px;
+  border: none; background: transparent;
+  font-size: 14px; color: var(--navy);
+}
+.search-input input:focus { outline: none; }
+.search-input button {
+  padding: 8px 16px;
+  background: var(--navy); color: white;
+  border: none; cursor: pointer;
+  font-size: 14px; transition: var(--transition-fast);
+}
+.search-input button:hover { background: var(--navy-700); }
+
+/* ── Error/help text ────────────────────────────────── */
+.form-error { color: var(--error); font-size: var(--text-xs); margin-top: 5px; }
+.form-help  { color: var(--gray-400); font-size: var(--text-xs); margin-top: 5px; }

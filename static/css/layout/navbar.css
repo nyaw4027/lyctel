@@ -1,0 +1,96 @@
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — NAVBAR
+   ============================================================ */
+
+#navbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--navbar-h); z-index: var(--z-sticky);
+  background: rgba(255,255,255,.96);
+  border-bottom: 1px solid rgba(15,27,45,.06);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  transition: box-shadow .25s, background .25s;
+}
+.nav-scrolled {
+  box-shadow: 0 2px 24px rgba(15,27,45,.1) !important;
+  background: rgba(255,255,255,.98) !important;
+}
+.navbar-inner {
+  max-width: var(--container-xl); margin: 0 auto;
+  padding: 0 16px; height: 100%;
+  display: flex; align-items: center; gap: 16px;
+}
+.navbar-logo {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 18px; color: var(--navy); text-decoration: none;
+  flex-shrink: 0;
+}
+.navbar-logo span { color: var(--gold); }
+
+.navbar-links {
+  display: none; align-items: center; gap: 4px;
+}
+@media (min-width: 1024px) { .navbar-links { display: flex; } }
+
+.navbar-link {
+  padding: 6px 12px; border-radius: var(--radius-sm);
+  font-size: var(--text-sm); font-weight: 600; color: var(--gray-600);
+  text-decoration: none; transition: var(--transition-fast);
+  white-space: nowrap;
+}
+.navbar-link:hover { color: var(--navy); background: var(--gray-100); }
+.navbar-link.active { color: var(--navy); background: var(--gold-light); }
+
+.navbar-actions {
+  display: flex; align-items: center; gap: 8px; margin-left: auto;
+}
+
+/* Cart icon with badge */
+.navbar-cart {
+  position: relative; width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gray-100); cursor: pointer;
+  transition: var(--transition-fast); text-decoration: none; color: var(--navy);
+}
+.navbar-cart:hover { background: var(--gray-200); }
+.navbar-cart__badge {
+  position: absolute; top: -4px; right: -4px;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  background: var(--gold); color: var(--navy);
+  border-radius: var(--radius-full);
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid white;
+}
+
+/* Mobile nav */
+#mobile-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--mobile-nav-h); z-index: var(--z-sticky);
+  background: rgba(255,255,255,.97);
+  border-top: 1px solid var(--gray-100);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  display: flex; align-items: center;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (min-width: 1024px) { #mobile-nav { display: none; } }
+
+.mobile-nav__item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  padding: 6px; cursor: pointer; text-decoration: none;
+  color: var(--gray-400); transition: color .2s;
+  position: relative;
+}
+.mobile-nav__item.active { color: var(--navy); }
+.mobile-nav__item.active .mobile-nav__dot {
+  position: absolute; bottom: 4px;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--gold);
+}
+.mobile-nav__icon  { font-size: 22px; line-height: 1; }
+.mobile-nav__label { font-size: 10px; font-weight: 600; }
+
+/* Page offset for fixed navbar */
+.page-offset { padding-top: calc(var(--navbar-h) + 8px); }
+.page-offset-mobile { padding-bottom: calc(var(--mobile-nav-h) + 8px); }

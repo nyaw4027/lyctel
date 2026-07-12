@@ -1,0 +1,31 @@
+
+/* ============================================================
+   LYNCTEL — MOBILE (max-width: 639px)
+   ============================================================ */
+
+@media (max-width: 639px) {
+  .hide-mobile  { display: none !important; }
+  .show-mobile  { display: flex !important; }
+
+  .container    { padding: 0 14px; }
+
+  .product-grid { grid-template-columns: repeat(2,1fr); gap: 10px; }
+
+  .btn-lg { padding: 13px 22px; font-size: var(--text-base); }
+
+  .modal { border-radius: var(--radius-2xl) var(--radius-2xl) 0 0; max-width: 100%; margin: auto 0 0; }
+  .modal-backdrop { align-items: flex-end; padding: 0; }
+
+  .section { padding: 36px 0; }
+
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.4rem; }
+
+  .hero { padding: calc(var(--navbar-h) + 24px) 0 40px; }
+  .hero__title { font-size: 1.9rem; }
+
+  .stats-row { grid-template-columns: repeat(2,1fr); gap: 12px; }
+
+  .chat-sidebar { display: none; }
+  .chat-sidebar.show { display: flex; flex-direction: column; width: 100%; }
+}

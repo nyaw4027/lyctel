@@ -1,0 +1,47 @@
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — ALERTS & TOASTS
+   ============================================================ */
+
+.alert {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px; border-radius: var(--radius-lg);
+  font-size: var(--text-sm); line-height: 1.5;
+  border: 1px solid transparent;
+}
+.alert__icon { flex-shrink: 0; font-size: 18px; margin-top: 1px; }
+.alert__title { font-weight: 700; margin-bottom: 3px; }
+.alert__body  { flex: 1; }
+
+.alert-success { background: var(--success-bg); color: #15803d; border-color: #bbf7d0; }
+.alert-error   { background: var(--error-bg); color: #b91c1c; border-color: #fecaca; }
+.alert-warning { background: var(--warning-bg); color: #b45309; border-color: #fde68a; }
+.alert-info    { background: var(--info-bg); color: #1d4ed8; border-color: #bfdbfe; }
+.alert-navy    { background: var(--navy); color: white; border-color: var(--navy-700); }
+.alert-gold    { background: var(--gold-light); color: var(--gold-dark); border-color: rgba(245,166,35,.3); }
+
+/* ── Toast notifications ────────────────────────────── */
+#toast-container {
+  position: fixed; bottom: calc(var(--mobile-nav-h) + 16px); left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  pointer-events: none; width: max-content; max-width: calc(100vw - 32px);
+}
+@media (min-width: 1024px) {
+  #toast-container { bottom: 24px; }
+}
+
+.toast {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--navy); color: white;
+  font-size: var(--text-sm); font-weight: 600;
+  padding: 10px 18px; border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  animation: fadeUp .3s ease;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+.toast-success { background: #15803d; }
+.toast-error   { background: var(--error); }
+.toast-warning { background: var(--warning); color: var(--navy); }
+.toast-gold    { background: var(--gold); color: var(--navy); }

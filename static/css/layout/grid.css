@@ -1,0 +1,53 @@
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — GRID & LAYOUT
+   ============================================================ */
+
+.container {
+  width: 100%; max-width: var(--container-xl);
+  margin: 0 auto; padding: 0 16px;
+}
+@media (min-width: 640px)  { .container { padding: 0 20px; } }
+@media (min-width: 1024px) { .container { padding: 0 24px; } }
+
+.container-sm  { max-width: var(--container-sm);  margin: 0 auto; padding: 0 16px; }
+.container-md  { max-width: var(--container-md);  margin: 0 auto; padding: 0 16px; }
+.container-lg  { max-width: var(--container-lg);  margin: 0 auto; padding: 0 16px; }
+.container-2xl { max-width: var(--container-2xl); margin: 0 auto; padding: 0 16px; }
+
+/* Product grids */
+.product-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 480px)  { .product-grid { grid-template-columns: repeat(2,1fr); gap: 16px; } }
+@media (min-width: 640px)  { .product-grid { grid-template-columns: repeat(3,1fr); } }
+@media (min-width: 1024px) { .product-grid { grid-template-columns: repeat(4,1fr); gap: 20px; } }
+@media (min-width: 1280px) { .product-grid { grid-template-columns: repeat(5,1fr); } }
+
+.vendor-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px)  { .vendor-grid { grid-template-columns: repeat(2,1fr); } }
+@media (min-width: 768px)  { .vendor-grid { grid-template-columns: repeat(3,1fr); } }
+@media (min-width: 1024px) { .vendor-grid { grid-template-columns: repeat(4,1fr); } }
+
+/* Section spacing */
+.section       { padding: 48px 0; }
+.section-sm    { padding: 32px 0; }
+.section-lg    { padding: 72px 0; }
+@media (min-width: 1024px) {
+  .section    { padding: 72px 0; }
+  .section-sm { padding: 48px 0; }
+  .section-lg { padding: 96px 0; }
+}
+
+/* Horizontal scroll row */
+.scroll-row {
+  display: flex; gap: 14px; overflow-x: auto;
+  padding-bottom: 8px; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-row::-webkit-scrollbar { display: none; }
+.scroll-row > * { flex-shrink: 0; }

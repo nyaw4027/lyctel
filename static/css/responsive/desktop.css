@@ -1,0 +1,15 @@
+
+/* ============================================================
+   LYNCTEL — DESKTOP (min-width: 1024px)
+   ============================================================ */
+
+@media (min-width: 1024px) {
+  .hide-desktop { display: none !important; }
+
+  .product-grid { grid-template-columns: repeat(4,1fr); gap: 20px; }
+
+  .section { padding: 72px 0; }
+
+  .sidebar-nav   { display: flex !important; }
+  .mobile-tab-bar{ display: none !important; }
+}

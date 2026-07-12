@@ -1,0 +1,26 @@
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — TABLES
+   ============================================================ */
+
+.table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.table {
+  width: 100%; border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.table th {
+  padding: 10px 14px; text-align: left;
+  font-size: var(--text-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--gray-400); background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-100);
+  white-space: nowrap;
+}
+.table td {
+  padding: 12px 14px; color: var(--navy);
+  border-bottom: 1px solid var(--gray-100);
+  vertical-align: middle;
+}
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: var(--gray-50); }
+.table-striped tr:nth-child(even) td { background: var(--gray-50); }

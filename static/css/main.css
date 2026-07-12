@@ -1,0 +1,64 @@
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — MAIN ENTRY POINT
+   Imports all partials in the correct cascade order.
+   Reference this file in base.html instead of output.css
+   ============================================================ */
+
+/* Base */
+@import "base/variables.css";
+@import "base/reset.css";
+@import "base/typography.css";
+@import "base/animations.css";
+
+/* Layout */
+@import "layout/containers.css";
+@import "layout/grid.css";
+@import "layout/navbar.css";
+@import "layout/footer.css";
+@import "layout/sidebar.css";
+
+/* Components */
+@import "components/buttons.css";
+@import "components/cards.css";
+@import "components/forms.css";
+@import "components/badges.css";
+@import "components/alerts.css";
+@import "components/modal.css";
+@import "components/dropdown.css";
+@import "components/tables.css";
+@import "components/loaders.css";
+@import "components/pagination.css";
+
+/* Pages */
+@import "pages/home.css";
+@import "pages/products.css";
+@import "pages/food.css";
+@import "pages/cart.css";
+@import "pages/checkout.css";
+@import "pages/dashboard.css";
+@import "pages/vendors.css";
+@import "pages/rider.css";
+@import "pages/livestream.css";
+@import "pages/accounts.css";
+@import "pages/reviews.css";
+
+/* Chat */
+@import "chat/chat.css";
+@import "chat/messages.css";
+@import "chat/typing.css";
+@import "chat/attachments.css";
+
+/* PWA */
+@import "pwa/install.css";
+@import "pwa/offline.css";
+
+/* Themes */
+@import "themes/light.css";
+@import "themes/dark.css";
+
+/* Responsive (must be last) */
+@import "responsive/mobile.css";
+@import "responsive/tablet.css";
+@import "responsive/desktop.css";
+@import "responsive/print.css";

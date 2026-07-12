@@ -1,0 +1,25 @@
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — PAGINATION
+   ============================================================ */
+
+.pagination {
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; justify-content: center;
+}
+.page-btn {
+  min-width: 36px; height: 36px; padding: 0 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm); font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: var(--transition-fast);
+  color: var(--gray-500); background: white;
+  border: 1.5px solid var(--gray-200);
+  text-decoration: none;
+}
+.page-btn:hover { border-color: var(--navy); color: var(--navy); }
+.page-btn.active {
+  background: var(--navy); color: white;
+  border-color: var(--navy);
+}
+.page-btn.disabled { opacity: .4; pointer-events: none; }

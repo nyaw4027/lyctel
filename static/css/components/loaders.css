@@ -1,0 +1,32 @@
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — LOADERS
+   ============================================================ */
+
+.spinner {
+  width: 24px; height: 24px;
+  border: 2.5px solid var(--gray-200);
+  border-top-color: var(--navy);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block;
+}
+.spinner-sm  { width: 16px; height: 16px; border-width: 2px; }
+.spinner-lg  { width: 40px; height: 40px; border-width: 3px; }
+.spinner-gold { border-top-color: var(--gold); }
+.spinner-white { border-color: rgba(255,255,255,.3); border-top-color: white; }
+
+.loader-overlay {
+  position: fixed; inset: 0; z-index: var(--z-top);
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(4px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+.loader-overlay__text { font-size: var(--text-sm); color: var(--gray-500); font-weight: 500; }
+
+/* Skeleton */
+.skeleton-text  { height: 14px; border-radius: 4px; }
+.skeleton-title { height: 22px; border-radius: 6px; }
+.skeleton-img   { aspect-ratio: 1; border-radius: var(--radius-md); }
+.skeleton-card  { height: 280px; border-radius: var(--radius-lg); }

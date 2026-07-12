@@ -1,0 +1,56 @@
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — BADGES & CHIPS
+   ============================================================ */
+
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: var(--radius-full);
+  font-size: var(--text-xs); font-weight: 700;
+  line-height: 1; white-space: nowrap;
+}
+.badge-sm { padding: 2px 7px; font-size: 10px; }
+.badge-lg { padding: 5px 14px; font-size: var(--text-sm); }
+
+.badge-navy    { background: var(--navy); color: white; }
+.badge-gold    { background: var(--gold-light); color: var(--gold-dark); }
+.badge-gold-solid { background: var(--gold); color: var(--navy); }
+.badge-green   { background: var(--success-bg); color: #15803d; }
+.badge-red     { background: var(--error-bg); color: #b91c1c; }
+.badge-yellow  { background: var(--warning-bg); color: #b45309; }
+.badge-blue    { background: var(--info-bg); color: #1d4ed8; }
+.badge-gray    { background: var(--gray-100); color: var(--gray-600); }
+.badge-outline { background: transparent; border: 1.5px solid currentColor; }
+
+/* Dot indicator */
+.badge-dot::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Status badges */
+.status-open   { background: var(--success-bg); color: #15803d; }
+.status-closed { background: var(--error-bg); color: #b91c1c; }
+.status-pending{ background: var(--warning-bg); color: #b45309; }
+.status-live   {
+  background: #ef4444; color: white;
+  animation: pulse 1.5s ease infinite;
+}
+
+/* Chip (removable badge) */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px 5px 10px;
+  background: var(--gray-100); color: var(--navy);
+  border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 600;
+  cursor: default;
+}
+.chip__remove {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--gray-300); color: var(--gray-600);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; cursor: pointer; transition: var(--transition-fast);
+}
+.chip__remove:hover { background: var(--error); color: white; }

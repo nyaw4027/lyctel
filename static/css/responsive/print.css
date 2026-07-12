@@ -1,0 +1,13 @@
+
+/* ============================================================
+   LYNCTEL — PRINT
+   ============================================================ */
+
+@media print {
+  #navbar, #mobile-nav, #cart-drawer, .pwa-banner,
+  .btn-cart, .chat-input-bar { display: none !important; }
+
+  body { background: white; color: black; font-size: 12pt; }
+  .card { box-shadow: none; border: 1px solid #ddd; }
+  a { color: black; text-decoration: underline; }
+}

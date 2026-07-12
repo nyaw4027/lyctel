@@ -1,0 +1,79 @@
+/* ============================================================
+   LYNCTEL — HOME PAGE
+   ============================================================ */
+
+/* Search bar */
+.home-search {
+  background: white; border-radius: var(--radius-full);
+  box-shadow: 0 8px 32px rgba(15,27,45,.2);
+  display: flex; align-items: center; overflow: hidden;
+  max-width: 600px; margin: 0 auto;
+}
+.home-search input {
+  flex: 1; padding: 14px 20px; border: none;
+  font-size: 15px; color: var(--navy); background: transparent;
+}
+.home-search input::placeholder { color: var(--gray-300); }
+.home-search input:focus { outline: none; }
+.home-search button {
+  background: var(--gold); color: var(--navy);
+  padding: 12px 24px; border: none; cursor: pointer;
+  font-weight: 700; font-size: 14px;
+  transition: background .2s; white-space: nowrap;
+}
+.home-search button:hover { background: var(--gold-dark); }
+
+/* Category pills */
+.category-pills { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.category-pills::-webkit-scrollbar { display: none; }
+.category-pill {
+  flex-shrink: 0; display: flex; flex-direction: column;
+  align-items: center; gap: 6px; cursor: pointer;
+  padding: 10px 16px; border-radius: var(--radius-lg);
+  background: white; border: 1.5px solid var(--gray-100);
+  transition: var(--transition-base); text-decoration: none;
+  min-width: 72px;
+}
+.category-pill:hover, .category-pill.active {
+  border-color: var(--gold); background: var(--gold-light);
+}
+.category-pill__icon  { font-size: 22px; line-height: 1; }
+.category-pill__label { font-size: 11px; font-weight: 600; color: var(--navy); white-space: nowrap; }
+
+/* Flash sale countdown */
+.flash-sale {
+  background: linear-gradient(135deg, var(--navy) 0%, #1a2d47 100%);
+  border-radius: var(--radius-xl); padding: 20px;
+  color: white; overflow: hidden; position: relative;
+}
+.flash-sale::before {
+  content: '⚡'; position: absolute; right: -10px; top: -20px;
+  font-size: 120px; opacity: .05;
+}
+.countdown { display: flex; gap: 10px; align-items: center; }
+.countdown__block {
+  background: rgba(255,255,255,.1); border-radius: var(--radius-sm);
+  padding: 8px 12px; text-align: center; min-width: 52px;
+}
+.countdown__num {
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  color: var(--gold); line-height: 1;
+}
+.countdown__label { font-size: 10px; color: rgba(255,255,255,.5); margin-top: 2px; }
+.countdown__sep { font-size: 20px; font-weight: 700; color: var(--gold); margin-top: -4px; }
+
+/* Banner carousel */
+.banner-carousel { position: relative; overflow: hidden; border-radius: var(--radius-xl); }
+.banner-slide { display: none; }
+.banner-slide.active { display: block; animation: fadeIn .4s ease; }
+.banner-slide img { width: 100%; aspect-ratio: 16/6; object-fit: cover; border-radius: var(--radius-xl); }
+.banner-dots {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px;
+}
+.banner-dot {
+  width: 6px; height: 6px; border-radius: 99px;
+  background: rgba(255,255,255,.5); cursor: pointer;
+  transition: all .3s;
+}
+.banner-dot.active { width: 20px; background: white; }

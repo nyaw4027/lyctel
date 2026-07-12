@@ -1,0 +1,36 @@
+/* ============================================================
+   LYNCTEL — CHAT
+   ============================================================ */
+
+.chat-layout {
+  display: flex; height: calc(100vh - var(--navbar-h));
+  padding-top: var(--navbar-h);
+}
+.chat-sidebar {
+  width: 300px; flex-shrink: 0; border-right: 1px solid var(--gray-100);
+  overflow-y: auto; background: white;
+}
+@media (max-width: 768px) { .chat-sidebar { width: 100%; } }
+.chat-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.chat-room-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer; border-bottom: 1px solid var(--gray-50);
+  transition: background .15s; text-decoration: none;
+}
+.chat-room-item:hover, .chat-room-item.active { background: var(--gold-light); }
+.chat-room-item__avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  object-fit: cover; background: var(--gray-200); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.chat-room-item__name { font-weight: 700; font-size: var(--text-sm); color: var(--navy); }
+.chat-room-item__preview { font-size: var(--text-xs); color: var(--gray-400); margin-top: 2px; truncate; }
+.chat-room-item__time { font-size: 10px; color: var(--gray-300); flex-shrink: 0; }
+.chat-room-item__badge {
+  min-width: 18px; height: 18px; border-radius: 99px;
+  background: var(--gold); color: var(--navy);
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; padding: 0 5px;
+}

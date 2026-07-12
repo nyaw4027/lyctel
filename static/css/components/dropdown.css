@@ -1,0 +1,35 @@
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — DROPDOWNS
+   ============================================================ */
+
+.dropdown { position: relative; display: inline-block; }
+.dropdown-menu {
+  position: absolute; top: calc(100% + 6px); left: 0;
+  min-width: 180px; background: white;
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  display: none; overflow: hidden;
+  animation: fadeDown .2s ease;
+}
+.dropdown-menu.open { display: block; }
+.dropdown-menu.right { left: auto; right: 0; }
+
+.dropdown-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; font-size: var(--text-sm);
+  color: var(--navy); cursor: pointer;
+  transition: var(--transition-fast);
+  text-decoration: none; border: none; background: none; width: 100%; text-align: left;
+}
+.dropdown-item:hover { background: var(--gray-50); }
+.dropdown-item.danger { color: var(--error); }
+.dropdown-item.danger:hover { background: var(--error-bg); }
+.dropdown-divider { height: 1px; background: var(--gray-100); margin: 4px 0; }
+.dropdown-header {
+  padding: 8px 16px 4px;
+  font-size: var(--text-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--gray-400);
+}

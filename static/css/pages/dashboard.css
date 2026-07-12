@@ -1,0 +1,49 @@
+
+/* ============================================================
+   LYNCTEL — VENDOR DASHBOARD
+   ============================================================ */
+
+.dashboard-layout {
+  display: flex; min-height: 100vh;
+  padding-top: var(--navbar-h);
+}
+.dashboard-main {
+  flex: 1; min-width: 0; padding: 24px 20px;
+  max-width: calc(100vw - var(--sidebar-w));
+}
+@media (max-width: 1023px) { .dashboard-main { max-width: 100vw; } }
+
+/* Stats row */
+.stats-row {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(2,1fr);
+}
+@media (min-width: 768px)  { .stats-row { grid-template-columns: repeat(4,1fr); } }
+
+/* Order card */
+.order-card {
+  background: white; border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-100); padding: 16px;
+  display: flex; align-items: flex-start; gap: 14px;
+  transition: var(--transition-base);
+}
+.order-card:hover { box-shadow: var(--shadow-md); }
+.order-card__ref {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  color: var(--gray-400); margin-bottom: 4px;
+}
+.order-card__items { font-size: var(--text-sm); color: var(--gray-600); }
+.order-card__total {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-lg); color: var(--navy); margin-top: 8px;
+}
+
+/* Chart placeholder */
+.chart-wrap {
+  background: white; border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-100); padding: 20px;
+  height: 240px; display: flex; flex-direction: column;
+}
+.chart-wrap__title {
+  font-weight: 700; font-size: var(--text-sm); color: var(--navy); margin-bottom: 16px;
+}

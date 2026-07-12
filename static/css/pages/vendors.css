@@ -1,0 +1,36 @@
+EOF
+
+cat > /home/claude/static/css/pages/vendors.css << 'EOF'
+/* ============================================================
+   LYNCTEL — VENDORS
+   ============================================================ */
+
+.vendor-hero {
+  height: 200px; border-radius: var(--radius-xl);
+  overflow: hidden; background: var(--gray-200);
+  position: relative;
+}
+@media (min-width: 640px) { .vendor-hero { height: 260px; } }
+.vendor-hero img { width: 100%; height: 100%; object-fit: cover; }
+.vendor-hero__overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(15,27,45,.6) 0%, transparent 50%);
+}
+
+.vendor-profile {
+  display: flex; align-items: flex-end; gap: 16px;
+  margin-top: -32px; position: relative; padding: 0 4px;
+}
+.vendor-profile__logo {
+  width: 72px; height: 72px; border-radius: var(--radius-lg);
+  border: 4px solid white; box-shadow: var(--shadow-md);
+  object-fit: cover; background: white; flex-shrink: 0;
+}
+.vendor-profile__name {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-xl); color: var(--navy); line-height: 1.2;
+}
+.vendor-profile__meta {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  font-size: var(--text-xs); color: var(--gray-400); margin-top: 4px;
+}

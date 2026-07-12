@@ -1,0 +1,74 @@
+
+
+/* ============================================================
+   LYNCTEL — PRODUCTS PAGE
+   ============================================================ */
+
+/* Filter sidebar */
+.filter-sidebar {
+  background: white; border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-100); padding: 20px;
+  position: sticky; top: calc(var(--navbar-h) + 16px);
+}
+.filter-section { margin-bottom: 24px; }
+.filter-section:last-child { margin-bottom: 0; }
+.filter-title {
+  font-weight: 700; font-size: var(--text-sm); color: var(--navy);
+  margin-bottom: 12px; display: flex; align-items: center;
+  justify-content: space-between; cursor: pointer;
+}
+.filter-option {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; cursor: pointer; font-size: var(--text-sm);
+  color: var(--gray-600); transition: color .15s;
+}
+.filter-option:hover { color: var(--navy); }
+.filter-option input { accent-color: var(--navy); }
+
+/* Price range */
+.price-range { position: relative; height: 4px; background: var(--gray-200); border-radius: 99px; }
+.price-range__fill { position: absolute; height: 100%; background: var(--navy); border-radius: 99px; }
+.price-range input[type=range] {
+  position: absolute; width: 100%; height: 4px;
+  -webkit-appearance: none; background: transparent; margin: 0;
+}
+.price-range input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--navy);
+  border: 2px solid white; box-shadow: var(--shadow-sm); cursor: pointer;
+}
+
+/* Product detail */
+.product-images { display: flex; flex-direction: column; gap: 12px; }
+.product-main-img {
+  aspect-ratio: 1; border-radius: var(--radius-xl);
+  overflow: hidden; background: var(--gray-100);
+}
+.product-main-img img { width: 100%; height: 100%; object-fit: cover; }
+.product-thumbs { display: flex; gap: 8px; overflow-x: auto; }
+.product-thumb {
+  width: 64px; height: 64px; border-radius: var(--radius-sm);
+  overflow: hidden; cursor: pointer; flex-shrink: 0;
+  border: 2px solid transparent; transition: border-color .2s;
+}
+.product-thumb.active { border-color: var(--gold); }
+.product-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Qty selector */
+.qty-selector {
+  display: flex; align-items: center; gap: 0;
+  border: 1.5px solid var(--gray-200); border-radius: var(--radius-md);
+  overflow: hidden; width: fit-content;
+}
+.qty-btn {
+  width: 36px; height: 36px; border: none;
+  background: var(--gray-50); cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy); transition: background .15s;
+}
+.qty-btn:hover { background: var(--gray-100); }
+.qty-input {
+  width: 48px; height: 36px; border: none;
+  text-align: center; font-size: 14px; font-weight: 700;
+  color: var(--navy); background: white;
+}

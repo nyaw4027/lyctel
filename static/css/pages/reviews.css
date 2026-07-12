@@ -1,0 +1,19 @@
+/* ============================================================
+   LYNCTEL — REVIEWS
+   ============================================================ */
+
+.review-card {
+  background: white; border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-100); padding: 16px;
+}
+.review-stars { display: flex; gap: 3px; color: var(--gold); font-size: 16px; }
+.review-stars--empty { color: var(--gray-200); }
+.review-author { font-weight: 700; font-size: var(--text-sm); color: var(--navy); }
+.review-date   { font-size: var(--text-xs); color: var(--gray-400); }
+.review-text   { font-size: var(--text-sm); color: var(--gray-600); line-height: 1.6; margin-top: 8px; }
+
+.rating-bar { display: flex; align-items: center; gap: 10px; }
+.rating-bar__label { font-size: var(--text-xs); color: var(--gray-400); width: 24px; text-align: right; }
+.rating-bar__track { flex: 1; height: 6px; background: var(--gray-100); border-radius: 99px; overflow: hidden; }
+.rating-bar__fill  { height: 100%; background: var(--gold); border-radius: 99px; }
+.rating-bar__count { font-size: var(--text-xs); color: var(--gray-400); width: 28px; }

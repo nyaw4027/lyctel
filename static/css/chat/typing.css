@@ -1,0 +1,44 @@
+
+/* ============================================================
+   LYNCTEL — TYPING INDICATOR
+   ============================================================ */
+
+.typing-indicator {
+  display: flex; align-items: center; gap: 4px;
+  padding: 10px 14px; background: var(--gray-100);
+  border-radius: 4px 18px 18px 18px; width: fit-content;
+}
+.typing-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--gray-400); animation: typingBounce 1.2s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-6px); }
+}
+
+/* Chat input bar */
+.chat-input-bar {
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+  border-top: 1px solid var(--gray-100);
+  display: flex; align-items: flex-end; gap: 10px;
+  background: white;
+}
+.chat-input-wrap {
+  flex: 1; background: var(--gray-100); border-radius: 24px;
+  padding: 10px 16px; min-height: 44px; max-height: 120px;
+  overflow-y: auto;
+}
+.chat-input-wrap[contenteditable]:empty::before {
+  content: attr(data-placeholder); color: var(--gray-400);
+}
+.chat-send-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--navy); color: white; border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: var(--transition-fast); flex-shrink: 0;
+}
+.chat-send-btn:hover { background: var(--gold); color: var(--navy); }
+
