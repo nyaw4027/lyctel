@@ -92,26 +92,37 @@
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
 
-
-<link rel="stylesheet" href="{% static 'css/output.css' %}"/>
-<link rel="stylesheet" href="{% static 'css/main.css' %}"/>
-<link rel="stylesheet" href="{% static 'css/uploads.css' %}"/>
-  <!-- FIXED: these two script tags were render-blocking (no defer/async),
-       sitting in <head> before literally everything else on every page
-       that extends this template. If cdn.tailwindcss.com is ever slow or
-       unreachable, the browser gets stuck parsing right here and NOTHING
-       below — not the body, not any page's own content — can render.
-       This is almost certainly the real root cause of the "page not
-       responding" symptom traced through several different pages
-       earlier; those pages' own map/script fixes were correct but
-       powerless against this, since the browser never got far enough to
-       reach them. `defer` lets the whole document parse and render
-       immediately; both scripts still run in the same relative order,
-       just after parsing instead of blocking it — worst case is a brief
-       flash of unstyled content instead of a dead page. -->
-  <script src="https://cdn.tailwindcss.com" defer></script>
-  <script defer>
-    tailwind.config = {
+  <!-- FIXED: the Tailwind CDN script tag was render-blocking (no
+       defer/async), sitting in <head> before literally everything else
+       on every page that extends this template. If cdn.tailwindcss.com
+       is ever slow or unreachable, the browser gets stuck parsing right
+       here and NOTHING below — not the body, not any page's own content
+       — can render. `defer` on the CDN script lets the whole document
+       parse and render immediately regardless of that network request's
+       fate. The config below is intentionally NOT deferred — it's a
+       plain local object assignment with no network dependency, so it
+       costs nothing to run immediately, and doing so is what guarantees
+       it exists before the deferred CDN script initializes (see the
+       longer note just below on why that ordering matters). -->
+  <!-- FIXED: custom Tailwind colors (navy/gold/cream) were silently
+       failing to generate as CSS classes, causing bg-navy etc. to have
+       no effect (revealing the page's cream background underneath,
+       while text-white — a built-in color, unaffected by our config —
+       kept working, which is exactly why the footer looked "cream with
+       unreadable white text"). Root cause: the Tailwind Play CDN needs
+       its custom config to exist BEFORE it initializes. Marking both the
+       CDN script and a *separate* config-setting script as `defer` left
+       a race where the CDN script's setup could run before the second
+       deferred script had assigned tailwind.config, so the very first
+       (and often only) style-generation pass used defaults only.
+       Fix: predefine window.tailwind.config in a plain, non-deferred,
+       inline script — no network dependency, executes instantly — so
+       the config exists before the deferred CDN script ever runs, no
+       race possible. The CDN script itself stays `defer`, so the
+       original page-freeze bug this was fixed for stays fixed too. -->
+  <script>
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
@@ -168,8 +179,9 @@
           },
         }
       }
-    }
+    };
   </script>
+  <script src="https://cdn.tailwindcss.com" defer></script>
 
   <style>
     :root {
