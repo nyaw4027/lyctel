@@ -1,117 +1,114 @@
 /* ============================================================
    LYNCTEL DESIGN SYSTEM — VARIABLES
-   Core tokens: colors, fonts, spacing, shadows, radii
    ============================================================ */
-
 :root {
-  /* ── Brand colors ───────────────────────────────────── */
-  --navy:          #0F1B2D;
-  --navy-700:      #1a2d47;
-  --navy-500:      #243d5c;
-  --navy-400:      #2d4f73;
-  --navy-300:      #3d6b96;
-  --gold:          #F5A623;
-  --gold-light:    #FEF3D7;
-  --gold-dark:     #c8841a;
-  --gold-50:       #FFFBF0;
-  --cream:         #FAFAF7;
-  --cream-100:     #F5F5F0;
+  /* ── Brand ──────────────────────────────────────────── */
+  --navy:         #0F1B2D;
+  --navy-700:     #1a2d47;
+  --navy-500:     #243d5c;
+  --navy-400:     #2d4f73;
+  --navy-300:     #3d6a96;
+  --navy-200:     #c8d8e8;
+  --navy-100:     #e8eef5;
+  --gold:         #F5A623;
+  --gold-dark:    #c8841a;
+  --gold-light:   #FEF3D7;
+  --gold-pale:    #fffbf0;
+  --cream:        #FAFAF7;
 
-  /* ── Semantic colors ────────────────────────────────── */
-  --success:       #22c55e;
-  --success-bg:    #f0fdf4;
+  /* ── Grays ───────────────────────────────────────────── */
+  --gray-50:  #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* ── Semantic ────────────────────────────────────────── */
+  --success:       #10b981;
+  --success-light: #d1fae5;
+  --danger:        #ef4444;
+  --danger-light:  #fee2e2;
   --warning:       #f59e0b;
-  --warning-bg:    #fffbeb;
-  --error:         #ef4444;
-  --error-bg:      #fef2f2;
+  --warning-light: #fef3c7;
   --info:          #3b82f6;
-  --info-bg:       #eff6ff;
+  --info-light:    #dbeafe;
 
-  /* ── Neutrals ───────────────────────────────────────── */
-  --gray-50:       #f9fafb;
-  --gray-100:      #f3f4f6;
-  --gray-200:      #e5e7eb;
-  --gray-300:      #d1d5db;
-  --gray-400:      #9ca3af;
-  --gray-500:      #6b7280;
-  --gray-600:      #4b5563;
-  --gray-700:      #374151;
-  --gray-800:      #1f2937;
-  --gray-900:      #111827;
+  /* ── Typography ──────────────────────────────────────── */
+  --font-display: 'Syne', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+  --font-mono:    monospace;
 
-  /* ── Typography ─────────────────────────────────────── */
-  --font-display:  'Syne', sans-serif;
-  --font-body:     'DM Sans', sans-serif;
-  --font-mono:     'JetBrains Mono', monospace;
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-md:   1.0625rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.25rem;
+  --text-2xl:  1.5rem;
+  --text-3xl:  1.875rem;
+  --text-4xl:  2.25rem;
 
-  --text-xs:       11px;
-  --text-sm:       13px;
-  --text-base:     14px;
-  --text-md:       15px;
-  --text-lg:       17px;
-  --text-xl:       20px;
-  --text-2xl:      24px;
-  --text-3xl:      30px;
-  --text-4xl:      36px;
+  --leading-tight:  1.2;
+  --leading-snug:   1.375;
+  --leading-normal: 1.6;
+  --leading-loose:  1.8;
 
-  --leading-tight: 1.2;
-  --leading-snug:  1.35;
-  --leading-normal:1.5;
-  --leading-loose: 1.7;
+  /* ── Spacing ─────────────────────────────────────────── */
+  --space-1: .25rem; --space-2: .5rem;  --space-3: .75rem;
+  --space-4: 1rem;   --space-5: 1.25rem;--space-6: 1.5rem;
+  --space-8: 2rem;   --space-10: 2.5rem;--space-12: 3rem;
+  --space-16: 4rem;  --space-20: 5rem;  --space-24: 6rem;
 
-  /* ── Spacing ────────────────────────────────────────── */
-  --space-1:  4px;
-  --space-2:  8px;
-  --space-3:  12px;
-  --space-4:  16px;
-  --space-5:  20px;
-  --space-6:  24px;
-  --space-8:  32px;
-  --space-10: 40px;
-  --space-12: 48px;
-  --space-16: 64px;
-  --space-20: 80px;
-  --space-24: 96px;
+  /* ── Radius ──────────────────────────────────────────── */
+  --radius-sm:   .375rem;
+  --radius-md:   .75rem;
+  --radius-lg:   1rem;
+  --radius-xl:   1.5rem;
+  --radius-2xl:  2rem;
+  --radius-3xl:  2.5rem;
+  --radius-full: 999px;
 
-  /* ── Border radius ──────────────────────────────────── */
-  --radius-sm:   8px;
-  --radius-md:   12px;
-  --radius-lg:   16px;
-  --radius-xl:   20px;
-  --radius-2xl:  24px;
-  --radius-full: 9999px;
+  /* ── Shadows ─────────────────────────────────────────── */
+  --shadow-xs:   0 1px 2px rgba(15,27,45,.06);
+  --shadow-sm:   0 1px 4px rgba(15,27,45,.08);
+  --shadow-md:   0 4px 16px rgba(15,27,45,.10);
+  --shadow-lg:   0 8px 32px rgba(15,27,45,.14);
+  --shadow-xl:   0 16px 48px rgba(15,27,45,.18);
+  --shadow-gold: 0 4px 20px rgba(245,166,35,.30);
+  --shadow-navy: 0 4px 20px rgba(15,27,45,.25);
 
-  /* ── Shadows ────────────────────────────────────────── */
-  --shadow-xs:  0 1px 2px rgba(15,27,45,.05);
-  --shadow-sm:  0 1px 4px rgba(15,27,45,.06);
-  --shadow-md:  0 4px 16px rgba(15,27,45,.10);
-  --shadow-lg:  0 8px 32px rgba(15,27,45,.14);
-  --shadow-xl:  0 16px 48px rgba(15,27,45,.18);
-  --shadow-gold:0 4px 20px rgba(245,166,35,.30);
-  --shadow-navy:0 4px 20px rgba(15,27,45,.25);
+  /* ── Transitions ─────────────────────────────────────── */
+  --transition-fast:   .15s ease;
+  --transition-base:   .25s ease;
+  --transition-slow:   .4s ease;
+  --transition-spring: .3s cubic-bezier(.34,1.56,.64,1);
 
-  /* ── Transitions ────────────────────────────────────── */
-  --transition-fast:   all .15s ease;
-  --transition-base:   all .2s ease;
-  --transition-slow:   all .35s ease;
-  --transition-bounce: all .3s cubic-bezier(.34,1.56,.64,1);
+  /* ── Z-index ─────────────────────────────────────────── */
+  --z-below:    -1;
+  --z-base:      0;
+  --z-raised:   10;
+  --z-dropdown: 50;
+  --z-sticky:  100;
+  --z-overlay: 200;
+  --z-modal:   300;
+  --z-toast:   400;
 
-  /* ── Z-index ────────────────────────────────────────── */
-  --z-base:    1;
-  --z-dropdown:100;
-  --z-sticky:  200;
-  --z-overlay: 300;
-  --z-modal:   400;
-  --z-toast:   500;
-  --z-top:     9999;
+  /* ── Layout ──────────────────────────────────────────── */
+  --container-max:  1280px;
+  --navbar-h:       64px;
+  --mobile-nav-h:   64px;
+}
 
-  /* ── Layout ─────────────────────────────────────────── */
-  --navbar-h:      64px;
-  --mobile-nav-h:  64px;
-  --sidebar-w:     260px;
-  --container-sm:  640px;
-  --container-md:  768px;
-  --container-lg:  1024px;
-  --container-xl:  1280px;
-  --container-2xl: 1440px;
+[data-theme="dark"] {
+  --cream:     #0a0f1a;
+  --navy-100:  #1f2937;
+  --navy-200:  #374151;
+  --gray-50:   #111827;
+  --gray-100:  #1f2937;
+  --gray-200:  #374151;
 }

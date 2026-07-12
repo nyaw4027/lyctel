@@ -2,132 +2,103 @@
    LYNCTEL DESIGN SYSTEM — ANIMATIONS
    ============================================================ */
 
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeDown {
-  from { opacity: 0; transform: translateY(-12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+/* ── Keyframes ───────────────────────────────────────────── */
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-@keyframes fadeOut {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes slideLeft {
-  from { opacity: 0; transform: translateX(30px); }
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-@keyframes slideRight {
-  from { opacity: 0; transform: translateX(-30px); }
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(.9); }
+  from { opacity: 0; transform: scale(.92); }
   to   { opacity: 1; transform: scale(1); }
-}
-@keyframes scaleUp {
-  from { opacity: 0; transform: scale(.85) translateY(10px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: .5; }
 }
+@keyframes ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 @keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-8px); }
+  0%, 100% { transform: translateY(0); animation-timing-function: cubic-bezier(.8,0,1,1); }
+  50%       { transform: translateY(-8px); animation-timing-function: cubic-bezier(0,0,.2,1); }
 }
 @keyframes shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-@keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.3); }
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 @keyframes floatUp {
   0%   { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-120px) scale(.8); }
+  100% { opacity: 0; transform: translateY(-120px) scale(1.4); }
 }
-@keyframes popIn {
-  0%   { opacity: 0; transform: scale(.5); }
-  70%  { opacity: 1; transform: scale(1.1); }
-  100% { transform: scale(1); }
-}
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
-@keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(100%); }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes ripple {
-  0%   { transform: scale(0); opacity: .6; }
-  100% { transform: scale(4); opacity: 0; }
+@keyframes goldPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,166,35,.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(245,166,35,0); }
+}
+@keyframes navyGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(15,27,45,.3); }
+  50%       { box-shadow: 0 0 0 8px rgba(15,27,45,0); }
 }
 
-/* ── Animation utility classes ──────────────────────── */
-.animate-fade-up    { animation: fadeUp .5s ease forwards; }
-.animate-fade-down  { animation: fadeDown .3s ease forwards; }
-.animate-fade-in    { animation: fadeIn .4s ease forwards; }
-.animate-slide-left { animation: slideLeft .4s ease forwards; }
-.animate-scale-in   { animation: scaleIn .3s cubic-bezier(.34,1.56,.64,1) forwards; }
+/* ── Utility classes ─────────────────────────────────────── */
+.animate-fade-in    { animation: fadeIn .3s ease both; }
+.animate-fade-up    { animation: fadeUp .4s ease both; }
+.animate-fade-down  { animation: fadeDown .4s ease both; }
+.animate-scale-in   { animation: scaleIn .3s var(--transition-spring) both; }
+.animate-slide-right{ animation: slideInRight .4s ease both; }
+.animate-slide-left { animation: slideInLeft .4s ease both; }
+.animate-pulse      { animation: pulse 2s ease infinite; }
 .animate-spin       { animation: spin 1s linear infinite; }
-.animate-pulse      { animation: pulse 1.5s ease infinite; }
-.animate-bounce     { animation: bounce 1s ease infinite; }
-.animate-shimmer    { animation: shimmer 1.5s infinite; }
-.animate-pop        { animation: popIn .35s cubic-bezier(.34,1.56,.64,1) forwards; }
-
-/* ── Delay utilities ────────────────────────────────── */
-.delay-100 { animation-delay: .1s; }
-.delay-200 { animation-delay: .2s; }
-.delay-300 { animation-delay: .3s; }
-.delay-400 { animation-delay: .4s; }
-.delay-500 { animation-delay: .5s; }
-
-/* ── Transition utilities ───────────────────────────── */
-.transition-fast   { transition: var(--transition-fast); }
-.transition-base   { transition: var(--transition-base); }
-.transition-slow   { transition: var(--transition-slow); }
-.transition-bounce { transition: var(--transition-bounce); }
-
-/* ── Skeleton loading ───────────────────────────────── */
-.skeleton {
-  background: linear-gradient(90deg,
-    var(--gray-100) 25%,
-    var(--gray-200) 50%,
-    var(--gray-100) 75%
-  );
+.animate-bounce     { animation: bounce 1s infinite; }
+.animate-ping       { animation: ping 1s cubic-bezier(0,0,.2,1) infinite; }
+.animate-shimmer {
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-  border-radius: var(--radius-sm);
 }
 
-/* ── Hover lift ─────────────────────────────────────── */
-.hover-lift { transition: transform .2s ease, box-shadow .2s ease; }
-.hover-lift:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
-}
+/* Stagger helpers */
+.delay-75  { animation-delay: 75ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-700 { animation-delay: 700ms; }
 
-/* ── Press effect ───────────────────────────────────── */
-.btn-press { transition: transform .1s ease, opacity .1s ease; }
-.btn-press:active { transform: scale(.96); opacity: .9; }
+/* Transition utilities */
+.transition-all   { transition: all var(--transition-base); }
+.transition-fast  { transition: all var(--transition-fast); }
+.transition-slow  { transition: all var(--transition-slow); }
+.transition-spring{ transition: all var(--transition-spring); }
 
-/* ── Ripple container ───────────────────────────────── */
-.ripple-container { position: relative; overflow: hidden; }
-.ripple-effect {
-  position: absolute; border-radius: 50%;
-  background: rgba(255,255,255,.3);
-  animation: ripple .6s ease forwards;
-  pointer-events: none;
-}
+/* Hover effects */
+.hover-lift { transition: transform var(--transition-base), box-shadow var(--transition-base); }
+.hover-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+
+.hover-gold:hover { color: var(--gold); }
+.hover-scale:hover { transform: scale(1.05); }
+
+/* Press effect for buttons */
+.btn-press:active { transform: scale(.97); }
