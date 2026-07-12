@@ -11,4 +11,33 @@
   --color-gold-light: #FEF3D7;
   --color-gold-dark:  #c8841a;
   --color-cream:      #FAFAF7;
+}@import "tailwindcss";
+
+/* v4 dark mode is prefers-color-scheme by default; this switches it back
+   to class-based (html.dark), matching the theme-toggle JS in base.html */
+@custom-variant dark (&:is(.dark, .dark *));
+
+@theme {
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  --color-navy: #1B2E4D;
+  --color-navy-900: #0B1424;
+  --color-navy-800: #0F1B2D;
+  --color-navy-700: #152540;
+  --color-navy-600: #24406B;
+  --color-navy-500: #1B2E4D;
+  --color-navy-400: #5678A8;
+
+  --color-gold: #F5A623;
+  --color-gold-light: #FEF3D7;
+  --color-gold-dark: #c8841a;
+
+  --color-cream: #FAFAF7;
 }
+
+/* Content scanning: v4 auto-detects by walking the directory tree from
+   this file's location and respects .gitignore, but explicit @source is
+   more reliable given how many unrelated folders sit in this repo root */
+@source "../../templates";
+@source "../../**/templates";
