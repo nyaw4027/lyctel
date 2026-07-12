@@ -1,64 +1,2344 @@
-
-/* ============================================================
-   LYNCTEL DESIGN SYSTEM — MAIN ENTRY POINT
-   Imports all partials in the correct cascade order.
-   Reference this file in base.html instead of output.css
+﻿/* ============================================================
+   LYNCTEL DESIGN SYSTEM — VARIABLES
+   Core tokens: colors, fonts, spacing, shadows, radii
    ============================================================ */
 
-/* Base */
-@import "base/variables.css";
-@import "base/reset.css";
-@import "base/typography.css";
-@import "base/animations.css";
+:root {
+  /* ── Brand colors ───────────────────────────────────── */
+  --navy:          #0F1B2D;
+  --navy-700:      #1a2d47;
+  --navy-500:      #243d5c;
+  --navy-400:      #2d4f73;
+  --navy-300:      #3d6b96;
+  --gold:          #F5A623;
+  --gold-light:    #FEF3D7;
+  --gold-dark:     #c8841a;
+  --gold-50:       #FFFBF0;
+  --cream:         #FAFAF7;
+  --cream-100:     #F5F5F0;
 
-/* Layout */
-@import "layout/containers.css";
-@import "layout/grid.css";
-@import "layout/navbar.css";
-@import "layout/footer.css";
-@import "layout/sidebar.css";
+  /* ── Semantic colors ────────────────────────────────── */
+  --success:       #22c55e;
+  --success-bg:    #f0fdf4;
+  --warning:       #f59e0b;
+  --warning-bg:    #fffbeb;
+  --error:         #ef4444;
+  --error-bg:      #fef2f2;
+  --info:          #3b82f6;
+  --info-bg:       #eff6ff;
 
-/* Components */
-@import "components/buttons.css";
-@import "components/cards.css";
-@import "components/forms.css";
-@import "components/badges.css";
-@import "components/alerts.css";
-@import "components/modal.css";
-@import "components/dropdown.css";
-@import "components/tables.css";
-@import "components/loaders.css";
-@import "components/pagination.css";
+  /* ── Neutrals ───────────────────────────────────────── */
+  --gray-50:       #f9fafb;
+  --gray-100:      #f3f4f6;
+  --gray-200:      #e5e7eb;
+  --gray-300:      #d1d5db;
+  --gray-400:      #9ca3af;
+  --gray-500:      #6b7280;
+  --gray-600:      #4b5563;
+  --gray-700:      #374151;
+  --gray-800:      #1f2937;
+  --gray-900:      #111827;
 
-/* Pages */
-@import "pages/home.css";
-@import "pages/products.css";
-@import "pages/food.css";
-@import "pages/cart.css";
-@import "pages/checkout.css";
-@import "pages/dashboard.css";
-@import "pages/vendors.css";
-@import "pages/rider.css";
-@import "pages/livestream.css";
-@import "pages/accounts.css";
-@import "pages/reviews.css";
+  /* ── Typography ─────────────────────────────────────── */
+  --font-display:  'Syne', sans-serif;
+  --font-body:     'DM Sans', sans-serif;
+  --font-mono:     'JetBrains Mono', monospace;
 
-/* Chat */
-@import "chat/chat.css";
-@import "chat/messages.css";
-@import "chat/typing.css";
-@import "chat/attachments.css";
+  --text-xs:       11px;
+  --text-sm:       13px;
+  --text-base:     14px;
+  --text-md:       15px;
+  --text-lg:       17px;
+  --text-xl:       20px;
+  --text-2xl:      24px;
+  --text-3xl:      30px;
+  --text-4xl:      36px;
 
-/* PWA */
-@import "pwa/install.css";
-@import "pwa/offline.css";
+  --leading-tight: 1.2;
+  --leading-snug:  1.35;
+  --leading-normal:1.5;
+  --leading-loose: 1.7;
 
-/* Themes */
-@import "themes/light.css";
-@import "themes/dark.css";
+  /* ── Spacing ────────────────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
 
-/* Responsive (must be last) */
-@import "responsive/mobile.css";
-@import "responsive/tablet.css";
-@import "responsive/desktop.css";
-@import "responsive/print.css";
+  /* ── Border radius ──────────────────────────────────── */
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
+  --radius-2xl:  24px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ────────────────────────────────────────── */
+  --shadow-xs:  0 1px 2px rgba(15,27,45,.05);
+  --shadow-sm:  0 1px 4px rgba(15,27,45,.06);
+  --shadow-md:  0 4px 16px rgba(15,27,45,.10);
+  --shadow-lg:  0 8px 32px rgba(15,27,45,.14);
+  --shadow-xl:  0 16px 48px rgba(15,27,45,.18);
+  --shadow-gold:0 4px 20px rgba(245,166,35,.30);
+  --shadow-navy:0 4px 20px rgba(15,27,45,.25);
+
+  /* ── Transitions ────────────────────────────────────── */
+  --transition-fast:   all .15s ease;
+  --transition-base:   all .2s ease;
+  --transition-slow:   all .35s ease;
+  --transition-bounce: all .3s cubic-bezier(.34,1.56,.64,1);
+
+  /* ── Z-index ────────────────────────────────────────── */
+  --z-base:    1;
+  --z-dropdown:100;
+  --z-sticky:  200;
+  --z-overlay: 300;
+  --z-modal:   400;
+  --z-toast:   500;
+  --z-top:     9999;
+
+  /* ── Layout ─────────────────────────────────────────── */
+  --navbar-h:      64px;
+  --mobile-nav-h:  64px;
+  --sidebar-w:     260px;
+  --container-sm:  640px;
+  --container-md:  768px;
+  --container-lg:  1024px;
+  --container-xl:  1280px;
+  --container-2xl: 1440px;
+}
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — RESET
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--navy);
+  background-color: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+img, video, svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+input, button, textarea, select {
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent iOS zoom on input focus */
+input, select, textarea {
+  font-size: 16px !important;
+}
+@media (min-width: 640px) {
+  input, select, textarea { font-size: 14px !important; }
+}
+
+button { cursor: pointer; border: none; background: none; }
+a { color: inherit; text-decoration: none; }
+ul, ol { list-style: none; }
+table { border-collapse: collapse; border-spacing: 0; }
+
+/* Mobile file input fix — iOS Safari won't open picker for display:none */
+input[type="file"].hidden,
+input[type="file"][class*="hidden"] {
+  display: block !important;
+  position: fixed !important;
+  top: -300px !important;
+  left: -300px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+* { scrollbar-width: thin; scrollbar-color: var(--gray-300) transparent; }
+
+/* Selection */
+::selection { background: var(--gold-light); color: var(--navy); }
+
+/* Focus visible */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — TYPOGRAPHY
+   ============================================================ */
+
+.font-display { font-family: var(--font-display) !important; }
+.font-body    { font-family: var(--font-body) !important; }
+.font-mono    { font-family: var(--font-mono) !important; }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--navy);
+  line-height: var(--leading-tight);
+}
+
+h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); }
+h2 { font-size: clamp(1.4rem, 4vw, 2rem); }
+h3 { font-size: clamp(1.1rem, 3vw, 1.4rem); }
+h4 { font-size: 1.1rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.9rem; }
+
+p { line-height: var(--leading-normal); color: var(--gray-600); }
+
+.text-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+}
+
+/* Size utilities */
+.text-xs   { font-size: var(--text-xs); }
+.text-sm   { font-size: var(--text-sm); }
+.text-base { font-size: var(--text-base); }
+.text-md   { font-size: var(--text-md); }
+.text-lg   { font-size: var(--text-lg); }
+.text-xl   { font-size: var(--text-xl); }
+.text-2xl  { font-size: var(--text-2xl); }
+.text-3xl  { font-size: var(--text-3xl); }
+.text-4xl  { font-size: var(--text-4xl); }
+
+/* Weight */
+.font-400 { font-weight: 400; }
+.font-500 { font-weight: 500; }
+.font-600 { font-weight: 600; }
+.font-700 { font-weight: 700; }
+.font-800 { font-weight: 800; }
+
+/* Color */
+.text-navy      { color: var(--navy) !important; }
+.text-navy-700  { color: var(--navy-700) !important; }
+.text-gold      { color: var(--gold) !important; }
+.text-gold-dark { color: var(--gold-dark) !important; }
+.text-cream     { color: var(--cream) !important; }
+.text-muted     { color: var(--gray-400) !important; }
+.text-subtle    { color: var(--gray-500) !important; }
+
+/* Section labels */
+.section-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--gold);
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 700;
+  color: var(--navy);
+  line-height: var(--leading-tight);
+}
+.section-subtitle {
+  font-size: var(--text-base);
+  color: var(--gray-500);
+  margin-top: 8px;
+  line-height: var(--leading-loose);
+  max-width: 520px;
+}
+
+/* Field labels */
+.field-label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--gray-400);
+  margin-bottom: 6px;
+}
+
+/* Truncate */
+.truncate     { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.text-balance { text-wrap: balance; }
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — ANIMATIONS
+   ============================================================ */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes slideLeft {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(.85) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .5; }
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.3); }
+}
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-120px) scale(.8); }
+}
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(.5); }
+  70%  { opacity: 1; transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ripple {
+  0%   { transform: scale(0); opacity: .6; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+/* ── Animation utility classes ──────────────────────── */
+.animate-fade-up    { animation: fadeUp .5s ease forwards; }
+.animate-fade-down  { animation: fadeDown .3s ease forwards; }
+.animate-fade-in    { animation: fadeIn .4s ease forwards; }
+.animate-slide-left { animation: slideLeft .4s ease forwards; }
+.animate-scale-in   { animation: scaleIn .3s cubic-bezier(.34,1.56,.64,1) forwards; }
+.animate-spin       { animation: spin 1s linear infinite; }
+.animate-pulse      { animation: pulse 1.5s ease infinite; }
+.animate-bounce     { animation: bounce 1s ease infinite; }
+.animate-shimmer    { animation: shimmer 1.5s infinite; }
+.animate-pop        { animation: popIn .35s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+/* ── Delay utilities ────────────────────────────────── */
+.delay-100 { animation-delay: .1s; }
+.delay-200 { animation-delay: .2s; }
+.delay-300 { animation-delay: .3s; }
+.delay-400 { animation-delay: .4s; }
+.delay-500 { animation-delay: .5s; }
+
+/* ── Transition utilities ───────────────────────────── */
+.transition-fast   { transition: var(--transition-fast); }
+.transition-base   { transition: var(--transition-base); }
+.transition-slow   { transition: var(--transition-slow); }
+.transition-bounce { transition: var(--transition-bounce); }
+
+/* ── Skeleton loading ───────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--gray-100) 25%,
+    var(--gray-200) 50%,
+    var(--gray-100) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Hover lift ─────────────────────────────────────── */
+.hover-lift { transition: transform .2s ease, box-shadow .2s ease; }
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Press effect ───────────────────────────────────── */
+.btn-press { transition: transform .1s ease, opacity .1s ease; }
+.btn-press:active { transform: scale(.96); opacity: .9; }
+
+/* ── Ripple container ───────────────────────────────── */
+.ripple-container { position: relative; overflow: hidden; }
+.ripple-effect {
+  position: absolute; border-radius: 50%;
+  background: rgba(255,255,255,.3);
+  animation: ripple .6s ease forwards;
+  pointer-events: none;
+}
+EOF
+
+cat > /home/claude/static/css/layout/containers.css << 'EOF'
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — SECTION CONTAINERS
+   ============================================================ */
+
+/* Hero section */
+.hero {
+  background: var(--navy); color: white;
+  position: relative; overflow: hidden;
+  padding: calc(var(--navbar-h) + 40px) 0 60px;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.04) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+.hero__inner {
+  position: relative; z-index: 1;
+  max-width: var(--container-lg); margin: 0 auto; padding: 0 20px;
+}
+.hero__badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(245,166,35,.15); color: var(--gold);
+  font-size: var(--text-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 6px 14px; border-radius: var(--radius-full);
+  margin-bottom: 20px; border: 1px solid rgba(245,166,35,.2);
+}
+.hero__title {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(2rem, 6vw, 3.2rem); color: white;
+  line-height: 1.1; margin-bottom: 16px;
+}
+.hero__title span { color: var(--gold); }
+.hero__subtitle {
+  font-size: clamp(14px, 3vw, 17px); color: rgba(255,255,255,.65);
+  line-height: 1.7; max-width: 520px; margin-bottom: 32px;
+}
+
+/* Page header */
+.page-header {
+  background: white; border-bottom: 1px solid var(--gray-100);
+  padding: 20px 0; margin-bottom: 32px;
+}
+.page-header__inner {
+  max-width: var(--container-xl); margin: 0 auto; padding: 0 20px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.page-header__title {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-2xl); color: var(--navy);
+}
+.page-header__sub { font-size: var(--text-sm); color: var(--gray-400); margin-top: 2px; }
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 60px 20px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 12px;
+}
+.empty-state__icon { font-size: 3.5rem; }
+.empty-state__title {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-xl); color: var(--navy);
+}
+.empty-state__text { font-size: var(--text-sm); color: var(--gray-400); max-width: 300px; line-height: 1.6; }
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — GRID & LAYOUT
+   ============================================================ */
+
+.container {
+  width: 100%; max-width: var(--container-xl);
+  margin: 0 auto; padding: 0 16px;
+}
+@media (min-width: 640px)  { .container { padding: 0 20px; } }
+@media (min-width: 1024px) { .container { padding: 0 24px; } }
+
+.container-sm  { max-width: var(--container-sm);  margin: 0 auto; padding: 0 16px; }
+.container-md  { max-width: var(--container-md);  margin: 0 auto; padding: 0 16px; }
+.container-lg  { max-width: var(--container-lg);  margin: 0 auto; padding: 0 16px; }
+.container-2xl { max-width: var(--container-2xl); margin: 0 auto; padding: 0 16px; }
+
+/* Product grids */
+.product-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 480px)  { .product-grid { grid-template-columns: repeat(2,1fr); gap: 16px; } }
+@media (min-width: 640px)  { .product-grid { grid-template-columns: repeat(3,1fr); } }
+@media (min-width: 1024px) { .product-grid { grid-template-columns: repeat(4,1fr); gap: 20px; } }
+@media (min-width: 1280px) { .product-grid { grid-template-columns: repeat(5,1fr); } }
+
+.vendor-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px)  { .vendor-grid { grid-template-columns: repeat(2,1fr); } }
+@media (min-width: 768px)  { .vendor-grid { grid-template-columns: repeat(3,1fr); } }
+@media (min-width: 1024px) { .vendor-grid { grid-template-columns: repeat(4,1fr); } }
+
+/* Section spacing */
+.section       { padding: 48px 0; }
+.section-sm    { padding: 32px 0; }
+.section-lg    { padding: 72px 0; }
+@media (min-width: 1024px) {
+  .section    { padding: 72px 0; }
+  .section-sm { padding: 48px 0; }
+  .section-lg { padding: 96px 0; }
+}
+
+/* Horizontal scroll row */
+.scroll-row {
+  display: flex; gap: 14px; overflow-x: auto;
+  padding-bottom: 8px; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-row::-webkit-scrollbar { display: none; }
+.scroll-row > * { flex-shrink: 0; }
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — NAVBAR
+   ============================================================ */
+
+#navbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--navbar-h); z-index: var(--z-sticky);
+  background: rgba(255,255,255,.96);
+  border-bottom: 1px solid rgba(15,27,45,.06);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  transition: box-shadow .25s, background .25s;
+}
+.nav-scrolled {
+  box-shadow: 0 2px 24px rgba(15,27,45,.1) !important;
+  background: rgba(255,255,255,.98) !important;
+}
+.navbar-inner {
+  max-width: var(--container-xl); margin: 0 auto;
+  padding: 0 16px; height: 100%;
+  display: flex; align-items: center; gap: 16px;
+}
+.navbar-logo {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 18px; color: var(--navy); text-decoration: none;
+  flex-shrink: 0;
+}
+.navbar-logo span { color: var(--gold); }
+
+.navbar-links {
+  display: none; align-items: center; gap: 4px;
+}
+@media (min-width: 1024px) { .navbar-links { display: flex; } }
+
+.navbar-link {
+  padding: 6px 12px; border-radius: var(--radius-sm);
+  font-size: var(--text-sm); font-weight: 600; color: var(--gray-600);
+  text-decoration: none; transition: var(--transition-fast);
+  white-space: nowrap;
+}
+.navbar-link:hover { color: var(--navy); background: var(--gray-100); }
+.navbar-link.active { color: var(--navy); background: var(--gold-light); }
+
+.navbar-actions {
+  display: flex; align-items: center; gap: 8px; margin-left: auto;
+}
+
+/* Cart icon with badge */
+.navbar-cart {
+  position: relative; width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gray-100); cursor: pointer;
+  transition: var(--transition-fast); text-decoration: none; color: var(--navy);
+}
+.navbar-cart:hover { background: var(--gray-200); }
+.navbar-cart__badge {
+  position: absolute; top: -4px; right: -4px;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  background: var(--gold); color: var(--navy);
+  border-radius: var(--radius-full);
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid white;
+}
+
+/* Mobile nav */
+#mobile-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--mobile-nav-h); z-index: var(--z-sticky);
+  background: rgba(255,255,255,.97);
+  border-top: 1px solid var(--gray-100);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  display: flex; align-items: center;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (min-width: 1024px) { #mobile-nav { display: none; } }
+
+.mobile-nav__item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  padding: 6px; cursor: pointer; text-decoration: none;
+  color: var(--gray-400); transition: color .2s;
+  position: relative;
+}
+.mobile-nav__item.active { color: var(--navy); }
+.mobile-nav__item.active .mobile-nav__dot {
+  position: absolute; bottom: 4px;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--gold);
+}
+.mobile-nav__icon  { font-size: 22px; line-height: 1; }
+.mobile-nav__label { font-size: 10px; font-weight: 600; }
+
+/* Page offset for fixed navbar */
+.page-offset { padding-top: calc(var(--navbar-h) + 8px); }
+.page-offset-mobile { padding-bottom: calc(var(--mobile-nav-h) + 8px); }
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — FOOTER
+   ============================================================ */
+
+.footer {
+  background: var(--navy);
+  color: rgba(255,255,255,.65);
+  font-size: var(--text-sm);
+  padding: 56px 0 0;
+  margin-top: 80px;
+}
+.footer__inner {
+  max-width: var(--container-xl); margin: 0 auto; padding: 0 20px;
+}
+.footer__grid {
+  display: grid; gap: 40px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px)  { .footer__grid { grid-template-columns: repeat(2,1fr); } }
+@media (min-width: 1024px) { .footer__grid { grid-template-columns: 2fr 1fr 1fr 1fr; } }
+
+.footer__brand-logo {
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  color: white; margin-bottom: 12px; display: block;
+}
+.footer__brand-logo span { color: var(--gold); }
+.footer__brand-desc {
+  font-size: var(--text-sm); line-height: 1.7;
+  color: rgba(255,255,255,.5); max-width: 280px;
+  margin-bottom: 20px;
+}
+
+.footer__heading {
+  font-size: var(--text-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  color: white; margin-bottom: 16px;
+}
+.footer__links { display: flex; flex-direction: column; gap: 10px; }
+.footer__link {
+  color: rgba(255,255,255,.55);
+  text-decoration: none; font-size: var(--text-sm);
+  transition: color .15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.footer__link:hover { color: var(--gold); }
+
+/* Social icons */
+.footer__socials { display: flex; gap: 10px; margin-top: 8px; }
+.footer__social {
+  width: 36px; height: 36px; border-radius: var(--radius-sm);
+  background: rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; transition: var(--transition-fast);
+  text-decoration: none;
+}
+.footer__social:hover { background: var(--gold); }
+
+/* App store badges */
+.footer__apps { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.footer__app-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.08); color: white;
+  border-radius: var(--radius-sm); padding: 8px 14px;
+  font-size: var(--text-xs); font-weight: 600;
+  text-decoration: none; transition: var(--transition-fast);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.footer__app-btn:hover { background: rgba(255,255,255,.15); }
+.footer__app-btn span { font-size: 20px; }
+
+/* Divider */
+.footer__divider {
+  border: none; border-top: 1px solid rgba(255,255,255,.08);
+  margin: 40px 0 0;
+}
+
+/* Bottom bar */
+.footer__bottom {
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; font-size: var(--text-xs);
+  color: rgba(255,255,255,.35);
+  max-width: var(--container-xl); margin: 0 auto;
+}
+.footer__bottom a {
+  color: rgba(255,255,255,.4); text-decoration: none;
+  transition: color .15s;
+}
+.footer__bottom a:hover { color: var(--gold); }
+.footer__bottom-links { display: flex; gap: 16px; flex-wrap: wrap; }
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — SIDEBAR
+   ============================================================ */
+
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  background: white; border-right: 1px solid var(--gray-100);
+  height: 100vh; position: sticky; top: 0;
+  overflow-y: auto; padding: 20px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.sidebar__section { margin-bottom: 20px; }
+.sidebar__label {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  color: var(--gray-400); padding: 0 12px; margin-bottom: 6px;
+}
+.sidebar__item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  font-size: var(--text-sm); font-weight: 600;
+  color: var(--gray-600); text-decoration: none;
+  cursor: pointer; transition: var(--transition-fast);
+  border: none; background: none; width: 100%; text-align: left;
+}
+.sidebar__item:hover { background: var(--gray-100); color: var(--navy); }
+.sidebar__item.active {
+  background: var(--gold-light); color: var(--navy);
+}
+.sidebar__item.active .sidebar__icon { color: var(--gold-dark); }
+.sidebar__icon { font-size: 18px; flex-shrink: 0; width: 20px; text-align: center; }
+.sidebar__badge {
+  margin-left: auto; background: var(--navy); color: white;
+  font-size: 10px; font-weight: 700; padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+/* Mobile drawer */
+#sidebar-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: min(var(--sidebar-w), 85vw);
+  background: white; z-index: var(--z-modal);
+  transform: translateX(-100%);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+  box-shadow: var(--shadow-xl);
+  display: flex; flex-direction: column;
+}
+#sidebar-drawer.open { transform: translateX(0); }
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — BUTTONS
+   ============================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-base);
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px; /* iOS tap target */
+  text-decoration: none;
+}
+.btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Sizes ──────────────────────────────────────────── */
+.btn-xs  { padding: 5px 12px; font-size: var(--text-xs); min-height: 32px; border-radius: var(--radius-sm); }
+.btn-sm  { padding: 7px 14px; font-size: var(--text-xs); min-height: 36px; border-radius: var(--radius-sm); }
+.btn-lg  { padding: 14px 28px; font-size: var(--text-md); min-height: 52px; border-radius: var(--radius-lg); }
+.btn-xl  { padding: 16px 36px; font-size: var(--text-lg); min-height: 58px; border-radius: var(--radius-lg); }
+.btn-full { width: 100%; }
+
+/* ── Variants ───────────────────────────────────────── */
+.btn-primary {
+  background: var(--navy);
+  color: white;
+  box-shadow: 0 4px 14px rgba(15,27,45,.2);
+}
+.btn-primary:hover {
+  background: var(--navy-700);
+  box-shadow: 0 6px 20px rgba(15,27,45,.28);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: scale(.97); }
+
+.btn-gold {
+  background: var(--gold);
+  color: var(--navy);
+  box-shadow: var(--shadow-gold);
+  font-weight: 700;
+}
+.btn-gold:hover {
+  background: var(--gold-dark);
+  box-shadow: 0 6px 24px rgba(245,166,35,.4);
+  transform: translateY(-1px);
+}
+.btn-gold:active { transform: scale(.97); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--navy);
+  border: 1.5px solid var(--gray-200);
+}
+.btn-outline:hover {
+  border-color: var(--navy);
+  background: var(--gray-50);
+}
+
+.btn-outline-gold {
+  background: transparent;
+  color: var(--gold-dark);
+  border: 1.5px solid var(--gold);
+}
+.btn-outline-gold:hover {
+  background: var(--gold-light);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--navy);
+}
+.btn-ghost:hover {
+  background: var(--gray-100);
+}
+
+.btn-danger {
+  background: var(--error);
+  color: white;
+  box-shadow: 0 4px 14px rgba(239,68,68,.2);
+}
+.btn-danger:hover {
+  background: #dc2626;
+  box-shadow: 0 6px 20px rgba(239,68,68,.3);
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+.btn-success:hover { background: #16a34a; }
+
+.btn-white {
+  background: white;
+  color: var(--navy);
+  box-shadow: var(--shadow-md);
+}
+.btn-white:hover {
+  background: var(--gray-50);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Icon buttons ───────────────────────────────────── */
+.btn-icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-icon-sm { width: 32px; height: 32px; border-radius: var(--radius-sm); }
+.btn-icon-lg { width: 48px; height: 48px; border-radius: var(--radius-lg); }
+.btn-icon-round { border-radius: var(--radius-full); }
+
+/* ── Loading state ──────────────────────────────────── */
+.btn-loading {
+  pointer-events: none;
+  opacity: .8;
+}
+.btn-loading::after {
+  content: '';
+  width: 14px; height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin-left: 8px;
+}
+
+/* ── Add to cart ────────────────────────────────────── */
+.btn-cart {
+  background: var(--navy);
+  color: white;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  width: 100%;
+  padding: 10px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-base);
+  font-family: var(--font-body);
+}
+.btn-cart:hover { background: var(--gold); color: var(--navy); }
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — CARDS
+   ============================================================ */
+
+.card {
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-100);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: var(--transition-base);
+}
+.card-hover:hover, .card.hoverable:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+.card-body   { padding: var(--space-5); }
+.card-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.card-footer {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--gray-100);
+  background: var(--gray-50);
+}
+
+/* ── Product card ───────────────────────────────────── */
+.product-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-100);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease;
+  position: relative;
+}
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+.product-card__img {
+  aspect-ratio: 1;
+  width: 100%;
+  object-fit: cover;
+  transition: transform .4s ease;
+  background: var(--gray-100);
+}
+.product-card:hover .product-card__img { transform: scale(1.04); }
+.product-card__img-wrap { overflow: hidden; position: relative; }
+.product-card__badge {
+  position: absolute; top: 10px; left: 10px;
+  font-size: 10px; font-weight: 700;
+  padding: 3px 8px; border-radius: var(--radius-full);
+  background: var(--error); color: white;
+}
+.product-card__badge--gold { background: var(--gold); color: var(--navy); }
+.product-card__body { padding: 12px; }
+.product-card__name {
+  font-weight: 600; font-size: var(--text-sm);
+  color: var(--navy); line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  margin-bottom: 6px;
+}
+.product-card__price {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: var(--text-md); color: var(--navy);
+}
+.product-card__price-old {
+  font-size: var(--text-xs); color: var(--gray-400);
+  text-decoration: line-through; margin-left: 5px;
+}
+.product-card__rating {
+  display: flex; align-items: center; gap: 4px;
+  font-size: var(--text-xs); color: var(--gray-500); margin-top: 4px;
+}
+
+/* ── Food vendor card ───────────────────────────────── */
+.vendor-card {
+  background: white;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-100);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.vendor-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+.vendor-card__banner {
+  height: 120px; width: 100%;
+  object-fit: cover; background: var(--gray-100);
+}
+.vendor-card__logo {
+  width: 52px; height: 52px; border-radius: var(--radius-md);
+  border: 3px solid white; box-shadow: var(--shadow-sm);
+  object-fit: cover; background: var(--gray-100);
+  margin-top: -26px; margin-left: 16px; position: relative;
+}
+.vendor-card__body { padding: 10px 16px 16px; }
+.vendor-card__name {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-md); color: var(--navy);
+}
+.vendor-card__meta {
+  display: flex; align-items: center; gap: 12px;
+  font-size: var(--text-xs); color: var(--gray-400); margin-top: 6px;
+}
+.vendor-card__status--open  { color: var(--success); font-weight: 600; }
+.vendor-card__status--closed { color: var(--error); font-weight: 600; }
+
+/* ── Stat card ──────────────────────────────────────── */
+.stat-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-100);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.stat-card__icon {
+  width: 48px; height: 48px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+}
+.stat-card__value {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-2xl); color: var(--navy); line-height: 1;
+}
+.stat-card__label {
+  font-size: var(--text-xs); color: var(--gray-400); margin-top: 4px;
+}
+.stat-card__change {
+  font-size: var(--text-xs); font-weight: 600; margin-top: 6px;
+  display: flex; align-items: center; gap: 3px;
+}
+.stat-card__change--up   { color: var(--success); }
+.stat-card__change--down { color: var(--error); }
+
+/* ── Preview card (live stream / vendor) ────────────── */
+.preview-card {
+  background: linear-gradient(160deg, var(--navy) 0%, var(--navy-700) 100%);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  color: white;
+  box-shadow: var(--shadow-xl);
+}
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — FORMS
+   ============================================================ */
+
+.form-group { margin-bottom: var(--space-4); }
+
+.form-input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--navy);
+  background: white;
+  font-family: var(--font-body);
+  transition: var(--transition-fast);
+  -webkit-appearance: none;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 3px rgba(245,166,35,.18);
+}
+.form-input:disabled {
+  background: var(--gray-50);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+.form-input.error  { border-color: var(--error) !important; background: var(--error-bg); }
+.form-input.success{ border-color: var(--success) !important; background: var(--success-bg); }
+
+.form-select {
+  width: 100%;
+  padding: 11px 36px 11px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--navy);
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.form-select:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245,166,35,.18);
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--navy);
+  background: white;
+  font-family: var(--font-body);
+  resize: vertical;
+  min-height: 100px;
+  transition: var(--transition-fast);
+}
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245,166,35,.18);
+}
+
+/* ── Upload zone ────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition-base);
+  position: relative;
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.upload-zone:hover, .upload-zone.over {
+  border-color: var(--gold);
+  background: var(--gold-50);
+}
+.upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.upload-zone__icon  { font-size: 2rem; }
+.upload-zone__title { font-size: var(--text-sm); font-weight: 600; color: var(--navy); }
+.upload-zone__sub   { font-size: var(--text-xs); color: var(--gray-400); }
+
+/* ── Checkbox / Radio ───────────────────────────────── */
+.form-check {
+  display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+}
+.form-check input[type="checkbox"],
+.form-check input[type="radio"] {
+  width: 18px; height: 18px; min-width: 18px;
+  border: 2px solid var(--gray-300);
+  border-radius: 5px;
+  cursor: pointer;
+  accent-color: var(--navy);
+  margin-top: 1px;
+}
+.form-check input[type="radio"] { border-radius: 50%; }
+.form-check__label { font-size: var(--text-sm); color: var(--gray-600); line-height: 1.4; }
+
+/* ── Toggle switch ──────────────────────────────────── */
+.toggle {
+  position: relative; display: inline-block;
+  width: 44px; height: 24px;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle__slider {
+  position: absolute; inset: 0;
+  background: var(--gray-200); border-radius: 24px;
+  cursor: pointer; transition: var(--transition-base);
+}
+.toggle__slider::before {
+  content: ''; position: absolute;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: white; left: 3px; bottom: 3px;
+  transition: var(--transition-base);
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle input:checked + .toggle__slider { background: var(--navy); }
+.toggle input:checked + .toggle__slider::before { transform: translateX(20px); }
+
+/* ── Search input ───────────────────────────────────── */
+.search-input {
+  display: flex; align-items: center;
+  background: white; border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-full); overflow: hidden;
+  transition: var(--transition-fast);
+}
+.search-input:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245,166,35,.15);
+}
+.search-input input {
+  flex: 1; padding: 10px 16px;
+  border: none; background: transparent;
+  font-size: 14px; color: var(--navy);
+}
+.search-input input:focus { outline: none; }
+.search-input button {
+  padding: 8px 16px;
+  background: var(--navy); color: white;
+  border: none; cursor: pointer;
+  font-size: 14px; transition: var(--transition-fast);
+}
+.search-input button:hover { background: var(--navy-700); }
+
+/* ── Error/help text ────────────────────────────────── */
+.form-error { color: var(--error); font-size: var(--text-xs); margin-top: 5px; }
+.form-help  { color: var(--gray-400); font-size: var(--text-xs); margin-top: 5px; }
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — BADGES & CHIPS
+   ============================================================ */
+
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: var(--radius-full);
+  font-size: var(--text-xs); font-weight: 700;
+  line-height: 1; white-space: nowrap;
+}
+.badge-sm { padding: 2px 7px; font-size: 10px; }
+.badge-lg { padding: 5px 14px; font-size: var(--text-sm); }
+
+.badge-navy    { background: var(--navy); color: white; }
+.badge-gold    { background: var(--gold-light); color: var(--gold-dark); }
+.badge-gold-solid { background: var(--gold); color: var(--navy); }
+.badge-green   { background: var(--success-bg); color: #15803d; }
+.badge-red     { background: var(--error-bg); color: #b91c1c; }
+.badge-yellow  { background: var(--warning-bg); color: #b45309; }
+.badge-blue    { background: var(--info-bg); color: #1d4ed8; }
+.badge-gray    { background: var(--gray-100); color: var(--gray-600); }
+.badge-outline { background: transparent; border: 1.5px solid currentColor; }
+
+/* Dot indicator */
+.badge-dot::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Status badges */
+.status-open   { background: var(--success-bg); color: #15803d; }
+.status-closed { background: var(--error-bg); color: #b91c1c; }
+.status-pending{ background: var(--warning-bg); color: #b45309; }
+.status-live   {
+  background: #ef4444; color: white;
+  animation: pulse 1.5s ease infinite;
+}
+
+/* Chip (removable badge) */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px 5px 10px;
+  background: var(--gray-100); color: var(--navy);
+  border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 600;
+  cursor: default;
+}
+.chip__remove {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--gray-300); color: var(--gray-600);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; cursor: pointer; transition: var(--transition-fast);
+}
+.chip__remove:hover { background: var(--error); color: white; }
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — ALERTS & TOASTS
+   ============================================================ */
+
+.alert {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px; border-radius: var(--radius-lg);
+  font-size: var(--text-sm); line-height: 1.5;
+  border: 1px solid transparent;
+}
+.alert__icon { flex-shrink: 0; font-size: 18px; margin-top: 1px; }
+.alert__title { font-weight: 700; margin-bottom: 3px; }
+.alert__body  { flex: 1; }
+
+.alert-success { background: var(--success-bg); color: #15803d; border-color: #bbf7d0; }
+.alert-error   { background: var(--error-bg); color: #b91c1c; border-color: #fecaca; }
+.alert-warning { background: var(--warning-bg); color: #b45309; border-color: #fde68a; }
+.alert-info    { background: var(--info-bg); color: #1d4ed8; border-color: #bfdbfe; }
+.alert-navy    { background: var(--navy); color: white; border-color: var(--navy-700); }
+.alert-gold    { background: var(--gold-light); color: var(--gold-dark); border-color: rgba(245,166,35,.3); }
+
+/* ── Toast notifications ────────────────────────────── */
+#toast-container {
+  position: fixed; bottom: calc(var(--mobile-nav-h) + 16px); left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  pointer-events: none; width: max-content; max-width: calc(100vw - 32px);
+}
+@media (min-width: 1024px) {
+  #toast-container { bottom: 24px; }
+}
+
+.toast {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--navy); color: white;
+  font-size: var(--text-sm); font-weight: 600;
+  padding: 10px 18px; border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  animation: fadeUp .3s ease;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+.toast-success { background: #15803d; }
+.toast-error   { background: var(--error); }
+.toast-warning { background: var(--warning); color: var(--navy); }
+.toast-gold    { background: var(--gold); color: var(--navy); }
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — MODALS & SHEETS
+   ============================================================ */
+
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.modal-backdrop.open { display: flex; }
+
+.modal {
+  background: white;
+  border-radius: var(--radius-2xl);
+  width: 100%; max-width: 480px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  animation: scaleIn .25s cubic-bezier(.34,1.56,.64,1);
+}
+.modal-lg { max-width: 640px; }
+.modal-xl { max-width: 800px; }
+
+.modal__header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.modal__title {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-lg); color: var(--navy);
+}
+.modal__close {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  background: var(--gray-100); border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 18px; color: var(--gray-400);
+  transition: var(--transition-fast); flex-shrink: 0;
+}
+.modal__close:hover { background: var(--gray-200); color: var(--navy); }
+.modal__body   { padding: 20px 24px; }
+.modal__footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--gray-100);
+  display: flex; align-items: center; gap: 10px; justify-content: flex-end;
+}
+
+/* ── Bottom sheet (mobile) ──────────────────────────── */
+.sheet-backdrop {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: rgba(0,0,0,.5);
+  display: none;
+}
+.sheet-backdrop.open { display: block; }
+
+.sheet {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: calc(var(--z-modal) + 1);
+  background: white;
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  max-height: 85vh; overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform .35s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 -8px 40px rgba(15,27,45,.15);
+}
+.sheet.open { transform: translateY(0); }
+
+.sheet__handle {
+  width: 40px; height: 4px;
+  background: var(--gray-200); border-radius: 99px;
+  margin: 0 auto 16px;
+}
+.sheet__title {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-lg); color: var(--navy); margin-bottom: 16px;
+}
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — DROPDOWNS
+   ============================================================ */
+
+.dropdown { position: relative; display: inline-block; }
+.dropdown-menu {
+  position: absolute; top: calc(100% + 6px); left: 0;
+  min-width: 180px; background: white;
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  display: none; overflow: hidden;
+  animation: fadeDown .2s ease;
+}
+.dropdown-menu.open { display: block; }
+.dropdown-menu.right { left: auto; right: 0; }
+
+.dropdown-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; font-size: var(--text-sm);
+  color: var(--navy); cursor: pointer;
+  transition: var(--transition-fast);
+  text-decoration: none; border: none; background: none; width: 100%; text-align: left;
+}
+.dropdown-item:hover { background: var(--gray-50); }
+.dropdown-item.danger { color: var(--error); }
+.dropdown-item.danger:hover { background: var(--error-bg); }
+.dropdown-divider { height: 1px; background: var(--gray-100); margin: 4px 0; }
+.dropdown-header {
+  padding: 8px 16px 4px;
+  font-size: var(--text-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--gray-400);
+}
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — TABLES
+   ============================================================ */
+
+.table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.table {
+  width: 100%; border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.table th {
+  padding: 10px 14px; text-align: left;
+  font-size: var(--text-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--gray-400); background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-100);
+  white-space: nowrap;
+}
+.table td {
+  padding: 12px 14px; color: var(--navy);
+  border-bottom: 1px solid var(--gray-100);
+  vertical-align: middle;
+}
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: var(--gray-50); }
+.table-striped tr:nth-child(even) td { background: var(--gray-50); }
+
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — LOADERS
+   ============================================================ */
+
+.spinner {
+  width: 24px; height: 24px;
+  border: 2.5px solid var(--gray-200);
+  border-top-color: var(--navy);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block;
+}
+.spinner-sm  { width: 16px; height: 16px; border-width: 2px; }
+.spinner-lg  { width: 40px; height: 40px; border-width: 3px; }
+.spinner-gold { border-top-color: var(--gold); }
+.spinner-white { border-color: rgba(255,255,255,.3); border-top-color: white; }
+
+.loader-overlay {
+  position: fixed; inset: 0; z-index: var(--z-top);
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(4px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+.loader-overlay__text { font-size: var(--text-sm); color: var(--gray-500); font-weight: 500; }
+
+/* Skeleton */
+.skeleton-text  { height: 14px; border-radius: 4px; }
+.skeleton-title { height: 22px; border-radius: 6px; }
+.skeleton-img   { aspect-ratio: 1; border-radius: var(--radius-md); }
+.skeleton-card  { height: 280px; border-radius: var(--radius-lg); }
+
+
+/* ============================================================
+   LYNCTEL DESIGN SYSTEM — PAGINATION
+   ============================================================ */
+
+.pagination {
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; justify-content: center;
+}
+.page-btn {
+  min-width: 36px; height: 36px; padding: 0 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm); font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: var(--transition-fast);
+  color: var(--gray-500); background: white;
+  border: 1.5px solid var(--gray-200);
+  text-decoration: none;
+}
+.page-btn:hover { border-color: var(--navy); color: var(--navy); }
+.page-btn.active {
+  background: var(--navy); color: white;
+  border-color: var(--navy);
+}
+.page-btn.disabled { opacity: .4; pointer-events: none; }
+
+/* ============================================================
+   LYNCTEL — HOME PAGE
+   ============================================================ */
+
+/* Search bar */
+.home-search {
+  background: white; border-radius: var(--radius-full);
+  box-shadow: 0 8px 32px rgba(15,27,45,.2);
+  display: flex; align-items: center; overflow: hidden;
+  max-width: 600px; margin: 0 auto;
+}
+.home-search input {
+  flex: 1; padding: 14px 20px; border: none;
+  font-size: 15px; color: var(--navy); background: transparent;
+}
+.home-search input::placeholder { color: var(--gray-300); }
+.home-search input:focus { outline: none; }
+.home-search button {
+  background: var(--gold); color: var(--navy);
+  padding: 12px 24px; border: none; cursor: pointer;
+  font-weight: 700; font-size: 14px;
+  transition: background .2s; white-space: nowrap;
+}
+.home-search button:hover { background: var(--gold-dark); }
+
+/* Category pills */
+.category-pills { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.category-pills::-webkit-scrollbar { display: none; }
+.category-pill {
+  flex-shrink: 0; display: flex; flex-direction: column;
+  align-items: center; gap: 6px; cursor: pointer;
+  padding: 10px 16px; border-radius: var(--radius-lg);
+  background: white; border: 1.5px solid var(--gray-100);
+  transition: var(--transition-base); text-decoration: none;
+  min-width: 72px;
+}
+.category-pill:hover, .category-pill.active {
+  border-color: var(--gold); background: var(--gold-light);
+}
+.category-pill__icon  { font-size: 22px; line-height: 1; }
+.category-pill__label { font-size: 11px; font-weight: 600; color: var(--navy); white-space: nowrap; }
+
+/* Flash sale countdown */
+.flash-sale {
+  background: linear-gradient(135deg, var(--navy) 0%, #1a2d47 100%);
+  border-radius: var(--radius-xl); padding: 20px;
+  color: white; overflow: hidden; position: relative;
+}
+.flash-sale::before {
+  content: '⚡'; position: absolute; right: -10px; top: -20px;
+  font-size: 120px; opacity: .05;
+}
+.countdown { display: flex; gap: 10px; align-items: center; }
+.countdown__block {
+  background: rgba(255,255,255,.1); border-radius: var(--radius-sm);
+  padding: 8px 12px; text-align: center; min-width: 52px;
+}
+.countdown__num {
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  color: var(--gold); line-height: 1;
+}
+.countdown__label { font-size: 10px; color: rgba(255,255,255,.5); margin-top: 2px; }
+.countdown__sep { font-size: 20px; font-weight: 700; color: var(--gold); margin-top: -4px; }
+
+/* Banner carousel */
+.banner-carousel { position: relative; overflow: hidden; border-radius: var(--radius-xl); }
+.banner-slide { display: none; }
+.banner-slide.active { display: block; animation: fadeIn .4s ease; }
+.banner-slide img { width: 100%; aspect-ratio: 16/6; object-fit: cover; border-radius: var(--radius-xl); }
+.banner-dots {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px;
+}
+.banner-dot {
+  width: 6px; height: 6px; border-radius: 99px;
+  background: rgba(255,255,255,.5); cursor: pointer;
+  transition: all .3s;
+}
+.banner-dot.active { width: 20px; background: white; }
+
+
+
+/* ============================================================
+   LYNCTEL — PRODUCTS PAGE
+   ============================================================ */
+
+/* Filter sidebar */
+.filter-sidebar {
+  background: white; border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-100); padding: 20px;
+  position: sticky; top: calc(var(--navbar-h) + 16px);
+}
+.filter-section { margin-bottom: 24px; }
+.filter-section:last-child { margin-bottom: 0; }
+.filter-title {
+  font-weight: 700; font-size: var(--text-sm); color: var(--navy);
+  margin-bottom: 12px; display: flex; align-items: center;
+  justify-content: space-between; cursor: pointer;
+}
+.filter-option {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; cursor: pointer; font-size: var(--text-sm);
+  color: var(--gray-600); transition: color .15s;
+}
+.filter-option:hover { color: var(--navy); }
+.filter-option input { accent-color: var(--navy); }
+
+/* Price range */
+.price-range { position: relative; height: 4px; background: var(--gray-200); border-radius: 99px; }
+.price-range__fill { position: absolute; height: 100%; background: var(--navy); border-radius: 99px; }
+.price-range input[type=range] {
+  position: absolute; width: 100%; height: 4px;
+  -webkit-appearance: none; background: transparent; margin: 0;
+}
+.price-range input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--navy);
+  border: 2px solid white; box-shadow: var(--shadow-sm); cursor: pointer;
+}
+
+/* Product detail */
+.product-images { display: flex; flex-direction: column; gap: 12px; }
+.product-main-img {
+  aspect-ratio: 1; border-radius: var(--radius-xl);
+  overflow: hidden; background: var(--gray-100);
+}
+.product-main-img img { width: 100%; height: 100%; object-fit: cover; }
+.product-thumbs { display: flex; gap: 8px; overflow-x: auto; }
+.product-thumb {
+  width: 64px; height: 64px; border-radius: var(--radius-sm);
+  overflow: hidden; cursor: pointer; flex-shrink: 0;
+  border: 2px solid transparent; transition: border-color .2s;
+}
+.product-thumb.active { border-color: var(--gold); }
+.product-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Qty selector */
+.qty-selector {
+  display: flex; align-items: center; gap: 0;
+  border: 1.5px solid var(--gray-200); border-radius: var(--radius-md);
+  overflow: hidden; width: fit-content;
+}
+.qty-btn {
+  width: 36px; height: 36px; border: none;
+  background: var(--gray-50); cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy); transition: background .15s;
+}
+.qty-btn:hover { background: var(--gray-100); }
+.qty-input {
+  width: 48px; height: 36px; border: none;
+  text-align: center; font-size: 14px; font-weight: 700;
+  color: var(--navy); background: white;
+}
+
+
+/* ============================================================
+   LYNCTEL — FOOD PAGE
+   ============================================================ */
+
+/* Food item card */
+.food-item-card {
+  display: flex; align-items: center; gap: 14px;
+  background: white; border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-100); padding: 14px;
+  transition: var(--transition-base); cursor: pointer;
+}
+.food-item-card:hover { box-shadow: var(--shadow-md); border-color: var(--gray-200); }
+.food-item-card__img {
+  width: 80px; height: 80px; border-radius: var(--radius-md);
+  object-fit: cover; flex-shrink: 0; background: var(--gray-100);
+}
+.food-item-card__body { flex: 1; min-width: 0; }
+.food-item-card__name {
+  font-weight: 700; font-size: var(--text-sm); color: var(--navy);
+  margin-bottom: 4px; line-height: 1.3;
+}
+.food-item-card__desc {
+  font-size: var(--text-xs); color: var(--gray-400);
+  line-height: 1.5; margin-bottom: 8px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.food-item-card__price {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-md); color: var(--navy);
+}
+.food-item-card__add {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--navy); color: white; border: none;
+  font-size: 20px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s;
+}
+.food-item-card__add:hover { background: var(--gold); color: var(--navy); }
+
+/* Category nav */
+.food-category-nav {
+  position: sticky; top: var(--navbar-h); z-index: var(--z-base);
+  background: white; border-bottom: 1px solid var(--gray-100);
+  padding: 0 16px; overflow-x: auto; white-space: nowrap;
+  scrollbar-width: none; display: flex;
+}
+.food-category-nav::-webkit-scrollbar { display: none; }
+.food-cat-btn {
+  padding: 14px 16px; font-size: var(--text-sm); font-weight: 600;
+  color: var(--gray-400); border-bottom: 2px solid transparent;
+  cursor: pointer; white-space: nowrap; transition: var(--transition-fast);
+  background: none; border-top: none; border-left: none; border-right: none;
+}
+.food-cat-btn.active, .food-cat-btn:hover {
+  color: var(--navy); border-bottom-color: var(--gold);
+}
+
+/* Cart float */
+.food-cart-float {
+  position: fixed; bottom: calc(var(--mobile-nav-h) + 12px); left: 16px; right: 16px;
+  z-index: var(--z-overlay);
+  background: var(--navy); color: white;
+  border-radius: var(--radius-lg); padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: var(--shadow-xl);
+  animation: slideUp .35s cubic-bezier(.34,1.56,.64,1);
+}
+@media (min-width: 1024px) { .food-cart-float { display: none; } }
+.food-cart-float__count {
+  background: var(--gold); color: var(--navy);
+  width: 24px; height: 24px; border-radius: 50%;
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.food-cart-float__price { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+
+
+/* ============================================================
+   LYNCTEL — CART & DRAWER
+   ============================================================ */
+
+/* Cart drawer */
+#cart-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(400px, 100vw); z-index: var(--z-modal);
+  background: white; box-shadow: -8px 0 40px rgba(15,27,45,.15);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .35s cubic-bezier(.4,0,.2,1);
+}
+#cart-drawer.open { transform: translateX(0); }
+#cart-overlay {
+  position: fixed; inset: 0; z-index: calc(var(--z-modal) - 1);
+  background: rgba(0,0,0,.4); display: none;
+}
+#cart-overlay.open { display: block; }
+
+.cart-drawer__header {
+  padding: 20px; border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.cart-drawer__title {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-lg); color: var(--navy);
+}
+.cart-drawer__items { flex: 1; overflow-y: auto; padding: 16px; }
+.cart-drawer__footer {
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--gray-100);
+}
+
+/* Cart item */
+.cart-item {
+  display: flex; gap: 12px; padding: 14px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.cart-item:last-child { border-bottom: none; }
+.cart-item__img {
+  width: 64px; height: 64px; border-radius: var(--radius-sm);
+  object-fit: cover; flex-shrink: 0; background: var(--gray-100);
+}
+.cart-item__body { flex: 1; min-width: 0; }
+.cart-item__name {
+  font-size: var(--text-sm); font-weight: 600; color: var(--navy);
+  margin-bottom: 4px; line-height: 1.3;
+}
+.cart-item__price {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-sm); color: var(--navy);
+}
+
+
+/* ============================================================
+   LYNCTEL — CHECKOUT
+   ============================================================ */
+
+.checkout-layout {
+  display: grid; gap: 24px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1024px) {
+  .checkout-layout { grid-template-columns: 1fr 380px; }
+}
+
+.checkout-section {
+  background: white; border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-100); overflow: hidden;
+}
+.checkout-section__header {
+  padding: 16px 20px; border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: center; gap: 12px;
+}
+.checkout-section__num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--navy); color: white;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.checkout-section__body { padding: 20px; }
+
+.order-summary { background: white; border-radius: var(--radius-xl); border: 1px solid var(--gray-100); }
+.order-summary__header {
+  padding: 16px 20px; border-bottom: 1px solid var(--gray-100);
+  font-family: var(--font-display); font-weight: 700; font-size: var(--text-lg); color: var(--navy);
+}
+.order-summary__body { padding: 16px 20px; }
+.order-summary__row {
+  display: flex; justify-content: space-between;
+  font-size: var(--text-sm); padding: 6px 0; color: var(--gray-600);
+}
+.order-summary__row--total {
+  font-weight: 700; font-size: var(--text-lg); color: var(--navy);
+  border-top: 1px solid var(--gray-100); padding-top: 12px; margin-top: 6px;
+}
+
+
+/* ============================================================
+   LYNCTEL — VENDOR DASHBOARD
+   ============================================================ */
+
+.dashboard-layout {
+  display: flex; min-height: 100vh;
+  padding-top: var(--navbar-h);
+}
+.dashboard-main {
+  flex: 1; min-width: 0; padding: 24px 20px;
+  max-width: calc(100vw - var(--sidebar-w));
+}
+@media (max-width: 1023px) { .dashboard-main { max-width: 100vw; } }
+
+/* Stats row */
+.stats-row {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(2,1fr);
+}
+@media (min-width: 768px)  { .stats-row { grid-template-columns: repeat(4,1fr); } }
+
+/* Order card */
+.order-card {
+  background: white; border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-100); padding: 16px;
+  display: flex; align-items: flex-start; gap: 14px;
+  transition: var(--transition-base);
+}
+.order-card:hover { box-shadow: var(--shadow-md); }
+.order-card__ref {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  color: var(--gray-400); margin-bottom: 4px;
+}
+.order-card__items { font-size: var(--text-sm); color: var(--gray-600); }
+.order-card__total {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-lg); color: var(--navy); margin-top: 8px;
+}
+
+/* Chart placeholder */
+.chart-wrap {
+  background: white; border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-100); padding: 20px;
+  height: 240px; display: flex; flex-direction: column;
+}
+.chart-wrap__title {
+  font-weight: 700; font-size: var(--text-sm); color: var(--navy); margin-bottom: 16px;
+}
+
+EOF
+
+cat > /home/claude/static/css/pages/vendors.css << 'EOF'
+/* ============================================================
+   LYNCTEL — VENDORS
+   ============================================================ */
+
+.vendor-hero {
+  height: 200px; border-radius: var(--radius-xl);
+  overflow: hidden; background: var(--gray-200);
+  position: relative;
+}
+@media (min-width: 640px) { .vendor-hero { height: 260px; } }
+.vendor-hero img { width: 100%; height: 100%; object-fit: cover; }
+.vendor-hero__overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(15,27,45,.6) 0%, transparent 50%);
+}
+
+.vendor-profile {
+  display: flex; align-items: flex-end; gap: 16px;
+  margin-top: -32px; position: relative; padding: 0 4px;
+}
+.vendor-profile__logo {
+  width: 72px; height: 72px; border-radius: var(--radius-lg);
+  border: 4px solid white; box-shadow: var(--shadow-md);
+  object-fit: cover; background: white; flex-shrink: 0;
+}
+.vendor-profile__name {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-xl); color: var(--navy); line-height: 1.2;
+}
+.vendor-profile__meta {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  font-size: var(--text-xs); color: var(--gray-400); margin-top: 4px;
+}
+
+/* ============================================================
+   LYNCTEL — RIDER
+   ============================================================ */
+
+.rider-map-wrap {
+  height: 60vh; border-radius: var(--radius-xl);
+  overflow: hidden; position: relative;
+  border: 2px solid var(--gray-100);
+}
+.rider-order-card {
+  background: white; border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-100); box-shadow: var(--shadow-md);
+  padding: 20px; margin-bottom: 16px;
+}
+.rider-order-card__header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+}
+.rider-status-bar {
+  display: flex; align-items: center; gap: 8px; margin: 16px 0;
+}
+.rider-status-step {
+  flex: 1; height: 4px; border-radius: 99px;
+  background: var(--gray-200); transition: background .4s;
+}
+.rider-status-step.done { background: var(--success); }
+.rider-status-step.active { background: var(--gold); }
+
+/* ============================================================
+   LYNCTEL — LIVESTREAM
+   ============================================================ */
+
+.stream-card {
+  position: relative; border-radius: var(--radius-xl); overflow: hidden;
+  cursor: pointer; transition: transform .2s; aspect-ratio: 9/16;
+  background: var(--gray-900);
+}
+@media (min-width: 640px) { .stream-card { aspect-ratio: 4/5; } }
+.stream-card:hover { transform: scale(1.02); }
+.stream-card__thumb { width: 100%; height: 100%; object-fit: cover; }
+.stream-card__overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.8) 0%, transparent 60%);
+}
+.stream-card__live {
+  position: absolute; top: 10px; left: 10px;
+  background: #ef4444; color: white; font-size: 10px; font-weight: 700;
+  padding: 3px 8px; border-radius: 99px; animation: pulse 1.5s infinite;
+}
+.stream-card__viewers {
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(0,0,0,.5); color: white; font-size: 10px; font-weight: 600;
+  padding: 3px 8px; border-radius: 99px; backdrop-filter: blur(4px);
+}
+.stream-card__info { position: absolute; bottom: 0; left: 0; right: 0; padding: 14px; }
+.stream-card__vendor { font-size: 12px; color: rgba(255,255,255,.7); margin-bottom: 3px; }
+.stream-card__title  { font-size: 14px; font-weight: 700; color: white; line-height: 1.3; }
+
+
+/* ============================================================
+   LYNCTEL — ACCOUNTS / PROFILE
+   ============================================================ */
+
+.profile-avatar {
+  position: relative; display: inline-block;
+}
+.profile-avatar__img {
+  width: 80px; height: 80px; border-radius: 50%;
+  object-fit: cover; border: 4px solid white; box-shadow: var(--shadow-md);
+}
+.profile-avatar__edit {
+  position: absolute; bottom: 0; right: 0;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--gold); border: 2px solid white;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; overflow: visible;
+}
+.profile-avatar__edit input[type=file] {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; z-index: 2;
+}
+
+/* Auth pages */
+.auth-card {
+  background: white; border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl); padding: 36px 28px;
+  width: 100%; max-width: 420px; margin: 0 auto;
+}
+.auth-logo {
+  text-align: center; margin-bottom: 28px;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 24px; color: var(--navy);
+}
+.auth-logo span { color: var(--gold); }
+.auth-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 20px 0; color: var(--gray-300); font-size: var(--text-xs);
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--gray-200);
+}
+/* ============================================================
+   LYNCTEL — REVIEWS
+   ============================================================ */
+
+.review-card {
+  background: white; border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-100); padding: 16px;
+}
+.review-stars { display: flex; gap: 3px; color: var(--gold); font-size: 16px; }
+.review-stars--empty { color: var(--gray-200); }
+.review-author { font-weight: 700; font-size: var(--text-sm); color: var(--navy); }
+.review-date   { font-size: var(--text-xs); color: var(--gray-400); }
+.review-text   { font-size: var(--text-sm); color: var(--gray-600); line-height: 1.6; margin-top: 8px; }
+
+.rating-bar { display: flex; align-items: center; gap: 10px; }
+.rating-bar__label { font-size: var(--text-xs); color: var(--gray-400); width: 24px; text-align: right; }
+.rating-bar__track { flex: 1; height: 6px; background: var(--gray-100); border-radius: 99px; overflow: hidden; }
+.rating-bar__fill  { height: 100%; background: var(--gold); border-radius: 99px; }
+.rating-bar__count { font-size: var(--text-xs); color: var(--gray-400); width: 28px; }
+/* ============================================================
+   LYNCTEL — CHAT
+   ============================================================ */
+
+.chat-layout {
+  display: flex; height: calc(100vh - var(--navbar-h));
+  padding-top: var(--navbar-h);
+}
+.chat-sidebar {
+  width: 300px; flex-shrink: 0; border-right: 1px solid var(--gray-100);
+  overflow-y: auto; background: white;
+}
+@media (max-width: 768px) { .chat-sidebar { width: 100%; } }
+.chat-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.chat-room-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer; border-bottom: 1px solid var(--gray-50);
+  transition: background .15s; text-decoration: none;
+}
+.chat-room-item:hover, .chat-room-item.active { background: var(--gold-light); }
+.chat-room-item__avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  object-fit: cover; background: var(--gray-200); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.chat-room-item__name { font-weight: 700; font-size: var(--text-sm); color: var(--navy); }
+.chat-room-item__preview { font-size: var(--text-xs); color: var(--gray-400); margin-top: 2px; truncate; }
+.chat-room-item__time { font-size: 10px; color: var(--gray-300); flex-shrink: 0; }
+.chat-room-item__badge {
+  min-width: 18px; height: 18px; border-radius: 99px;
+  background: var(--gold); color: var(--navy);
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; padding: 0 5px;
+}
+
+
+/* ============================================================
+   LYNCTEL — CHAT MESSAGES
+   ============================================================ */
+
+.messages-wrap {
+  flex: 1; overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.msg { display: flex; gap: 8px; max-width: 80%; }
+.msg--out { flex-direction: row-reverse; align-self: flex-end; }
+.msg--in  { align-self: flex-start; }
+.msg__avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0; background: var(--gray-200);
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.msg__bubble {
+  padding: 10px 14px; border-radius: 18px;
+  font-size: var(--text-sm); line-height: 1.5; max-width: 100%;
+  word-break: break-word;
+}
+.msg--in  .msg__bubble { background: var(--gray-100); color: var(--navy); border-radius: 4px 18px 18px 18px; }
+.msg--out .msg__bubble { background: var(--navy); color: white; border-radius: 18px 4px 18px 18px; }
+.msg__time { font-size: 10px; color: var(--gray-300); margin-top: 4px; text-align: right; }
+.msg__img { max-width: 200px; border-radius: var(--radius-md); cursor: zoom-in; }
+
+
+/* ============================================================
+   LYNCTEL — TYPING INDICATOR
+   ============================================================ */
+
+.typing-indicator {
+  display: flex; align-items: center; gap: 4px;
+  padding: 10px 14px; background: var(--gray-100);
+  border-radius: 4px 18px 18px 18px; width: fit-content;
+}
+.typing-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--gray-400); animation: typingBounce 1.2s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-6px); }
+}
+
+/* Chat input bar */
+.chat-input-bar {
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+  border-top: 1px solid var(--gray-100);
+  display: flex; align-items: flex-end; gap: 10px;
+  background: white;
+}
+.chat-input-wrap {
+  flex: 1; background: var(--gray-100); border-radius: 24px;
+  padding: 10px 16px; min-height: 44px; max-height: 120px;
+  overflow-y: auto;
+}
+.chat-input-wrap[contenteditable]:empty::before {
+  content: attr(data-placeholder); color: var(--gray-400);
+}
+.chat-send-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--navy); color: white; border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: var(--transition-fast); flex-shrink: 0;
+}
+.chat-send-btn:hover { background: var(--gold); color: var(--navy); }
+
+
+
+
+/* ============================================================
+   LYNCTEL — CHAT ATTACHMENTS
+   ============================================================ */
+
+.attachment-preview {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--gray-50); border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md); padding: 10px 14px;
+  font-size: var(--text-sm);
+}
+.attachment-preview__icon { font-size: 24px; flex-shrink: 0; }
+.attachment-preview__name { font-weight: 600; color: var(--navy); }
+.attachment-preview__size { font-size: var(--text-xs); color: var(--gray-400); }
+.attachment-preview__rm   { margin-left: auto; cursor: pointer; color: var(--gray-400); font-size: 18px; }
+.attachment-preview__rm:hover { color: var(--error); }
+
+
+/* ============================================================
+   LYNCTEL — PWA INSTALL PROMPT
+   ============================================================ */
+
+.pwa-banner {
+  position: fixed; bottom: calc(var(--mobile-nav-h) + 12px); left: 12px; right: 12px;
+  background: var(--navy); color: white; border-radius: var(--radius-xl);
+  padding: 16px 18px; display: flex; align-items: center; gap: 14px;
+  z-index: var(--z-overlay); box-shadow: var(--shadow-xl);
+  animation: slideUp .4s cubic-bezier(.34,1.56,.64,1);
+}
+.pwa-banner__icon { font-size: 32px; flex-shrink: 0; }
+.pwa-banner__body { flex: 1; min-width: 0; }
+.pwa-banner__title { font-weight: 700; font-size: var(--text-sm); color: white; }
+.pwa-banner__sub   { font-size: var(--text-xs); color: rgba(255,255,255,.6); margin-top: 2px; }
+.pwa-banner__btn   { background: var(--gold); color: var(--navy); font-weight: 700; font-size: 12px; padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer; flex-shrink: 0; border: none; }
+
+/* iOS sheet */
+.ios-install-sheet {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: var(--z-modal);
+  background: white; border-radius: 24px 24px 0 0;
+  padding: 20px 24px calc(32px + env(safe-area-inset-bottom));
+  transform: translateY(100%); transition: transform .4s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 -8px 40px rgba(15,27,45,.15);
+}
+.ios-install-sheet.show { transform: translateY(0); }
+
+/* ============================================================
+   LYNCTEL — OFFLINE PAGE
+   ============================================================ */
+
+.offline-page {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 40px 20px;
+  background: var(--cream);
+}
+.offline-icon { font-size: 5rem; margin-bottom: 20px; }
+.offline-title {
+  font-family: var(--font-display); font-size: var(--text-2xl);
+  font-weight: 700; color: var(--navy); margin-bottom: 10px;
+}
+.offline-text { font-size: var(--text-sm); color: var(--gray-500); max-width: 280px; line-height: 1.7; }
+
+/* ============================================================
+   LYNCTEL — MOBILE (max-width: 639px)
+   ============================================================ */
+
+@media (max-width: 639px) {
+  .hide-mobile  { display: none !important; }
+  .show-mobile  { display: flex !important; }
+
+  .container    { padding: 0 14px; }
+
+  .product-grid { grid-template-columns: repeat(2,1fr); gap: 10px; }
+
+  .btn-lg { padding: 13px 22px; font-size: var(--text-base); }
+
+  .modal { border-radius: var(--radius-2xl) var(--radius-2xl) 0 0; max-width: 100%; margin: auto 0 0; }
+  .modal-backdrop { align-items: flex-end; padding: 0; }
+
+  .section { padding: 36px 0; }
+
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.4rem; }
+
+  .hero { padding: calc(var(--navbar-h) + 24px) 0 40px; }
+  .hero__title { font-size: 1.9rem; }
+
+  .stats-row { grid-template-columns: repeat(2,1fr); gap: 12px; }
+
+  .chat-sidebar { display: none; }
+  .chat-sidebar.show { display: flex; flex-direction: column; width: 100%; }
+}
+
+
+/* ============================================================
+   LYNCTEL — TABLET (640px - 1023px)
+   ============================================================ */
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .hide-tablet { display: none !important; }
+
+  .product-grid { grid-template-columns: repeat(3,1fr); }
+
+  .hero__title { font-size: 2.2rem; }
+
+  .chat-sidebar { width: 260px; }
+}
+
+
+/* ============================================================
+   LYNCTEL — DESKTOP (min-width: 1024px)
+   ============================================================ */
+
+@media (min-width: 1024px) {
+  .hide-desktop { display: none !important; }
+
+  .product-grid { grid-template-columns: repeat(4,1fr); gap: 20px; }
+
+  .section { padding: 72px 0; }
+
+  .sidebar-nav   { display: flex !important; }
+  .mobile-tab-bar{ display: none !important; }
+}
+
+
+/* ============================================================
+   LYNCTEL — PRINT
+   ============================================================ */
+
+@media print {
+  #navbar, #mobile-nav, #cart-drawer, .pwa-banner,
+  .btn-cart, .chat-input-bar { display: none !important; }
+
+  body { background: white; color: black; font-size: 12pt; }
+  .card { box-shadow: none; border: 1px solid #ddd; }
+  a { color: black; text-decoration: underline; }
+}
