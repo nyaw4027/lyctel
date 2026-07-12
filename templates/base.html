@@ -1,498 +1,124 @@
-﻿<!DOCTYPE html>
-{% load static i18n %}
-<html lang="{{ LANGUAGE_CODE|default:'en' }}" data-theme="light">
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>{% block title %}Lynctel — Quality Products Delivered{% endblock %}</title>
 
-  <meta name="description" content="Lynctel — Quality products delivered fast across Ghana. Shop electronics, gadgets, food and more."/>
-  <meta name="keywords" content="Lynctel, Ghana, online shopping, food delivery, electronics, fast delivery, MoMo payment"/>
-  <meta name="author" content="Lynctel"/>
-  <meta name="robots" content="index, follow"/>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-  <meta property="og:type"        content="website"/>
-  <meta property="og:url"         content="https://lynctel.up.railway.app/"/>
-  <meta property="og:title"       content="Lynctel — Quality Products Delivered"/>
-  <meta property="og:description" content="Shop electronics, gadgets, food and more. Fast delivery across Ghana."/>
-  <meta property="og:image"       content="{% static 'icons/icon-512x512.png' %}"/>
-  <meta property="og:locale"      content="en_GH"/>
-  <meta name="twitter:card"        content="summary_large_image"/>
-  <meta name="twitter:title"       content="Lynctel — Quality Products Delivered"/>
-  <meta name="twitter:description" content="Shop electronics, gadgets, food and more."/>
-  <meta name="twitter:image"       content="{% static 'icons/icon-512x512.png' %}"/>
+    <title>{% block title %}Lynctel{% endblock %}</title>
 
-  <link rel="manifest" href="/manifest.json"/>
-  <meta name="theme-color" content="#1B2E4D"/>
-  <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-capable"          content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title"            content="Lynctel"/>
-  <link rel="apple-touch-icon" sizes="152x152" href="{% static 'icons/icon-152x152.png' %}"/>
-  <link rel="apple-touch-icon" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}"/>
-  <link rel="apple-touch-icon" sizes="512x512" href="{% static 'icons/icon-512x512.png' %}"/>
-  <link rel="apple-touch-startup-image" href="{% static 'icons/icon-512x512.png' %}"/>
-  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-96x96.png' %}"/>
-  <link rel="shortcut icon" href="{% static 'icons/icon-96x96.png' %}"/>
-  
-  <!-- -- ANTI-FLASH VEIL -------------------------------------
-       Deferring the Tailwind script (fix above) means the browser now
-       paints raw, unstyled HTML for a brief moment before Tailwind's
-       styles apply — a visible "flash of unstyled content" that wasn't
-       there when the script was blocking. This veil restores the old
-       "always looks fully styled" appearance without bringing back the
-       actual freeze: everything here is inline (nothing to wait on a
-       slow network for) and there's a hard timeout, so worst case is a
-       slightly longer branded loading moment — never a frozen page. -->
-  <style>
-    html:not(.tw-ready) body { opacity: 0; }
-    body { transition: opacity .25s ease; }
-    #tw-veil {
-      position: fixed; inset: 0; z-index: 99999;
-      background: #FAFAF7;
-      display: flex; align-items: center; justify-content: center;
-      transition: opacity .25s ease;
-    }
-    html.tw-ready #tw-veil { opacity: 0; pointer-events: none; }
-    #tw-veil-dot {
-      width: 34px; height: 34px; border-radius: 999px;
-      border: 3px solid #f0ede6; border-top-color: #F5A623;
-      animation: tw-spin .7s linear infinite;
-    }
-    @keyframes tw-spin { to { transform: rotate(360deg); } }
-  </style>
-  <script>
-    // Reveal as soon as the deferred Tailwind script has actually run —
-    // DOMContentLoaded fires only after ALL deferred scripts (Tailwind's
-    // CDN script + its config script) have downloaded and executed, so
-    // by this point the real styling is already in place, not a guess.
-    document.addEventListener('DOMContentLoaded', function () {
-      document.documentElement.classList.add('tw-ready');
-    });
-    // Safety net: if the CDN is ever unusually slow/unreachable, don't
-    // leave the page hidden forever — reveal it anyway after 4s so the
-    // site is at least usable (possibly briefly unstyled) rather than
-    // stuck blank. This is the graceful-degradation case that replaces
-    // the old hard freeze.
-    setTimeout(function () {
-      document.documentElement.classList.add('tw-ready');
-    }, 4000);
-  </script>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <!-- Performance: warm up connections to CDNs used by specific pages
-       (Leaflet maps, Chart.js on the vendor dashboard) so that once those
-       pages' own deferred/lazy scripts run, the connection is already
-       established — shaves real round-trip latency off first paint of
-       those resources without blocking anything here in base.html. -->
-  <link rel="preconnect" href="https://unpkg.com" crossorigin/>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-  <link rel="dns-prefetch" href="https://unpkg.com"/>
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net"/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="{% static 'css/output.css' %}"/>
-  <link rel="stylesheet" href="{% static 'css/main.css' %}"/>
-  <link rel="stylesheet" href="{% static 'css/uploads.css' %}"/>
+    <meta name="description"
+          content="Lynctel - Food Delivery, Shopping, Vendors, Riders and More">
 
-  <style>
-    :root {
-      --bg-primary:    #FAFAF7;
-      --bg-secondary:  #ffffff;
-      --bg-tertiary:   #f3f4f6;
-      --text-primary:  #1B2E4D;
-      --text-secondary:#6b7280;
-      --text-muted:    #9ca3af;
-      --border-color:  #e5e7eb;
-      --navbar-bg:     #ffffff;
-      --card-bg:       #ffffff;
-      --input-bg:      #f9fafb;
-      --footer-bg:     #1B2E4D;
-      --shadow-color:  rgba(15,27,45,.10);
-    }
+    <meta name="theme-color"
+          content="#0B1F3A">
 
-    html.dark {
-      --bg-primary:    #0a0f1a;
-      --bg-secondary:  #111827;
-      --bg-tertiary:   #1f2937;
-      --text-primary:  #f9fafb;
-      --text-secondary:#d1d5db;
-      --text-muted:    #9ca3af;
-      --border-color:  #374151;
-      --navbar-bg:     #111827;
-      --card-bg:       #1f2937;
-      --input-bg:      #1f2937;
-      --footer-bg:     #030712;
-      --shadow-color:  rgba(0,0,0,.4);
-    }
+    <meta name="apple-mobile-web-app-capable"
+          content="yes">
 
-    * { font-family: 'DM Sans', sans-serif; }
-    h1, h2, h3, .font-display { font-family: 'Syne', sans-serif; }
+    <meta name="apple-mobile-web-app-status-bar-style"
+          content="default">
 
-    body {
-      background-color: var(--bg-primary);
-      color: var(--text-primary);
-      transition: background-color .3s ease, color .3s ease;
-    }
+    <meta name="apple-mobile-web-app-title"
+          content="Lynctel">
 
-    html.dark .bg-white        { background-color: var(--card-bg) !important; }
-    html.dark .bg-gray-50      { background-color: var(--bg-tertiary) !important; }
-    html.dark .bg-gray-100     { background-color: #374151 !important; }
-    html.dark .text-gray-700   { color: var(--text-secondary) !important; }
-    html.dark .text-gray-600   { color: var(--text-secondary) !important; }
-    html.dark .text-gray-500   { color: var(--text-muted) !important; }
-    html.dark .text-gray-400   { color: var(--text-muted) !important; }
-    html.dark .text-navy       { color: #f9fafb !important; }
-    html.dark .border-gray-100 { border-color: var(--border-color) !important; }
-    html.dark .border-gray-200 { border-color: var(--border-color) !important; }
-    html.dark .shadow-sm       { box-shadow: 0 1px 3px var(--shadow-color) !important; }
-    html.dark .shadow-xl       { box-shadow: 0 20px 40px var(--shadow-color) !important; }
-    html.dark input, html.dark select, html.dark textarea {
-      background-color: var(--input-bg) !important;
-      color: var(--text-primary) !important;
-      border-color: var(--border-color) !important;
-    }
-    html.dark header#navbar {
-      background-color: var(--navbar-bg) !important;
-      border-bottom-color: var(--border-color) !important;
-    }
-    html.dark #mobile-nav {
-      background-color: var(--navbar-bg) !important;
-      border-top-color: var(--border-color) !important;
-    }
-    html.dark #cart-drawer {
-      background-color: var(--card-bg) !important;
-    }
-    html.dark .hover\:bg-gray-50:hover { background-color: var(--bg-tertiary) !important; }
-    html.dark .bg-slate-50     { background-color: var(--bg-tertiary) !important; }
-    html.dark .bg-cream        { background-color: var(--bg-primary) !important; }
+    <link rel="icon"
+          href="{% static 'icons/favicon.ico' %}">
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .fade-up   { animation: fadeUp .5s ease forwards; }
-    .fade-up-1 { animation-delay: .05s; opacity: 0; }
-    .fade-up-2 { animation-delay: .12s; opacity: 0; }
-    .fade-up-3 { animation-delay: .20s; opacity: 0; }
+    <link rel="apple-touch-icon"
+          href="{% static 'icons/icon-192.png' %}">
 
-    @keyframes pop { 0%,100%{transform:scale(1)} 50%{transform:scale(1.45)} }
-    .badge-pop { animation: pop .3s ease; }
+    <link rel="manifest"
+          href="{% static 'manifest.json' %}">
 
-    @keyframes shimmer {
-      0%   { background-position: -200% center; }
-      100% { background-position:  200% center; }
-    }
-    .shimmer {
-      background: linear-gradient(90deg, #F5A623 25%, #ffe08a 50%, #F5A623 75%);
-      background-size: 200% auto;
-      animation: shimmer 3s linear infinite;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+    <!-- Bootstrap -->
+    <link rel="stylesheet"
+          href="{% static 'css/bootstrap.min.css' %}">
 
-    @keyframes brandGlow {
-      0%, 100% { color: #1B2E4D; text-shadow: none; }
-      50%       { color: #c8841a; text-shadow: 0 0 12px rgba(245,166,35,.35); }
-    }
-    html.dark .brand-name { animation: none; color: #f9fafb; }
-    .brand-name {
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: 1.2rem;
-      letter-spacing: -0.02em;
-      color: #1B2E4D;
-      animation: brandGlow 3.5s ease-in-out infinite;
-      display: inline-block;
-    }
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
-    @keyframes dotPulse {
-      0%, 100% { transform: scale(1);   opacity: 1; }
-      50%       { transform: scale(1.5); opacity: .7; }
-    }
-    .brand-dot { animation: dotPulse 2s ease-in-out infinite; display: inline-block; }
+    <!-- Main Styles -->
+    <link rel="stylesheet"
+          href="{% static 'css/main.css' %}">
 
-    .card-hover { transition: transform .25s ease, box-shadow .25s ease; }
-    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px var(--shadow-color); }
+    <link rel="stylesheet"
+          href="{% static 'css/uploads.css' %}">
 
-    .nav-scrolled { box-shadow: 0 2px 20px var(--shadow-color); }
-    .btn-press:active { transform: scale(.97); }
-    html { scroll-behavior: smooth; }
+    <!-- Base -->
+    <link rel="stylesheet"
+          href="{% static 'css/base/reset.css' %}">
 
-    #cart-drawer  { transform: translateX(100%); transition: transform .3s cubic-bezier(.4,0,.2,1); }
-    #cart-overlay { opacity: 0; visibility: hidden; transition: all .3s; }
-    #cart-drawer.open  { transform: translateX(0); }
-    #cart-overlay.open { opacity: 1; visibility: visible; }
+    <link rel="stylesheet"
+          href="{% static 'css/base/variables.css' %}">
 
-    input:focus, select:focus, textarea:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(245,166,35,.2);
-      border-color: #F5A623 !important;
-    }
+    <link rel="stylesheet"
+          href="{% static 'css/base/typography.css' %}">
 
-    .live-badge-dot {
-      width: 7px; height: 7px;
-      background: #ef4444;
-      border-radius: 50%;
-      display: inline-block;
-      animation: livePulse 1.2s ease-in-out infinite;
-    }
-    @keyframes livePulse {
-      0%, 100% { transform: scale(1);   opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
-      50%       { transform: scale(1.3); opacity: .9; box-shadow: 0 0 0 4px rgba(239,68,68,0); }
-    }
+    <link rel="stylesheet"
+          href="{% static 'css/base/animations.css' %}">
 
-    #pwa-banner {
-      display: none;
-      position: fixed;
-      bottom: 80px; left: 16px; right: 16px;
-      z-index: 9999;
-      background: #1B2E4D;
-      color: white;
-      padding: 14px 16px;
-      border-radius: 20px;
-      box-shadow: 0 8px 40px rgba(15,27,45,.5);
-      align-items: center;
-      gap: 12px;
-      animation: fadeUp .4s ease forwards;
-    }
-    @media (min-width: 640px) {
-      #pwa-banner {
-        left: 50%; right: auto;
-        transform: translateX(-50%);
-        width: max-content;
-        max-width: calc(100vw - 32px);
-        bottom: 24px;
-      }
-    }
-    #pwa-banner.show { display: flex; }
+    <!-- Layout -->
+    <link rel="stylesheet"
+          href="{% static 'css/layout/containers.css' %}">
 
-    @keyframes slideUp {
-      from { transform: translateY(100%); }
-      to   { transform: translateY(0); }
-    }
-    #ios-install-sheet {
-      display: none;
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      z-index: 9999;
-      background: var(--card-bg);
-      border-radius: 24px 24px 0 0;
-      box-shadow: 0 -8px 40px rgba(15,27,45,.2);
-      padding: 24px 24px 44px;
-    }
-    #ios-install-sheet.show { display: block; animation: slideUp .35s cubic-bezier(.4,0,.2,1) forwards; }
-    #ios-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.5); z-index: 9998; backdrop-filter: blur(2px);
-    }
-    #ios-overlay.show { display: block; }
+    <link rel="stylesheet"
+          href="{% static 'css/layout/grid.css' %}">
 
-    .role-admin    { background: #fee2e2; color: #b91c1c; }
-    .role-staff    { background: #dbeafe; color: #1d4ed8; }
-    .role-vendor   { background: #ede9fe; color: #7c3aed; }
-    .role-rider    { background: #ffedd5; color: #c2410c; }
-    .role-customer { background: #f3f4f6; color: #374151; }
+    <link rel="stylesheet"
+          href="{% static 'css/layout/navbar.css' %}">
 
-    #mobile-nav {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
-      background: white; border-top: 1px solid #f3f4f6;
-      box-shadow: 0 -4px 20px rgba(15,27,45,.08);
-      padding-bottom: env(safe-area-inset-bottom);
-      transition: background-color .3s ease;
-    }
+    <link rel="stylesheet"
+          href="{% static 'css/layout/sidebar.css' %}">
 
-    .theme-toggle { transition: transform .3s ease; }
-    .theme-toggle:hover { transform: rotate(20deg); }
+    <link rel="stylesheet"
+          href="{% static 'css/layout/footer.css' %}">
 
-    .lang-btn { transition: all .2s ease; }
-    .lang-btn.active { background: #1B2E4D; color: white; }
-    html.dark .lang-btn.active { background: #F5A623; color: #1B2E4D; }
+    <!-- Components -->
+    <link rel="stylesheet"
+          href="{% static 'css/components/buttons.css' %}">
 
-    .support-badge {
-      position: absolute; top: -4px; right: -4px;
-      background: #ef4444; color: white; font-size: 9px; font-weight: 700;
-      min-width: 16px; height: 16px; border-radius: 999px;
-      display: flex; align-items: center; justify-content: center; padding: 0 3px;
-    }
-    .support-badge.hidden { display: none; }
+    <link rel="stylesheet"
+          href="{% static 'css/components/cards.css' %}">
 
-    /* -------------------------------------------------------
-       SHARED COMPONENT LIBRARY
-       Consolidated here because these exact patterns were being
-       independently copy-pasted (and slowly drifting out of sync)
-       across order/checkout, food/checkout, food/register,
-       vendors/dashboard, and livestream/*. Any page can use these
-       classes directly without redeclaring them locally.
-    ------------------------------------------------------- */
+    <link rel="stylesheet"
+          href="{% static 'css/components/forms.css' %}">
 
-    /* -- Leaflet map fix --------------------------------------
-       Tailwind's base reset applies `img { max-width:100%; height:auto }`
-       globally, which fights Leaflet's tile <img> elements. leaflet.css
-       normally beats this with !important, but if it loses the load-order
-       race against this stylesheet, tiles silently collapse to zero
-       visible size. Scoped to .leaflet-map so it can't affect anything
-       else; give any map container this class. */
-    .leaflet-map img,
-    .leaflet-map .leaflet-tile { max-width: none !important; max-height: none !important; }
-    .leaflet-map { background: #e9edf2; border-radius: 14px; }
-    .leaflet-map .leaflet-container { border-radius: 12px; }
+    <link rel="stylesheet"
+          href="{% static 'css/components/alerts.css' %}">
 
-    /* Reusable map chrome: satellite toggle, error banner, retry —
-       give the map wrapper position:relative and drop these in. */
-    .map-fab {
-      position: absolute; z-index: 400;
-      background: white; border: none; border-radius: 10px;
-      padding: 7px 11px; font-size: 12px; font-weight: 600; color: #1B2E4D;
-      cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.15);
-      display: flex; align-items: center; gap: 5px; transition: all .2s;
-    }
-    .map-fab:hover { background: #f8fafc; }
-    .map-error-banner {
-      position: absolute; inset: 0; border-radius: 14px; z-index: 500;
-      background: rgba(233,237,242,.96);
-      display: none; flex-direction: column; align-items: center;
-      justify-content: center; text-align: center; padding: 18px;
-    }
-    .map-error-banner.show { display: flex; }
-    .map-error-banner p { font-size: 12.5px; color: #45403a; max-width: 240px; margin: 0 0 10px; }
-    .map-error-banner button {
-      font-size: 12px; font-weight: 700; color: white; background: #1B2E4D;
-      border: none; border-radius: 10px; padding: 7px 16px; cursor: pointer;
-    }
+    <link rel="stylesheet"
+          href="{% static 'css/components/badges.css' %}">
 
-    /* -- Form field system ------------------------------------
-       Standard input/label/error styling used by every registration
-       and settings form in the app. */
-    .f-label {
-      display: block; font-size: 11px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .06em;
-      color: #9ca3af; margin-bottom: 6px;
-    }
-    .f-inp {
-      width: 100%; padding: 11px 14px;
-      border: 1.5px solid #e5e7eb; border-radius: 12px;
-      font-size: 14px; color: #1B2E4D; background: white;
-      outline: none; transition: border-color .15s, box-shadow .15s;
-      font-family: 'DM Sans', sans-serif; box-sizing: border-box;
-    }
-    .f-inp:focus { border-color: #F5A623 !important; box-shadow: 0 0 0 3px rgba(245,166,35,.18) !important; }
-    .f-inp.err, .f-inp.f-bad { border-color: #fca5a5 !important; background: #fef2f2 !important; }
-    .f-inp.f-ok  { border-color: #22c55e !important; background: #f0fdf4 !important; }
-    .err-msg { color: #ef4444; font-size: 11px; margin-top: 4px; }
+    <link rel="stylesheet"
+          href="{% static 'css/components/modal.css' %}">
 
-    /* -- Panel / card system ----------------------------------
-       The bordered white card-with-header pattern used by the vendor
-       dashboard tabs and every multi-step registration form. */
-    .panel-card {
-      background: white; border-radius: 20px;
-      border: 1px solid #f3f4f6;
-      box-shadow: 0 1px 4px rgba(15,27,45,.06);
-      margin-bottom: 20px;
-    }
-    .panel-head {
-      padding: 16px 20px; border-bottom: 1px solid #f9fafb;
-      display: flex; align-items: center; gap: 12px;
-    }
-    .panel-num {
-      width: 32px; height: 32px; background: #1B2E4D; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      color: white; font-size: 13px; font-weight: 700; flex-shrink: 0;
-    }
-    .panel-body { padding: 20px; }
-    .stat-card { transition: transform .2s, box-shadow .2s; }
-    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(15,27,45,.10); }
+    <link rel="stylesheet"
+          href="{% static 'css/components/dropdown.css' %}">
 
-    /* -- Step progress dots -----------------------------------
-       Multi-step form indicator (food register, vendor onboarding). */
-    .step-dot {
-      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700; transition: all .3s;
-      background: #f3f4f6; color: #9ca3af;
-    }
-    .step-dot.active { background: #1B2E4D; color: white; }
-    .step-dot.done   { background: #22c55e; color: white; }
-    .step-line { flex: 1; height: 2px; background: #f3f4f6; transition: background .3s; }
-    .step-line.done { background: #22c55e; }
+    <link rel="stylesheet"
+          href="{% static 'css/components/tables.css' %}">
 
-    /* -- Upload dropzone --------------------------------------
-       Standard mobile-safe file-upload pattern: input lives INSIDE the
-       label at opacity:0 covering the whole zone (not off-screen —
-       off-screen positioning combined with a separate remove button
-       inside the same label is what caused the iOS upload bug fixed in
-       food/register.html). Keep the remove button outside the label. */
-    .up-zone {
-      position: relative; overflow: hidden;
-      border: 2px dashed #e5e7eb; border-radius: 14px;
-      padding: 20px 12px; min-height: 130px;
-      display: flex; flex-direction: column; justify-content: center; align-items: center;
-      text-align: center; cursor: pointer;
-      transition: border-color .25s, background .25s, transform .2s;
-    }
-    .up-zone:hover { border-color: #F5A623; background: #FFFBF0; }
-    .up-zone.over  { border-color: #F5A623; background: #FFF7E5; transform: scale(.98); }
-    .up-zone input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-    .up-preview { width: 100%; height: 90px; margin-top: 10px; object-fit: cover; border-radius: 10px; border: 2px solid #F5A623; display: none; }
-    .up-preview.logo-prev { width: 72px; height: 72px; margin: 10px auto 0; border-radius: 12px; }
-    .up-rm {
-      position: absolute; top: 8px; right: 8px;
-      width: 24px; height: 24px; display: none;
-      justify-content: center; align-items: center;
-      border: none; border-radius: 50%; background: #ef4444; color: #fff;
-      font-size: 12px; font-weight: bold; cursor: pointer; z-index: 20;
-      transition: background .2s;
-    }
-    .up-rm:hover { background: #dc2626; }
-    .up-rm.show { display: flex; }
+    <link rel="stylesheet"
+          href="{% static 'css/components/loaders.css' %}">
 
-    /* -- Live preview card ------------------------------------
-       Real-time "here's how customers will see this" card used by
-       food/register.html; reusable for any onboarding flow. */
-    .preview-card {
-      background: linear-gradient(160deg, #1B2E4D 0%, #1a2d47 100%);
-      border-radius: 20px; overflow: hidden; color: white;
-      box-shadow: 0 8px 32px rgba(15,27,45,.22);
-    }
-    .preview-card .prev-logo-box {
-      width: 50px; height: 50px; border-radius: 12px;
-      background: #F5A623; border: 3px solid #1B2E4D;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px; flex-shrink: 0; object-fit: cover;
-    }
+    <!-- Responsive -->
+    <link rel="stylesheet"
+          href="{% static 'css/responsive/mobile.css' %}">
 
-    /* -- Chat bubbles -----------------------------------------
-       Shared by livestream go_live/watch and (if added later) any other
-       real-time chat surface. */
-    .chat-bubble {
-      display: inline-flex; align-items: flex-start; gap: 6px; max-width: 85%;
-      animation: chatBubbleIn .2s ease;
-    }
-    @keyframes chatBubbleIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-    .chat-bubble .chat-bg {
-      background: rgba(0,0,0,.5); backdrop-filter: blur(6px);
-      border-radius: 18px 18px 18px 4px; padding: 7px 12px;
-    }
+    <link rel="stylesheet"
+          href="{% static 'css/responsive/tablet.css' %}">
 
-    /* -- Floating reactions/gifts -----------------------------
-       Emoji-rise animation used by livestream go_live/watch reactions
-       and gift sends. */
-    .emoji-float {
-      position: fixed; z-index: 999; pointer-events: none; font-size: 2.5rem;
-      animation: emojiRise 2.4s ease forwards;
-    }
-    @keyframes emojiRise {
-      0%   { opacity:1; transform:translateY(0) scale(1); }
-      50%  { opacity:1; transform:translateY(-140px) scale(1.3); }
-      100% { opacity:0; transform:translateY(-280px) scale(.6); }
-    }
+    <link rel="stylesheet"
+          href="{% static 'css/responsive/desktop.css' %}">
 
-    /* -- Generic fade-in for dynamically injected sections ----- */
-    .fade-in { animation: fadeUp .4s ease both; }
-  </style>
+    {% block extra_css %}{% endblock %}
 
-  {% block extra_head %}{% endblock %}
 </head>
 
 <body class="min-h-screen flex flex-col font-body pb-16 md:pb-0">
@@ -1114,306 +740,35 @@
     </div>
     <button onclick="closeIOSSheet()" class="w-full bg-navy text-white font-semibold py-4 rounded-2xl transition-colors hover:bg-navy-700 text-sm">{% trans "Got it, thanks!" %} ??</button>
   </div>
+<script>
+const APP = {
+    csrfToken: "{{ csrf_token }}",
+    authenticated: {{ user.is_authenticated|yesno:"true,false" }},
+    loginUrl: "{% url 'accounts:login' %}",
+    locationIqKey: "{{ LOCATIONIQ_API_KEY|default:'' }}",
+    vapidPublicKey: "{{ VAPID_PUBLIC_KEY }}",
+    userId: {% if user.is_authenticated %}{{ user.id }}{% else %}null{% endif %}
+};
+</script>
 
-  <script>
-    const CSRF_TOKEN       = '{{ csrf_token }}';
-    const IS_AUTHENTICATED = {{ user.is_authenticated|yesno:"true,false" }};
-    const LOGIN_URL        = "{% url 'accounts:login' %}";
-    const LOCATIONIQ_KEY   = '{{ LOCATIONIQ_API_KEY|default:"" }}';
-    const VAPID_PUBLIC_KEY = 'BAEw351eT-whUPpELa7PRDNEM0E_qzbKy6V9pI2jMjjHIS_JQx6cUj9hPahI9k86eCuG1QntOHnGi_1Yi_fWVwM';
+<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/utils.js' %}"></script>
+<script src="{% static 'js/theme.js' %}"></script>
+<script src="{% static 'js/language.js' %}"></script>
+<script src="{% static 'js/navbar.js' %}"></script>
+<script src="{% static 'js/search.js' %}"></script>
+<script src="{% static 'js/forms.js' %}"></script>
+<script src="{% static 'js/uploads.js' %}"></script>
+<script src="{% static 'js/cart.js' %}"></script>
+<script src="{% static 'js/chat.js' %}"></script>
+<script src="{% static 'js/support.js' %}"></script>
+<script src="{% static 'js/notifications.js' %}"></script>
+<script src="{% static 'js/pwa.js' %}"></script>
+<script src="{% static 'js/dashboard.js' %}"></script>
+<script src="{% static 'js/vendor.js' %}"></script>
+<script src="{% static 'js/livestream.js' %}"></script>
+<script src="{% static 'js/app.js' %}"></script>
 
-    function urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-      const raw     = window.atob(base64);
-      const output  = new Uint8Array(raw.length);
-      for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
-      return output;
-    }
-
-    async function subscribeToPush() {
-      if (!IS_AUTHENTICATED) return;
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        let sub   = await reg.pushManager.getSubscription();
-        if (!sub) {
-          const permission = await Notification.requestPermission();
-          if (permission !== 'granted') return;
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly:      true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-          });
-        }
-        await fetch('/push/subscribe/', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-          body:    JSON.stringify(sub.toJSON()),
-        });
-      } catch (err) {
-        console.warn('[Push] Subscription failed:', err);
-      }
-    }
-
-    if (IS_AUTHENTICATED) { setTimeout(subscribeToPush, 3000); }
-
-    const THEME_KEY = 'lynctel-theme';
-
-    function applyTheme(theme) {
-      const html   = document.documentElement;
-      const isDark = theme === 'dark';
-      isDark ? html.classList.add('dark') : html.classList.remove('dark');
-      const icon  = isDark ? '??' : '??';
-      const label = isDark ? 'Light Mode' : 'Dark Mode';
-      ['theme-icon','dropdown-theme-icon','footer-theme-icon'].forEach(id=>{
-        const el=document.getElementById(id); if(el) el.textContent=icon;
-      });
-      ['dropdown-theme-label','footer-theme-label'].forEach(id=>{
-        const el=document.getElementById(id); if(el) el.textContent=label;
-      });
-    }
-
-    function toggleTheme() {
-      const next = (localStorage.getItem(THEME_KEY)||'light')==='dark' ? 'light' : 'dark';
-      localStorage.setItem(THEME_KEY, next);
-      applyTheme(next);
-    }
-
-    (function(){
-      const saved  = localStorage.getItem(THEME_KEY);
-      const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      applyTheme(saved || system);
-    })();
-
-    const LANG_KEY  = 'lynctel-lang';
-    const LANG_META = {
-      en:{flag:'????',label:'EN'}, tw:{flag:'????',label:'TW'},
-      ga:{flag:'????',label:'GA'}, ha:{flag:'????',label:'HA'},
-    };
-    const TRANSLATIONS = {
-      en:{ search_placeholder:'Search products, shops, vendors...', home:'Home', products:'Products', cart:'Cart', food:'Food', profile:'Profile', sign_in:'Sign In', sign_up:'Sign Up', sell_here:'Sell Here', my_shop:'My Shop', shops:'Shops', my_orders:'My Orders', sign_out:'Sign Out', my_profile:'My Profile', install_app:'Install App', dark_mode:'Dark Mode', light_mode:'Light Mode', your_cart:'Your Cart', cart_empty:'Your cart is empty', checkout:'Proceed to Checkout', subtotal:'Subtotal', live:'Live' },
-      tw:{ search_placeholder:'Hwehw? ade?, dukan, nne?ma...', home:'Fie', products:'Nne?ma', cart:'Basket', food:'Aduane', profile:'Me Ho', sign_in:'Wo K? Mu', sign_up:'K? W? Ho', sell_here:'To W? Ha', my_shop:'Me Dukan', shops:'Adukan', my_orders:'Me Ns?m', sign_out:'Pue', my_profile:'Me Ho Ns?m', install_app:'Fa App No', dark_mode:'Sum Nhyehy?e', light_mode:'Hann Nhyehy?e', your_cart:'Wo Basket', cart_empty:'Wo basket no y? huu', checkout:'Tua Sika', subtotal:'Akatua', live:'Live' },
-      ga:{ search_placeholder:'L? ?m?, shia, ade?...', home:'Fie', products:'?m??m?i', cart:'Basket', food:'Ny??m?', profile:'Mi H?', sign_in:'K? Mu', sign_up:'B? W?', sell_here:'F? H?', my_shop:'Mi Shia', shops:'Shiani', my_orders:'Mi ?m?i', sign_out:'Tsu', my_profile:'Mi H? Ns?m', install_app:'K? App', dark_mode:'Blema Nhyehy?e', light_mode:'Ha? Nhyehy?e', your_cart:'W? Basket', cart_empty:'W? basket mli', checkout:'Tua F??', subtotal:'F??', live:'Live' },
-      ha:{ search_placeholder:'Nemi kaya, shago, dilali...', home:'Gida', products:'Kaya', cart:'Kwando', food:'Abinci', profile:'Bayani', sign_in:'Shiga', sign_up:'Yi Rajista', sell_here:'Sayar Nan', my_shop:'Shagona', shops:'Shaguna', my_orders:'Odocina', sign_out:'Fita', my_profile:'Bayanina', install_app:'Sauke App', dark_mode:'Yanayin Dare', light_mode:'Yanayin Rana', your_cart:'Kwandanka', cart_empty:'Kwandanka a fanko', checkout:'Biya', subtotal:'Jimla', live:'Live' },
-    };
-
-    let currentLang = localStorage.getItem(LANG_KEY) || 'en';
-
-    function setLang(lang) {
-      if (!TRANSLATIONS[lang]) return;
-      currentLang = lang;
-      localStorage.setItem(LANG_KEY, lang);
-      applyLang(lang);
-      document.querySelectorAll('[data-lang]').forEach(btn=>{
-        btn.classList.toggle('active', btn.dataset.lang===lang);
-      });
-    }
-
-    function t(key) {
-      return (TRANSLATIONS[currentLang]&&TRANSLATIONS[currentLang][key]) || TRANSLATIONS['en'][key] || key;
-    }
-
-    function applyLang(lang) {
-      const meta = LANG_META[lang]; if(!meta) return;
-      const flagEl=document.getElementById('current-lang-flag');
-      const labelEl=document.getElementById('current-lang-label');
-      if(flagEl) flagEl.textContent=meta.flag;
-      if(labelEl) labelEl.textContent=meta.label;
-      document.querySelectorAll('input[name="q"]').forEach(el=>{el.placeholder=t('search_placeholder');});
-      document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n);});
-    }
-
-    (function(){
-      applyLang(currentLang);
-      document.querySelectorAll('[data-lang]').forEach(btn=>{
-        btn.classList.toggle('active', btn.dataset.lang===currentLang);
-      });
-    })();
-
-    function openCart() {
-      document.getElementById('cart-drawer').classList.add('open');
-      document.getElementById('cart-overlay').classList.add('open');
-      document.body.style.overflow='hidden';
-      refreshDrawer();
-    }
-    function closeCart() {
-      document.getElementById('cart-drawer').classList.remove('open');
-      document.getElementById('cart-overlay').classList.remove('open');
-      document.body.style.overflow='';
-    }
-    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCart();});
-
-    function refreshDrawer() {
-      fetch('/cart/data/',{headers:{'X-Requested-With':'XMLHttpRequest'}})
-        .then(r=>r.json()).then(renderDrawer).catch(console.error);
-    }
-
-    function renderDrawer(data) {
-      const itemsEl=document.getElementById('drawer-items');
-      const emptyEl=document.getElementById('drawer-empty');
-      const footerEl=document.getElementById('drawer-footer');
-      const countEl=document.getElementById('drawer-count');
-      const subEl=document.getElementById('drawer-subtotal');
-      const count=data.count||0;
-      countEl.textContent=count;
-      subEl.textContent='GHS '+parseFloat(data.total||0).toFixed(2);
-      if(!data.items||data.items.length===0){
-        itemsEl.innerHTML='';itemsEl.classList.add('hidden');
-        emptyEl.classList.remove('hidden');footerEl.classList.add('hidden');return;
-      }
-      itemsEl.classList.remove('hidden');emptyEl.classList.add('hidden');footerEl.classList.remove('hidden');
-      itemsEl.innerHTML=data.items.map(item=>`
-        <div id="ditem-${item.id}" class="flex items-start gap-3 bg-gray-50 rounded-2xl p-3 transition-opacity duration-300">
-          <a href="/products/${item.slug}/" class="flex-shrink-0">
-            ${item.image?`<img src="${item.image}" alt="${item.name}" class="w-16 h-16 rounded-xl object-cover bg-gray-200"/>`:`<div class="w-16 h-16 rounded-xl bg-gray-200 flex items-center justify-center text-2xl">??</div>`}
-          </a>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-navy line-clamp-2 leading-snug">${item.name}</p>
-            ${item.vendor?`<p class="text-xs text-gray-400 mt-0.5">?? ${item.vendor}</p>`:''}
-            <p class="text-sm font-display font-700 text-navy mt-1">GHS ${item.price}</p>
-          </div>
-          <div class="flex flex-col items-end gap-2 flex-shrink-0">
-            <div class="flex items-center gap-1.5">
-              <button onclick="drawerQty(${item.id},${item.quantity},-1)" class="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-navy font-bold text-sm hover:bg-navy hover:text-white hover:border-navy transition-colors">-</button>
-              <span class="w-6 text-center text-sm font-semibold text-navy">${item.quantity}</span>
-              <button onclick="drawerQty(${item.id},${item.quantity},1)" class="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-navy font-bold text-sm hover:bg-navy hover:text-white hover:border-navy transition-colors">+</button>
-            </div>
-            <button onclick="drawerRemove(${item.id})" class="text-xs text-red-400 hover:text-red-600 transition-colors font-medium">Remove</button>
-          </div>
-        </div>`).join('');
-    }
-
-    function addToCart(productId,btn) {
-      if(!IS_AUTHENTICATED){window.location.href=LOGIN_URL+'?next='+encodeURIComponent(window.location.pathname);return;}
-      const orig=btn?btn.innerHTML:'';
-      if(btn){btn.innerHTML='...';btn.disabled=true;}
-      const fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF_TOKEN);fd.append('quantity',1);
-      fetch(`/cart/add/${productId}/`,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd})
-        .then(r=>r.json()).then(d=>{
-          if(d.success){
-            updateCartBadge(d.cart_count);
-            if(btn){btn.innerHTML='? Added';btn.classList.add('bg-green-500');btn.classList.remove('bg-navy');
-              setTimeout(()=>{btn.innerHTML=orig;btn.disabled=false;btn.classList.remove('bg-green-500');btn.classList.add('bg-navy');},1200);}
-            setTimeout(openCart,350);
-          }
-        }).catch(()=>{if(btn){btn.innerHTML=orig;btn.disabled=false;}});
-    }
-
-    function drawerQty(itemId,current,delta) {
-      const newQty=Math.max(1,current+delta);
-      const fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF_TOKEN);fd.append('quantity',newQty);
-      fetch(`/cart/update/${itemId}/`,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd})
-        .then(r=>r.json()).then(d=>{if(d.success){updateCartBadge(d.cart_count);refreshDrawer();}});
-    }
-
-    function drawerRemove(itemId) {
-      const fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF_TOKEN);
-      fetch(`/cart/remove/${itemId}/`,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd})
-        .then(r=>r.json()).then(d=>{
-          if(d.success){updateCartBadge(d.cart_count);
-            const row=document.getElementById('ditem-'+itemId);
-            if(row){row.style.opacity='0';setTimeout(refreshDrawer,300);}
-          }
-        });
-    }
-
-    function updateCartBadge(count) {
-      ['cart-count','mobile-cart-count'].forEach(id=>{
-        const badge=document.getElementById(id);if(!badge)return;
-        badge.textContent=count;
-        if(count>0){badge.classList.remove('hidden');badge.classList.add('badge-pop');setTimeout(()=>badge.classList.remove('badge-pop'),300);}
-        else badge.classList.add('hidden');
-      });
-    }
-
-    {% if user.is_authenticated %}
-    let supportBadgeInterval = null;
-
-    function refreshSupportBadge() {
-      fetch('/chat/unread/',{headers:{'X-Requested-With':'XMLHttpRequest'}})
-        .then(r=>r.json()).then(d=>{
-          const count=d.unread||0;
-          ['support-badge-dropdown'].forEach(id=>{
-            const badge=document.getElementById(id);if(!badge)return;
-            badge.textContent=count>9?'9+':count;
-            badge.classList.toggle('hidden',count===0);
-          });
-        }).catch(()=>{});
-    }
-
-    function startSupportBadgePolling() {
-      if (supportBadgeInterval) return;
-      refreshSupportBadge();
-      supportBadgeInterval = setInterval(refreshSupportBadge, 30000);
-    }
-    function stopSupportBadgePolling() {
-      clearInterval(supportBadgeInterval);
-      supportBadgeInterval = null;
-    }
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') startSupportBadgePolling();
-      else stopSupportBadgePolling();
-    });
-    startSupportBadgePolling();
-    {% endif %}
-
-    let _deferredPrompt=null;
-    const _isIOS=(/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream);
-    const _isStandalone=(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true);
-
-    window.addEventListener('beforeinstallprompt',e=>{
-      e.preventDefault();_deferredPrompt=e;
-      if(!localStorage.getItem('pwa-dismissed')&&!_isStandalone){
-        setTimeout(()=>document.getElementById('pwa-banner').classList.add('show'),window.innerWidth<640?2000:4000);
-      }
-    });
-
-    document.getElementById('pwa-install-btn').addEventListener('click',async()=>{
-      if(!_deferredPrompt)return;
-      _deferredPrompt.prompt();
-      const{outcome}=await _deferredPrompt.userChoice;
-      _deferredPrompt=null;
-      document.getElementById('pwa-banner').classList.remove('show');
-      if(outcome==='accepted')localStorage.setItem('pwa-installed','1');
-    });
-
-    function dismissPWA(){document.getElementById('pwa-banner').classList.remove('show');localStorage.setItem('pwa-dismissed','1');}
-    function showInstallPrompt(){
-      if(_isStandalone){alert('Lynctel is already installed! ?');return;}
-      document.getElementById('ios-install-sheet').classList.add('show');
-      document.getElementById('ios-overlay').classList.add('show');
-      document.body.style.overflow='hidden';
-    }
-    function closeIOSSheet(){
-      document.getElementById('ios-install-sheet').classList.remove('show');
-      document.getElementById('ios-overlay').classList.remove('show');
-      document.body.style.overflow='';
-    }
-
-    if(_isIOS&&!_isStandalone&&!localStorage.getItem('ios-hint-shown')){
-      setTimeout(()=>{document.getElementById('ios-install-sheet').classList.add('show');document.getElementById('ios-overlay').classList.add('show');localStorage.setItem('ios-hint-shown','1');},6000);
-    }
-    if(_isStandalone)document.getElementById('pwa-banner').style.display='none';
-
-    if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>{
-        navigator.serviceWorker.register('/sw.js',{scope:'/'})
-          .then(r=>console.log('[SW] Registered:',r.scope))
-          .catch(e=>console.error('[SW] Failed:',e));
-      });
-    }
-
-    setTimeout(()=>{
-      const el=document.getElementById('flash-wrap');
-      if(el){el.style.transition='opacity .5s';el.style.opacity='0';setTimeout(()=>el.remove(),500);}
-    },5000);
-
-    window.addEventListener('scroll',()=>{
-      document.getElementById('navbar').classList.toggle('nav-scrolled',window.scrollY>10);
-    });
-  </script>
-
-  {% block extra_js %}{% endblock %}
+{% block extra_js %}{% endblock %}
 </body>
 </html>
