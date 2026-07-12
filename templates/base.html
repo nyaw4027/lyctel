@@ -1,24 +1,24 @@
-<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 {% load static i18n %}
 <html lang="{{ LANGUAGE_CODE|default:'en' }}" data-theme="light">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>{% block title %}Lynctel — Quality Products Delivered{% endblock %}</title>
+  <title>{% block title %}Lynctel â€” Quality Products Delivered{% endblock %}</title>
 
-  <meta name="description" content="Lynctel — Quality products delivered fast across Ghana. Shop electronics, gadgets, food and more."/>
+  <meta name="description" content="Lynctel â€” Quality products delivered fast across Ghana. Shop electronics, gadgets, food and more."/>
   <meta name="keywords" content="Lynctel, Ghana, online shopping, food delivery, electronics, fast delivery, MoMo payment"/>
   <meta name="author" content="Lynctel"/>
   <meta name="robots" content="index, follow"/>
 
   <meta property="og:type"        content="website"/>
   <meta property="og:url"         content="https://lynctel.up.railway.app/"/>
-  <meta property="og:title"       content="Lynctel — Quality Products Delivered"/>
+  <meta property="og:title"       content="Lynctel â€” Quality Products Delivered"/>
   <meta property="og:description" content="Shop electronics, gadgets, food and more. Fast delivery across Ghana."/>
   <meta property="og:image"       content="{% static 'icons/icon-512x512.png' %}"/>
   <meta property="og:locale"      content="en_GH"/>
   <meta name="twitter:card"        content="summary_large_image"/>
-  <meta name="twitter:title"       content="Lynctel — Quality Products Delivered"/>
+  <meta name="twitter:title"       content="Lynctel â€” Quality Products Delivered"/>
   <meta name="twitter:description" content="Shop electronics, gadgets, food and more."/>
   <meta name="twitter:image"       content="{% static 'icons/icon-512x512.png' %}"/>
 
@@ -38,12 +38,12 @@
   <!-- -- ANTI-FLASH VEIL -------------------------------------
        Deferring the Tailwind script (fix above) means the browser now
        paints raw, unstyled HTML for a brief moment before Tailwind's
-       styles apply — a visible "flash of unstyled content" that wasn't
+       styles apply â€” a visible "flash of unstyled content" that wasn't
        there when the script was blocking. This veil restores the old
        "always looks fully styled" appearance without bringing back the
        actual freeze: everything here is inline (nothing to wait on a
        slow network for) and there's a hard timeout, so worst case is a
-       slightly longer branded loading moment — never a frozen page. -->
+       slightly longer branded loading moment â€” never a frozen page. -->
   <style>
     html:not(.tw-ready) body { opacity: 0; }
     body { transition: opacity .25s ease; }
@@ -62,7 +62,7 @@
     @keyframes tw-spin { to { transform: rotate(360deg); } }
   </style>
   <script>
-    // Reveal as soon as the deferred Tailwind script has actually run —
+    // Reveal as soon as the deferred Tailwind script has actually run â€”
     // DOMContentLoaded fires only after ALL deferred scripts (Tailwind's
     // CDN script + its config script) have downloaded and executed, so
     // by this point the real styling is already in place, not a guess.
@@ -70,7 +70,7 @@
       document.documentElement.classList.add('tw-ready');
     });
     // Safety net: if the CDN is ever unusually slow/unreachable, don't
-    // leave the page hidden forever — reveal it anyway after 4s so the
+    // leave the page hidden forever â€” reveal it anyway after 4s so the
     // site is at least usable (possibly briefly unstyled) rather than
     // stuck blank. This is the graceful-degradation case that replaces
     // the old hard freeze.
@@ -84,7 +84,7 @@
   <!-- Performance: warm up connections to CDNs used by specific pages
        (Leaflet maps, Chart.js on the vendor dashboard) so that once those
        pages' own deferred/lazy scripts run, the connection is already
-       established — shaves real round-trip latency off first paint of
+       established â€” shaves real round-trip latency off first paint of
        those resources without blocking anything here in base.html. -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin/>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
@@ -99,10 +99,10 @@
        defer/async), sitting in <head> before literally everything else
        on every page that extends this template. If cdn.tailwindcss.com
        is ever slow or unreachable, the browser gets stuck parsing right
-       here and NOTHING below — not the body, not any page's own content
-       — can render. `defer` on the CDN script lets the whole document
+       here and NOTHING below â€” not the body, not any page's own content
+       â€” can render. `defer` on the CDN script lets the whole document
        parse and render immediately regardless of that network request's
-       fate. The config below is intentionally NOT deferred — it's a
+       fate. The config below is intentionally NOT deferred â€” it's a
        plain local object assignment with no network dependency, so it
        costs nothing to run immediately, and doing so is what guarantees
        it exists before the deferred CDN script initializes (see the
@@ -110,7 +110,7 @@
   <!-- FIXED: custom Tailwind colors (navy/gold/cream) were silently
        failing to generate as CSS classes, causing bg-navy etc. to have
        no effect (revealing the page's cream background underneath,
-       while text-white — a built-in color, unaffected by our config —
+       while text-white â€” a built-in color, unaffected by our config â€”
        kept working, which is exactly why the footer looked "cream with
        unreadable white text"). Root cause: the Tailwind Play CDN needs
        its custom config to exist BEFORE it initializes. Marking both the
@@ -119,7 +119,7 @@
        deferred script had assigned tailwind.config, so the very first
        (and often only) style-generation pass used defaults only.
        Fix: predefine window.tailwind.config in a plain, non-deferred,
-       inline script — no network dependency, executes instantly — so
+       inline script â€” no network dependency, executes instantly â€” so
        the config exists before the deferred CDN script ever runs, no
        race possible. The CDN script itself stays `defer`, so the
        original page-freeze bug this was fixed for stays fixed too. -->
@@ -135,47 +135,47 @@
           },
           colors: {
             /* -- NAVY ------------------------------------------
-               FIXED: the old DEFAULT (#0F1B2D) sits at ~12% lightness —
+               FIXED: the old DEFAULT (#0F1B2D) sits at ~12% lightness â€”
                below roughly 15%, a dark blue and pure black become
                nearly indistinguishable on most phone screens, especially
                budget Android displays with weak black levels. That's why
                "navy" was reading as flat black on the footer/hero
                sections. Brightened DEFAULT to ~19% lightness with a
-               touch more blue saturation — still reads as a premium dark
+               touch more blue saturation â€” still reads as a premium dark
                tone, still passes WCAG AA easily as both text-on-white
                (~9:1) and background-with-white-text (~9:1), but is now
                unmistakably blue rather than black.
                Usage guide:
-                 navy / navy-500 — primary surfaces: footer, hero sections,
+                 navy / navy-500 â€” primary surfaces: footer, hero sections,
                                     primary buttons, text-navy on light bg
-                 navy-700        — hover/active state for navy buttons
-                                    (bg-navy hover:bg-navy-700 — darker
+                 navy-700        â€” hover/active state for navy buttons
+                                    (bg-navy hover:bg-navy-700 â€” darker
                                     than DEFAULT so hover is actually
                                     visible; this used to be the OLD
                                     DEFAULT value, repurposed here)
-                 navy-900        — reserved for shadows/depth accents only,
+                 navy-900        â€” reserved for shadows/depth accents only,
                                     NEVER a large flat surface (too close
-                                    to true black — the original bug) */
+                                    to true black â€” the original bug) */
             navy: {
               DEFAULT: '#1B2E4D',
-              900: '#0B1424',   /* depth/shadow accents only — not a surface color */
-              800: '#0F1B2D',   /* the old DEFAULT — kept as a darker accent shade */
-              700: '#152540',   /* hover/active state — darker than DEFAULT */
+              900: '#0B1424',   /* depth/shadow accents only â€” not a surface color */
+              800: '#0F1B2D',   /* the old DEFAULT â€” kept as a darker accent shade */
+              700: '#152540',   /* hover/active state â€” darker than DEFAULT */
               600: '#24406B',
               500: '#1B2E4D',   /* = DEFAULT, kept explicit for bg-navy-500 etc. */
               400: '#5678A8',   /* borders/dividers on dark backgrounds */
             },
             /* -- GOLD ------------------------------------------
                Usage guide:
-                 gold        — icons, buttons, large accents, badges
-                 gold-dark   — small TEXT specifically (e.g. "Sell Here"
+                 gold        â€” icons, buttons, large accents, badges
+                 gold-dark   â€” small TEXT specifically (e.g. "Sell Here"
                                 pill, links). The bright DEFAULT gold is
                                 fine at icon/button size but can look
                                 washed out or vibrate uncomfortably as
-                                small text — gold-dark keeps the same
+                                small text â€” gold-dark keeps the same
                                 warm hue with better legibility at
                                 text sizes.
-                 gold-light  — backgrounds behind gold-dark text (pills,
+                 gold-light  â€” backgrounds behind gold-dark text (pills,
                                 highlight cards) */
             gold: { DEFAULT: '#F5A623', light: '#FEF3D7', dark: '#c8841a' },
             cream: '#FAFAF7',
@@ -430,7 +430,7 @@
     .leaflet-map { background: #e9edf2; border-radius: 14px; }
     .leaflet-map .leaflet-container { border-radius: 12px; }
 
-    /* Reusable map chrome: satellite toggle, error banner, retry —
+    /* Reusable map chrome: satellite toggle, error banner, retry â€”
        give the map wrapper position:relative and drop these in. */
     .map-fab {
       position: absolute; z-index: 400;
@@ -510,7 +510,7 @@
 
     /* -- Upload dropzone --------------------------------------
        Standard mobile-safe file-upload pattern: input lives INSIDE the
-       label at opacity:0 covering the whole zone (not off-screen —
+       label at opacity:0 covering the whole zone (not off-screen â€”
        off-screen positioning combined with a separate remove button
        inside the same label is what caused the iOS upload bug fixed in
        food/register.html). Keep the remove button outside the label. */
@@ -597,7 +597,7 @@
         <img src="{% static 'logo.png' %}" alt="Lynctel"
              class="h-8 w-auto object-contain group-hover:scale-105 transition-transform duration-200"/>
         <span class="brand-name">Lynctel</span>
-        <span class="brand-dot text-gold font-bold text-lg leading-none">·</span>
+        <span class="brand-dot text-gold font-bold text-lg leading-none">Â·</span>
       </a>
 
       <form method="GET" action="{% url 'products:list' %}"
@@ -913,7 +913,7 @@
                 {% elif message.tags == 'warning' %}bg-amber-50 text-amber-800 border border-amber-200
                 {% else %}bg-blue-50 text-blue-800 border border-blue-100{% endif %}">
       <span>{{ message }}</span>
-      <button onclick="this.parentElement.remove()" class="ml-4 opacity-50 hover:opacity-100 text-lg" aria-label="Dismiss">×</button>
+      <button onclick="this.parentElement.remove()" class="ml-4 opacity-50 hover:opacity-100 text-lg" aria-label="Dismiss">Ã—</button>
     </div>
     {% endfor %}
   </div>
@@ -937,7 +937,7 @@
             <img src="{% static 'logo.png' %}" alt="Lynctel"
                  class="h-10 w-auto object-contain brightness-0 invert"/>
             <span class="font-display font-800 text-xl text-white tracking-tight">Lynctel</span>
-            <span class="text-gold font-bold text-xl">·</span>
+            <span class="text-gold font-bold text-xl">Â·</span>
           </div>
           <p class="text-gray-400 leading-relaxed text-sm max-w-md mb-6">
             {% trans "Lynctel connects customers, vendors, and riders across Ghana through fast delivery, secure payments, and a premium ecommerce experience." %}
@@ -1200,7 +1200,7 @@
       </div>
       <div class="flex items-center gap-4 bg-gold-light rounded-2xl px-4 py-3.5">
         <div class="w-10 h-10 bg-gold rounded-xl flex items-center justify-center flex-shrink-0 text-navy font-bold">?</div>
-        <div><p class="font-semibold text-navy text-sm">{% trans "Tap 'Add' — you're done!" %}</p><p class="text-xs text-gray-500 mt-0.5">{% trans "Lynctel appears on your home screen" %}</p></div>
+        <div><p class="font-semibold text-navy text-sm">{% trans "Tap 'Add' â€” you're done!" %}</p><p class="text-xs text-gray-500 mt-0.5">{% trans "Lynctel appears on your home screen" %}</p></div>
       </div>
     </div>
     <button onclick="closeIOSSheet()" class="w-full bg-navy text-white font-semibold py-4 rounded-2xl transition-colors hover:bg-navy-700 text-sm">{% trans "Got it, thanks!" %} ??</button>
