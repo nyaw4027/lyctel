@@ -1,449 +1,93 @@
 {% extends "base.html" %}
-{% block title %}Lynctel Food — Order from Restaurants Near You{% endblock %}
+{% load static i18n %}
+
+{% block title %}Lynctel Food — Restaurants Near You{% endblock %}
 
 {% block extra_head %}
-<style>
-  @keyframes fadeSlideUp {
-    from { opacity:0; transform:translateY(16px); }
-    to   { opacity:1; transform:translateY(0); }
-  }
-  .card-appear { animation: fadeSlideUp .35s ease forwards; }
-  .card-appear:nth-child(2) { animation-delay:.04s; }
-  .card-appear:nth-child(3) { animation-delay:.08s; }
-  .card-appear:nth-child(4) { animation-delay:.12s; }
-
-  .cuisine-pill { white-space:nowrap; transition:all .2s ease; }
-  .cuisine-pill.active { background:#0F1B2D; color:white; }
-  html.dark .cuisine-pill.active { background:#F5A623; color:#0F1B2D; }
-
-  .vendor-card { transition:transform .25s ease, box-shadow .25s ease; }
-  .vendor-card:hover { transform:translateY(-3px); box-shadow:0 16px 40px rgba(15,27,45,.12); }
-
-  @keyframes open-pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
-  .open-dot { animation:open-pulse 2s ease-in-out infinite; }
-
-  /* Mobile: 2 columns for vendor grid */
-  @media (max-width: 640px) {
-    #vendor-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
-    .vendor-card .h-44 { height: 120px; }
-    .vendor-card .pt-8 { padding-top: 28px; }
-    .vendor-card .px-4 { padding-left: 10px; padding-right: 10px; }
-    .vendor-card .pb-4 { padding-bottom: 10px; }
-  }
-
-  /* Prevent iOS zoom */
-  input { font-size: 16px !important; }
-  @media (min-width: 640px) { input { font-size: 14px !important; } }
-
-  /* Scrollbar hide for cuisine pills */
-  .scrollbar-hide::-webkit-scrollbar { display:none; }
-  .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
-</style>
+<link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 {% endblock %}
 
 {% block content %}
+<div class="container-xl px-3 py-4">
 
-<!-- ── HERO ───────────────────────────────── -->
-<section class="bg-navy relative overflow-hidden">
-  <div class="absolute inset-0 opacity-5"
-       style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);
-              background-size:28px 28px;"></div>
-  <div class="absolute right-0 top-0 w-64 h-64 bg-gold opacity-10 rounded-full
-              translate-x-1/3 -translate-y-1/3 blur-3xl pointer-events-none"></div>
-
-  <div class="relative max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-16">
-    <div class="max-w-xl">
-      <div class="inline-flex items-center gap-2 bg-white/10 text-gold text-xs font-semibold
-                  px-4 py-2 rounded-full mb-4">
-        <span class="w-1.5 h-1.5 bg-gold rounded-full open-dot"></span>
-        Food Delivery Across Ghana 🍽️
-      </div>
-      <h1 class="font-display font-700 text-2xl md:text-5xl text-white leading-tight mb-3 md:mb-4">
-        Hungry? We've got you.
-      </h1>
-      <p class="text-gray-300 text-sm md:text-base mb-5 leading-relaxed">
-        Order from the best restaurants near you. Track live. Pay MoMo or cash.
-      </p>
-
-      <!-- Address bar — large touch targets -->
-      <div class="bg-white rounded-2xl p-1.5 flex gap-2 shadow-xl">
-        <div class="flex-1 flex items-center gap-2 px-3">
-          <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-          </svg>
-          <input id="hero-address" type="text"
-                 placeholder="Enter your delivery address..."
-                 inputmode="search"
-                 class="flex-1 py-2.5 text-navy text-sm bg-transparent outline-none placeholder-gray-400 min-w-0"/>
-          <input type="hidden" id="hero-lat"/>
-          <input type="hidden" id="hero-lng"/>
-        </div>
-        <button onclick="findRestaurants()"
-                class="bg-gold hover:bg-gold-dark text-navy font-semibold px-4 py-3
-                       rounded-xl transition-colors btn-press text-sm flex-shrink-0 min-h-[44px]">
-          Find →
-        </button>
-      </div>
-
-      <button onclick="useMyLocation()"
-              class="mt-3 flex items-center gap-2 text-gray-300 hover:text-gold text-xs transition-colors min-h-[36px]">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        Use my current location
-      </button>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h4 mb-0 font-display">Food Delivery</h1>
+      <p class="small text-muted mb-0">Order from restaurants near you</p>
+    </div>
+    <div>
+      <form method="get" class="d-flex">
+        <input name="q" value="{{ request.GET.q|default:'' }}" class="form-control form-control-sm me-2" placeholder="Search restaurants or cuisines">
+        <button class="btn btn-sm btn-outline-secondary">Search</button>
+      </form>
     </div>
   </div>
-</section>
 
-<!-- ── LOCATION BAR ───────────────────────── -->
-<div id="location-bar" class="hidden bg-gold-light border-b border-gold/20">
-  <div class="max-w-5xl mx-auto px-4 md:px-6 py-2.5 flex items-center gap-2 text-sm">
-    <svg class="w-4 h-4 text-gold-dark flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-    </svg>
-    <span class="text-gold-dark font-medium text-xs md:text-sm truncate" id="location-text">Detecting location…</span>
-    <button onclick="clearLocation()" class="ml-auto text-xs text-gray-500 hover:text-navy transition-colors flex-shrink-0">Change</button>
-  </div>
-</div>
-
-<!-- ── CUISINE FILTER — horizontal scroll ──── -->
-<div class="bg-white border-b border-gray-100 sticky top-16 z-30">
-  <div class="max-w-5xl mx-auto px-4 md:px-6">
-    <div class="flex items-center gap-2 overflow-x-auto py-3 scrollbar-hide">
-      <a href="{% url 'food:home' %}"
-         class="cuisine-pill {% if not selected_cuisine %}active{% endif %}
-                flex-shrink-0 px-3.5 py-2 rounded-full border border-gray-200
-                text-xs md:text-sm font-medium text-gray-700 hover:border-navy transition-colors min-h-[36px] flex items-center">
-        🍽️ All
-      </a>
-      {% for value, label in cuisines %}
-      <a href="{% url 'food:home' %}?cuisine={{ value }}{% if query %}&q={{ query }}{% endif %}"
-         class="cuisine-pill {% if selected_cuisine == value %}active{% endif %}
-                flex-shrink-0 px-3.5 py-2 rounded-full border border-gray-200
-                text-xs md:text-sm font-medium text-gray-700 hover:border-navy transition-colors min-h-[36px] flex items-center gap-1">
-        {% if value == 'ghanaian' %}🇬🇭{% elif value == 'fast_food' %}🍔{% elif value == 'pizza' %}🍕
-        {% elif value == 'grills' %}🔥{% elif value == 'seafood' %}🦐{% elif value == 'vegan' %}🥗
-        {% elif value == 'drinks' %}🥤{% elif value == 'bakery' %}🥐{% elif value == 'chinese' %}🥡
-        {% else %}🍴{% endif %}
-        {{ label }}
-      </a>
+  <!-- Cuisine pills -->
+  <div class="mb-3">
+    <div class="d-flex gap-2 overflow-auto py-2">
+      <a href="{% url 'food:home' %}" class="btn btn-sm btn-outline-secondary {% if not selected_cuisine %}active{% endif %}">🍽️ All</a>
+      {% for value,label in cuisines %}
+      <a href="{% url 'food:home' %}?cuisine={{ value }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm btn-outline-secondary {% if selected_cuisine == value %}active{% endif %}">{{ label }}</a>
       {% endfor %}
     </div>
   </div>
-</div>
 
-<!-- ── SEARCH ─────────────────────────────── -->
-<div class="max-w-5xl mx-auto px-4 md:px-6 pt-5">
-  <form method="GET" class="relative">
-    {% if selected_cuisine %}<input type="hidden" name="cuisine" value="{{ selected_cuisine }}"/>{% endif %}
-    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
-    </svg>
-    <input type="text" name="q" value="{{ query }}"
-           placeholder="Search restaurants, cuisines..."
-           inputmode="search"
-           class="w-full pl-11 pr-4 py-3 bg-white border border-gray-200
-                  rounded-2xl text-sm shadow-sm transition-all min-h-[44px]"/>
-  </form>
-</div>
-
-<!-- ── VENDOR GRID ────────────────────────── -->
-<div class="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
-
-  {% if vendor_list %}
-  <div class="flex items-center justify-between mb-4">
-    <div>
-      <h2 class="font-display font-700 text-lg md:text-xl text-navy">
-        {% if selected_cuisine %}{{ selected_cuisine|title }} Restaurants
-        {% elif query %}Results for "{{ query }}"
-        {% else %}Restaurants Near You{% endif %}
-      </h2>
-      <p class="text-gray-400 text-xs mt-0.5">{{ vendor_list|length }} restaurant{{ vendor_list|length|pluralize }}</p>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5" id="vendor-grid">
-    {% for item in vendor_list %}
-    {% with v=item.vendor %}
-    <a href="{% url 'food:menu' v.slug %}"
-       class="vendor-card card-appear bg-white rounded-2xl border border-gray-100 overflow-hidden block group">
-
-      <div class="relative h-44 overflow-hidden bg-gray-100">
-        {% if v.banner %}
-        <img src="{{ v.banner.url }}" alt="{{ v.name }}"
-             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
-        {% else %}
-        <div class="w-full h-full bg-gradient-to-br from-navy to-navy-700 flex items-center justify-center">
-          <span class="text-5xl opacity-30">🍽️</span>
-        </div>
-        {% endif %}
-
-        <div class="absolute top-2.5 left-2.5">
-          {% if v.status == 'open' %}
-          <span class="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
-            <span class="w-1.5 h-1.5 bg-white rounded-full open-dot"></span>Open
-          </span>
-          {% elif v.status == 'busy' %}
-          <span class="bg-orange-500 text-white text-xs font-semibold px-2 py-1 rounded-full">🔥 Busy</span>
+  <!-- Featured / Nearby -->
+  <section class="mb-4">
+    <h2 class="h6 text-navy mb-3">Restaurants Near You</h2>
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+      {% for v in vendor_list %}
+      <div class="col">
+        <a href="{% url 'food:menu' v.slug %}" class="card h-100 text-decoration-none text-reset card-hover">
+          {% if v.banner %}
+          <img src="{{ v.banner.url }}" class="card-img-top" style="height:140px;object-fit:cover" alt="{{ v.name }}">
           {% else %}
-          <span class="bg-gray-700 text-white text-xs font-semibold px-2 py-1 rounded-full">Closed</span>
+          <div class="card-img-top" style="height:140px;background:linear-gradient(135deg,var(--navy),var(--navy-700));opacity:.6;display:flex;align-items:center;justify-content:center">🍽️</div>
           {% endif %}
-        </div>
-
-        {% if v.is_featured %}
-        <div class="absolute top-2.5 right-2.5">
-          <span class="bg-gold text-navy text-xs font-bold px-2 py-1 rounded-full">⭐</span>
-        </div>
-        {% endif %}
-
-        <div class="absolute -bottom-5 left-3">
-          <div class="w-11 h-11 rounded-xl bg-white shadow-lg overflow-hidden border-2 border-white flex items-center justify-center">
-            {% if v.logo %}
-            <img src="{{ v.logo.url }}" alt="{{ v.name }}" class="w-full h-full object-cover"/>
-            {% else %}<span class="text-xl">🍽️</span>{% endif %}
+          <div class="card-body">
+            <h5 class="h6 mb-1">{{ v.name }}</h5>
+            <p class="small text-muted mb-1">{{ v.get_cuisine_display }} · {{ v.city }}</p>
+            <div class="d-flex align-items-center gap-2 small text-secondary">
+              <span>⏱ {{ v.avg_prep_time }}+ min</span>
+              {% if v.rating %}<span>· ★ {{ v.rating }}</span>{% endif %}
+              <span class="ms-auto fw-semibold">GHS {{ v.min_order }}</span>
+            </div>
           </div>
+        </a>
+      </div>
+      {% empty %}
+      <div class="col">
+        <div class="card p-4 text-center text-muted">
+          No restaurants found.
         </div>
       </div>
+      {% endfor %}
+    </div>
+  </section>
 
-      <div class="pt-7 px-3 pb-3">
-        <div class="flex items-start justify-between gap-1 mb-0.5">
-          <h3 class="font-display font-700 text-navy text-sm leading-tight">{{ v.name }}</h3>
-          {% if v.rating > 0 %}
-          <span class="flex items-center gap-0.5 text-xs text-gray-500 flex-shrink-0">
-            <svg class="w-3 h-3 text-gold" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-            </svg>{{ v.rating }}
-          </span>
-          {% endif %}
-        </div>
-        <p class="text-xs text-gray-400 mb-2">{{ v.get_cuisine_display }} · {{ v.city }}</p>
-        <div class="flex items-center gap-2.5 text-xs text-gray-500 flex-wrap">
-          <span class="flex items-center gap-1">
-            <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            {% if item.eta %}{{ item.eta }} min{% else %}{{ v.avg_prep_time }}+ min{% endif %}
-          </span>
-          {% if item.distance %}
-          <span>· {{ item.distance }} km</span>
-          {% endif %}
-          <span>· Min GHS {{ v.min_order }}</span>
-        </div>
-      </div>
-    </a>
-    {% endwith %}
-    {% endfor %}
-  </div>
-
-  {% else %}
-  <div class="text-center py-16">
-    <div class="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4">🍽️</div>
-    <h2 class="font-display font-700 text-xl text-navy mb-2">No restaurants found</h2>
-    <p class="text-gray-400 text-sm mb-5">
-      {% if query %}No results for "{{ query }}".{% else %}No restaurants open right now.{% endif %}
-    </p>
-    <a href="{% url 'food:home' %}"
-       class="inline-flex items-center gap-2 bg-navy text-white font-semibold
-              px-6 py-3 rounded-2xl transition-colors btn-press text-sm">← Show all</a>
-  </div>
+  <!-- Pagination -->
+  {% if page_obj and page_obj.has_other_pages %}
+  <nav class="mt-4" aria-label="pagination">
+    <ul class="pagination justify-content-center">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+      <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+    </ul>
+  </nav>
   {% endif %}
+
 </div>
-
-<!-- ── HOW IT WORKS ───────────────────────── -->
-<section class="bg-white border-t border-gray-100 py-10 md:py-14">
-  <div class="max-w-5xl mx-auto px-4 md:px-6">
-    <div class="text-center mb-8">
-      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-2">Simple</p>
-      <h2 class="font-display font-700 text-xl md:text-3xl text-navy">How Lynctel Food Works</h2>
-    </div>
-    <div class="grid grid-cols-3 md:grid-cols-3 gap-4 md:gap-6">
-      <div class="text-center">
-        <div class="w-12 h-12 md:w-14 md:h-14 bg-gold-light rounded-2xl flex items-center justify-center text-xl md:text-2xl mx-auto mb-3">🍔</div>
-        <h3 class="font-display font-700 text-navy text-xs md:text-base mb-1">Choose Restaurant</h3>
-        <p class="text-gray-400 text-xs leading-relaxed hidden md:block">Browse by cuisine, check menus and prices.</p>
-      </div>
-      <div class="text-center">
-        <div class="w-12 h-12 md:w-14 md:h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-xl md:text-2xl mx-auto mb-3">📍</div>
-        <h3 class="font-display font-700 text-navy text-xs md:text-base mb-1">Enter Address</h3>
-        <p class="text-gray-400 text-xs leading-relaxed hidden md:block">We calculate delivery fee and ETA.</p>
-      </div>
-      <div class="text-center">
-        <div class="w-12 h-12 md:w-14 md:h-14 bg-green-50 rounded-2xl flex items-center justify-center text-xl md:text-2xl mx-auto mb-3">🛵</div>
-        <h3 class="font-display font-700 text-navy text-xs md:text-base mb-1">Track Rider</h3>
-        <p class="text-gray-400 text-xs leading-relaxed hidden md:block">Watch live. Pay cash or MoMo.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let userLat = null, userLng = null;
-
-// Ghana's approximate bounding box — used to sanity-check geocoding results
-const GHANA_BOUNDS = { minLat: 4.5, maxLat: 11.5, minLng: -3.5, maxLng: 1.5 };
-
-function isInGhana(lat, lng) {
-  return lat >= GHANA_BOUNDS.minLat && lat <= GHANA_BOUNDS.maxLat &&
-         lng >= GHANA_BOUNDS.minLng && lng <= GHANA_BOUNDS.maxLng;
-}
-
-function useMyLocation() {
-  if (!navigator.geolocation) { alert('Geolocation not supported on this device.'); return; }
-
-  const btn = event && event.currentTarget;
-  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; }
-
-  navigator.geolocation.getCurrentPosition(pos => {
-    userLat = pos.coords.latitude;
-    userLng = pos.coords.longitude;
-    document.getElementById('hero-lat').value = userLat;
-    document.getElementById('hero-lng').value = userLng;
-
-    const fallbackText = `Near ${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
-    document.getElementById('hero-address').value = fallbackText;
-    showLocationBar(fallbackText);
-
-    if (!isInGhana(userLat, userLng)) {
-      if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
-      findRestaurants();
-      return;
-    }
-
-    if (!LOCATIONIQ_KEY) {
-      if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
-      findRestaurants();
-      return;
-    }
-
-    // LocationIQ reverse geocoding
-    fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${userLat}&lon=${userLng}&format=json&normalizeaddress=1`)
-      .then(r => { if (!r.ok) throw new Error('geocode failed'); return r.json(); })
-      .then(data => {
-        if (data?.address?.country_code === 'gh') {
-          const addr = data.address.suburb || data.address.neighbourhood ||
-                       data.address.road || data.address.town ||
-                       data.address.city || data.display_name || fallbackText;
-          document.getElementById('hero-address').value = addr;
-          showLocationBar(addr);
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
-        findRestaurants();
-      });
-  }, err => {
-    if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
-    if (err.code === err.PERMISSION_DENIED) {
-      alert('Location access was denied. Please enable location permissions for this site, or type your address manually.');
-    } else {
-      alert('Could not get your location. Please type your address instead.');
-    }
-  }, {
-    enableHighAccuracy: true,
-    timeout: 10000,
-    maximumAge: 0,
-  });
-}
-
-function showLocationBar(text) {
-  document.getElementById('location-text').textContent = '📍 ' + text;
-  document.getElementById('location-bar').classList.remove('hidden');
-}
-
-function clearLocation() {
-  userLat = userLng = null;
-  document.getElementById('location-bar').classList.add('hidden');
-  document.getElementById('hero-address').value = '';
-}
-
-// ── Address autocomplete via LocationIQ ───────────────
-let acTimer = null;
-const input = document.getElementById('hero-address');
-
-input.addEventListener('input', () => {
-  clearTimeout(acTimer);
-  acTimer = setTimeout(() => {
-    const q = input.value.trim();
-    if (q.length < 3 || !LOCATIONIQ_KEY) return;
-    fetch(`https://us1.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&countrycodes=gh&limit=5&normalizeaddress=1`)
-      .then(r => { if (!r.ok) throw new Error('autocomplete failed'); return r.json(); })
-      .then(results => renderSuggestions(results))
-      .catch(() => renderSuggestions([]));
-  }, 400);
+/* Optional: small enhancement to preserve scroll position on back/forward */
+document.addEventListener('DOMContentLoaded', () => {
+  const key = 'food_home_scroll';
+  const stored = sessionStorage.getItem(key);
+  if (stored) window.scrollTo(0, parseInt(stored, 10) || 0);
+  window.addEventListener('beforeunload', () => sessionStorage.setItem(key, window.scrollY || 0));
 });
-
-function renderSuggestions(results) {
-  let box = document.getElementById('ac-box');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'ac-box';
-    box.className = 'absolute top-full left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden max-h-60 overflow-y-auto';
-    input.parentElement.style.position = 'relative';
-    input.parentElement.appendChild(box);
-  }
-  if (!results.length) { box.innerHTML = ''; return; }
-  box.innerHTML = results.map(r => `
-    <button type="button"
-            onclick="selectSuggestion('${(r.display_name || r.display_place || '').replace(/'/g,"\\'")}',${r.lat},${r.lon})"
-            class="w-full text-left px-4 py-3.5 text-sm text-navy hover:bg-gray-50
-                   border-b border-gray-50 last:border-0 transition-colors min-h-[44px]">
-      📍 ${r.display_name || r.display_place}
-    </button>`).join('');
-}
-
-function selectSuggestion(name, lat, lng) {
-  input.value = name;
-  userLat = parseFloat(lat); userLng = parseFloat(lng);
-  document.getElementById('hero-lat').value = lat;
-  document.getElementById('hero-lng').value = lng;
-  const box = document.getElementById('ac-box');
-  if (box) box.innerHTML = '';
-  showLocationBar(name);
-}
-
-function findRestaurants() {
-  const lat = document.getElementById('hero-lat').value;
-  const lng = document.getElementById('hero-lng').value;
-  if (lat && lng) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('lat', lat);
-    url.searchParams.set('lng', lng);
-    window.location.href = url.toString();
-  }
-}
-
-const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get('lat') && urlParams.get('lng')) {
-  userLat = parseFloat(urlParams.get('lat'));
-  userLng = parseFloat(urlParams.get('lng'));
-  document.getElementById('hero-lat').value = userLat;
-  document.getElementById('hero-lng').value = userLng;
-
-  const fallbackText = `Near ${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
-  document.getElementById('hero-address').value = fallbackText;
-  showLocationBar(fallbackText);
-
-  if (isInGhana(userLat, userLng) && LOCATIONIQ_KEY) {
-    fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${userLat}&lon=${userLng}&format=json&normalizeaddress=1`)
-      .then(r => { if (!r.ok) throw new Error('geocode failed'); return r.json(); })
-      .then(data => {
-        if (data?.address?.country_code === 'gh') {
-          const addr = data.address.suburb || data.address.neighbourhood ||
-                       data.address.town || data.address.city || data.display_name || fallbackText;
-          showLocationBar(addr);
-          document.getElementById('hero-address').value = addr;
-        }
-      })
-      .catch(() => {});
-  }
-}
 </script>
 {% endblock %}
