@@ -1,24 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Delete Account — Lynctel{% endblock %}
 {% block content %}
-<div class="max-w-md mx-auto px-4 py-20 text-center">
-  <div class="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center
-              text-3xl mx-auto mb-5">⚠️</div>
-  <h1 class="font-display font-700 text-2xl text-navy mb-2">Delete Account?</h1>
-  <p class="text-gray-500 text-sm mb-8 leading-relaxed">
+<div class="mx-auto px-3 py-5 text-center" style="max-width: 28rem;">
+  <div class="bg-danger bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center fs-2 mx-auto mb-4" style="width:4rem;height:4rem;">⚠️</div>
+  <h1 class="font-display fw-bold fs-2 text-navy mb-2">Delete Account?</h1>
+  <p class="text-secondary small mb-4" style="line-height:1.6;">
     This will permanently delete your account, order history, and all personal data.
     This action <strong>cannot be undone</strong>.
   </p>
-  <form method="POST" class="space-y-3">
+  <form method="POST" class="d-flex flex-column gap-3">
     {% csrf_token %}
-    <button type="submit"
-            class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold
-                   py-3 rounded-xl transition-colors">
+    <button type="submit" class="btn btn-danger w-100 fw-semibold py-3 rounded-xl">
       Yes, Delete My Account
     </button>
-    <a href="{% url 'accounts:profile' %}"
-       class="block w-full border border-gray-200 hover:border-navy text-navy
-              font-semibold py-3 rounded-xl transition-colors text-sm">
+    <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary w-100 fw-semibold py-3 rounded-xl small text-navy">
       Cancel — Keep My Account
     </a>
   </form>
