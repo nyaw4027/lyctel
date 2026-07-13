@@ -5,6 +5,14 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
+<style>
+  /* Small page-scoped helpers kept minimal per instructions.txt */
+  .hero-address { min-height: 44px; }
+  .vendor-logo-overlap { transform: translateY(40%); }
+  .slide-dot { width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25);border:none }
+  .slide-dot.active { background:var(--gold); }
+  .live-stream-card { width:160px; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -16,14 +24,43 @@
       <p class="small text-muted mb-0">Order from restaurants near you</p>
     </div>
     <div>
-      <form method="get" class="d-flex">
-        <input name="q" value="{{ request.GET.q|default:'' }}" class="form-control form-control-sm me-2" placeholder="Search restaurants or cuisines">
+      <form method="get" class="d-flex" role="search">
+        <input name="q" value="{{ request.GET.q|default:'' }}" class="form-control form-control-sm me-2" placeholder="Search restaurants or cuisines" aria-label="Search">
         <button class="btn btn-sm btn-outline-secondary">Search</button>
       </form>
     </div>
   </div>
 
-  <!-- Cuisine pills -->
+  <!-- HERO (simple, Bootstrap-based) -->
+  <section class="mb-4">
+    <div class="card bg-navy text-white overflow-hidden">
+      <div class="card-body">
+        <div class="row g-3 align-items-center">
+          <div class="col-lg-7">
+            <h2 class="h3 font-display mb-2">Hungry? We've got you.</h2>
+            <p class="small text-white-50 mb-3">Order from the best restaurants near you. Track live. Pay MoMo or cash.</p>
+            <div class="d-flex gap-2">
+              <div class="flex-grow-1">
+                <div class="input-group hero-address">
+                  <span class="input-group-text bg-white bg-opacity-10 text-white border-0">📍</span>
+                  <input id="hero-address" type="text" class="form-control bg-transparent text-white border-0" placeholder="Enter your delivery address" aria-label="Delivery address">
+                </div>
+              </div>
+              <button type="button" class="btn btn-gold">Find</button>
+            </div>
+          </div>
+
+          <div class="col-lg-5 d-none d-lg-block text-center">
+            <div class="rounded-3" style="background:linear-gradient(135deg,var(--gold),var(--gold-light));height:10rem;display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:3rem;">🍔</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CUISINE FILTER -->
   <div class="mb-3">
     <div class="d-flex gap-2 overflow-auto py-2">
       <a href="{% url 'food:home' %}" class="btn btn-sm btn-outline-secondary {% if not selected_cuisine %}active{% endif %}">🍽️ All</a>
@@ -33,48 +70,63 @@
     </div>
   </div>
 
-  <!-- Featured / Nearby -->
+  <!-- RESTAURANT GRID -->
   <section class="mb-4">
-    <h2 class="h6 text-navy mb-3">Restaurants Near You</h2>
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <div>
+        <h3 class="h6 mb-0 text-navy">Restaurants</h3>
+        <p class="small text-muted mb-0">{{ vendor_list|length }} restaurant{{ vendor_list|length|pluralize }}</p>
+      </div>
+      <div>
+        {% if page_obj and page_obj.has_other_pages %}
+        <nav aria-label="pagination">
+          <ul class="pagination mb-0">
+            {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹</a></li>{% endif %}
+            <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">›</a></li>{% endif %}
+          </ul>
+        </nav>
+        {% endif %}
+      </div>
+    </div>
+
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
-      {% for v in vendor_list %}
+      {% for vendor in vendor_list %}
       <div class="col">
-        <a href="{% url 'food:menu' v.slug %}" class="card h-100 text-decoration-none text-reset card-hover">
-          {% if v.banner %}
-          <img src="{{ v.banner.url }}" class="card-img-top" style="height:140px;object-fit:cover" alt="{{ v.name }}">
-          {% else %}
-          <div class="card-img-top" style="height:140px;background:linear-gradient(135deg,var(--navy),var(--navy-700));opacity:.6;display:flex;align-items:center;justify-content:center">🍽️</div>
-          {% endif %}
-          <div class="card-body">
-            <h5 class="h6 mb-1">{{ v.name }}</h5>
-            <p class="small text-muted mb-1">{{ v.get_cuisine_display }} · {{ v.city }}</p>
+        <a href="{% url 'food:menu' vendor.slug %}" class="card h-100 text-decoration-none text-reset">
+          <div class="position-relative">
+            {% if vendor.banner %}
+            <img src="{{ vendor.banner.url }}" alt="{{ vendor.name }}" class="card-img-top" style="height:140px;object-fit:cover;">
+            {% else %}
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:140px;">🍽️</div>
+            {% endif %}
+            {% if vendor.logo %}
+            <div class="position-absolute start-3 bottom-0 translate-middle-y vendor-logo-overlap ms-3">
+              <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }}" class="rounded-2" style="width:56px;height:56px;object-fit:cover;border:3px solid #fff;">
+            </div>
+            {% endif %}
+          </div>
+          <div class="card-body pt-4">
+            <h5 class="h6 mb-1">{{ vendor.name }}</h5>
+            <p class="small text-muted mb-2">{{ vendor.get_cuisine_display }} · {{ vendor.city }}</p>
             <div class="d-flex align-items-center gap-2 small text-secondary">
-              <span>⏱ {{ v.avg_prep_time }}+ min</span>
-              {% if v.rating %}<span>· ★ {{ v.rating }}</span>{% endif %}
-              <span class="ms-auto fw-semibold">GHS {{ v.min_order }}</span>
+              <span>⏱ {{ vendor.avg_prep_time }}+ min</span>
+              {% if vendor.rating %}<span>· ★ {{ vendor.rating }}</span>{% endif %}
+              <span class="ms-auto fw-semibold">GHS {{ vendor.min_order }}</span>
             </div>
           </div>
         </a>
-      </div>
-      {% empty %}
-      <div class="col">
-        <div class="card p-4 text-center text-muted">
-          No restaurants found.
-        </div>
       </div>
       {% endfor %}
     </div>
   </section>
 
-  <!-- Pagination -->
-  {% if page_obj and page_obj.has_other_pages %}
-  <nav class="mt-4" aria-label="pagination">
-    <ul class="pagination justify-content-center">
-      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
-      <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
-      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
-    </ul>
-  </nav>
+  <!-- NOTHING FOUND -->
+  {% if not vendor_list %}
+  <div class="text-center py-5 text-muted">
+    <div class="display-1 mb-3">🍽️</div>
+    <p class="small">No restaurants found.</p>
+  </div>
   {% endif %}
 
 </div>
@@ -82,12 +134,13 @@
 
 {% block extra_js %}
 <script>
-/* Optional: small enhancement to preserve scroll position on back/forward */
-document.addEventListener('DOMContentLoaded', () => {
-  const key = 'food_home_scroll';
-  const stored = sessionStorage.getItem(key);
-  if (stored) window.scrollTo(0, parseInt(stored, 10) || 0);
-  window.addEventListener('beforeunload', () => sessionStorage.setItem(key, window.scrollY || 0));
-});
+// Preserve scroll position on back/forward
+(function(){
+  const key = 'food_home_scroll_v1';
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const v = sessionStorage.getItem(key); if (v) window.scrollTo(0,parseInt(v,10)||0);
+  });
+  window.addEventListener('beforeunload', ()=> sessionStorage.setItem(key, window.scrollY || 0));
+})();
 </script>
 {% endblock %}
