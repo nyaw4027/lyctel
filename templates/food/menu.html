@@ -1,20 +1,16 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static i18n %}
 {% block title %}{{ vendor.name }} — Lynctel Food{% endblock %}
-
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 {% endblock %}
 
 {% block content %}
 <div class="container-xl px-3 pb-5">
-
-  <!-- Back -->
   <div class="py-3">
     <a href="{% url 'food:home' %}" class="small text-secondary text-decoration-none">← All Restaurants</a>
   </div>
 
-  <!-- Vendor header -->
   <div class="position-relative rounded-3 overflow-hidden mb-4 bg-navy">
     {% if vendor.banner %}
     <img src="{{ vendor.banner.url }}" alt="{{ vendor.name }}" class="w-100" style="height:12rem;object-fit:cover;opacity:.6;"/>
@@ -29,9 +25,7 @@
           <p class="small text-muted mb-1">{{ vendor.get_cuisine_display }}</p>
           <div class="d-flex align-items-center gap-3 small text-muted">
             <span>⏱ {{ vendor.avg_prep_time }}–{{ vendor.avg_prep_time|add:10 }} min</span>
-            {% if vendor.rating > 0 %}
-            <span>★ {{ vendor.rating }}</span>
-            {% endif %}
+            {% if vendor.rating and vendor.rating > 0 %}<span>★ {{ vendor.rating }}</span>{% endif %}
             {% if vendor.status == 'open' %}
             <span class="text-success fw-semibold">● Open</span>
             {% elif vendor.status == 'busy' %}
@@ -59,7 +53,6 @@
   </div>
   {% endif %}
 
-  <!-- Category nav (sticky) -->
   {% if categories %}
   <div class="position-sticky top-0 zindex-sticky bg-white border-bottom mb-3" style="top:64px">
     <div class="d-flex gap-2 overflow-auto py-2 px-2 align-items-center">
@@ -73,14 +66,13 @@
   </div>
   {% endif %}
 
-  <!-- Popular items -->
   {% if featured_items %}
   <section class="mb-4">
     <h2 class="h6 text-navy mb-3">🔥 Popular</h2>
     <div class="d-flex gap-3 overflow-auto pb-2">
       {% for item in featured_items %}
       <div class="flex-shrink-0" style="width:208px;">
-        <div class="card menu-item-card h-100" role="button" onclick="addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.final_price }})">
+        <div class="card menu-item-card h-100" role="button" onclick="Food.addToCart({{ item.pk }})">
           {% if item.image %}
           <img src="{{ item.image.url }}" alt="{{ item.name }}" class="card-img-top" style="height:8rem;object-fit:cover;"/>
           {% else %}
@@ -97,53 +89,14 @@
   </section>
   {% endif %}
 
-  <!-- Menu by category -->
   {% for cat in categories %}
   <section id="cat-{{ cat.pk }}" class="mb-4">
     <h3 class="h6 text-navy mb-3 border-bottom pb-2">{{ cat.name }}</h3>
-
     <div class="d-flex flex-column gap-3">
       {% for item in cat.items.all %}
       {% if item.is_available %}
-      <div class="card menu-item-card p-3 d-flex align-items-center" role="button" onclick="addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.final_price }})">
-        <div class="flex-grow-1 me-3">
-          <div class="d-flex align-items-start gap-2 flex-wrap">
-            <h4 class="h6 mb-1 fw-semibold">{{ item.name }}</h4>
-            {% if item.is_featured %}
-            <span class="badge bg-warning text-dark">⭐ Popular</span>
-            {% endif %}
-            {% if item.is_spicy %}
-            <span class="badge bg-danger">🌶️</span>
-            {% endif %}
-            {% if item.is_vegan %}
-            <span class="badge bg-success">🌱</span>
-            {% endif %}
-          </div>
-          {% if item.description %}
-          <p class="small text-muted mb-2 text-truncate-2">{{ item.description }}</p>
-          {% endif %}
-
-          <div class="d-flex align-items-center gap-3">
-            {% if item.discount_price %}
-            <div class="fw-bold">GHS {{ item.discount_price }} <span class="text-muted text-decoration-line-through ms-2">GHS {{ item.price }}</span></div>
-            {% else %}
-            <div class="fw-bold">GHS {{ item.price }}</div>
-            {% endif %}
-            {% if item.prep_time %}<small class="text-muted">⏱ {{ item.prep_time }} min</small>{% endif %}
-          </div>
-        </div>
-
-        <div class="flex-shrink-0 text-end">
-          {% if item.image %}
-          <img src="{{ item.image.url }}" alt="{{ item.name }}" class="rounded-2" style="width:80px;height:80px;object-fit:cover;"/>
-          {% else %}
-          <div class="rounded-2 bg-light d-flex align-items-center justify-content-center" style="width:80px;height:80px;">🍽️</div>
-          {% endif %}
-
-          <div class="mt-2">
-            <button id="add-btn-{{ item.pk }}" type="button" onclick="event.stopPropagation();addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.final_price }})" class="btn btn-sm btn-gold mt-2">+</button>
-          </div>
-        </div>
+      <div class="card menu-item-card p-3 d-flex align-items-center" role="button" onclick="Food.addToCart({{ item.pk }})">
+        {% include 'food/_menu_item.html' with item=item %}
       </div>
       {% endif %}
       {% endfor %}
@@ -151,29 +104,14 @@
   </section>
   {% endfor %}
 
-  <!-- Uncategorized items -->
   {% if uncategorized_items %}
   <section id="cat-other" class="mb-4">
     <h3 class="h6 text-navy mb-3 border-bottom pb-2">Other</h3>
     <div class="d-flex flex-column gap-3">
       {% for item in uncategorized_items %}
       {% if item.is_available %}
-      <div class="card menu-item-card p-3 d-flex align-items-center" role="button" onclick="addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.final_price }})">
-        <div class="flex-grow-1 me-3">
-          <h4 class="h6 mb-1 fw-semibold">{{ item.name }}</h4>
-          {% if item.description %}<p class="small text-muted mb-2 text-truncate-2">{{ item.description }}</p>{% endif %}
-          <div class="fw-bold">GHS {{ item.final_price }}</div>
-        </div>
-        <div class="flex-shrink-0 text-end">
-          {% if item.image %}
-          <img src="{{ item.image.url }}" alt="{{ item.name }}" class="rounded-2" style="width:80px;height:80px;object-fit:cover;"/>
-          {% else %}
-          <div class="rounded-2 bg-light d-flex align-items-center justify-content-center" style="width:80px;height:80px;">🍽️</div>
-          {% endif %}
-          <div class="mt-2">
-            <button type="button" onclick="event.stopPropagation();addToCart({{ item.pk }}, '{{ item.name|escapejs }}', {{ item.final_price }})" class="btn btn-sm btn-gold mt-2">+</button>
-          </div>
-        </div>
+      <div class="card menu-item-card p-3 d-flex align-items-center" role="button" onclick="Food.addToCart({{ item.pk }})">
+        {% include 'food/_menu_item.html' with item=item %}
       </div>
       {% endif %}
       {% endfor %}
@@ -187,135 +125,9 @@
     <p class="small">This restaurant hasn't added any menu items yet.</p>
   </div>
   {% endif %}
-
 </div>
-
-<!-- ── FLOATING CART BAR ──────────────────────────────── -->
-<div id="cart-bar" class="position-fixed bottom-0 start-0 end-0 z-50 p-3 {% if not food_cart_count %}d-none{% endif %}">
-  <div class="container-md mx-auto">
-    <a href="{% url 'food:checkout' %}" class="d-flex align-items-center justify-content-between bg-navy text-white rounded-3 px-4 py-3 shadow-lg text-decoration-none">
-      <div class="d-flex align-items-center gap-3">
-        <div class="bg-gold rounded-2 d-flex align-items-center justify-content-center" style="width:40px;height:40px;">
-          <span id="cart-bar-count" class="text-navy fw-bold">{{ food_cart_count|default:0 }}</span>
-        </div>
-        <span class="fw-semibold">View Cart</span>
-      </div>
-      <span id="cart-bar-total" class="fw-bold text-gold">GHS 0.00</span>
-    </a>
-  </div>
-</div>
-
-<!-- Conflict modal (simple) -->
-<div id="conflict-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center p-3">
-  <div class="bg-white rounded-3 p-4" style="max-width:420px;width:100%;">
-    <h5 class="mb-2">Start new cart?</h5>
-    <p class="text-muted small mb-4" id="conflict-msg"></p>
-    <div class="d-flex gap-2">
-      <button onclick="closeConflict()" class="btn btn-outline-secondary flex-fill">Keep Current</button>
-      <button onclick="confirmClear()" class="btn btn-navy text-white flex-fill">Clear & Add</button>
-    </div>
-  </div>
-</div>
-
-{% endblock %}
 
 {% block extra_js %}
-<script>
-  const CSRF        = '{{ csrf_token }}';
-  let cartCount     = {{ food_cart_count|default:0 }};
-  let cartTotal     = 0;
-  let pendingItemId = null;
-
-  function updateCartBar() {
-    const bar = document.getElementById('cart-bar');
-    const countEl = document.getElementById('cart-bar-count');
-    const totalEl = document.getElementById('cart-bar-total');
-    if (countEl) countEl.textContent = cartCount;
-    if (totalEl) totalEl.textContent = 'GHS ' + cartTotal.toFixed(2);
-    if (bar) {
-      if (cartCount > 0) bar.classList.remove('d-none'); else bar.classList.add('d-none');
-    }
-  }
-
-  // Fetch current cart total on load so the bar shows accurate figures
-  fetch('/food/cart/data/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        cartCount = d.count || 0;
-        cartTotal = parseFloat(d.total || 0);
-        updateCartBar();
-      }
-    })
-    .catch(() => updateCartBar());
-
-  function addToCart(itemId, name, price) {
-    {% if not user.is_authenticated %}
-    window.location.href = "{% url 'accounts:login' %}?next={{ request.path }}";
-    return;
-    {% endif %}
-
-    fetch(`/food/cart/add/${itemId}/`, {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': CSRF,
-        'X-Requested-With': 'XMLHttpRequest',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ quantity: 1 }),
-    })
-    .then(r => r.json())
-    .then(d => {
-      if (d.conflict) {
-        pendingItemId = itemId;
-        const modal = document.getElementById('conflict-modal');
-        document.getElementById('conflict-msg').textContent = d.message;
-        if (modal) modal.classList.remove('d-none');
-        return;
-      }
-      if (d.success) {
-        cartCount = d.cart_count;
-        cartTotal = parseFloat(d.cart_total);
-        updateCartBar();
-        const btn = document.getElementById(`add-btn-${itemId}`);
-        if (btn) {
-          const orig = btn.textContent;
-          btn.textContent = '✓';
-          setTimeout(() => { btn.textContent = orig; }, 800);
-        }
-      }
-    })
-    .catch(() => {});
-  }
-
-  function confirmClear() {
-    const modal = document.getElementById('conflict-modal');
-    if (modal) modal.classList.add('d-none');
-    if (!pendingItemId) return;
-    fetch(`/food/cart/clear/`, {
-      method: 'POST',
-      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
-    })
-    .then(() => addToCart(pendingItemId))
-    .catch(() => {});
-  }
-
-  function closeConflict() {
-    const modal = document.getElementById('conflict-modal');
-    if (modal) modal.classList.add('d-none');
-  }
-
-  // Sticky category highlight on scroll
-  const sections = document.querySelectorAll('[id^="cat-"]');
-  const navLinks = document.querySelectorAll('.food-cat-btn');
-  window.addEventListener('scroll', () => {
-    let current = '';
-    sections.forEach(s => {
-      if (window.scrollY + 120 >= s.offsetTop) current = s.id;
-    });
-    navLinks.forEach(a => {
-      a.classList.toggle('active', a.getAttribute('href') === `#${current}`);
-    });
-  });
-</script>
+<script src="{% static 'js/food.js' %}"></script>
+<script>document.addEventListener('DOMContentLoaded', Food.init);</script>
 {% endblock %}

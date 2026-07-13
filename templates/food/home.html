@@ -1,17 +1,11 @@
 {% extends "base.html" %}
 {% load static i18n %}
-
 {% block title %}Lynctel Food — Restaurants Near You{% endblock %}
-
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 <style>
-  /* Small page-scoped helpers kept minimal per instructions.txt */
-  .hero-address { min-height: 44px; }
-  .vendor-logo-overlap { transform: translateY(40%); }
-  .slide-dot { width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25);border:none }
-  .slide-dot.active { background:var(--gold); }
-  .live-stream-card { width:160px; }
+/* tiny page helpers */
+.cuisine-pill-row .btn { white-space:nowrap; }
 </style>
 {% endblock %}
 
@@ -31,7 +25,6 @@
     </div>
   </div>
 
-  <!-- HERO (simple, Bootstrap-based) -->
   <section class="mb-4">
     <div class="card bg-navy text-white overflow-hidden">
       <div class="card-body">
@@ -60,17 +53,15 @@
     </div>
   </section>
 
-  <!-- CUISINE FILTER -->
   <div class="mb-3">
-    <div class="d-flex gap-2 overflow-auto py-2">
+    <div class="d-flex gap-2 overflow-auto py-2 cuisine-pill-row">
       <a href="{% url 'food:home' %}" class="btn btn-sm btn-outline-secondary {% if not selected_cuisine %}active{% endif %}">🍽️ All</a>
       {% for value,label in cuisines %}
-      <a href="{% url 'food:home' %}?cuisine={{ value }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm btn-outline-secondary {% if selected_cuisine == value %}active{% endif %}">{{ label }}</a>
+      <a href="{% url 'food:home' %}?cuisine={{ value }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="btn btn-sm btn-outline-secondary {% if selected_cuisine == value %}active{% endif %}">{{ label }}</a>
       {% endfor %}
     </div>
   </div>
 
-  <!-- RESTAURANT GRID -->
   <section class="mb-4">
     <div class="d-flex align-items-center justify-content-between mb-2">
       <div>
@@ -93,64 +84,25 @@
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
       {% for vendor in vendor_list %}
       <div class="col">
-        {% if vendor.slug %}
-        <a href="{% url 'food:menu' vendor.slug %}" class="card h-100 text-decoration-none text-reset">
-        {% else %}
-        <div class="card h-100 bg-white text-reset">
-        {% endif %}
-
-          <div class="position-relative">
-            {% if vendor.banner %}
-            <img src="{{ vendor.banner.url }}" alt="{{ vendor.name }}" class="card-img-top" style="height:140px;object-fit:cover;">
-            {% else %}
-            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:140px;">🍽️</div>
-            {% endif %}
-            {% if vendor.logo %}
-            <div class="position-absolute start-3 bottom-0 translate-middle-y vendor-logo-overlap ms-3">
-              <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }}" class="rounded-2" style="width:56px;height:56px;object-fit:cover;border:3px solid #fff;">
-            </div>
-            {% endif %}
-          </div>
-          <div class="card-body pt-4">
-            <h5 class="h6 mb-1">{{ vendor.name }}</h5>
-            <p class="small text-muted mb-2">{{ vendor.get_cuisine_display }} · {{ vendor.city }}</p>
-            <div class="d-flex align-items-center gap-2 small text-secondary">
-              <span>⏱ {{ vendor.avg_prep_time }}+ min</span>
-              {% if vendor.rating %}<span>· ★ {{ vendor.rating }}</span>{% endif %}
-              <span class="ms-auto fw-semibold">GHS {{ vendor.min_order }}</span>
-            </div>
-          </div>
-
-        {% if vendor.slug %}
-        </a>
-        {% else %}
-        </div>
-        {% endif %}
+        {% include 'food/_vendor_card.html' with vendor=vendor %}
       </div>
       {% endfor %}
     </div>
   </section>
 
-  <!-- NOTHING FOUND -->
   {% if not vendor_list %}
   <div class="text-center py-5 text-muted">
     <div class="display-1 mb-3">🍽️</div>
     <p class="small">No restaurants found.</p>
   </div>
   {% endif %}
-
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/food.js' %}"></script>
 <script>
-// Preserve scroll position on back/forward
-(function(){
-  const key = 'food_home_scroll_v1';
-  document.addEventListener('DOMContentLoaded', ()=>{
-    const v = sessionStorage.getItem(key); if (v) window.scrollTo(0,parseInt(v,10)||0);
-  });
-  window.addEventListener('beforeunload', ()=> sessionStorage.setItem(key, window.scrollY || 0));
-})();
+  // initialize small page behaviors (food.js exposes Food.init)
+  document.addEventListener('DOMContentLoaded', function(){ Food.init(); });
 </script>
 {% endblock %}

@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% load i18n static %}
-
 {% block title %}Register Restaurant — Lynctel Food{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
@@ -10,7 +9,7 @@
 <div class="container-md px-3 py-5">
   <div class="card p-4">
     <h1 class="h5 mb-3 font-display">Register your restaurant</h1>
-    <form method="post" action="{% url 'food:restaurant_register' %}" enctype="multipart/form-data">
+    <form method="post" action="{% url 'food:register' %}" enctype="multipart/form-data">
       {% csrf_token %}
       <div class="mb-3">
         <label class="form-label">Restaurant name</label>

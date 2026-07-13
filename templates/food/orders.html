@@ -1,6 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
-
+{% load i18n static %}
 {% block title %}My Orders — Lynctel Food{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
@@ -18,7 +17,7 @@
         <div class="small text-muted">{{ order.created_at|date:"Y-m-d H:i" }} · {{ order.items_count }} items</div>
       </div>
       <div class="text-end">
-        <div class="badge bg-{{ order.status|status_badge }}">{{ order.get_status_display }}</div>
+        <div class="badge text-bg-{{ order.status|status_badge }}">{{ order.get_status_display }}</div>
         <div class="small mt-1 fw-semibold">GHS {{ order.total|floatformat:2 }}</div>
       </div>
     </a>

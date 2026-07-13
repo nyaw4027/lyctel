@@ -1,0 +1,32 @@
+<div class="card menu-item-card p-3 d-flex align-items-center">
+  <div class="flex-grow-1 me-3">
+    <div class="d-flex align-items-start gap-2">
+      <div class="min-width-0">
+        <h4 class="h6 mb-1 fw-semibold text-truncate">{{ item.name }}</h4>
+        {% if item.description %}
+        <p class="small text-muted mb-1 text-truncate-2">{{ item.description }}</p>
+        {% endif %}
+        <div class="d-flex align-items-center gap-3">
+          {% if item.discount_price %}
+          <div class="fw-bold">GHS {{ item.discount_price }} <span class="text-muted text-decoration-line-through ms-2">GHS {{ item.price }}</span></div>
+          {% else %}
+          <div class="fw-bold">GHS {{ item.price }}</div>
+          {% endif %}
+          {% if item.prep_time %}<small class="text-muted">⏱ {{ item.prep_time }} min</small>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex-shrink-0 text-end ms-3">
+    {% if item.image %}
+    <img src="{{ item.image.url }}" alt="{{ item.name }}" class="rounded-2" style="width:80px;height:80px;object-fit:cover;"/>
+    {% else %}
+    <div class="rounded-2 bg-light d-flex align-items-center justify-content-center" style="width:80px;height:80px;">🍽️</div>
+    {% endif %}
+
+    <div class="mt-2">
+      <button id="add-btn-{{ item.pk }}" type="button" onclick="event.stopPropagation();Food.addToCart({{ item.pk }})" class="btn btn-sm btn-gold mt-2">+</button>
+    </div>
+  </div>
+</div>

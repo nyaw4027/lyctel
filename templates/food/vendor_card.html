@@ -1,0 +1,29 @@
+<div class="card h-100 card-hover text-reset">
+  {% if vendor and vendor.slug %}
+  <a href="{% url 'food:menu' vendor.slug %}" class="text-reset text-decoration-none d-block h-100">
+  {% endif %}
+    <div class="position-relative">
+      {% if vendor.banner %}
+      <img src="{{ vendor.banner.url }}" alt="{{ vendor.name }}" class="card-img-top" style="height:140px;object-fit:cover;">
+      {% else %}
+      <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:140px;">🍽️</div>
+      {% endif %}
+      {% if vendor.logo %}
+      <div class="position-absolute start-0 bottom-0 translate-middle-y ms-3 vendor-logo-overlap">
+        <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }}" class="rounded-2" style="width:56px;height:56px;object-fit:cover;border:3px solid #fff;">
+      </div>
+      {% endif %}
+    </div>
+    <div class="card-body pt-4">
+      <h5 class="h6 mb-1 text-truncate">{{ vendor.name }}</h5>
+      <p class="small text-muted mb-2 text-truncate">{{ vendor.get_cuisine_display }} · {{ vendor.city }}</p>
+      <div class="d-flex align-items-center gap-2 small text-secondary">
+        <span>⏱ {{ vendor.avg_prep_time }}+ min</span>
+        {% if vendor.rating %}<span>· ★ {{ vendor.rating }}</span>{% endif %}
+        <span class="ms-auto fw-semibold">GHS {{ vendor.min_order }}</span>
+      </div>
+    </div>
+  {% if vendor and vendor.slug %}
+  </a>
+  {% endif %}
+</div>

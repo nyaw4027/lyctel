@@ -1,13 +1,11 @@
 {% extends "base.html" %}
 {% load i18n static %}
-
 {% block title %}Track Order — Lynctel Food{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 <style>
-  /* small local adjustments for map area */
-  #map { width:100%; height:40vh; min-height:300px; border-radius:12px; overflow:hidden; }
-  .tracking-steps .step { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; }
+#map { width:100%; height:40vh; min-height:300px; border-radius:12px; overflow:hidden; }
+.tracking-steps .step { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; }
 </style>
 {% endblock %}
 
@@ -17,7 +15,6 @@
     <div class="col-lg-8">
       <h1 class="h5 font-display mb-2">Tracking Order #{{ order.pk }}</h1>
       <div id="map" class="mb-3">
-        <!-- Map widget or static fallback -->
         {% if order.rider and order.rider.location %}
         <img src="{{ order.rider.map_snapshot_url }}" alt="Map" style="width:100%;height:100%;object-fit:cover">
         {% else %}
@@ -29,7 +26,7 @@
         <h6 class="mb-2">Rider</h6>
         {% if order.rider %}
         <div class="d-flex align-items-center gap-3">
-          {% if order.rider.profile_pic %}<img src="{{ order.rider.profile_pic.url }}" class="rounded-circle" width="56" height="56" style="object-fit:cover">{% else %}<div class="rounded-circle bg-navy text-white d-inline-flex align-items-center justify-content-center" style="width:56px;height:56px">🛵</div>{% endif %}
+          {% if order.rider.profile_pic %}<img src="{{ order.rider.profile_pic.url }}" class="rounded-circle" width="56" height="56" style="object-fit:cover">{% else %}<div class="rounded-circle bg-navy text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px">🧑</div>{% endif %}
           <div>
             <div class="fw-semibold">{{ order.rider.get_full_name }}</div>
             <div class="small text-muted">{{ order.rider.phone }}</div>

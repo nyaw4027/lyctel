@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% load i18n static %}
-
 {% block title %}Your Cart — Lynctel Food{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
@@ -65,4 +64,9 @@
     </aside>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/food.js' %}"></script>
+<script>document.addEventListener('DOMContentLoaded', Food.init);</script>
 {% endblock %}
