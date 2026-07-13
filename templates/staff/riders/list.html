@@ -1,92 +1,25 @@
-{% extends "base.html" %}
-{% block title %}Riders — Staff{% endblock %}
+{% extends "staff/base.html" %}
+{% load i18n %}
+{% block staff_title %}Riders — Staff{% endblock %}
+{% block page_heading %}Riders{% endblock %}
 
-{% block content %}
-<div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
-
-  <div class="flex items-center gap-4 mb-6 flex-wrap">
-    <a href="{% url 'staff:home' %}" class="text-sm text-gray-500 hover:text-navy transition-colors">← Dashboard</a>
-    <h1 class="font-display font-700 text-2xl text-navy">Riders</h1>
-  </div>
-
-  <div class="bg-white rounded-2xl border border-gray-100 p-4 mb-5">
-    <form method="GET" class="flex flex-wrap gap-3 items-end">
-      <div class="flex-1 min-w-[180px]">
-        <label class="block text-xs font-semibold text-gray-500 mb-1">Search</label>
-        <input type="text" name="q" value="{{ query }}" placeholder="Name or phone..."
-               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-        <select name="status" class="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
-          <option value="">All</option>
-          <option value="available" {% if filter_status == 'available' %}selected{% endif %}>Available</option>
-          <option value="busy"      {% if filter_status == 'busy'      %}selected{% endif %}>Busy</option>
-          <option value="offline"   {% if filter_status == 'offline'   %}selected{% endif %}>Offline</option>
-        </select>
-      </div>
-      <button type="submit" class="bg-navy text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-navy-700 transition-colors">Filter</button>
-      {% if query or filter_status %}
-      <a href="{% url 'staff:rider_list' %}" class="text-sm text-gray-500 hover:text-navy font-medium px-4 py-2">Clear</a>
-      {% endif %}
-    </form>
-  </div>
-
-  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-xs text-gray-400 uppercase bg-gray-50 border-b border-gray-100">
-            <th class="px-5 py-3 text-left font-semibold">Rider</th>
-            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Zone</th>
-            <th class="px-5 py-3 text-right font-semibold">Deliveries</th>
-            <th class="px-5 py-3 text-center font-semibold">Verified</th>
-            <th class="px-5 py-3 text-center font-semibold">Status</th>
-            <th class="px-5 py-3 text-right font-semibold">Action</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-          {% for profile in riders %}
-          <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-5 py-3.5">
-              <p class="font-semibold text-navy text-sm">{{ profile.rider.get_full_name|default:profile.rider.phone }}</p>
-              <p class="text-xs text-gray-400">{{ profile.rider.phone }}</p>
-            </td>
-            <td class="px-5 py-3.5 text-gray-500 hidden md:table-cell text-xs">
-              {{ profile.zone.name|default:"No zone" }}
-            </td>
-            <td class="px-5 py-3.5 text-right text-navy font-semibold">
-              {{ profile.total_deliveries }}
-            </td>
-            <td class="px-5 py-3.5 text-center">
-              {% if profile.is_verified %}
-              <span class="text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">✓ Verified</span>
-              {% else %}
-              <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">Unverified</span>
-              {% endif %}
-            </td>
-            <td class="px-5 py-3.5 text-center">
-              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
-                {% if profile.status == 'available' %}bg-green-100 text-green-700
-                {% elif profile.status == 'busy' %}bg-orange-100 text-orange-700
-                {% else %}bg-gray-100 text-gray-500{% endif %}">
-                {{ profile.get_status_display }}
-              </span>
-            </td>
-            <td class="px-5 py-3.5 text-right">
-              <a href="{% url 'staff:rider_detail' profile.pk %}"
-                 class="text-xs border border-gray-200 hover:border-navy text-gray-600 hover:text-navy font-semibold px-3 py-1.5 rounded-lg transition-colors">
-                View
-              </a>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="6" class="px-5 py-16 text-center text-gray-400"><p class="text-3xl mb-2">🛵</p><p class="text-sm">No riders found.</p></td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
+{% block staff_content %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Active</th><th class="text-end">Actions</th></tr></thead>
+    <tbody>
+      {% for r in riders %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td><a href="{% url 'staff:riders_detail' r.pk %}" class="fw-semibold text-decoration-none">{{ r.get_full_name|default:r.phone }}</a></td>
+        <td>{{ r.phone }}</td>
+        <td>{% if r.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+        <td class="text-end"><a href="{% url 'staff:riders_detail' r.pk %}" class="btn btn-sm btn-light">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted py-3">No riders found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}

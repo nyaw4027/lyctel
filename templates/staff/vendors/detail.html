@@ -1,116 +1,36 @@
-{% extends "base.html" %}
-{% block title %}{{ vendor.shop_name }} — Staff{% endblock %}
+{% extends "staff/base.html" %}
+{% load i18n %}
+{% block staff_title %}Vendor — Staff{% endblock %}
+{% block page_heading %}Vendor: {{ vendor.shop_name }}{% endblock %}
 
-{% block content %}
-<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+{% block staff_content %}
+<div class="mb-3">
+  <a href="{% url 'staff:vendors_list' %}" class="btn btn-sm btn-outline-secondary">Back to vendors</a>
+</div>
 
-  <div class="flex items-center gap-4 mb-6 flex-wrap">
-    <a href="{% url 'staff:vendor_list' %}" class="text-sm text-gray-500 hover:text-navy transition-colors">← Vendors</a>
-    <h1 class="font-display font-700 text-2xl text-navy">{{ vendor.shop_name }}</h1>
-    <span class="text-xs font-semibold px-3 py-1 rounded-full
-      {% if vendor.status == 'active' %}bg-green-100 text-green-700
-      {% elif vendor.status == 'pending' %}bg-orange-100 text-orange-700
-      {% else %}bg-red-100 text-red-600{% endif %}">
-      {{ vendor.get_status_display }}
-    </span>
-  </div>
-
-  <!-- Actions -->
-  <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-5">
-    <h2 class="font-display font-700 text-navy text-sm mb-3">Actions</h2>
-    <div class="flex flex-wrap gap-3">
-      {% if vendor.status == 'pending' %}
-      <form method="POST"><input type="hidden" name="action" value="approve"/>{% csrf_token %}
-        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">✓ Approve Vendor</button>
-      </form>
-      {% endif %}
-      {% if vendor.status != 'suspended' %}
-      <form method="POST" onsubmit="return confirm('Suspend {{ vendor.shop_name|escapejs }}? Their products will stay listed but they cannot manage them.')">
-        <input type="hidden" name="action" value="suspend"/>{% csrf_token %}
-        <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">⛔ Suspend</button>
-      </form>
-      {% endif %}
-      {% if vendor.status == 'suspended' %}
-      <form method="POST"><input type="hidden" name="action" value="reactivate"/>{% csrf_token %}
-        <button type="submit" class="bg-navy hover:bg-navy-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">↻ Reactivate</button>
-      </form>
-      {% endif %}
-      <a href="{% url 'vendors:shop' vendor.slug %}" target="_blank"
-         class="text-sm text-gold-dark font-semibold px-5 py-2.5 rounded-xl border border-gold/30 hover:bg-gold-light transition-colors">
-        View Shop →
-      </a>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-    <div class="lg:col-span-2 space-y-5">
-
-      <!-- Products -->
-      <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 class="font-display font-700 text-navy">Products</h2>
-          <span class="text-xs text-gray-400">{{ products|length }} shown</span>
-        </div>
-        <div class="divide-y divide-gray-50">
-          {% for product in products %}
-          <div class="flex items-center gap-3 px-5 py-3">
-            {% with product.images.first as img %}
-            {% if img %}<img src="{{ img.image.url }}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0"/>
-            {% else %}<div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">📦</div>{% endif %}
-            {% endwith %}
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-navy truncate">{{ product.name }}</p>
-              <p class="text-xs text-gray-400">Stock: {{ product.stock_qty }}</p>
-            </div>
-            <p class="text-sm font-display font-700 text-navy">GHS {{ product.selling_price }}</p>
-          </div>
-          {% empty %}
-          <p class="px-5 py-8 text-center text-gray-400 text-sm">No products yet.</p>
-          {% endfor %}
-        </div>
-      </div>
-
-      <!-- Recent orders -->
-      <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100">
-          <h2 class="font-display font-700 text-navy">Recent Orders Containing This Vendor</h2>
-        </div>
-        <div class="divide-y divide-gray-50">
-          {% for order in recent_orders %}
-          <a href="{% url 'staff:order_detail' order.pk %}" class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
-            <span class="text-sm font-bold text-gold-dark">{{ order.order_ref }}</span>
-            <span class="text-xs text-gray-400">{{ order.created_at|date:"M d, Y" }}</span>
-          </a>
-          {% empty %}
-          <p class="px-5 py-8 text-center text-gray-400 text-sm">No orders yet.</p>
-          {% endfor %}
-        </div>
-      </div>
-
-    </div>
-
-    <div class="space-y-5">
-      <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <h3 class="font-display font-700 text-navy text-sm mb-3">Vendor Info</h3>
-        <div class="space-y-2 text-sm text-gray-600">
-          <p>👤 {{ vendor.owner.get_full_name|default:vendor.owner.phone }}</p>
-          <p>📞 {{ vendor.phone }}</p>
-          <p>📍 {{ vendor.location|default:"—" }}</p>
-          <p>💰 Commission: {{ vendor.commission_rate }}%</p>
-          <p>📅 Joined {{ vendor.joined_at|date:"M d, Y" }}</p>
-          {% if vendor.approved_at %}<p>✓ Approved {{ vendor.approved_at|date:"M d, Y" }}</p>{% endif %}
-        </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <h3 class="font-display font-700 text-navy text-sm mb-3">MoMo Payout</h3>
-        <div class="space-y-2 text-sm text-gray-600">
-          <p>{{ vendor.momo_number|default:"Not set" }}</p>
-          <p class="text-xs text-gray-400">{{ vendor.get_momo_network_display }}</p>
-        </div>
+<div class="card">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3 mb-3">
+      {% if vendor.logo %}<img src="{{ vendor.logo.url }}" class="rounded" width="72" height="72" style="object-fit:cover"/>{% endif %}
+      <div>
+        <h5 class="mb-0">{{ vendor.shop_name }}</h5>
+        <div class="small text-muted">{{ vendor.owner.get_full_name|default:vendor.owner.phone }}</div>
       </div>
     </div>
 
+    <h6 class="mb-2">Details</h6>
+    <p class="mb-1"><strong>Address:</strong> {{ vendor.address }}</p>
+    <p class="mb-1"><strong>City:</strong> {{ vendor.city }}</p>
+
+    <h6 class="mt-3">Metrics</h6>
+    <div class="d-flex gap-3">
+      <div><div class="fw-semibold">{{ vendor.total_orders }}</div><div class="small text-muted">Orders</div></div>
+      <div><div class="fw-semibold">GHS {{ vendor.earnings|floatformat:2 }}</div><div class="small text-muted">Earnings</div></div>
+    </div>
+
+    <div class="mt-3">
+      <a href="{% url 'vendors:dashboard' vendor.slug %}" class="btn btn-sm btn-outline-primary">Open vendor dashboard</a>
+    </div>
   </div>
 </div>
 {% endblock %}

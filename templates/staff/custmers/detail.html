@@ -1,63 +1,60 @@
-{% extends "base.html" %}
-{% block title %}{{ customer.get_full_name|default:customer.phone }} — Staff{% endblock %}
+{% extends "staff/base.html" %}
+{% load i18n %}
+{% block staff_title %}Customer — Staff{% endblock %}
+{% block page_heading %}Customer Detail{% endblock %}
 
-{% block content %}
-<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
-
-  <div class="flex items-center gap-4 mb-6 flex-wrap">
-    <a href="{% url 'staff:customer_list' %}" class="text-sm text-gray-500 hover:text-navy transition-colors">← Customers</a>
-    <h1 class="font-display font-700 text-2xl text-navy">{{ customer.get_full_name|default:customer.phone }}</h1>
+{% block staff_content %}
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body text-center">
+        {% if customer.profile_pic %}
+          <img src="{{ customer.profile_pic.url }}" alt="{{ customer.get_full_name }}" class="rounded-circle mb-3" width="96" height="96" style="object-fit:cover;border:2px solid var(--gold)"/>
+        {% else %}
+          <div class="rounded-circle bg-navy text-white d-inline-flex align-items-center justify-content-center mb-3" style="width:96px;height:96px;font-size:28px">{{ customer.first_name|default:customer.phone|first|upper }}</div>
+        {% endif %}
+        <h5 class="mb-0">{{ customer.get_full_name|default:customer.username }}</h5>
+        <p class="text-muted small mb-0">{{ customer.email }}</p>
+        <p class="text-muted small mb-0">{{ customer.phone }}</p>
+      </div>
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item"><strong>Registered</strong><div class="small text-muted">{{ customer.date_joined|date:"Y-m-d H:i" }}</div></li>
+        <li class="list-group-item"><strong>Orders</strong><div class="small">{{ customer.order_count|default:0 }}</div></li>
+        <li class="list-group-item"><strong>Last order</strong><div class="small text-muted">{{ customer.last_order_date|default:"—" }}</div></li>
+      </ul>
+    </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-    <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <div class="px-5 py-4 border-b border-gray-100">
-        <h2 class="font-display font-700 text-navy">Order History</h2>
-      </div>
-      <div class="divide-y divide-gray-50">
-        {% for order in orders %}
-        <a href="{% url 'staff:order_detail' order.pk %}" class="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors">
-          <div>
-            <p class="text-sm font-bold text-gold-dark">{{ order.order_ref }}</p>
-            <p class="text-xs text-gray-400">{{ order.created_at|date:"M d, Y H:i" }}</p>
-          </div>
-          <div class="text-right">
-            <p class="font-display font-700 text-navy text-sm">GHS {{ order.total_amount }}</p>
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full
-              {% if order.status == 'delivered' %}bg-green-100 text-green-700
-              {% elif order.status == 'cancelled' %}bg-red-100 text-red-600
-              {% else %}bg-gray-100 text-gray-500{% endif %}">
-              {{ order.get_status_display }}
-            </span>
-          </div>
-        </a>
-        {% empty %}
-        <p class="px-5 py-8 text-center text-gray-400 text-sm">No orders yet.</p>
-        {% endfor %}
-      </div>
-    </div>
-
-    <div class="space-y-5">
-      <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <h3 class="font-display font-700 text-navy text-sm mb-3">Profile</h3>
-        <div class="space-y-2 text-sm text-gray-600">
-          <p>📞 {{ customer.phone }}</p>
-          {% if customer.email %}<p>✉️ {{ customer.email }}</p>{% endif %}
-          <p>📍 {{ customer.city|default:"—" }}, {{ customer.country }}</p>
-          <p>📅 Joined {{ customer.created_at|date:"M d, Y" }}</p>
-          {% if customer.is_phone_verified %}
-          <p class="text-green-600 font-semibold">✓ Phone verified</p>
-          {% endif %}
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="mb-3">Recent Orders</h6>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr><th>#</th><th>Order</th><th>Status</th><th>Total</th><th>Date</th><th class="text-end">Actions</th></tr>
+            </thead>
+            <tbody>
+              {% for order in recent_orders %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><a href="{% url 'staff:orders_detail' order.pk %}" class="text-decoration-none fw-semibold">#{{ order.pk }}</a></td>
+                <td><span class="badge text-bg-{{ order.status|status_badge }}">{{ order.get_status_display }}</span></td>
+                <td>GHS {{ order.total|floatformat:2 }}</td>
+                <td class="small text-muted">{{ order.created_at|date:"Y-m-d" }}</td>
+                <td class="text-end">
+                  <a href="{% url 'staff:orders_detail' order.pk %}" class="btn btn-sm btn-light">View</a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="6" class="text-center text-muted py-3">No recent orders</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
-      </div>
-      <div class="bg-gold-light rounded-2xl p-5">
-        <p class="text-xs font-semibold text-gold-dark uppercase tracking-wider mb-1">Total Spent</p>
-        <p class="font-display font-700 text-2xl text-navy">GHS {{ total_spent|floatformat:2 }}</p>
-        <p class="text-xs text-gray-500 mt-1">{{ orders|length }} order{{ orders|length|pluralize }} placed</p>
+        <a href="{% url 'staff:orders_list' %}" class="btn btn-sm btn-outline-secondary">View all orders</a>
       </div>
     </div>
-
   </div>
 </div>
 {% endblock %}

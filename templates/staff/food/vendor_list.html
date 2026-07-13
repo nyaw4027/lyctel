@@ -1,84 +1,28 @@
-{% extends "base.html" %}
-{% block title %}Restaurants — Staff{% endblock %}
+{% extends "staff/base.html" %}
+{% load i18n %}
+{% block staff_title %}Food Vendors — Staff{% endblock %}
+{% block page_heading %}Food Vendors{% endblock %}
 
-{% block content %}
-<div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
-
-  <div class="flex items-center gap-4 mb-6 flex-wrap">
-    <a href="{% url 'staff:home' %}" class="text-sm text-gray-500 hover:text-navy transition-colors">← Dashboard</a>
-    <h1 class="font-display font-700 text-2xl text-navy">Restaurants</h1>
-    <a href="{% url 'staff:food_order_list' %}" class="ml-auto text-xs font-semibold bg-orange-50 text-orange-600 px-4 py-2 rounded-xl hover:bg-orange-100 transition-colors">🍔 Food Orders →</a>
-  </div>
-
-  <div class="bg-white rounded-2xl border border-gray-100 p-4 mb-5">
-    <form method="GET" class="flex flex-wrap gap-3 items-end">
-      <div class="flex-1 min-w-[180px]">
-        <label class="block text-xs font-semibold text-gray-500 mb-1">Search</label>
-        <input type="text" name="q" value="{{ query }}" placeholder="Name, city, phone..."
-               class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-        <select name="status" class="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
-          <option value="">All</option>
-          <option value="open"      {% if filter_status == 'open'      %}selected{% endif %}>Open ({{ counts.open }})</option>
-          <option value="busy"      {% if filter_status == 'busy'      %}selected{% endif %}>Busy ({{ counts.busy }})</option>
-          <option value="closed"    {% if filter_status == 'closed'    %}selected{% endif %}>Closed ({{ counts.closed }})</option>
-          <option value="suspended" {% if filter_status == 'suspended' %}selected{% endif %}>Suspended ({{ counts.suspended }})</option>
-        </select>
-      </div>
-      <button type="submit" class="bg-navy text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-navy-700 transition-colors">Filter</button>
-      {% if query or filter_status %}
-      <a href="{% url 'staff:food_vendor_list' %}" class="text-sm text-gray-500 hover:text-navy font-medium px-4 py-2">Clear</a>
-      {% endif %}
-    </form>
-  </div>
-
-  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-xs text-gray-400 uppercase bg-gray-50 border-b border-gray-100">
-            <th class="px-5 py-3 text-left font-semibold">Restaurant</th>
-            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Owner</th>
-            <th class="px-5 py-3 text-left font-semibold hidden lg:table-cell">City</th>
-            <th class="px-5 py-3 text-center font-semibold">Status</th>
-            <th class="px-5 py-3 text-right font-semibold">Action</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-          {% for vendor in vendors %}
-          <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-5 py-3.5">
-              <p class="font-semibold text-navy text-sm">{{ vendor.name }}</p>
-            </td>
-            <td class="px-5 py-3.5 text-gray-500 hidden md:table-cell text-xs">
-              {{ vendor.owner.get_full_name|default:vendor.owner.phone }}
-            </td>
-            <td class="px-5 py-3.5 text-gray-500 hidden lg:table-cell text-xs">{{ vendor.city|default:"—" }}</td>
-            <td class="px-5 py-3.5 text-center">
-              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
-                {% if vendor.status == 'open' %}bg-green-100 text-green-700
-                {% elif vendor.status == 'busy' %}bg-orange-100 text-orange-700
-                {% elif vendor.status == 'suspended' %}bg-red-100 text-red-600
-                {% else %}bg-gray-100 text-gray-500{% endif %}">
-                {{ vendor.get_status_display }}
-              </span>
-            </td>
-            <td class="px-5 py-3.5 text-right">
-              <a href="{% url 'staff:food_vendor_detail' vendor.pk %}"
-                 class="text-xs border border-gray-200 hover:border-navy text-gray-600 hover:text-navy font-semibold px-3 py-1.5 rounded-lg transition-colors">
-                View
-              </a>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="5" class="px-5 py-16 text-center text-gray-400"><p class="text-3xl mb-2">🍴</p><p class="text-sm">No restaurants found.</p></td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
+{% block staff_content %}
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead><tr><th>#</th><th>Shop</th><th>Owner</th><th>City</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+    <tbody>
+      {% for v in vendors %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td><a href="{% url 'staff:food_vendor_detail' v.pk %}" class="fw-semibold text-decoration-none">{{ v.shop_name }}</a></td>
+        <td>{{ v.owner.get_full_name|default:v.owner.phone }}</td>
+        <td>{{ v.city }}</td>
+        <td><span class="small text-muted">{{ v.get_status_display }}</span></td>
+        <td class="text-end">
+          <a href="{% url 'staff:food_vendor_detail' v.pk %}" class="btn btn-sm btn-light">View</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-3">No vendors found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}
