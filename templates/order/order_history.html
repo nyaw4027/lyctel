@@ -2,88 +2,86 @@
 {% block title %}My Orders — Lynctel{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto px-4 md:px-6 py-8">
+<div class="container px-3 px-md-4 py-4" style="max-width: 48rem;">
 
-  <div class="mb-6">
-    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Account</p>
-    <h1 class="font-display font-700 text-2xl text-navy">My Orders</h1>
-    <p class="text-gray-400 text-sm mt-0.5">{{ orders|length }} order{{ orders|length|pluralize }}</p>
+  <div class="mb-4">
+    <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em;">Account</p>
+    <h1 class="font-display fw-bold fs-2 text-navy">My Orders</h1>
+    <p class="text-secondary small mt-1 mb-0">{{ orders|length }} order{{ orders|length|pluralize }}</p>
   </div>
 
   {% if orders %}
-  <div class="space-y-4">
+  <div class="d-flex flex-column gap-3">
     {% for order in orders %}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
 
       <!-- Header -->
-      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50 flex-wrap gap-3">
-        <div class="flex items-center gap-4 flex-wrap">
+      <div class="d-flex align-items-center justify-content-between px-3 py-3 border-bottom flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
           <div>
-            <p class="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Order</p>
-            <p class="font-display font-700 text-navy">{{ order.order_ref }}</p>
+            <p class="small text-secondary text-uppercase mb-1" style="letter-spacing:.06em;">Order</p>
+            <p class="font-display fw-bold text-navy mb-0">{{ order.order_ref }}</p>
           </div>
-          <div class="hidden sm:block">
-            <p class="text-xs text-gray-400">Date</p>
-            <p class="text-sm font-medium text-gray-700">{{ order.created_at|date:"d M Y" }}</p>
+          <div class="d-none d-sm-block">
+            <p class="small text-secondary mb-0">Date</p>
+            <p class="small fw-medium text-dark mb-0">{{ order.created_at|date:"d M Y" }}</p>
           </div>
-          <div class="hidden sm:block">
-            <p class="text-xs text-gray-400">Total</p>
-            <p class="text-sm font-bold text-navy">GHS {{ order.total_amount }}</p>
+          <div class="d-none d-sm-block">
+            <p class="small text-secondary mb-0">Total</p>
+            <p class="small fw-bold text-navy mb-0">GHS {{ order.total_amount }}</p>
           </div>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-xs font-semibold px-3 py-1 rounded-full
-                       {% if order.status == 'delivered' %}bg-green-100 text-green-700
-                       {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
-                       {% elif order.status == 'cancelled' %}bg-red-100 text-red-700
-                       {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
-                       {% elif order.status == 'processing' %}bg-purple-100 text-purple-700
-                       {% else %}bg-gray-100 text-gray-600{% endif %}">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="badge rounded-pill
+                       {% if order.status == 'delivered' %}text-bg-success
+                       {% elif order.status == 'dispatched' %}text-bg-primary
+                       {% elif order.status == 'cancelled' %}text-bg-danger
+                       {% elif order.status == 'pending' %}text-bg-warning
+                       {% elif order.status == 'processing' %}text-bg-info
+                       {% else %}text-bg-secondary{% endif %}">
             {{ order.get_status_display }}
           </span>
-          <span class="text-xs font-semibold px-3 py-1 rounded-full
-                       {% if order.payment_status == 'paid' %}bg-green-100 text-green-700
-                       {% elif order.payment_status == 'failed' %}bg-red-100 text-red-700
-                       {% else %}bg-orange-100 text-orange-700{% endif %}">
+          <span class="badge rounded-pill
+                       {% if order.payment_status == 'paid' %}text-bg-success
+                       {% elif order.payment_status == 'failed' %}text-bg-danger
+                       {% else %}text-bg-warning{% endif %}">
             {{ order.get_payment_status_display }}
           </span>
         </div>
       </div>
 
       <!-- Items -->
-      <div class="px-5 py-3 space-y-2">
+      <div class="px-3 py-3 d-flex flex-column gap-2">
         {% for item in order.items.all %}
-        <div class="flex items-center justify-between text-sm text-gray-600">
-          <div class="flex items-center gap-2 min-w-0">
+        <div class="d-flex align-items-center justify-content-between small text-secondary">
+          <div class="d-flex align-items-center gap-2 min-w-0">
             {% if item.product and item.product.images.first %}
-            <img src="{{ item.product.images.first.image.url }}"
-                 class="w-8 h-8 rounded-lg object-cover flex-shrink-0"/>
+            <img src="{{ item.product.images.first.image.url }}" class="rounded-3 object-fit-cover flex-shrink-0" style="width:2rem;height:2rem;"/>
             {% else %}
-            <div class="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center text-xs">📦</div>
+            <div class="rounded-3 bg-light flex-shrink-0 d-flex align-items-center justify-content-center small" style="width:2rem;height:2rem;">📦</div>
             {% endif %}
-            <span class="truncate max-w-[200px]">{{ item.product_name }} × {{ item.quantity }}</span>
+            <span class="text-truncate" style="max-width: 200px;">{{ item.product_name }} × {{ item.quantity }}</span>
           </div>
-          <span class="font-semibold text-navy ml-3 flex-shrink-0">GHS {{ item.subtotal }}</span>
+          <span class="fw-semibold text-navy ms-3 flex-shrink-0">GHS {{ item.subtotal }}</span>
         </div>
         {% endfor %}
       </div>
 
       <!-- Footer -->
-      <div class="px-5 py-3 bg-gray-50 flex items-center justify-between flex-wrap gap-2">
-        <div class="text-xs text-gray-400 space-y-0.5">
-          <p>📍 {{ order.delivery_city }}</p>
-          <p>📞 {{ order.delivery_phone }}</p>
+      <div class="px-3 py-3 bg-light d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="small text-secondary d-flex flex-column gap-1">
+          <p class="mb-0">📍 {{ order.delivery_city }}</p>
+          <p class="mb-0">📞 {{ order.delivery_phone }}</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="d-flex align-items-center gap-2">
           {% if order.status == 'pending' and order.payment_status == 'unpaid' %}
-          <a href="{% url 'payment:page' %}"
-             class="text-xs bg-gold text-navy font-semibold px-4 py-1.5 rounded-lg hover:bg-gold-dark transition-colors">
+          <a href="{% url 'payment:page' %}" class="btn btn-gold btn-sm small fw-semibold rounded-2">
             Pay Now
           </a>
           {% endif %}
           <a href="{% url 'order:tracking' order.order_ref %}"
-             class="text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors
-                    {% if order.status not in 'delivered,cancelled,refunded' %}bg-navy text-white hover:bg-navy-700{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+             class="btn btn-sm small fw-semibold rounded-2
+                    {% if order.status not in 'delivered,cancelled,refunded' %}btn-navy{% else %}btn-light{% endif %}">
             {% if order.status not in 'delivered,cancelled,refunded' %}Track Order{% else %}View Details{% endif %}
           </a>
         </div>
@@ -93,12 +91,11 @@
   </div>
 
   {% else %}
-  <div class="flex flex-col items-center justify-center py-28 text-center">
-    <div class="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center text-5xl mb-6">📦</div>
-    <h3 class="font-display font-700 text-xl text-navy mb-2">No orders yet</h3>
-    <p class="text-gray-400 text-sm mb-8 max-w-xs">Start shopping and your orders will appear here.</p>
-    <a href="{% url 'products:list' %}"
-       class="bg-navy text-white font-semibold px-8 py-3.5 rounded-2xl hover:bg-navy-700 transition-colors btn-press">
+  <div class="d-flex flex-column align-items-center justify-content-center py-5 text-center">
+    <div class="bg-light rounded-3xl d-flex align-items-center justify-content-center display-4 mb-4" style="width:6rem;height:6rem;">📦</div>
+    <h3 class="font-display fw-bold fs-4 text-navy mb-2">No orders yet</h3>
+    <p class="text-secondary small mb-4" style="max-width: 20rem;">Start shopping and your orders will appear here.</p>
+    <a href="{% url 'products:list' %}" class="btn btn-navy fw-semibold px-4 py-3 rounded-2xl btn-press">
       Browse Products
     </a>
   </div>

@@ -2,54 +2,50 @@
 {% block title %}Payment Pending — Lynctel{% endblock %}
 
 {% block content %}
-<div class="max-w-lg mx-auto px-4 py-16 text-center">
+<div class="mx-auto px-3 py-5 text-center" style="max-width: 32rem;">
 
-  <div class="w-20 h-20 mx-auto bg-orange-100 rounded-full flex items-center justify-center mb-6">
-    <svg class="w-10 h-10 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div class="mx-auto bg-warning bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center mb-4" style="width:5rem;height:5rem;">
+    <svg style="width:2.5rem;height:2.5rem;" class="text-warning-emphasis" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
     </svg>
   </div>
 
-  <h1 class="font-display font-700 text-2xl text-navy mb-2">Payment Not Completed</h1>
-  <p class="text-gray-500 text-sm mb-8 max-w-sm mx-auto">
+  <h1 class="font-display fw-bold fs-2 text-navy mb-2">Payment Not Completed</h1>
+  <p class="text-secondary small mb-4 mx-auto" style="max-width: 24rem;">
     This order hasn't been paid yet or payment is still processing.
     Please complete payment to confirm your order.
   </p>
 
   <!-- Order info -->
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left mb-6 space-y-3 text-sm">
-    <div class="flex justify-between">
-      <span class="text-gray-400">Order</span>
-      <span class="font-display font-700 text-navy">{{ order.order_ref }}</span>
+  <div class="bg-white rounded-2xl border shadow-sm p-3 text-start mb-4 d-flex flex-column gap-2 small">
+    <div class="d-flex justify-content-between">
+      <span class="text-secondary">Order</span>
+      <span class="font-display fw-bold text-navy">{{ order.order_ref }}</span>
     </div>
-    <div class="flex justify-between">
-      <span class="text-gray-400">Status</span>
-      <span class="font-semibold text-orange-500">{{ order.get_payment_status_display }}</span>
+    <div class="d-flex justify-content-between">
+      <span class="text-secondary">Status</span>
+      <span class="fw-semibold text-warning-emphasis">{{ order.get_payment_status_display }}</span>
     </div>
-    <div class="flex justify-between border-t border-gray-100 pt-3">
-      <span class="font-display font-700 text-navy">Total Due</span>
-      <span class="font-display font-700 text-navy text-lg">GHS {{ order.total_amount }}</span>
+    <div class="d-flex justify-content-between border-top pt-3">
+      <span class="font-display fw-bold text-navy">Total Due</span>
+      <span class="font-display fw-bold text-navy fs-5">GHS {{ order.total_amount }}</span>
     </div>
   </div>
 
-  <div class="flex flex-col sm:flex-row gap-3">
-    <a href="{% url 'payment:page' %}"
-       class="flex-1 bg-navy hover:bg-navy-700 text-white font-semibold py-3.5 rounded-xl
-              transition-colors btn-press text-sm">
+  <div class="d-flex flex-column flex-sm-row gap-2">
+    <a href="{% url 'payment:page' %}" class="btn btn-navy flex-fill fw-semibold py-3 rounded-xl btn-press small">
       ⚡ Complete Payment
     </a>
-    <a href="{% url 'order:history' %}"
-       class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3.5 rounded-xl
-              transition-colors text-sm">
+    <a href="{% url 'order:history' %}" class="btn btn-light flex-fill fw-semibold py-3 rounded-xl small">
       My Orders
     </a>
   </div>
 
-  <p class="mt-5 text-xs text-gray-400">
+  <p class="mt-4 small text-secondary">
     Need help?
     <a href="https://wa.me/233558040216?text=Hi,+I+need+help+with+order+{{ order.order_ref }}"
-       target="_blank" class="text-gold-dark font-semibold hover:underline">
+       target="_blank" class="text-gold-dark fw-semibold">
       Contact support →
     </a>
   </p>

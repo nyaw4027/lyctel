@@ -159,11 +159,14 @@
     transition: all .4s ease;
     transform-origin: top;
   }
-  #fare-card.hidden { display: none; }
 
   /* ── Delivery sections ─────────────────────────────── */
   .delivery-section { display: none; }
   .delivery-section.active { display: block; }
+
+  /* ── Delivery method option (native :has() — no framework needed) ── */
+  .delivery-option-label { border: 2px solid transparent; transition: all .2s; }
+  .delivery-option-label:has(:checked) { border-color: var(--navy); background: rgba(15,27,45,.05); }
 
   /* ── Input errors ──────────────────────────────────── */
   .field-error { color: #dc2626; font-size: 12px; margin-top: 4px; }
@@ -192,90 +195,90 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+<div class="container px-3 px-md-4 py-4" style="max-width: 64rem;">
 
-  <div class="flex items-center gap-2 text-sm text-gray-400 mb-6">
-    <a href="{% url 'products:list' %}" class="hover:text-navy transition-colors">Shop</a>
+  <div class="d-flex align-items-center gap-2 small text-secondary mb-4">
+    <a href="{% url 'products:list' %}" class="text-decoration-none text-secondary">Shop</a>
     <span>/</span>
-    <a href="{% url 'cart:detail' %}" class="hover:text-navy transition-colors">Cart</a>
+    <a href="{% url 'cart:detail' %}" class="text-decoration-none text-secondary">Cart</a>
     <span>/</span>
-    <span class="text-navy font-medium">Checkout</span>
+    <span class="text-navy fw-medium">Checkout</span>
   </div>
 
-  <h1 class="font-display font-800 text-2xl md:text-3xl text-navy mb-6">Checkout</h1>
+  <h1 class="font-display fw-bold fs-2 text-navy mb-4">Checkout</h1>
 
   <!-- GPS banner -->
-  <div id="gps-banner" class="mb-5 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-sm text-blue-700">
-    <div class="flex-shrink-0 relative w-4 h-4">
-      <div class="absolute inset-0 rounded-full bg-blue-400 opacity-60 animate-ping"></div>
-      <div class="relative w-4 h-4 bg-blue-500 rounded-full"></div>
+  <div id="gps-banner" class="mb-4 alert-info rounded-2xl px-3 py-3 d-flex align-items-center gap-3 small">
+    <div class="flex-shrink-0 position-relative" style="width:1rem;height:1rem;">
+      <div class="position-absolute top-0 start-0 w-100 h-100 rounded-circle bg-primary animate-pulse" style="opacity:.6;"></div>
+      <div class="position-relative rounded-circle bg-primary" style="width:1rem;height:1rem;"></div>
     </div>
     <span id="gps-status">Detecting your location...</span>
   </div>
 
-  <form method="POST" id="checkout-form" class="grid lg:grid-cols-3 gap-8">
+  <form method="POST" id="checkout-form" class="row g-4">
     {% csrf_token %}
 
     <!-- LEFT ───────────────────────────────────────────── -->
-    <div class="lg:col-span-2 space-y-5">
+    <div class="col-lg-8 d-flex flex-column gap-3">
 
       <!-- Step 1: Delivery method -->
-      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-        <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
-          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+      <div class="bg-white border rounded-2xl p-3 shadow-sm">
+        <h2 class="fw-bold text-navy small mb-3 d-flex align-items-center gap-2">
+          <span class="bg-navy text-white rounded-circle d-flex align-items-center justify-content-center small fw-bold flex-shrink-0" style="width:1.75rem;height:1.75rem;">1</span>
           Delivery Method
         </h2>
-        <div class="space-y-2 mb-5">
-          <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy has-[:checked]:bg-navy/5 transition-all">
-            <input type="radio" name="delivery_choice" value="rider" class="delivery-choice-input w-4 h-4 accent-navy"
+        <div class="d-flex flex-column gap-2 mb-4">
+          <label class="delivery-option-label d-flex align-items-center gap-3 px-3 py-3 bg-light rounded-xl" style="cursor:pointer;">
+            <input type="radio" name="delivery_choice" value="rider" class="delivery-choice-input" style="width:1rem;height:1rem;"
                    {% if form_data.delivery_choice != "pickup" and form_data.delivery_choice != "parcel" %}checked{% endif %}>
             <div>
-              <p class="text-sm font-semibold text-navy">🛵 Rider Delivery</p>
-              <p class="text-xs text-gray-400 mt-0.5">Delivered to your door — fee based on distance</p>
+              <p class="small fw-semibold text-navy mb-0">🛵 Rider Delivery</p>
+              <p class="small text-secondary mt-1 mb-0">Delivered to your door — fee based on distance</p>
             </div>
           </label>
-          <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy has-[:checked]:bg-navy/5 transition-all">
-            <input type="radio" name="delivery_choice" value="pickup" class="delivery-choice-input w-4 h-4 accent-navy"
+          <label class="delivery-option-label d-flex align-items-center gap-3 px-3 py-3 bg-light rounded-xl" style="cursor:pointer;">
+            <input type="radio" name="delivery_choice" value="pickup" class="delivery-choice-input" style="width:1rem;height:1rem;"
                    {% if form_data.delivery_choice == "pickup" %}checked{% endif %}>
             <div>
-              <p class="text-sm font-semibold text-navy">🏪 Self Pickup</p>
-              <p class="text-xs text-gray-400 mt-0.5">Collect yourself — no delivery fee</p>
+              <p class="small fw-semibold text-navy mb-0">🏪 Self Pickup</p>
+              <p class="small text-secondary mt-1 mb-0">Collect yourself — no delivery fee</p>
             </div>
           </label>
-          <label class="flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-navy has-[:checked]:bg-navy/5 transition-all">
-            <input type="radio" name="delivery_choice" value="parcel" class="delivery-choice-input w-4 h-4 accent-navy"
+          <label class="delivery-option-label d-flex align-items-center gap-3 px-3 py-3 bg-light rounded-xl" style="cursor:pointer;">
+            <input type="radio" name="delivery_choice" value="parcel" class="delivery-choice-input" style="width:1rem;height:1rem;"
                    {% if form_data.delivery_choice == "parcel" %}checked{% endif %}>
             <div>
-              <p class="text-sm font-semibold text-navy">🚌 Bus / Parcel</p>
-              <p class="text-xs text-gray-400 mt-0.5">Sent via intercity bus to a station near you</p>
+              <p class="small fw-semibold text-navy mb-0">🚌 Bus / Parcel</p>
+              <p class="small text-secondary mt-1 mb-0">Sent via intercity bus to a station near you</p>
             </div>
           </label>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Contact Phone *</label>
+          <label class="form-label small fw-medium text-secondary">Contact Phone *</label>
           <input type="tel" name="delivery_phone" id="delivery_phone"
                  value="{{ form_data.delivery_phone|default:'' }}"
                  placeholder="024 xxx xxxx"
-                 class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy {% if errors.delivery_phone %}input-error{% endif %}"/>
+                 class="form-control rounded-xl {% if errors.delivery_phone %}input-error{% endif %}"/>
           {% if errors.delivery_phone %}<p class="field-error">{{ errors.delivery_phone }}</p>{% endif %}
         </div>
       </div>
 
       <!-- Step 2a: Rider delivery — Uber-style map -->
-      <div class="delivery-section bg-white border border-gray-100 rounded-2xl p-5 shadow-sm" data-section="rider">
-        <h2 class="font-bold text-navy text-base mb-1 flex items-center gap-2">
-          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+      <div class="delivery-section bg-white border rounded-2xl p-3 shadow-sm" data-section="rider">
+        <h2 class="fw-bold text-navy small mb-1 d-flex align-items-center gap-2">
+          <span class="bg-navy text-white rounded-circle d-flex align-items-center justify-content-center small fw-bold flex-shrink-0" style="width:1.75rem;height:1.75rem;">2</span>
           Drop Your Delivery Pin
         </h2>
-        <p class="text-xs text-gray-400 mb-4 ml-9">Drag the red pin or search below to set exactly where we deliver</p>
+        <p class="small text-secondary mb-3" style="margin-left:2.25rem;">Drag the red pin or search below to set exactly where we deliver</p>
 
         <!-- Map -->
-        <div class="relative rounded-2xl overflow-hidden border border-gray-100 shadow-sm mb-4">
+        <div class="position-relative rounded-2xl overflow-hidden border shadow-sm mb-3">
           <div id="delivery-map"></div>
           <!-- Locate me button inside map -->
           <button type="button" id="locate-me-btn" class="map-btn" onclick="locateMe()">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg style="width:.875rem;height:.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
@@ -284,71 +287,71 @@
         </div>
 
         <!-- Address search -->
-        <div class="relative mb-4">
-          <div class="relative">
-            <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="position-relative mb-3">
+          <div class="position-relative">
+            <svg class="position-absolute top-50 translate-middle-y text-secondary" style="left:.875rem;width:1rem;height:1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
             </svg>
             <input type="text" id="address-search" autocomplete="off"
                    placeholder="Search your delivery address..."
-                   class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy focus:bg-white transition-all"/>
+                   class="form-control rounded-xl" style="padding-left:2.5rem;background:#f9fafb;"/>
           </div>
           <div id="address-suggestions"></div>
         </div>
 
         <!-- Address fields -->
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Delivery Address *</label>
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
+          <div class="col-sm-12">
+            <label class="form-label small fw-medium text-secondary">Delivery Address *</label>
             <input type="text" name="delivery_address" id="delivery_address"
                    value="{{ form_data.delivery_address|default:'' }}"
                    placeholder="House number, street, area"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy {% if errors.delivery_address %}input-error{% endif %}"/>
+                   class="form-control rounded-xl {% if errors.delivery_address %}input-error{% endif %}"/>
             {% if errors.delivery_address %}<p class="field-error">{{ errors.delivery_address }}</p>{% endif %}
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">City *</label>
+          <div class="col">
+            <label class="form-label small fw-medium text-secondary">City *</label>
             <input type="text" name="delivery_city" id="delivery_city"
                    value="{{ form_data.delivery_city|default:'' }}"
                    placeholder="e.g. Accra"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy {% if errors.delivery_city %}input-error{% endif %}"/>
+                   class="form-control rounded-xl {% if errors.delivery_city %}input-error{% endif %}"/>
             {% if errors.delivery_city %}<p class="field-error">{{ errors.delivery_city }}</p>{% endif %}
           </div>
         </div>
 
         <!-- Uber-style fare card -->
-        <div id="fare-card" class="hidden mt-4">
-          <div class="bg-gradient-to-br from-navy via-slate-800 to-slate-900 text-white rounded-2xl p-5 shadow-lg">
-            <div class="flex items-start justify-between gap-4">
-              <div class="flex-1">
-                <p class="text-[11px] font-bold uppercase tracking-widest text-white/50 mb-2">Delivery Fare</p>
-                <div class="flex items-baseline gap-2">
-                  <span id="fare-amount" class="text-3xl font-display font-800">—</span>
-                  <span class="text-white/50 text-sm">GHS</span>
+        <div id="fare-card" class="d-none mt-3">
+          <div class="text-white rounded-2xl p-3 shadow" style="background:linear-gradient(135deg,var(--navy),#1e293b,#0f172a);">
+            <div class="d-flex align-items-start justify-content-between gap-3">
+              <div class="flex-fill">
+                <p class="fw-bold text-uppercase text-white-50 mb-2" style="font-size:11px;letter-spacing:.08em;">Delivery Fare</p>
+                <div class="d-flex align-items-baseline gap-2">
+                  <span id="fare-amount" class="fs-2 font-display fw-bold">—</span>
+                  <span class="text-white-50 small">GHS</span>
                 </div>
-                <div class="flex items-center gap-3 mt-2">
-                  <span id="fare-distance" class="text-xs text-white/60 flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                <div class="d-flex align-items-center gap-2 mt-2">
+                  <span id="fare-distance" class="small text-white-50 d-flex align-items-center gap-1">
+                    <svg style="width:.75rem;height:.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                     —
                   </span>
-                  <span class="text-white/30">·</span>
-                  <span id="fare-eta" class="text-xs text-white/60 flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span class="text-white-50">·</span>
+                  <span id="fare-eta" class="small text-white-50 d-flex align-items-center gap-1">
+                    <svg style="width:.75rem;height:.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     —
                   </span>
                 </div>
               </div>
-              <div class="text-right">
-                <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-2xl">🛵</div>
+              <div class="text-end">
+                <div class="bg-white bg-opacity-10 rounded-xl d-flex align-items-center justify-content-center fs-3" style="width:3rem;height:3rem;">🛵</div>
               </div>
             </div>
             <!-- Route viz -->
-            <div class="mt-4 flex items-center gap-2 text-xs text-white/50">
-              <div class="w-2.5 h-2.5 rounded-full bg-blue-400 flex-shrink-0"></div>
-              <div class="flex-1 border-t border-dashed border-white/20"></div>
-              <div id="fare-route-label" class="text-white/40 whitespace-nowrap">calculating route...</div>
-              <div class="flex-1 border-t border-dashed border-white/20"></div>
-              <div class="w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0"></div>
+            <div class="mt-3 d-flex align-items-center gap-2 small text-white-50">
+              <div class="rounded-circle bg-primary flex-shrink-0" style="width:.625rem;height:.625rem;"></div>
+              <div class="flex-fill border-top" style="border-style:dashed !important;border-color:rgba(255,255,255,.2) !important;"></div>
+              <div id="fare-route-label" class="text-white-50 text-nowrap">calculating route...</div>
+              <div class="flex-fill border-top" style="border-style:dashed !important;border-color:rgba(255,255,255,.2) !important;"></div>
+              <div class="rounded-circle bg-danger flex-shrink-0" style="width:.625rem;height:.625rem;"></div>
             </div>
           </div>
         </div>
@@ -358,119 +361,119 @@
       </div>
 
       <!-- Step 2b: Bus / parcel -->
-      <div class="delivery-section bg-white border border-gray-100 rounded-2xl p-5 shadow-sm" data-section="parcel">
-        <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
-          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+      <div class="delivery-section bg-white border rounded-2xl p-3 shadow-sm" data-section="parcel">
+        <h2 class="fw-bold text-navy small mb-3 d-flex align-items-center gap-2">
+          <span class="bg-navy text-white rounded-circle d-flex align-items-center justify-content-center small fw-bold flex-shrink-0" style="width:1.75rem;height:1.75rem;">2</span>
           Bus / Parcel Details
         </h2>
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Bus Station *</label>
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
+          <div class="col-sm-12">
+            <label class="form-label small fw-medium text-secondary">Bus Station *</label>
             <input type="text" name="parcel_bus_station"
                    value="{{ form_data.parcel_bus_station|default:'' }}"
                    placeholder="e.g. Kaneshie STC terminal"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy {% if errors.parcel_bus_station %}input-error{% endif %}"/>
+                   class="form-control rounded-xl {% if errors.parcel_bus_station %}input-error{% endif %}"/>
             {% if errors.parcel_bus_station %}<p class="field-error">{{ errors.parcel_bus_station }}</p>{% endif %}
           </div>
-          <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Recipient Phone *</label>
+          <div class="col-sm-12">
+            <label class="form-label small fw-medium text-secondary">Recipient Phone *</label>
             <input type="tel" name="parcel_recipient_phone"
                    value="{{ form_data.parcel_recipient_phone|default:'' }}"
                    placeholder="Phone of person collecting"
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy {% if errors.parcel_recipient_phone %}input-error{% endif %}"/>
+                   class="form-control rounded-xl {% if errors.parcel_recipient_phone %}input-error{% endif %}"/>
             {% if errors.parcel_recipient_phone %}<p class="field-error">{{ errors.parcel_recipient_phone }}</p>{% endif %}
           </div>
-          <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Notes (optional)</label>
+          <div class="col-sm-12">
+            <label class="form-label small fw-medium text-secondary">Notes (optional)</label>
             <input type="text" name="parcel_notes"
                    value="{{ form_data.parcel_notes|default:'' }}"
                    placeholder="Bus company, parcel description..."
-                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-navy"/>
+                   class="form-control rounded-xl"/>
           </div>
         </div>
       </div>
 
       <!-- Step 2c: Self pickup -->
-      <div class="delivery-section bg-white border border-gray-100 rounded-2xl p-5 shadow-sm" data-section="pickup">
-        <h2 class="font-bold text-navy text-base mb-2 flex items-center gap-2">
-          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+      <div class="delivery-section bg-white border rounded-2xl p-3 shadow-sm" data-section="pickup">
+        <h2 class="fw-bold text-navy small mb-2 d-flex align-items-center gap-2">
+          <span class="bg-navy text-white rounded-circle d-flex align-items-center justify-content-center small fw-bold flex-shrink-0" style="width:1.75rem;height:1.75rem;">2</span>
           Self Pickup
         </h2>
-        <div class="ml-9 flex items-start gap-3 bg-green-50 rounded-xl p-4 text-sm text-green-700">
-          <span class="text-xl">✅</span>
+        <div class="d-flex align-items-start gap-3 alert-success rounded-xl p-3 small" style="margin-left:2.25rem;">
+          <span class="fs-4">✅</span>
           <div>
-            <p class="font-semibold">No delivery fee!</p>
-            <p class="text-xs text-green-600 mt-0.5">We'll notify you via the phone number above when your order is ready to collect.</p>
+            <p class="fw-semibold mb-0">No delivery fee!</p>
+            <p class="small mt-1 mb-0">We'll notify you via the phone number above when your order is ready to collect.</p>
           </div>
         </div>
       </div>
 
       <!-- Step 3: Order note -->
-      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-        <h2 class="font-bold text-navy text-base mb-4 flex items-center gap-2">
-          <span class="w-7 h-7 bg-navy text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
-          Order Note <span class="text-gray-400 font-normal text-xs ml-1">(optional)</span>
+      <div class="bg-white border rounded-2xl p-3 shadow-sm">
+        <h2 class="fw-bold text-navy small mb-3 d-flex align-items-center gap-2">
+          <span class="bg-navy text-white rounded-circle d-flex align-items-center justify-content-center small fw-bold flex-shrink-0" style="width:1.75rem;height:1.75rem;">3</span>
+          Order Note <span class="text-secondary fw-normal small ms-1">(optional)</span>
         </h2>
         <input type="text" name="order_note"
                value="{{ form_data.order_note|default:'' }}"
                placeholder="e.g. Call on arrival, blue gate, leave at door"
-               class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy"/>
+               class="form-control rounded-xl"/>
       </div>
 
     </div>
 
     <!-- RIGHT: Order summary ──────────────────────────── -->
-    <div class="lg:col-span-1">
-      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm sticky top-24">
-        <h2 class="font-bold text-navy text-base mb-4">🧾 Order Summary</h2>
+    <div class="col-lg-4">
+      <div class="bg-white border rounded-2xl p-3 shadow-sm position-sticky" style="top:6rem;">
+        <h2 class="fw-bold text-navy small mb-3">🧾 Order Summary</h2>
 
-        <div class="space-y-3 mb-4 max-h-64 overflow-y-auto pr-1">
+        <div class="d-flex flex-column gap-3 mb-3 pe-1" style="max-height:16rem;overflow-y:auto;">
           {% for item in cart.items.all %}
-          <div class="flex items-center gap-3">
+          <div class="d-flex align-items-center gap-3">
             {% with item.product.images.first as img %}
             {% if img %}
             <img src="{{ img.image.url }}" alt="{{ item.product.name }}"
-                 class="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-gray-100"/>
+                 class="rounded-xl object-fit-cover flex-shrink-0 border" style="width:3rem;height:3rem;"/>
             {% else %}
-            <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-lg flex-shrink-0">🛍</div>
+            <div class="rounded-xl bg-light d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:3rem;height:3rem;">🛍</div>
             {% endif %}
             {% endwith %}
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-navy truncate">{{ item.product.name }}</p>
-              <p class="text-xs text-gray-400">× {{ item.quantity }}</p>
+            <div class="flex-fill min-w-0">
+              <p class="small fw-medium text-navy text-truncate mb-0">{{ item.product.name }}</p>
+              <p class="small text-secondary mb-0">× {{ item.quantity }}</p>
             </div>
-            <span class="text-sm font-bold text-navy">GHS {{ item.subtotal|floatformat:2 }}</span>
+            <span class="small fw-bold text-navy">GHS {{ item.subtotal|floatformat:2 }}</span>
           </div>
           {% empty %}
-          <p class="text-sm text-gray-400 text-center py-4">Your cart is empty</p>
+          <p class="small text-secondary text-center py-3 mb-0">Your cart is empty</p>
           {% endfor %}
         </div>
 
-        <div class="border-t border-gray-100 pt-4 space-y-2.5 text-sm">
-          <div class="flex justify-between text-gray-500">
+        <div class="border-top pt-3 d-flex flex-column gap-2 small">
+          <div class="d-flex justify-content-between text-secondary">
             <span>Subtotal</span>
-            <span class="font-medium text-navy">GHS {{ cart.total_price|floatformat:2 }}</span>
+            <span class="fw-medium text-navy">GHS {{ cart.total_price|floatformat:2 }}</span>
           </div>
-          <div class="flex justify-between text-gray-500">
+          <div class="d-flex justify-content-between text-secondary">
             <span>Delivery Fee</span>
-            <span id="summary-fee" class="font-medium text-navy text-xs text-gray-400 italic">Set by location</span>
+            <span id="summary-fee" class="fw-medium text-navy small text-secondary fst-italic">Set by location</span>
           </div>
-          <div id="summary-meta" class="text-xs text-gray-400 text-right hidden"></div>
-          <div class="flex justify-between font-display font-700 text-navy text-base pt-2 border-t border-gray-100">
+          <div id="summary-meta" class="small text-secondary text-end d-none"></div>
+          <div class="d-flex justify-content-between font-display fw-bold text-navy pt-2 border-top">
             <span>Total</span>
             <span id="summary-total">GHS {{ cart.total_price|floatformat:2 }}</span>
           </div>
         </div>
 
         <button type="submit" id="place-order-btn"
-                class="w-full bg-navy hover:bg-navy-700 text-white font-bold py-4 rounded-2xl mt-5 transition-all text-sm shadow-lg shadow-navy/20 flex items-center justify-center gap-2 btn-press">
+                class="btn btn-navy w-100 fw-bold py-3 rounded-2xl mt-4 small shadow d-flex align-items-center justify-content-center gap-2 btn-press">
           Continue to Payment →
         </button>
 
-        <div class="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-gray-100">
-          <span class="text-xs text-gray-400">🔒 Secure checkout</span>
-          <span class="text-gray-200">|</span>
-          <span class="text-xs text-gray-400">🇬🇭 Ghana trusted</span>
+        <div class="d-flex align-items-center justify-content-center gap-2 mt-3 pt-3 border-top">
+          <span class="small text-secondary">🔒 Secure checkout</span>
+          <span class="text-secondary">|</span>
+          <span class="small text-secondary">🇬🇭 Ghana trusted</span>
         </div>
       </div>
     </div>
@@ -667,7 +670,7 @@
         const clock = formatEtaClock(eta);
 
         // Fare card
-        document.getElementById('fare-card').classList.remove('hidden');
+        document.getElementById('fare-card').classList.remove('d-none');
         document.getElementById('fare-amount').textContent    = data.fee;
         document.getElementById('fare-distance').textContent  = `${dist} km`;
         document.getElementById('fare-eta').textContent       = eta ? `~${eta} min` : '';
@@ -677,11 +680,11 @@
         drawRoute(dist, clock);
 
         // Summary panel
-        document.getElementById('summary-fee').innerHTML = `<span class="font-medium text-navy">GHS ${data.fee}</span>`;
+        document.getElementById('summary-fee').innerHTML = `<span class="fw-medium text-navy">GHS ${data.fee}</span>`;
         document.getElementById('summary-total').textContent = `GHS ${total}`;
         const meta = document.getElementById('summary-meta');
         meta.textContent = `${dist} km` + (eta ? ` · ~${eta} min` : '') + (clock ? ` · arrives ~${clock}` : '');
-        meta.classList.remove('hidden');
+        meta.classList.remove('d-none');
       })
       .catch(console.error);
   }
@@ -828,7 +831,7 @@
           if (!Array.isArray(results) || !results.length) { suggestBox.classList.remove('show'); return; }
           suggestBox.innerHTML = results.map(r =>
             `<div class="suggestion-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.replace(/"/g,'&quot;')}">
-               <svg class="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+               <svg style="width:1rem;height:1rem;flex-shrink:0;margin-top:.125rem;" class="text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
                <span>${r.display_name}</span>
              </div>`
           ).join('');
@@ -861,9 +864,9 @@
     const status = document.getElementById('gps-status');
     status.textContent = msg;
     const cls = {
-      blue:  'mb-5 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-sm text-blue-700',
-      green: 'mb-5 bg-green-50 border border-green-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-sm text-green-700',
-      red:   'mb-5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-sm text-red-600',
+      blue:  'mb-4 alert-info rounded-2xl px-3 py-3 d-flex align-items-center gap-3 small',
+      green: 'mb-4 alert-success rounded-2xl px-3 py-3 d-flex align-items-center gap-3 small',
+      red:   'mb-4 alert-danger rounded-2xl px-3 py-3 d-flex align-items-center gap-3 small',
     };
     banner.className = cls[color] || cls.blue;
   }
@@ -876,17 +879,17 @@
     sections.forEach(s => s.classList.toggle('active', s.dataset.section === choice));
     const banner = document.getElementById('gps-banner');
     if (choice === 'rider') {
-      banner.classList.remove('hidden');
+      banner.classList.remove('d-none');
       initMap();
       setTimeout(() => { if (map) map.invalidateSize(); }, 60);
       // Auto-locate when rider tab shown for the first time
       if (!dropoffMarker) locateMe();
     } else {
-      banner.classList.add('hidden');
+      banner.classList.add('d-none');
       // Reset fee display for non-rider methods
-      document.getElementById('summary-fee').innerHTML = '<span class="text-xs text-gray-400 italic">Free / N/A</span>';
+      document.getElementById('summary-fee').innerHTML = '<span class="small text-secondary fst-italic">Free / N/A</span>';
       document.getElementById('summary-total').textContent = `GHS ${SUBTOTAL.toFixed(2)}`;
-      document.getElementById('summary-meta').classList.add('hidden');
+      document.getElementById('summary-meta').classList.add('d-none');
     }
   }
 
@@ -918,9 +921,10 @@
     }
 
     const btn = document.getElementById('place-order-btn');
-    btn.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Processing...';
+    btn.innerHTML = '<svg class="spin-anim" style="width:1rem;height:1rem;" fill="none" viewBox="0 0 24 24"><circle style="opacity:.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Processing...';
     btn.disabled = true;
   });
 })();
 </script>
+<style>.spin-anim{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>
 {% endblock %}
