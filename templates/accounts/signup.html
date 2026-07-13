@@ -21,171 +21,154 @@
 
 {% block content %}
 <div class="auth-page bg-cream">
-  <div class="w-full max-w-lg">
+  <div class="w-100 mx-auto" style="max-width: 32rem;">
 
-    <div class="text-center mb-6">
-      <a href="{% url 'frontend:home' %}" class="inline-block mb-4">
-        <img src="{% static 'logo.png' %}" alt="Lynctel" class="h-10 w-auto mx-auto"/>
+    <div class="text-center mb-4">
+      <a href="{% url 'frontend:home' %}" class="d-inline-block mb-3">
+        <img src="{% static 'logo.png' %}" alt="Lynctel" class="mx-auto" style="height:2.5rem;width:auto;"/>
       </a>
-      <h1 class="font-display font-bold text-2xl md:text-3xl text-navy">Create Your Account</h1>
-      <p class="text-gray-400 text-sm mt-1.5">Join Lynctel and start shopping today 🛍️</p>
+      <h1 class="font-display fw-bold text-navy" style="font-size:clamp(1.5rem,4vw,1.875rem);">Create Your Account</h1>
+      <p class="text-secondary small mt-2 mb-0">Join Lynctel and start shopping today 🛍️</p>
     </div>
 
     {% if messages %}
     {% for message in messages %}
-    <div class="mb-4 px-4 py-3 rounded-2xl text-sm font-medium flex items-center gap-2
-      {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200
-      {% elif message.tags == 'warning' %}bg-amber-50 text-amber-700 border border-amber-200
-      {% else %}bg-green-50 text-green-700 border border-green-200{% endif %}">
+    <div class="mb-3 px-3 py-2 rounded-3 small fw-medium d-flex align-items-center gap-2
+      {% if message.tags == 'error' %}alert-danger
+      {% elif message.tags == 'warning' %}alert-warning
+      {% else %}alert-success{% endif %}">
       <span>{% if message.tags == 'error' %}⚠️{% else %}✅{% endif %}</span>
       <span>{{ message }}</span>
     </div>
     {% endfor %}
     {% endif %}
 
-    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 md:p-8">
-      <form method="POST" class="space-y-4" novalidate autocomplete="on">
+    <div class="bg-white rounded-3xl border shadow-sm p-4 p-md-4">
+      <form method="POST" class="d-flex flex-column gap-3" novalidate autocomplete="on">
         {% csrf_token %}
         {% if request.GET.next %}
         <input type="hidden" name="next" value="{{ request.GET.next }}">
         {% endif %}
 
         <!-- Names — stacked on mobile -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">First Name *</label>
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
+          <div class="col">
+            <label class="form-label small fw-semibold text-dark">First Name *</label>
             <input type="text" name="first_name"
                    value="{{ form_data.first_name|default:'' }}"
                    placeholder="Kofi"
                    autocomplete="given-name"
-                   class="w-full px-4 py-3.5 border rounded-xl transition outline-none
-                          bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gold/20 focus:border-gold
-                          {% if errors.first_name %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
-            {% if errors.first_name %}<p class="text-red-500 text-xs mt-1">{{ errors.first_name }}</p>{% endif %}
+                   class="auth-input form-control rounded-xl {% if errors.first_name %}is-invalid{% endif %}" style="background:#f9fafb;"/>
+            {% if errors.first_name %}<p class="text-danger small mt-1 mb-0">{{ errors.first_name }}</p>{% endif %}
           </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Last Name</label>
+          <div class="col">
+            <label class="form-label small fw-semibold text-dark">Last Name</label>
             <input type="text" name="last_name"
                    value="{{ form_data.last_name|default:'' }}"
                    placeholder="Mensah"
                    autocomplete="family-name"
-                   class="w-full px-4 py-3.5 border border-gray-200 rounded-xl
-                          bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gold/20
-                          focus:border-gold outline-none transition"/>
+                   class="auth-input form-control rounded-xl" style="background:#f9fafb;"/>
           </div>
         </div>
 
         <!-- Phone -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Phone Number *</label>
-          <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none">📱</span>
+          <label class="form-label small fw-semibold text-dark">Phone Number *</label>
+          <div class="position-relative">
+            <span class="position-absolute top-50 translate-middle-y" style="left:1rem;pointer-events:none;">📱</span>
             <input type="tel" name="phone"
                    value="{{ form_data.phone|default:'' }}"
                    placeholder="0558040216"
                    autocomplete="tel" inputmode="tel"
-                   class="w-full pl-11 pr-4 py-3.5 border rounded-xl transition outline-none
-                          bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gold/20 focus:border-gold
-                          {% if errors.phone %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+                   class="auth-input form-control rounded-xl {% if errors.phone %}is-invalid{% endif %}" style="padding-left:2.75rem;background:#f9fafb;"/>
           </div>
-          {% if errors.phone %}<p class="text-red-500 text-xs mt-1">{{ errors.phone }}</p>
-          {% else %}<p class="text-xs text-gray-400 mt-1">This will be your login ID</p>{% endif %}
+          {% if errors.phone %}<p class="text-danger small mt-1 mb-0">{{ errors.phone }}</p>
+          {% else %}<p class="small text-secondary mt-1 mb-0">This will be your login ID</p>{% endif %}
         </div>
 
         <!-- Email (optional) -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-            Email <span class="text-gray-400 font-normal">(optional)</span>
+          <label class="form-label small fw-semibold text-dark">
+            Email <span class="text-secondary fw-normal">(optional)</span>
           </label>
-          <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none">✉️</span>
+          <div class="position-relative">
+            <span class="position-absolute top-50 translate-middle-y" style="left:1rem;pointer-events:none;">✉️</span>
             <input type="email" name="email"
                    value="{{ form_data.email|default:'' }}"
                    placeholder="kofi@example.com"
                    autocomplete="email" inputmode="email"
-                   class="w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-xl
-                          bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gold/20
-                          focus:border-gold outline-none transition"/>
+                   class="auth-input form-control rounded-xl" style="padding-left:2.75rem;background:#f9fafb;"/>
           </div>
         </div>
 
         <!-- Password -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Password *</label>
-          <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none">🔒</span>
+          <label class="form-label small fw-semibold text-dark">Password *</label>
+          <div class="position-relative">
+            <span class="position-absolute top-50 translate-middle-y" style="left:1rem;pointer-events:none;">🔒</span>
             <input type="password" name="password" id="pw1"
                    placeholder="At least 6 characters"
                    autocomplete="new-password"
                    oninput="checkStrength(this.value)"
-                   class="w-full pl-11 pr-16 py-3.5 border rounded-xl transition outline-none
-                          bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gold/20 focus:border-gold
-                          {% if errors.password %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+                   class="auth-input form-control rounded-xl {% if errors.password %}is-invalid{% endif %}"
+                   style="padding-left:2.75rem;padding-right:4rem;background:#f9fafb;"/>
             <button type="button" onclick="togglePw('pw1','eye1')"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold
-                           text-gray-500 hover:text-navy bg-gray-100 hover:bg-gray-200
-                           px-2.5 py-1.5 rounded-lg transition min-w-[44px]" id="eye1">Show</button>
+                    class="btn btn-light btn-sm position-absolute top-50 translate-middle-y rounded-2 small fw-semibold"
+                    style="right:.5rem;min-width:44px;" id="eye1">Show</button>
           </div>
           <!-- Strength bars -->
-          <div class="flex gap-1 mt-2">
-            <div id="s1" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
-            <div id="s2" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
-            <div id="s3" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
-            <div id="s4" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
+          <div class="d-flex gap-1 mt-2">
+            <div id="s1" class="flex-fill rounded-pill bg-light" style="height:.25rem;transition:background-color .2s;"></div>
+            <div id="s2" class="flex-fill rounded-pill bg-light" style="height:.25rem;transition:background-color .2s;"></div>
+            <div id="s3" class="flex-fill rounded-pill bg-light" style="height:.25rem;transition:background-color .2s;"></div>
+            <div id="s4" class="flex-fill rounded-pill bg-light" style="height:.25rem;transition:background-color .2s;"></div>
           </div>
-          {% if errors.password %}<p class="text-red-500 text-xs mt-1">{{ errors.password }}</p>{% endif %}
+          {% if errors.password %}<p class="text-danger small mt-1 mb-0">{{ errors.password }}</p>{% endif %}
         </div>
 
         <!-- Confirm Password -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Confirm Password *</label>
-          <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none">🔐</span>
+          <label class="form-label small fw-semibold text-dark">Confirm Password *</label>
+          <div class="position-relative">
+            <span class="position-absolute top-50 translate-middle-y" style="left:1rem;pointer-events:none;">🔐</span>
             <input type="password" name="confirm_password" id="pw2"
                    placeholder="Repeat your password"
                    autocomplete="new-password"
-                   class="w-full pl-11 pr-16 py-3.5 border rounded-xl transition outline-none
-                          bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gold/20 focus:border-gold
-                          {% if errors.confirm_password %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}"/>
+                   class="auth-input form-control rounded-xl {% if errors.confirm_password %}is-invalid{% endif %}"
+                   style="padding-left:2.75rem;padding-right:4rem;background:#f9fafb;"/>
             <button type="button" onclick="togglePw('pw2','eye2')"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold
-                           text-gray-500 hover:text-navy bg-gray-100 hover:bg-gray-200
-                           px-2.5 py-1.5 rounded-lg transition min-w-[44px]" id="eye2">Show</button>
+                    class="btn btn-light btn-sm position-absolute top-50 translate-middle-y rounded-2 small fw-semibold"
+                    style="right:.5rem;min-width:44px;" id="eye2">Show</button>
           </div>
-          {% if errors.confirm_password %}<p class="text-red-500 text-xs mt-1">{{ errors.confirm_password }}</p>{% endif %}
+          {% if errors.confirm_password %}<p class="text-danger small mt-1 mb-0">{{ errors.confirm_password }}</p>{% endif %}
         </div>
 
         <!-- Terms -->
-        <div class="flex items-start gap-3 text-sm">
-          <input type="checkbox" required id="terms"
-                 class="mt-0.5 w-5 h-5 rounded border-gray-300 accent-navy cursor-pointer flex-shrink-0"/>
-          <label for="terms" class="text-gray-500 leading-relaxed cursor-pointer text-sm">
+        <div class="d-flex align-items-start gap-2 small">
+          <input type="checkbox" required id="terms" class="form-check-input mt-1 flex-shrink-0" style="cursor:pointer;"/>
+          <label for="terms" class="text-secondary small mb-0" style="line-height:1.5;cursor:pointer;">
             I agree to the
-            <a href="{% url 'frontend:terms' %}" class="text-navy font-semibold hover:text-gold transition-colors">Terms</a>
+            <a href="{% url 'frontend:terms' %}" class="text-navy fw-semibold">Terms</a>
             and
-            <a href="{% url 'frontend:privacy_policy' %}" class="text-navy font-semibold hover:text-gold transition-colors">Privacy Policy</a>
+            <a href="{% url 'frontend:privacy_policy' %}" class="text-navy fw-semibold">Privacy Policy</a>
           </label>
         </div>
 
         <!-- Submit -->
-        <button type="submit"
-                class="w-full bg-navy hover:bg-navy-700 text-white font-bold
-                       py-4 rounded-xl transition-all btn-press
-                       flex items-center justify-center gap-2 text-sm
-                       shadow-lg shadow-navy/20 min-h-[52px]">
+        <button type="submit" class="btn btn-navy w-100 fw-bold rounded-xl btn-press d-flex align-items-center
+                       justify-content-center gap-2 small shadow" style="min-height:52px;padding:1rem 0;">
           Create Account →
         </button>
       </form>
 
-      <div class="relative my-5">
-        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-100"></div></div>
-        <div class="relative flex justify-center"><span class="bg-white px-3 text-xs text-gray-400">Already have an account?</span></div>
+      <div class="position-relative my-4 text-center">
+        <hr class="my-0"/>
+        <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 small text-secondary">Already have an account?</span>
       </div>
 
       <a href="{% url 'accounts:login' %}"
-         class="w-full flex items-center justify-center border-2 border-navy text-navy
-                hover:bg-navy hover:text-white font-semibold py-3.5 rounded-xl
-                transition-all text-sm min-h-[52px]">
+         class="btn-outline-navy w-100 d-flex align-items-center justify-content-center rounded-xl small text-decoration-none"
+         style="min-height:52px;padding:.875rem 0;">
         Sign In Instead
       </a>
     </div>
@@ -206,9 +189,9 @@ function checkStrength(val) {
   const bars   = [1,2,3,4].map(i => document.getElementById('s' + i));
   const checks = [val.length >= 6, /[A-Z]/.test(val), /[0-9]/.test(val), /[^A-Za-z0-9]/.test(val)];
   const score  = checks.filter(Boolean).length;
-  const colors = { 1:'bg-red-400', 2:'bg-orange-400', 3:'bg-yellow-400', 4:'bg-green-500' };
+  const colors = { 1:'#ef4444', 2:'#f97316', 3:'#eab308', 4:'#22c55e' };
   bars.forEach((b,i) => {
-    b.className = `h-1 flex-1 rounded-full transition-colors ${i < score ? colors[score] : 'bg-gray-200'}`;
+    b.style.backgroundColor = i < score ? colors[score] : '#e5e7eb';
   });
 }
 </script>
