@@ -1,0 +1,219 @@
+LYNCTEL — TAILWIND → BOOTSTRAP MIGRATION
+==========================================
+Status as of 2026-07-13
+
+BACKGROUND
+----------
+Installed Tailwind CSS (CDN + custom config) across most of the site's
+templates. We removed the Tailwind CDN/config entirely and are converting every
+template to plain Bootstrap 5.3 (already loaded via CDN in every base.html) plus a
+small set of hand-written custom CSS classes for things Bootstrap doesn't provide
+(brand colors, card-hover effects, animations, etc).
+
+IMPORTANT: Removing the Tailwind CDN script did NOT make the broken pages look
+right — it just means their Tailwind utility classes (flex, grid, items-center,
+gap-4, md:text-lg, hover:bg-gold, w-10, rounded-2xl-as-a-tailwind-class, etc.) now
+render as meaningless class names with zero CSS behind them. Every page still using
+those classes needs to be rewritten to use Bootstrap's utility classes instead
+(d-flex, row/col, align-items-center, gap-3, fs-*, rounded-3, etc.) or a small
+custom class where Bootstrap has no equivalent.
+
+DONE SO FAR (do not touch these again)
+---------------------------------------
+- templates/base.html — the shared site layout (navbar, cart drawer, footer, PWA
+  install banners). Already clean Bootstrap. Also added a few reusable classes to
+  its <style> block (see "Reusable classes" below).
+- templates/dashboard/*  (all 22 files) — the admin dashboard, plus a new
+  static/css/dashboard-admin.css for the sidebar/topbar shell and brand classes.
+- templates/frontend/home.html — the public homepage, plus a rewritten
+  static/css/pages/home.css for the hero slideshow / live-stream rail / product
+  grid (the old home.css was for a completely different, older redesign — ignore
+  its git history, the current version matches the current markup).
+- templates/accounts/*  (all 7 files: login, signup, forget_password,
+  reset_password, verify_otp, profile, delete_confirm)
+- templates/products/*  (all 3 files: product_list, product_detail, deals)
+- templates/cart/cart.html
+- templates/order/*  (all 5 files: checkout, order_confirmation, order_history,
+  tracking, not_paid)
+- templates/payment/*  (all 3 files: pay, payment, failed)
+- templates/vendors/*  (all 9 files: apply, directory, dashboard, shop,
+  product_form, earnings, pending, dispatch, socials_form)
+
+STILL TO DO (~48 files, listed below)
+---------------------------------------
+templates/food/            home.html, menu.html, cart.html, checkout.html,
+                            orders.html, track.html, register.html, item_form.html,
+                            restaurant_dashboard.html, restaurant_settings.html
+templates/rider/           apply.html, dashboard.html, earnings.html,
+                            live_map.html, pending.html
+templates/staff/           base.html, list.html, dashboard.html,
+                            custmers/list.html, custmers/detail.html,
+                            food/order_list.html, food/order_detail.html,
+                            food/vendor_list.html, food/vendor_detail.html,
+                            orders/list.html, orders/detail.html,
+                            products/list.html, riders/list.html,
+                            riders/detail.html, vendors/list.html,
+                            vendors/detail.html
+templates/delivery/        book_ride.html, track.html, track_live.html
+templates/chat/             inbox.html, room.html, support_admin_inbox.html,
+                            support_my_inbox.html
+templates/livestream/      ended.html, go_live.html, stats.html, stream_list.html
+templates/frontend/        about.html, contact.html, cookies.html,
+                            how_it_works.html, privacy_policy.html, terms.html
+templates/fraud/           flagged_orders.html
+
+Note: templates/staff/base.html is the shell all staff/* pages extend — fix that
+FIRST, same as we did for templates/dashboard/base.html, since it likely has its
+own Tailwind CDN + sidebar markup that every staff page depends on.
+
+HOW TO FIND WHAT STILL NEEDS FIXING
+--------------------------------------
+Run this from the repo root (Python 3) to re-scan and get an up-to-date,
+prioritized list with an occurrence count per file:
+
+    python - <<'EOF'
+    import re, glob
+    pat = re.compile(r'class="([^"]*)"')
+    tw = re.compile(
+        r'(?<![-\w])(flex|grid|items-center|items-start|items-end|justify-center|'
+        r'justify-between|justify-start|justify-end)(?![-\w])'
+        r'|(?<![-\w:])(hover|focus|md|lg|sm|xl):[a-z-]'
+    )
+    results = {}
+    for f in glob.glob('templates/**/*.html', recursive=True):
+        c = open(f, encoding='utf-8', errors='ignore').read()
+        n = sum(1 for m in pat.finditer(c) if tw.search(m.group(1)))
+        if n: results[f] = n
+    for f, c in sorted(results.items(), key=lambda x: -x[1]):
+        print(f"{c:4d}  {f}")
+    print(f"\nTOTAL FILES: {len(results)}")
+    EOF
+
+Any file that shows up still has raw Tailwind classes doing nothing. This regex
+undercounts a bit (it won't catch `w-10`, `rounded-2xl` used as a bare Tailwind
+size class, arbitrary `bg-gold/20` opacity syntax, etc.) so also just visually
+scan each file for anything that looks Tailwind-flavored — bare `flex`/`grid`
+(not `d-flex`), `space-y-*`, `divide-y`, `line-clamp-2`, `-translate-y-1/2`,
+`w-<n> h-<n>` sizing, `md:`/`lg:`/`sm:` prefixes, `hover:`/`focus:` prefixes,
+`has-[:checked]:` variants, and Tailwind color-scale classes like `bg-red-500`,
+`text-gray-400`, `bg-orange-100` etc (those exist in Tailwind's palette, not
+Bootstrap's).
+
+REUSABLE CLASSES ALREADY AVAILABLE (don't redefine these)
+-------------------------------------------------------------
+Defined in templates/base.html's <style> block (available on every public page):
+  .btn-navy / .btn-gold / .btn-outline-navy / .btn-outline-gold  — brand buttons
+  .bg-navy / .bg-gold / .bg-gold-light                            — brand bg fills
+  .text-navy / .text-gold / .text-gold-dark                       — brand text
+  .border-gold
+  .rounded-xl (12px) / .rounded-2xl (16px) / .rounded-3xl (24px)  — Bootstrap only
+      goes up to rounded-5; these three give the exact radii the designs use
+  .card-hover        — lift + shadow on hover (for product/vendor cards)
+  .product-card-img + .product-card-hover  — pair these on a card+image for the
+      "image zooms on card hover" effect (replaces Tailwind's group/group-hover)
+  .quick-add-btn (+ .added state)  — the navy "+ Add" cart button used on every
+      product grid; JS should toggle the `.added` class, not swap classes manually
+  .fade-up / .fade-up-1/-2/-3       — entrance animation + stagger delays
+  .btn-press                        — press-down animation on :active
+  .text-truncate-2                  — 2-line clamp (replaces Tailwind line-clamp-2)
+  .auth-input:focus                 — gold focus ring for auth forms
+  --navy / --navy-700 / --gold / --gold-light / --gold-dark / --cream — CSS vars
+
+CSS vars/classes for the admin dashboard live in static/css/dashboard-admin.css
+(only loaded by templates/dashboard/base.html — irrelevant to the remaining work,
+which is all public/vendor/rider/staff facing pages using templates/base.html).
+
+If a page needs something not in this list (e.g. a food-specific orange accent
+color, a staff-specific status badge color), add it locally to that template's
+{% block extra_head %} <style> tag, OR if it's clearly going to be reused across
+many files in the same app (e.g. every staff/* page needs a sidebar), add it to
+that app's own base template instead of repeating it.
+
+CONVERSION METHOD (what we did for every file above)
+----------------------------------------------------
+1. Read the file.
+2. Replace layout utilities 1:1:
+     flex               -> d-flex
+     flex-col           -> flex-column
+     items-center       -> align-items-center
+     items-start/end    -> align-items-start / align-items-end
+     justify-between    -> justify-content-between
+     justify-center     -> justify-content-center
+     grid grid-cols-N    -> row row-cols-N  (children become <div class="col">)
+     gap-N               -> gap-N (Bootstrap has gap-1..gap-5; for finer control
+                             use inline style="gap:Xrem")
+     space-y-N / space-x-N -> wrap in a flex container with `gap-N` instead, or
+                             d-flex flex-column gap-N
+     hidden               -> d-none  (AND update any JS that does
+                             classList.add/remove('hidden') to use 'd-none')
+     rounded-full          -> rounded-pill (or rounded-circle for square avatars)
+     divide-y / divide-gray-100 -> usually replace the whole list with Bootstrap's
+                             <ul class="list-group list-group-flush"> instead
+     line-clamp-2           -> text-truncate-2 (defined in base.html)
+     truncate                -> text-truncate
+     w-<n> h-<n> (sizing)     -> inline style="width:Xrem;height:Xrem" (Tailwind's
+                             scale is n * 0.25rem, e.g. w-10 = 2.5rem)
+     -translate-y-1/2 + top-1/2 (icon-in-input centering) -> Bootstrap's
+                             `position-absolute top-50 translate-middle-y`
+     has-[:checked]:border-gold  -> real CSS, Bootstrap has nothing for this:
+       .my-option-label:has(:checked) { border-color: var(--gold); }
+       (native :has() works in all current browsers, no framework needed)
+
+3. Replace color utilities using the Tailwind palette (bg-red-500, text-gray-400,
+   bg-orange-100, bg-green-50 text-green-700, etc.) with Bootstrap's semantic
+   colors + opacity utilities:
+     red/rose     -> danger      (text-danger, bg-danger, bg-danger bg-opacity-10)
+     green/emerald -> success
+     blue         -> primary  (or info for lighter blue badges)
+     yellow/amber  -> warning
+     orange        -> warning, OR if you need a true orange (food-branding pages
+                      do), define a small custom var+class locally, same pattern
+                      as .bg-food-orange in static/css/pages/home.css
+     gray-400/500  -> text-secondary
+     gray-100/50   -> bg-light
+     gray-900       -> text-dark / bg-dark
+   For status badges (order status, payment status, etc.) use Bootstrap's badge
+   component: <span class="badge rounded-pill text-bg-success">...</span>
+   (text-bg-success/danger/warning/primary/secondary/info all exist).
+
+4. Typography:
+     text-xs/sm/base/lg/xl/2xl/3xl  -> small / (default) / fs-6..fs-1
+       (Bootstrap's fs-* scale doesn't line up exactly with Tailwind's; "small"
+       covers most text-xs/text-sm cases, fs-6 through fs-1 cover the rest — don't
+       worry about pixel-perfect matching, just visually reasonable)
+     font-bold/font-semibold/font-medium -> fw-bold / fw-semibold / fw-medium
+     font-display (Syne font)     -> already a real class in base.html, keep using it
+     uppercase tracking-wide       -> text-uppercase + inline
+                                      style="letter-spacing:.05em"
+     leading-tight/relaxed         -> inline style="line-height:1.2" / "1.6"
+
+5. Forms: replace raw `<input class="border rounded px-4 py-2 ...">` styling with
+   Bootstrap's `form-control` / `form-select` / `form-check-input` / `form-label`
+   classes, which already include padding, border, and focus states — you mostly
+   just need to add `rounded-xl` or similar on top if the design wants bigger
+   radius than Bootstrap's default.
+
+6. JS: search the file's {% block extra_js %} for any `classList` calls that
+   reference Tailwind class names (`hidden`, `bg-navy`/`bg-gold` swaps, `opacity-50`,
+   `cursor-not-allowed`, etc.) and update them to match whatever you renamed the
+   HTML classes to. This is the easiest step to forget — always grep the JS block
+   after converting the HTML.
+
+7. Save, then sanity-check by grepping the file again with the scan script above
+   to confirm the occurrence count dropped to 0.
+
+VERIFYING A PAGE RENDERS
+-------------------------
+Dev server (Windows, project venv is named lyctel-C4a0NBuY under
+~/.virtualenvs/): from repo root,
+
+    C:\Users\<you>\.virtualenvs\lyctel-C4a0NBuY\Scripts\python.exe manage.py runserver 127.0.0.1:8792
+
+then open the relevant URL. Most food/rider/staff/vendor pages require being
+logged in as that role — check each app's urls.py + views.py for the exact path
+and required role if a page 404s or redirects unexpectedly.
+
+Do NOT assume the page "looks right" just because it returns HTTP 200 — that only
+proves Django rendered the template without a syntax error, not that the CSS is
+correct. Actually open it in a browser (or at minimum re-run the Tailwind-scan
+script above) before calling a file done.
