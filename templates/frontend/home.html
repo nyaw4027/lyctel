@@ -1,146 +1,626 @@
 {% extends "base.html" %}
-{% load static i18n %}
-
-{% block title %}Lynctel Food — Restaurants Near You{% endblock %}
+{% load static %}
+{% block title %}Lynctel — Quality Products Delivered in Ghana{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
-<style>
-  /* Small page-scoped helpers kept minimal per instructions.txt */
-  .hero-address { min-height: 44px; }
-  .vendor-logo-overlap { transform: translateY(40%); }
-  .slide-dot { width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25);border:none }
-  .slide-dot.active { background:var(--gold); }
-  .live-stream-card { width:160px; }
-</style>
+<link rel="stylesheet" href="{% static 'css/pages/home.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="container-xl px-3 py-4">
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-      <h1 class="h4 mb-0 font-display">Food Delivery</h1>
-      <p class="small text-muted mb-0">Order from restaurants near you</p>
-    </div>
-    <div>
-      <form method="get" class="d-flex" role="search">
-        <input name="q" value="{{ request.GET.q|default:'' }}" class="form-control form-control-sm me-2" placeholder="Search restaurants or cuisines" aria-label="Search">
-        <button class="btn btn-sm btn-outline-secondary">Search</button>
-      </form>
-    </div>
-  </div>
+<!-- ── HERO ───────────────────────────────── -->
+<section class="position-relative overflow-hidden bg-navy">
+  <div class="position-absolute top-0 start-0 w-100 h-100 dotted-bg" style="opacity:.05;"></div>
+  <div class="position-absolute top-0 end-0 bg-gold rounded-circle"
+       style="width:24rem;height:24rem;opacity:.1;transform:translate(33%,-25%);filter:blur(64px);pointer-events:none;"></div>
 
-  <!-- HERO (simple, Bootstrap-based) -->
-  <section class="mb-4">
-    <div class="card bg-navy text-white overflow-hidden">
-      <div class="card-body">
-        <div class="row g-3 align-items-center">
-          <div class="col-lg-7">
-            <h2 class="h3 font-display mb-2">Hungry? We've got you.</h2>
-            <p class="small text-white-50 mb-3">Order from the best restaurants near you. Track live. Pay MoMo or cash.</p>
-            <div class="d-flex gap-2">
-              <div class="flex-grow-1">
-                <div class="input-group hero-address">
-                  <span class="input-group-text bg-white bg-opacity-10 text-white border-0">📍</span>
-                  <input id="hero-address" type="text" class="form-control bg-transparent text-white border-0" placeholder="Enter your delivery address" aria-label="Delivery address">
+  <div class="position-relative container px-3 px-md-4 py-5 py-md-5">
+    <div class="d-flex flex-column flex-lg-row align-items-center gap-4 gap-lg-5">
+
+      <!-- LEFT -->
+      <div class="flex-fill text-center text-lg-start">
+        <div class="d-inline-flex align-items-center gap-2 bg-white bg-opacity-10 text-gold small fw-semibold
+                    px-3 py-2 rounded-pill mb-3 fade-up fade-up-1">
+          <span class="bg-gold rounded-circle animate-pulse" style="width:6px;height:6px;"></span>
+          Fast Delivery Across Ghana 🇬🇭
+        </div>
+        <h1 class="font-display text-white mb-3 fade-up fade-up-2" style="font-weight:800;font-size:clamp(2rem,6vw,3.75rem);line-height:1.1;">
+          Quality Products.<br/>
+          <span class="shimmer">Delivered Fast.</span>
+        </h1>
+        <p class="text-white-50 fs-6 mb-4 mx-auto mx-lg-0 fade-up fade-up-3" style="max-width:32rem;line-height:1.7;">
+          Browse electronics, fashion, gadgets and more — delivered straight to your door anywhere in Ghana.
+        </p>
+        <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center justify-content-lg-start fade-up fade-up-3 mb-4">
+          <a href="{% url 'products:list' %}"
+             class="btn btn-gold fw-semibold px-4 py-3 rounded-2xl btn-press shadow touch-target
+                    d-inline-flex align-items-center justify-content-center gap-2">Shop Now →</a>
+          <a href="{% url 'food:home' %}"
+             class="btn btn-food-orange fw-semibold px-4 py-3 rounded-2xl btn-press touch-target
+                    d-inline-flex align-items-center justify-content-center gap-2">🍔 Order Food</a>
+        </div>
+        <div class="d-flex align-items-center gap-4 justify-content-center justify-content-lg-start fade-up fade-up-3">
+          <div class="text-center text-lg-start">
+            <p class="font-display fw-bold fs-4 text-white mb-0">500+</p>
+            <p class="text-white-50 small mb-0">Products</p>
+          </div>
+          <div class="bg-white bg-opacity-25" style="width:1px;height:1.75rem;"></div>
+          <div class="text-center text-lg-start">
+            <p class="font-display fw-bold fs-4 text-white mb-0">50+</p>
+            <p class="text-white-50 small mb-0">Vendors</p>
+          </div>
+          <div class="bg-white bg-opacity-25" style="width:1px;height:1.75rem;"></div>
+          <div class="text-center text-lg-start">
+            <p class="font-display fw-bold fs-4 text-white mb-0">Accra</p>
+            <p class="text-white-50 small mb-0">Same-day</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Slideshow -->
+      <div class="flex-fill w-100 mx-auto mx-lg-0 fade-up fade-up-2 hero-visual-col" style="max-width:28rem;">
+        <div id="hero-slideshow" class="position-relative" style="user-select:none;">
+
+          <!-- SLIDE 1 -->
+          <div class="slide active">
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3xl p-4 p-md-4"
+                 style="backdrop-filter:blur(6px);">
+              <div class="d-inline-flex align-items-center gap-2 bg-gold bg-opacity-25 text-gold small fw-bold px-3 py-2 rounded-pill mb-3">✨ How Lynctel Works</div>
+              <div class="d-flex flex-column gap-3">
+                {% for step in "123" %}
+                <div class="d-flex align-items-start gap-3">
+                  <div class="{% if forloop.first %}bg-gold{% else %}bg-white bg-opacity-10 border border-white border-opacity-25{% endif %}
+                              rounded-3 d-flex align-items-center justify-content-center flex-shrink-0
+                              font-display fw-bold small {% if forloop.first %}text-navy{% else %}text-gold{% endif %}"
+                       style="width:2.5rem;height:2.5rem;">{{ forloop.counter }}</div>
+                  <div>
+                    {% if forloop.first %}
+                    <p class="text-white fw-semibold small mb-1">Browse & Add to Cart</p>
+                    <p class="text-white-50 small mb-0" style="line-height:1.5;">Explore hundreds of products from verified vendors.</p>
+                    {% elif forloop.counter == 2 %}
+                    <p class="text-white fw-semibold small mb-1">Pay with MoMo or Card</p>
+                    <p class="text-white-50 small mb-0" style="line-height:1.5;">Checkout securely with MTN, Vodafone, AirtelTigo or Paystack.</p>
+                    {% else %}
+                    <p class="text-white fw-semibold small mb-1">Get It Delivered</p>
+                    <p class="text-white-50 small mb-0" style="line-height:1.5;">A Lynctel rider delivers it right to your door.</p>
+                    {% endif %}
+                  </div>
                 </div>
+                {% if not forloop.last %}<div class="bg-white bg-opacity-10" style="width:1px;height:.75rem;margin-left:1.25rem;"></div>{% endif %}
+                {% endfor %}
               </div>
-              <button type="button" class="btn btn-gold">Find</button>
+              <a href="{% url 'products:list' %}"
+                 class="mt-3 d-flex align-items-center justify-content-center gap-2 btn-gold
+                        fw-semibold small py-3 rounded-3 w-100 touch-target text-decoration-none">
+                Start Shopping →
+              </a>
             </div>
           </div>
 
-          <div class="col-lg-5 d-none d-lg-block text-center">
-            <div class="rounded-3" style="background:linear-gradient(135deg,var(--gold),var(--gold-light));height:10rem;display:flex;align-items:center;justify-content:center;">
-              <span style="font-size:3rem;">🍔</span>
+          <!-- SLIDE 2 -->
+          <div class="slide">
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3xl p-4" style="backdrop-filter:blur(6px);">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-inline-flex align-items-center gap-2 bg-gold bg-opacity-25 text-gold small fw-bold px-3 py-2 rounded-pill">🔥 Most Purchased</div>
+                <a href="{% url 'products:list' %}" class="text-white-50 small text-decoration-none">View all →</a>
+              </div>
+              {% if hot_products %}
+              <div class="row row-cols-2 g-2">
+                {% for p in hot_products %}
+                <div class="col">
+                <a href="{% url 'products:detail' p.slug %}"
+                   class="slide-card d-block bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3 overflow-hidden text-decoration-none">
+                  <div class="position-relative overflow-hidden" style="height:5rem;">
+                    {% if p.primary_image %}
+                    <img src="{{ p.primary_image }}" alt="{{ p.name }}" class="w-100 h-100 object-fit-cover"/>
+                    {% else %}
+                    <div class="w-100 h-100 bg-white bg-opacity-10 d-flex align-items-center justify-content-center fs-3">📦</div>
+                    {% endif %}
+                    <span class="position-absolute top-0 start-0 m-1 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:9px;">🔥</span>
+                    {% if p.has_discount %}
+                    <span class="position-absolute top-0 end-0 m-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:9px;">-{{ p.discount_percent }}%</span>
+                    {% endif %}
+                  </div>
+                  <div class="p-2">
+                    <p class="text-white small fw-medium text-truncate mb-0">{{ p.name }}</p>
+                    <p class="text-gold small fw-bold mb-0">GHS {{ p.final_price }}
+                      {% if p.has_discount %}<span class="text-white-50 text-decoration-line-through ms-1" style="font-size:10px;">{{ p.selling_price }}</span>{% endif %}
+                    </p>
+                  </div>
+                </a>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="row row-cols-2 g-2">{% for i in "1234" %}<div class="col"><div class="skeleton" style="height:8rem;"></div></div>{% endfor %}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- SLIDE 3 -->
+          <div class="slide">
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3xl p-4 p-md-4" style="backdrop-filter:blur(6px);">
+              <div class="d-inline-flex align-items-center gap-2 bg-food-orange bg-opacity-25 text-food-orange small fw-bold px-3 py-2 rounded-pill mb-3">🍔 Food Delivery</div>
+              <h3 class="font-display fw-bold text-white fs-5 mb-2">Hungry? Order Now</h3>
+              <p class="text-white-50 small mb-3" style="line-height:1.5;">From local restaurants straight to your door in 30–45 minutes.</p>
+              <div class="d-flex flex-column gap-2 mb-3">
+                {% for item in "1234" %}
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2">
+                  {% if forloop.first %}<span>🍽️</span><p class="text-white small mb-0">Choose from local restaurants</p>
+                  {% elif forloop.counter == 2 %}<span>📍</span><p class="text-white small mb-0">Enter address — fee auto-calculates</p>
+                  {% elif forloop.counter == 3 %}<span>🛵</span><p class="text-white small mb-0">Rider picks up and delivers fast</p>
+                  {% else %}<span>💵</span><p class="text-white small mb-0">Pay on delivery or MoMo</p>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
+              <a href="{% url 'food:home' %}"
+                 class="d-flex align-items-center justify-content-center gap-2 btn-food-orange
+                        fw-semibold small py-3 rounded-3 w-100 touch-target text-decoration-none">
+                🍔 Order Food Now →
+              </a>
+            </div>
+          </div>
+
+          <!-- SLIDE 4 -->
+          <div class="slide">
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3xl p-4 p-md-4" style="backdrop-filter:blur(6px);">
+              <div class="d-inline-flex align-items-center gap-2 bg-gold bg-opacity-25 text-gold small fw-bold px-3 py-2 rounded-pill mb-3">🏪 Become a Vendor</div>
+              <h3 class="font-display fw-bold text-white fs-5 mb-2">Sell to Thousands</h3>
+              <div class="d-flex flex-column gap-2 mb-3">
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span>💰</span><p class="text-white small mb-0">Keep <span class="text-gold fw-bold">96%</span> of every sale</p></div>
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span>🚀</span><p class="text-white small mb-0">Free setup, no monthly fees</p></div>
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span>📊</span><p class="text-white small mb-0">Real-time sales dashboard</p></div>
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span>🛵</span><p class="text-white small mb-0">Our riders handle deliveries</p></div>
+              </div>
+              <a href="{% url 'vendors:apply' %}"
+                 class="d-flex align-items-center justify-content-center gap-2 btn-gold
+                        fw-semibold small py-3 rounded-3 w-100 touch-target text-decoration-none">
+                Open Your Shop →
+              </a>
+            </div>
+          </div>
+
+          <!-- SLIDE 5 -->
+          <div class="slide">
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3xl p-4 p-md-4" style="backdrop-filter:blur(6px);">
+              <div class="d-inline-flex align-items-center gap-2 bg-gold bg-opacity-25 text-gold small fw-bold px-3 py-2 rounded-pill mb-3">🛵 Fast Delivery</div>
+              <h3 class="font-display fw-bold text-white fs-5 mb-2">We Bring It To You</h3>
+              <div class="bg-white bg-opacity-10 rounded-3 p-3 mb-3 d-flex flex-column gap-2">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-2"><div class="bg-success rounded-circle" style="width:.5rem;height:.5rem;"></div><span class="text-white small">Accra & Tema</span></div>
+                  <span class="text-success small fw-semibold bg-success bg-opacity-10 px-2 py-1 rounded-pill">Same day</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-2"><div class="bg-gold rounded-circle" style="width:.5rem;height:.5rem;"></div><span class="text-white small">Kumasi</span></div>
+                  <span class="text-gold small fw-semibold bg-gold bg-opacity-10 px-2 py-1 rounded-pill">1–2 days</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-2"><div class="bg-primary rounded-circle" style="width:.5rem;height:.5rem;"></div><span class="text-white small">Other regions</span></div>
+                  <span class="text-primary small fw-semibold bg-primary bg-opacity-10 px-2 py-1 rounded-pill">2–4 days</span>
+                </div>
+              </div>
+              <a href="{% url 'products:list' %}"
+                 class="d-flex align-items-center justify-content-center gap-2 btn-gold
+                        fw-semibold small py-3 rounded-3 w-100 touch-target text-decoration-none">
+                Order Now →
+              </a>
+            </div>
+          </div>
+
+          <!-- Progress bar + dots -->
+          <div class="mt-3 rounded-pill overflow-hidden bg-white bg-opacity-10" style="height:2px;">
+            <div id="slide-progress" class="h-100 bg-gold slide-progress-bar"></div>
+          </div>
+          <div class="mt-3 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2" id="slide-dots">
+              <button class="slide-dot active touch-target" onclick="goToSlide(0)"></button>
+              <button class="slide-dot touch-target" onclick="goToSlide(1)"></button>
+              <button class="slide-dot touch-target" onclick="goToSlide(2)"></button>
+              <button class="slide-dot touch-target" onclick="goToSlide(3)"></button>
+              <button class="slide-dot touch-target" onclick="goToSlide(4)"></button>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <button onclick="prevSlide()" class="btn bg-white bg-opacity-10 text-white rounded-3 border-0 touch-target d-flex align-items-center justify-content-center" style="width:2.25rem;height:2.25rem;">‹</button>
+              <button onclick="nextSlide()" class="btn btn-gold rounded-3 fw-bold touch-target d-flex align-items-center justify-content-center" style="width:2.25rem;height:2.25rem;">›</button>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- CUISINE FILTER -->
-  <div class="mb-3">
-    <div class="d-flex gap-2 overflow-auto py-2">
-      <a href="{% url 'food:home' %}" class="btn btn-sm btn-outline-secondary {% if not selected_cuisine %}active{% endif %}">🍽️ All</a>
-      {% for value,label in cuisines %}
-      <a href="{% url 'food:home' %}?cuisine={{ value }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm btn-outline-secondary {% if selected_cuisine == value %}active{% endif %}">{{ label }}</a>
+<!-- ── TRUST BADGES ───────────────────────── -->
+<section class="border-bottom bg-white">
+  <div class="container px-3 px-md-4 py-3">
+    <div class="row row-cols-2 row-cols-md-4 g-3">
+      <div class="col d-flex align-items-center gap-2">
+        <div class="bg-gold-light rounded-3 d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:2.25rem;height:2.25rem;">🚚</div>
+        <div><p class="fw-semibold text-navy small mb-0">Fast Delivery</p><p class="text-secondary small mb-0">Accra same day</p></div>
+      </div>
+      <div class="col d-flex align-items-center gap-2">
+        <div class="bg-success bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:2.25rem;height:2.25rem;">📱</div>
+        <div><p class="fw-semibold text-navy small mb-0">MoMo Payment</p><p class="text-secondary small mb-0">MTN, Vodafone, ATM</p></div>
+      </div>
+      <div class="col d-flex align-items-center gap-2">
+        <div class="bg-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:2.25rem;height:2.25rem;">✅</div>
+        <div><p class="fw-semibold text-navy small mb-0">Quality Assured</p><p class="text-secondary small mb-0">Verified vendors</p></div>
+      </div>
+      <div class="col d-flex align-items-center gap-2">
+        <div class="bg-danger bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:2.25rem;height:2.25rem;">📺</div>
+        <div>
+          <p class="fw-semibold text-navy small mb-0">Live Shopping</p>
+          <a href="{% url 'livestream:list' %}" class="small text-danger text-decoration-none d-flex align-items-center gap-1">
+            <span class="bg-danger rounded-circle animate-pulse" style="width:6px;height:6px;"></span> Watch now →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── LIVE NOW ────────────────────────────── -->
+{% if live_streams %}
+<section class="py-4 py-md-5 overflow-hidden" style="background:#0a0f1a;">
+  <div class="container px-3 px-md-4">
+    <div class="d-flex align-items-end justify-content-between mb-4">
+      <div>
+        <p class="d-flex align-items-center gap-2 text-danger small fw-bold text-uppercase mb-1" style="letter-spacing:.08em;">
+          <span class="bg-danger rounded-circle animate-pulse" style="width:8px;height:8px;"></span> Live Right Now
+        </p>
+        <h2 class="font-display fw-bold fs-3 text-white mb-0">Watch & Shop Live</h2>
+      </div>
+      <a href="{% url 'livestream:list' %}" class="small fw-semibold text-danger text-decoration-none text-nowrap">See all →</a>
+    </div>
+    <div class="live-scroll">
+      {% for stream in live_streams %}
+      <a href="{% url 'livestream:watch' stream.id %}" class="live-stream-card position-relative rounded-3 overflow-hidden flex-shrink-0" style="background:#111827;">
+        {% if stream.thumbnail %}
+        <img src="{{ stream.thumbnail.url }}" alt="{{ stream.title }}"
+             class="w-100 object-fit-cover" style="aspect-ratio:9/16;transition:transform .3s ease;"/>
+        {% else %}
+        <div class="w-100 d-flex align-items-center justify-content-center" style="aspect-ratio:9/16;background:linear-gradient(to bottom, var(--navy), #111827);">
+          <span class="fs-1">📺</span>
+        </div>
+        {% endif %}
+        <div class="position-absolute top-0 start-0 w-100 h-100" style="background:linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,.1) 60%, transparent);"></div>
+        <div class="position-absolute top-0 start-0 m-2 d-flex align-items-center gap-1 bg-danger text-white fw-bold rounded-pill px-2 py-1 live-ring" style="font-size:10px;">
+          <span class="bg-white rounded-circle animate-pulse" style="width:6px;height:6px;"></span> LIVE
+        </div>
+        <div class="position-absolute top-0 end-0 m-2 fw-semibold rounded-pill px-2 py-1" style="font-size:10px;background:rgba(0,0,0,.5);color:#fff;backdrop-filter:blur(4px);">
+          👁 {{ stream.current_viewers }}
+        </div>
+        <div class="position-absolute bottom-0 start-0 end-0 p-2">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            {% if stream.vendor.logo %}
+            <img src="{{ stream.vendor.logo.url }}" class="rounded-circle object-fit-cover border border-white border-opacity-25 flex-shrink-0" style="width:1.5rem;height:1.5rem;"/>
+            {% else %}
+            <div class="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:1.5rem;height:1.5rem;font-size:10px;">{{ stream.vendor.shop_name|first|upper }}</div>
+            {% endif %}
+            <p class="text-white text-truncate mb-0" style="font-size:11px;font-weight:600;">{{ stream.vendor.shop_name }}</p>
+          </div>
+          <p class="text-white-50 text-truncate-2 mb-0" style="font-size:10px;line-height:1.2;">{{ stream.title }}</p>
+        </div>
+      </a>
+      {% endfor %}
+      {% if user.is_authenticated and user.role == 'vendor' %}
+      <a href="{% url 'livestream:go_live' %}"
+         class="live-stream-card flex-shrink-0 rounded-3 d-flex flex-column align-items-center justify-content-center gap-3
+                p-3 text-center text-decoration-none"
+         style="aspect-ratio:9/16;background:#111827;border:2px dashed rgba(220,38,38,.4);">
+        <div class="bg-danger bg-opacity-25 rounded-3 d-flex align-items-center justify-content-center" style="width:3.5rem;height:3.5rem;">
+          <span class="fs-3">🔴</span>
+        </div>
+        <div>
+          <p class="text-white small fw-bold mb-0">Start Streaming</p>
+          <p class="text-secondary mb-0" style="font-size:10px;">Go live now</p>
+        </div>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ── CATEGORIES ─────────────────────────── -->
+{% if categories %}
+<section class="container px-3 px-md-4 py-4 py-md-5">
+  <div class="d-flex align-items-end justify-content-between mb-4">
+    <div>
+      <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em;">Browse by</p>
+      <h2 class="font-display fw-bold fs-4 fs-md-2 text-navy mb-0">Categories</h2>
+    </div>
+    <a href="{% url 'products:list' %}" class="small fw-semibold text-navy text-decoration-none">View all →</a>
+  </div>
+  <div class="row row-cols-3 row-cols-sm-4 row-cols-md-6 g-2">
+    {% for category in categories %}
+    <div class="col">
+    <a href="{% url 'products:list' %}?category={{ category.slug }}"
+       class="category-card d-flex flex-column align-items-center gap-2 bg-white rounded-3 border p-3 h-100 text-center touch-target">
+      {% if category.icon %}
+      <img src="{{ category.icon.url }}" alt="{{ category.name }}" class="rounded-3 object-fit-cover category-card-icon" style="width:2.5rem;height:2.5rem;"/>
+      {% else %}
+      <div class="bg-gold-light rounded-3 d-flex align-items-center justify-content-center category-card-icon" style="width:2.5rem;height:2.5rem;">
+        <svg style="width:1.25rem;height:1.25rem;" class="text-gold-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+        </svg>
+      </div>
+      {% endif %}
+      <span class="small fw-semibold text-navy category-card-label" style="line-height:1.2;">{{ category.name }}</span>
+    </a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- ── NEW ARRIVALS ───────────────────────── -->
+<section class="bg-white py-4 py-md-5">
+  <div class="container px-3 px-md-4">
+    <div class="d-flex align-items-end justify-content-between mb-4">
+      <div>
+        <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em;">Just landed</p>
+        <h2 class="font-display fw-bold fs-4 fs-md-2 text-navy mb-0">New Arrivals</h2>
+      </div>
+      <a href="{% url 'products:list' %}" class="small fw-semibold text-navy text-decoration-none">See all →</a>
+    </div>
+
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
+      {% for product in new_products %}
+      {% with product.videos.all as vids %}
+      {% with vids.0 as first_vid %}
+      <div class="col">
+      <div class="card-hover bg-body rounded-3xl overflow-hidden border h-100 d-flex flex-column" style="background:var(--cream);">
+
+        <!-- ── Media block (image + optional video hover) ── -->
+        <div class="video-card-wrap{% if first_vid %} has-video{% endif %} position-relative overflow-hidden" style="height:9rem;">
+
+          <!-- Static image -->
+          <div class="position-absolute top-0 start-0 w-100 h-100">
+            <a href="{% url 'products:detail' product.slug %}">
+              {% if product.primary_image %}
+              <img src="{{ product.primary_image }}" alt="{{ product.name }}"
+                   class="w-100 h-100 object-fit-cover"/>
+              {% else %}
+              <div class="w-100 h-100 bg-light d-flex align-items-center justify-content-center">
+                <span class="fs-1" style="opacity:.2;">📦</span>
+              </div>
+              {% endif %}
+            </a>
+          </div>
+
+          <!-- Video layer (only rendered if product has a video) -->
+          {% if first_vid %}
+          <div class="video-card-player">
+            {% if first_vid.embed_url %}
+            <iframe frameborder="0" allowfullscreen allow="autoplay"
+                    data-src="{{ first_vid.embed_iframe_src }}?autoplay=1&mute=1&controls=0&loop=1&playsinline=1"></iframe>
+            {% else %}
+            <video muted loop playsinline preload="none" src="{{ first_vid.video.url }}"></video>
+            {% endif %}
+          </div>
+          <!-- Video badge -->
+          <span class="video-badge">
+            <svg style="width:10px;height:10px;fill:#fff;" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            Video
+          </span>
+          {% endif %}
+
+          <!-- Badges -->
+          {% if product.is_featured %}
+          <span class="position-absolute top-0 end-0 m-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:9px;z-index:2;">⭐</span>
+          {% endif %}
+          {% if product.has_discount %}
+          <span class="position-absolute top-0 start-0 m-1 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:9px;z-index:2;">-{{ product.discount_percent }}%</span>
+          {% endif %}
+        </div>
+
+        <!-- Product info -->
+        <div class="p-3 d-flex flex-column flex-fill">
+          <a href="{% url 'products:detail' product.slug %}"
+             class="small fw-semibold text-navy text-truncate-2 mb-2 text-decoration-none" style="line-height:1.35;">
+            {{ product.name }}
+          </a>
+          <div class="mt-auto d-flex align-items-center justify-content-between gap-1">
+            <div class="d-flex flex-column">
+              <span class="font-display fw-bold text-navy small">GHS {{ product.final_price }}</span>
+              {% if product.has_discount %}
+              <span class="text-secondary text-decoration-line-through" style="font-size:10px;">GHS {{ product.selling_price }}</span>
+              {% endif %}
+            </div>
+            {% if product.is_in_stock %}
+            <button onclick="quickAdd({{ product.pk }}, this)"
+                    class="quick-add-btn small fw-semibold px-2 py-2 rounded-3 border-0 btn-press touch-target">
+              + Add
+            </button>
+            {% else %}
+            <span class="small text-secondary">Out</span>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+      </div>
+      {% endwith %}
+      {% endwith %}
+      {% empty %}
+      <div class="col-12 text-center py-5 text-secondary">
+        <p class="fs-1 mb-2">📦</p>
+        <p class="small">No products yet.</p>
+      </div>
       {% endfor %}
     </div>
   </div>
+</section>
 
-  <!-- RESTAURANT GRID -->
-  <section class="mb-4">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-      <div>
-        <h3 class="h6 mb-0 text-navy">Restaurants</h3>
-        <p class="small text-muted mb-0">{{ vendor_list|length }} restaurant{{ vendor_list|length|pluralize }}</p>
-      </div>
-      <div>
-        {% if page_obj and page_obj.has_other_pages %}
-        <nav aria-label="pagination">
-          <ul class="pagination mb-0">
-            {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹</a></li>{% endif %}
-            <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
-            {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">›</a></li>{% endif %}
-          </ul>
-        </nav>
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
-      {% for vendor in vendor_list %}
-      <div class="col">
-        <a href="{% url 'food:menu' vendor.slug %}" class="card h-100 text-decoration-none text-reset">
-          <div class="position-relative">
-            {% if vendor.banner %}
-            <img src="{{ vendor.banner.url }}" alt="{{ vendor.name }}" class="card-img-top" style="height:140px;object-fit:cover;">
-            {% else %}
-            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:140px;">🍽️</div>
-            {% endif %}
-            {% if vendor.logo %}
-            <div class="position-absolute start-3 bottom-0 translate-middle-y vendor-logo-overlap ms-3">
-              <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }}" class="rounded-2" style="width:56px;height:56px;object-fit:cover;border:3px solid #fff;">
-            </div>
-            {% endif %}
+<!-- ── FOOD BANNER ───────────────────────── -->
+<section class="container px-3 px-md-4 py-4 py-md-5">
+  <div class="position-relative food-gradient rounded-3xl overflow-hidden">
+    <div class="position-absolute top-0 start-0 w-100 h-100 dotted-bg" style="opacity:.1;"></div>
+    <div class="position-absolute d-none d-md-block" style="right:1.5rem;top:1rem;font-size:3rem;opacity:.2;">🍔</div>
+    <div class="position-absolute d-none d-md-block" style="right:6rem;bottom:1rem;font-size:2.5rem;opacity:.2;">🍕</div>
+    <div class="position-relative px-4 px-md-5 py-4 py-md-5">
+      <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-4 justify-content-between">
+        <div>
+          <div class="d-inline-flex align-items-center gap-2 bg-white bg-opacity-25 text-white small fw-bold px-3 py-2 rounded-pill mb-3">
+            <span class="bg-white rounded-circle animate-pulse" style="width:6px;height:6px;"></span>
+            NEW — Food Delivery 🛵
           </div>
-          <div class="card-body pt-4">
-            <h5 class="h6 mb-1">{{ vendor.name }}</h5>
-            <p class="small text-muted mb-2">{{ vendor.get_cuisine_display }} · {{ vendor.city }}</p>
-            <div class="d-flex align-items-center gap-2 small text-secondary">
-              <span>⏱ {{ vendor.avg_prep_time }}+ min</span>
-              {% if vendor.rating %}<span>· ★ {{ vendor.rating }}</span>{% endif %}
-              <span class="ms-auto fw-semibold">GHS {{ vendor.min_order }}</span>
-            </div>
+          <h2 class="font-display fw-bold fs-4 fs-md-2 text-white mb-2">Hungry? Order Food Now</h2>
+          <p class="text-white small" style="max-width:28rem;opacity:.85;">From local restaurants to your door. Pay with MoMo, cash, or card. Delivered in 30–45 mins.</p>
+          <div class="d-flex align-items-center gap-3 mt-2 text-white small fw-medium flex-wrap" style="opacity:.9;">
+            <span>🍽️ Choose</span><span>→</span><span>🛒 Add</span><span>→</span><span>🛵 Delivered</span>
           </div>
+        </div>
+        <a href="{% url 'food:home' %}"
+           class="btn bg-white text-food-orange fw-bold px-4 py-3 rounded-2xl btn-press small shadow text-nowrap
+                  touch-target d-flex align-items-center gap-2 w-100 w-md-auto justify-content-center">
+          🍔 Order Food Now
         </a>
       </div>
-      {% endfor %}
     </div>
-  </section>
-
-  <!-- NOTHING FOUND -->
-  {% if not vendor_list %}
-  <div class="text-center py-5 text-muted">
-    <div class="display-1 mb-3">🍽️</div>
-    <p class="small">No restaurants found.</p>
   </div>
-  {% endif %}
+</section>
 
-</div>
+<!-- ── VENDOR CTA ─────────────────────────── -->
+<section class="container px-3 px-md-4 pb-4 pb-md-5">
+  <div class="bg-navy rounded-3xl overflow-hidden position-relative">
+    <div class="position-absolute top-0 start-0 w-100 h-100 dotted-bg" style="opacity:.05;"></div>
+    <div class="position-absolute top-0 end-0 bg-gold rounded-circle" style="width:18rem;height:18rem;opacity:.1;transform:translate(25%,-25%);filter:blur(64px);pointer-events:none;"></div>
+    <div class="position-relative px-4 px-md-5 py-5">
+      <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-4 justify-content-between">
+        <div>
+          <p class="text-gold small fw-semibold text-uppercase mb-2" style="letter-spacing:.08em;">For sellers</p>
+          <h2 class="font-display fw-bold fs-4 fs-md-2 text-white mb-2">Start Selling on Lynctel</h2>
+          <p class="text-white-50 small" style="max-width:28rem;">No upfront cost. We only take 4% per sale. You keep 96%.</p>
+        </div>
+        <div class="d-flex flex-column flex-sm-row gap-3 w-100 w-md-auto">
+          <a href="{% url 'vendors:apply' %}"
+             class="btn btn-gold fw-semibold px-4 py-3 rounded-2xl btn-press shadow text-nowrap touch-target">
+            Open Your Shop
+          </a>
+          <a href="{% url 'vendors:directory' %}"
+             class="btn bg-white bg-opacity-10 text-white fw-semibold px-4 py-3 rounded-2xl text-nowrap touch-target">
+            Browse Shops
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Preserve scroll position on back/forward
-(function(){
-  const key = 'food_home_scroll_v1';
-  document.addEventListener('DOMContentLoaded', ()=>{
-    const v = sessionStorage.getItem(key); if (v) window.scrollTo(0,parseInt(v,10)||0);
+  // ── Slideshow ──────────────────────────────────────────
+  let currentSlide = 0;
+  const totalSlides = 5;
+  let autoTimer = null;
+  let touchStartX = 0, touchStartY = 0;
+
+  function goToSlide(n) {
+    const slides = document.querySelectorAll('.slide');
+    const dots   = document.querySelectorAll('.slide-dot');
+    const bar    = document.getElementById('slide-progress');
+    slides[currentSlide].classList.remove('active');
+    dots[currentSlide].classList.remove('active');
+    currentSlide = (n + totalSlides) % totalSlides;
+    slides[currentSlide].classList.add('active');
+    dots[currentSlide].classList.add('active');
+    bar.style.animation = 'none'; bar.offsetHeight;
+    bar.style.animation = 'progressFill 5s linear forwards';
+    resetAutoPlay();
+  }
+  function nextSlide() { goToSlide(currentSlide + 1); }
+  function prevSlide() { goToSlide(currentSlide - 1); }
+  function resetAutoPlay() { clearInterval(autoTimer); autoTimer = setInterval(nextSlide, 5000); }
+  resetAutoPlay();
+
+  const slideshow = document.getElementById('hero-slideshow');
+  slideshow.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; }, { passive: true });
+  slideshow.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].screenX - touchStartX;
+    const dy = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) { dx < 0 ? nextSlide() : prevSlide(); }
+  }, { passive: true });
+  slideshow.addEventListener('mouseenter', () => clearInterval(autoTimer));
+  slideshow.addEventListener('mouseleave', resetAutoPlay);
+
+  // ── Quick add to cart ──────────────────────────────────
+  function quickAdd(productId, btn) {
+    const orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '...';
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF_TOKEN); fd.append('quantity', 1);
+    fetch(`/cart/add/${productId}/`, { method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          btn.innerHTML = '✓';
+          btn.classList.add('added');
+          updateCartBadge(d.cart_count);
+          setTimeout(() => {
+            btn.innerHTML = orig; btn.disabled = false;
+            btn.classList.remove('added');
+          }, 2000);
+        }
+      });
+  }
+
+  // ── Video hover preview on product cards ───────────────
+  document.querySelectorAll('.video-card-wrap.has-video').forEach(wrap => {
+    const video  = wrap.querySelector('video');
+    const iframe = wrap.querySelector('iframe[data-src]');
+    let started  = false;
+
+    function startVideo() {
+      if (started) return;
+      started = true;
+      if (video) {
+        video.load();
+        video.play().catch(() => {});
+      }
+      if (iframe && !iframe.src) {
+        iframe.src = iframe.dataset.src;
+      }
+    }
+
+    function stopVideo() {
+      if (video) {
+        video.pause();
+        video.currentTime = 0;
+        started = false;
+      }
+      if (iframe) {
+        // Stop iframe by clearing src — reload on next hover
+        const saved = iframe.dataset.src;
+        iframe.src  = '';
+        iframe.dataset.src = saved;
+        started = false;
+      }
+    }
+
+    // Desktop: mouse events
+    wrap.addEventListener('mouseenter', startVideo);
+    wrap.addEventListener('mouseleave', stopVideo);
+
+    // Mobile: tap to toggle
+    wrap.addEventListener('touchstart', e => {
+      if (wrap.classList.contains('playing')) {
+        wrap.classList.remove('playing');
+        stopVideo();
+      } else {
+        // Stop any other playing cards
+        document.querySelectorAll('.video-card-wrap.playing').forEach(w => {
+          w.classList.remove('playing');
+          const v = w.querySelector('video');
+          if (v) { v.pause(); v.currentTime = 0; }
+        });
+        wrap.classList.add('playing');
+        startVideo();
+      }
+    }, { passive: true });
   });
-  window.addEventListener('beforeunload', ()=> sessionStorage.setItem(key, window.scrollY || 0));
-})();
 </script>
 {% endblock %}

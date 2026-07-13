@@ -1,137 +1,146 @@
-
 {% extends "base.html" %}
-{% load  static %}
-{% block title %}Food Delivery — Order from Local Restaurants | Lynctel{% endblock %}
+{% load static i18n %}
+
+{% block title %}Lynctel Food — Restaurants Near You{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
+<style>
+  /* Small page-scoped helpers kept minimal per instructions.txt */
+  .hero-address { min-height: 44px; }
+  .vendor-logo-overlap { transform: translateY(40%); }
+  .slide-dot { width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25);border:none }
+  .slide-dot.active { background:var(--gold); }
+  .live-stream-card { width:160px; }
+</style>
 {% endblock %}
 
 {% block content %}
+<div class="container-xl px-3 py-4">
 
-<!-- ── HERO ──────────────────────────────────────────────── -->
-<section class="food-hero text-white py-5">
-  <div class="container-xl position-relative py-4 text-center">
-    <p class="text-gold fw-semibold text-uppercase fs-xs mb-3" style="letter-spacing:.08em;">🍔 Lynctel Food</p>
-    <h1 class="font-display fw-bold mb-3" style="font-size:clamp(1.8rem,5vw,2.75rem);">
-      Hungry? We've Got You.
-    </h1>
-    <p class="text-white-50 mb-4 mx-auto" style="max-width:34rem;">
-      Order from local restaurants across Ghana — delivered in 30–45 minutes, paid however's easiest for you.
-    </p>
-
-    <form method="GET" class="food-search-bar mx-auto mb-4">
-      <input type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search restaurants or cuisines..."/>
-      <button type="submit">🔍 Search</button>
-    </form>
-
-    <div class="d-flex justify-content-center gap-4 flex-wrap fs-sm text-white-50">
-      <span>🍽️ {{ total_restaurants|default:0 }}+ Restaurants</span>
-      <span>⚡ 30–45 min avg delivery</span>
-      <span>💵 MoMo, Cash or Card</span>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h4 mb-0 font-display">Food Delivery</h1>
+      <p class="small text-muted mb-0">Order from restaurants near you</p>
+    </div>
+    <div>
+      <form method="get" class="d-flex" role="search">
+        <input name="q" value="{{ request.GET.q|default:'' }}" class="form-control form-control-sm me-2" placeholder="Search restaurants or cuisines" aria-label="Search">
+        <button class="btn btn-sm btn-outline-secondary">Search</button>
+      </form>
     </div>
   </div>
-</section>
 
-<div class="container-xl py-4">
-
-  <!-- ── CUISINE FILTER ────────────────────────────────────── -->
-  <div class="cuisine-pill-row mb-4">
-    <a href="{% url 'food:home' %}" class="cuisine-pill {% if not selected_cuisine %}active{% endif %}">
-      🍽️ All
-    </a>
-    {% for value, label in cuisines %}
-    <a href="?cuisine={{ value }}" class="cuisine-pill {% if selected_cuisine == value %}active{% endif %}">
-      {{ label }}
-    </a>
-    {% endfor %}
-  </div>
-
-  <!-- ── RESTAURANT GRID ───────────────────────────────────── -->
-  {% if restaurants %}
-  <div class="row g-4">
-    {% for restaurant in restaurants %}
-    <div class="col-6 col-md-4 col-lg-3">
-      {% if restaurant.slug %}
-      <a href="{% url 'food:menu' restaurant.slug %}" class="restaurant-card d-block bg-white rounded-4 border overflow-hidden shadow-sm h-100">
-      {% else %}
-      <div class="restaurant-card bg-white rounded-4 border overflow-hidden shadow-sm h-100" title="This restaurant is missing a slug — check its record in the admin">
-
-        {% if restaurant.banner %}
-        <img src="{{ restaurant.banner.url }}" alt="{{ restaurant.name }}" class="restaurant-banner w-100"/>
-        {% else %}
-        <div class="restaurant-banner w-100 d-flex align-items-center justify-content-center fs-2">🍽️</div>
-        {% endif %}
-
-        <div class="px-3 pb-3">
-          {% if restaurant.logo %}
-          <img src="{{ restaurant.logo.url }}" alt="" class="restaurant-logo"/>
-          {% else %}
-          <div class="restaurant-logo">🍴</div>
-          {% endif %}
-
-          <p class="fw-bold text-navy mb-1 mt-2 fs-md text-truncate">{{ restaurant.name }}</p>
-          <p class="fs-xs text-muted mb-2 text-truncate">{{ restaurant.get_cuisine_display|default:restaurant.cuisine }} · {{ restaurant.city|default:"Accra" }}</p>
-
-          <div class="d-flex align-items-center justify-content-between fs-xs">
-            <span class="badge rounded-pill {% if restaurant.is_open %}status-badge-open{% else %}status-badge-closed{% endif %} fw-semibold">
-              {% if restaurant.is_open %}● Open{% else %}● Closed{% endif %}
-            </span>
-            <span class="text-muted">⏱ {{ restaurant.avg_prep_time|default:20 }} min</span>
+  <!-- HERO (simple, Bootstrap-based) -->
+  <section class="mb-4">
+    <div class="card bg-navy text-white overflow-hidden">
+      <div class="card-body">
+        <div class="row g-3 align-items-center">
+          <div class="col-lg-7">
+            <h2 class="h3 font-display mb-2">Hungry? We've got you.</h2>
+            <p class="small text-white-50 mb-3">Order from the best restaurants near you. Track live. Pay MoMo or cash.</p>
+            <div class="d-flex gap-2">
+              <div class="flex-grow-1">
+                <div class="input-group hero-address">
+                  <span class="input-group-text bg-white bg-opacity-10 text-white border-0">📍</span>
+                  <input id="hero-address" type="text" class="form-control bg-transparent text-white border-0" placeholder="Enter your delivery address" aria-label="Delivery address">
+                </div>
+              </div>
+              <button type="button" class="btn btn-gold">Find</button>
+            </div>
           </div>
 
-          <p class="fs-xs text-muted mt-2 mb-0">Min order: GHS {{ restaurant.min_order|default:"10.00" }}</p>
+          <div class="col-lg-5 d-none d-lg-block text-center">
+            <div class="rounded-3" style="background:linear-gradient(135deg,var(--gold),var(--gold-light));height:10rem;display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:3rem;">🍔</span>
+            </div>
+          </div>
         </div>
-      {% if restaurant.slug %}</a>{% else %}</div>{% endif %}
+      </div>
     </div>
-    {% endfor %}
-  </div>
+  </section>
 
-  <!-- Pagination -->
-  {% if restaurants.has_other_pages %}
-  <nav class="mt-5">
-    <ul class="pagination justify-content-center">
-      {% if restaurants.has_previous %}
-      <li class="page-item"><a class="page-link text-navy" href="?page={{ restaurants.previous_page_number }}{% if selected_cuisine %}&cuisine={{ selected_cuisine }}{% endif %}">← Prev</a></li>
-      {% endif %}
-      <li class="page-item disabled"><span class="page-link border-0 text-muted">Page {{ restaurants.number }} of {{ restaurants.paginator.num_pages }}</span></li>
-      {% if restaurants.has_next %}
-      <li class="page-item"><a class="page-link text-navy" href="?page={{ restaurants.next_page_number }}{% if selected_cuisine %}&cuisine={{ selected_cuisine }}{% endif %}">Next →</a></li>
-      {% endif %}
-    </ul>
-  </nav>
-  {% endif %}
-
-  {% else %}
-  <!-- Empty state -->
-  <div class="text-center py-5 my-4">
-    <p class="fs-1 mb-3">🍽️</p>
-    <p class="fw-bold text-navy fs-4 mb-2">
-      {% if search_query or selected_cuisine %}No restaurants match your search{% else %}No restaurants live yet{% endif %}
-    </p>
-    <p class="text-muted mb-4">
-      {% if search_query or selected_cuisine %}Try a different search term or browse all restaurants.{% else %}Be the first to list your restaurant on Lynctel.{% endif %}
-    </p>
-    {% if search_query or selected_cuisine %}
-    <a href="{% url 'food:home' %}" class="btn btn-navy px-4">Browse All Restaurants</a>
-    {% else %}
-    <a href="{% url 'food:register' %}" class="btn btn-navy px-4">🍴 List Your Restaurant</a>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <!-- ── VENDOR CTA BANNER ─────────────────────────────────── -->
-  <div class="food-cta-banner text-white p-4 p-md-5 mt-5 d-flex flex-column flex-md-row align-items-center justify-content-between gap-4">
-    <div>
-      <p class="font-display fw-bold fs-3 mb-2">Own a restaurant?</p>
-      <p class="text-white-50 mb-0" style="max-width:28rem;">
-        List for free — no setup fees, keep 96% of every sale, and start receiving orders today.
-      </p>
+  <!-- CUISINE FILTER -->
+  <div class="mb-3">
+    <div class="d-flex gap-2 overflow-auto py-2">
+      <a href="{% url 'food:home' %}" class="btn btn-sm btn-outline-secondary {% if not selected_cuisine %}active{% endif %}">🍽️ All</a>
+      {% for value,label in cuisines %}
+      <a href="{% url 'food:home' %}?cuisine={{ value }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm btn-outline-secondary {% if selected_cuisine == value %}active{% endif %}">{{ label }}</a>
+      {% endfor %}
     </div>
-    <a href="{% url 'food:register' %}" class="btn btn-gold btn-lg flex-shrink-0 px-4 fw-bold">
-      🍴 List Your Restaurant →
-    </a>
   </div>
+
+  <!-- RESTAURANT GRID -->
+  <section class="mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <div>
+        <h3 class="h6 mb-0 text-navy">Restaurants</h3>
+        <p class="small text-muted mb-0">{{ vendor_list|length }} restaurant{{ vendor_list|length|pluralize }}</p>
+      </div>
+      <div>
+        {% if page_obj and page_obj.has_other_pages %}
+        <nav aria-label="pagination">
+          <ul class="pagination mb-0">
+            {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹</a></li>{% endif %}
+            <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">›</a></li>{% endif %}
+          </ul>
+        </nav>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+      {% for vendor in vendor_list %}
+      <div class="col">
+        <a href="{% url 'food:menu' vendor.slug %}" class="card h-100 text-decoration-none text-reset">
+          <div class="position-relative">
+            {% if vendor.banner %}
+            <img src="{{ vendor.banner.url }}" alt="{{ vendor.name }}" class="card-img-top" style="height:140px;object-fit:cover;">
+            {% else %}
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:140px;">🍽️</div>
+            {% endif %}
+            {% if vendor.logo %}
+            <div class="position-absolute start-3 bottom-0 translate-middle-y vendor-logo-overlap ms-3">
+              <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }}" class="rounded-2" style="width:56px;height:56px;object-fit:cover;border:3px solid #fff;">
+            </div>
+            {% endif %}
+          </div>
+          <div class="card-body pt-4">
+            <h5 class="h6 mb-1">{{ vendor.name }}</h5>
+            <p class="small text-muted mb-2">{{ vendor.get_cuisine_display }} · {{ vendor.city }}</p>
+            <div class="d-flex align-items-center gap-2 small text-secondary">
+              <span>⏱ {{ vendor.avg_prep_time }}+ min</span>
+              {% if vendor.rating %}<span>· ★ {{ vendor.rating }}</span>{% endif %}
+              <span class="ms-auto fw-semibold">GHS {{ vendor.min_order }}</span>
+            </div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- NOTHING FOUND -->
+  {% if not vendor_list %}
+  <div class="text-center py-5 text-muted">
+    <div class="display-1 mb-3">🍽️</div>
+    <p class="small">No restaurants found.</p>
+  </div>
+  {% endif %}
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Preserve scroll position on back/forward
+(function(){
+  const key = 'food_home_scroll_v1';
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const v = sessionStorage.getItem(key); if (v) window.scrollTo(0,parseInt(v,10)||0);
+  });
+  window.addEventListener('beforeunload', ()=> sessionStorage.setItem(key, window.scrollY || 0));
+})();
+</script>
 {% endblock %}
