@@ -1,430 +1,70 @@
 {% extends "base.html" %}
-{% block title %}Track Order {{ order.order_ref }} — Lynctel Food{% endblock %}
+{% load i18n static %}
 
+{% block title %}Track Order — Lynctel Food{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 <style>
-  #food-map {
-    height: 320px;
-    width: 100%;
-  }
-  @media (min-width: 640px) {
-    #food-map { height: 380px; }
-  }
-  .leaflet-control-attribution { font-size: 8px; opacity: .7; }
-  .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 12px rgba(15,27,45,.15) !important; }
-  .leaflet-control-zoom a { border-radius: 10px !important; }
-
-  .pin-customer, .pin-vendor {
-    width: 16px; height: 16px;
-    border-radius: 50%;
-    border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,.35);
-  }
-  .pin-customer { background: #ef4444; }
-  .pin-vendor   { background: #F5A623; }
-
-  /* Pulsing accuracy ring under the customer pin, like Bolt/Uber */
-  .pin-customer-wrap { position: relative; width: 22px; height: 22px; }
-  .pulse-ring {
-    position: absolute; inset: -14px;
-    border-radius: 50%;
-    background: rgba(239,68,68,.18);
-    animation: pulseRing 2.2s ease-out infinite;
-  }
-  @keyframes pulseRing {
-    0%   { transform: scale(.4); opacity: .8; }
-    100% { transform: scale(1.6); opacity: 0; }
-  }
-
-  /* Rider marker — rotates to face direction of travel */
-  .rider-icon-wrap {
-    background: #0F1B2D;
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-    border: 3px solid white;
-    box-shadow: 0 4px 14px rgba(15,27,45,.4);
-    transition: transform .6s cubic-bezier(.4,0,.2,1);
-    will-change: transform;
-  }
-
-  /* Floating "recenter" button, Bolt-style */
-  .map-recenter-btn {
-    position: absolute;
-    bottom: 14px; right: 14px;
-    width: 40px; height: 40px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 14px rgba(15,27,45,.2);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-    z-index: 500;
-    cursor: pointer;
-    transition: transform .15s ease;
-  }
-  .map-recenter-btn:active { transform: scale(.92); }
-
-  /* Live ETA pill floating top-left on the map */
-  .map-eta-pill {
-    position: absolute;
-    top: 12px; left: 12px;
-    background: rgba(15,27,45,.92);
-    backdrop-filter: blur(4px);
-    color: white;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 7px 12px;
-    border-radius: 999px;
-    z-index: 500;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    box-shadow: 0 4px 14px rgba(15,27,45,.25);
-  }
-  .map-eta-pill .dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #4ade80;
-    animation: dotBlink 1.4s ease-in-out infinite;
-  }
-  @keyframes dotBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-  #map-section { position: relative; }
+  /* small local adjustments for map area */
+  #map { width:100%; height:40vh; min-height:300px; border-radius:12px; overflow:hidden; }
+  .tracking-steps .step { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-xl mx-auto px-4 md:px-6 py-6 md:py-8">
+<div class="container-xl px-3 py-4">
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <h1 class="h5 font-display mb-2">Tracking Order #{{ order.pk }}</h1>
+      <div id="map" class="mb-3">
+        <!-- Map widget or static fallback -->
+        {% if order.rider and order.rider.location %}
+        <img src="{{ order.rider.map_snapshot_url }}" alt="Map" style="width:100%;height:100%;object-fit:cover">
+        {% else %}
+        <div class="h-100 d-flex align-items-center justify-content-center text-muted">Map unavailable</div>
+        {% endif %}
+      </div>
 
-  <!-- Header -->
-  <div class="text-center mb-6">
-    <div class="w-16 h-16 bg-orange-100 rounded-3xl flex items-center justify-center mx-auto mb-4 text-3xl">🛵</div>
-    <h1 class="font-display font-700 text-2xl text-navy mb-1">{{ order.order_ref }}</h1>
-    <p class="text-gray-400 text-sm">From <strong class="text-navy">{{ order.vendor.name }}</strong></p>
-  </div>
+      <div class="card p-3 mb-3">
+        <h6 class="mb-2">Rider</h6>
+        {% if order.rider %}
+        <div class="d-flex align-items-center gap-3">
+          {% if order.rider.profile_pic %}<img src="{{ order.rider.profile_pic.url }}" class="rounded-circle" width="56" height="56" style="object-fit:cover">{% else %}<div class="rounded-circle bg-navy text-white d-inline-flex align-items-center justify-content-center" style="width:56px;height:56px">🛵</div>{% endif %}
+          <div>
+            <div class="fw-semibold">{{ order.rider.get_full_name }}</div>
+            <div class="small text-muted">{{ order.rider.phone }}</div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-muted small">No rider assigned yet.</div>
+        {% endif %}
+      </div>
 
-  <!-- Status bar -->
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
-    <div class="flex items-center justify-between mb-4">
-      <span id="status-label" class="font-display font-700 text-navy text-base">{{ order.get_status_display }}</span>
-      <span class="text-xs text-gray-400 bg-gray-50 px-3 py-1.5 rounded-full">
-        ETA: <strong id="eta-display">{{ order.estimated_delivery_time }} mins</strong>
-      </span>
-    </div>
-
-    <!-- Progress steps -->
-    <div class="flex items-center gap-1">
-      <div id="step-pending"   class="flex-1 h-2 rounded-full bg-navy transition-all duration-500"></div>
-      <div id="step-confirmed" class="flex-1 h-2 rounded-full bg-gray-200 transition-all duration-500"></div>
-      <div id="step-preparing" class="flex-1 h-2 rounded-full bg-gray-200 transition-all duration-500"></div>
-      <div id="step-ready"     class="flex-1 h-2 rounded-full bg-gray-200 transition-all duration-500"></div>
-      <div id="step-delivered" class="flex-1 h-2 rounded-full bg-gray-200 transition-all duration-500"></div>
-    </div>
-    <div class="grid grid-cols-5 gap-1 mt-2 text-center">
-      <span class="text-[10px] text-gray-400">Placed</span>
-      <span class="text-[10px] text-gray-400">Confirmed</span>
-      <span class="text-[10px] text-gray-400">Preparing</span>
-      <span class="text-[10px] text-gray-400">Ready</span>
-      <span class="text-[10px] text-gray-400">Delivered</span>
-    </div>
-  </div>
-
-  <!-- Live map (shows when rider is dispatched) -->
-  <div id="map-section" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5 hidden">
-    <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-50">
-      <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-      <p class="font-semibold text-navy text-sm">Live Rider Location</p>
-      <span id="rider-distance" class="text-xs text-gray-400 ml-auto"></span>
-    </div>
-    <div class="relative">
-      <div id="food-map"></div>
-      <div class="map-eta-pill"><span class="dot"></span><span id="map-eta-text">Tracking…</span></div>
-      <div class="map-recenter-btn" id="recenter-btn" title="Recenter map">🎯</div>
-    </div>
-  </div>
-
-  <!-- Rider info -->
-  <div id="rider-card" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5 hidden">
-    <p class="text-xs text-gray-400 uppercase tracking-wider mb-3">Your Rider</p>
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-navy rounded-xl flex items-center justify-center text-white font-bold" id="rider-avatar">R</div>
-        <div>
-          <p id="rider-name" class="font-semibold text-navy text-sm"></p>
-          <p class="text-xs text-gray-400">On the way to you</p>
+      <div class="card p-3">
+        <h6 class="mb-2">Status</h6>
+        <div class="tracking-steps">
+          {% for step in order.status_timeline %}
+          <div class="step">
+            <div class="fw-semibold">{{ step.title }}</div>
+            <div class="small text-muted ms-auto">{{ step.timestamp|date:"H:i" }}</div>
+          </div>
+          {% endfor %}
         </div>
       </div>
-      <div class="flex gap-2">
-        <a id="rider-call" href="#"
-           class="w-10 h-10 bg-navy text-white rounded-xl flex items-center justify-center transition-colors hover:bg-navy-700">📞</a>
-        <a id="rider-wa" href="#" target="_blank"
-           class="w-10 h-10 bg-green-500 text-white rounded-xl flex items-center justify-center transition-colors hover:bg-green-600">💬</a>
-      </div>
     </div>
-  </div>
 
-  <!-- Order items -->
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
-    <p class="font-display font-700 text-navy text-sm mb-3">Your Order</p>
-    <div class="space-y-2 mb-3">
-      {% for item in order.items.all %}
-      <div class="flex items-center justify-between text-sm">
-        <span class="text-gray-600">{{ item.quantity }}× {{ item.name }}</span>
-        <span class="font-semibold text-navy">GHS {{ item.price }}</span>
+    <aside class="col-lg-4">
+      <div class="card p-3">
+        <h6 class="mb-2">Order summary</h6>
+        <ul class="list-unstyled small text-muted mb-2">
+          {% for item in order.items %}
+          <li class="d-flex justify-content-between mb-1"><span>{{ item.name }} × {{ item.quantity }}</span><span>GHS {{ item.total_price|floatformat:2 }}</span></li>
+          {% endfor %}
+        </ul>
+        <hr>
+        <div class="d-flex justify-content-between fw-semibold">Total <span>GHS {{ order.total|floatformat:2 }}</span></div>
       </div>
-      {% endfor %}
-    </div>
-    <div class="border-t border-gray-50 pt-3 space-y-1 text-sm">
-      <div class="flex justify-between text-gray-500">
-        <span>Delivery fee</span>
-        <span>GHS {{ order.delivery_fee }}</span>
-      </div>
-      <div class="flex justify-between font-display font-700 text-navy">
-        <span>Total</span>
-        <span>GHS {{ order.total_amount }}</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Delivered state -->
-  <div id="delivered-card" class="hidden bg-green-50 border border-green-200 rounded-2xl p-5 text-center mb-5">
-    <p class="text-3xl mb-2">🎉</p>
-    <p class="font-display font-700 text-green-700 text-lg">Order Delivered!</p>
-    <p class="text-sm text-green-600 mt-1">Enjoy your meal from {{ order.vendor.name }}</p>
-  </div>
-
-  <div class="text-center">
-    <a href="{% url 'food:order_history' %}" class="text-sm text-gold-dark font-semibold hover:underline">
-      View All Orders →
-    </a>
+    </aside>
   </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-(function() {
-  const ORDER_REF      = '{{ order.order_ref }}';
-  const DROPOFF_LAT    = {{ order.delivery_lat|default:"null" }};
-  const DROPOFF_LNG    = {{ order.delivery_lng|default:"null" }};
-  const VENDOR_LAT     = {{ order.vendor.latitude|default:"null" }};
-  const VENDOR_LNG     = {{ order.vendor.longitude|default:"null" }};
-  const LOCATIONIQ_KEY = "{{ locationiq_key|default:'' }}";
-  const STEPS          = ['pending','confirmed','preparing','ready','picked_up','en_route','delivered'];
-
-  if (!LOCATIONIQ_KEY) {
-    console.warn('LocationIQ key missing — map will not load. Check that order_track passes locationiq_key into context.');
-  }
-
-  let map, riderMarker, routeLine, mapInitialized = false;
-  let lastRiderPos = null;
-  let userPannedAway = false;
-  let animFrame = null;
-
-  function initMap() {
-    if (!DROPOFF_LAT || !DROPOFF_LNG) return;
-
-    map = L.map('food-map', {
-      zoomControl: true,
-      attributionControl: true,
-    }).setView([DROPOFF_LAT, DROPOFF_LNG], 14);
-
-    L.tileLayer(`https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`, {
-      attribution: '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors',
-      maxZoom: 19,
-      subdomains: ['a', 'b', 'c'],
-    }).addTo(map);
-
-    // Customer marker (red, pulsing accuracy ring)
-    L.marker([DROPOFF_LAT, DROPOFF_LNG], {
-      icon: L.divIcon({
-        html: '<div class="pin-customer-wrap"><div class="pulse-ring"></div><div class="pin-customer"></div></div>',
-        className: '', iconSize: [22, 22], iconAnchor: [11, 11],
-      }),
-      zIndexOffset: 500,
-    }).addTo(map).bindPopup('Your location');
-
-    // Restaurant marker (gold)
-    if (VENDOR_LAT && VENDOR_LNG) {
-      L.marker([VENDOR_LAT, VENDOR_LNG], {
-        icon: L.divIcon({ html: '<div class="pin-vendor"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] }),
-        zIndexOffset: 400,
-      }).addTo(map).bindPopup('{{ order.vendor.name|escapejs }}');
-    }
-
-    // Track manual user interaction so we don't yank the map away from them
-    map.on('dragstart zoomstart', () => { userPannedAway = true; });
-
-    // Recenter button
-    document.getElementById('recenter-btn').addEventListener('click', () => {
-      userPannedAway = false;
-      fitToRoute();
-    });
-
-    // Responsive resize handling
-    window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
-
-    mapInitialized = true;
-  }
-
-  function fitToRoute() {
-    if (!map) return;
-    const pts = [[DROPOFF_LAT, DROPOFF_LNG]];
-    if (lastRiderPos) pts.push(lastRiderPos);
-    if (VENDOR_LAT && VENDOR_LNG && !lastRiderPos) pts.push([VENDOR_LAT, VENDOR_LNG]);
-    if (pts.length > 1) {
-      map.flyToBounds(pts, { padding: [50, 50], maxZoom: 16, duration: 0.8 });
-    } else {
-      map.flyTo(pts[0], 15, { duration: 0.8 });
-    }
-  }
-
-  // Smoothly animate the rider marker between two lat/lng points
-  // instead of a hard jump-cut, similar to Bolt/Uber rider movement.
-  function animateMarkerTo(marker, fromLatLng, toLatLng, durationMs, bearing) {
-    if (animFrame) cancelAnimationFrame(animFrame);
-    const start = performance.now();
-
-    function step(now) {
-      const t = Math.min(1, (now - start) / durationMs);
-      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease-in-out
-      const lat = fromLatLng[0] + (toLatLng[0] - fromLatLng[0]) * eased;
-      const lng = fromLatLng[1] + (toLatLng[1] - fromLatLng[1]) * eased;
-      marker.setLatLng([lat, lng]);
-      if (t < 1) {
-        animFrame = requestAnimationFrame(step);
-      }
-    }
-    animFrame = requestAnimationFrame(step);
-
-    // Rotate the rider icon to face direction of travel
-    if (bearing !== null && marker._icon) {
-      const inner = marker._icon.querySelector('.rider-icon-wrap');
-      if (inner) inner.style.transform = `rotate(${bearing}deg)`;
-    }
-  }
-
-  function calcBearing(from, to) {
-    const toRad = d => d * Math.PI / 180;
-    const toDeg = r => r * 180 / Math.PI;
-    const [lat1, lon1] = from.map(toRad);
-    const [lat2, lon2] = to.map(toRad);
-    const dLon = lon2 - lon1;
-    const y = Math.sin(dLon) * Math.cos(lat2);
-    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-    return (toDeg(Math.atan2(y, x)) + 360) % 360;
-  }
-
-  function moveRider(lat, lng) {
-    if (!mapInitialized) return;
-    document.getElementById('map-section').classList.remove('hidden');
-    if (map) setTimeout(() => map.invalidateSize(), 50);
-
-    const newPos = [lat, lng];
-
-    if (!riderMarker) {
-      riderMarker = L.marker(newPos, {
-        icon: L.divIcon({ html: '<div class="rider-icon-wrap">🛵</div>', className: '', iconSize: [36, 36], iconAnchor: [18, 18] }),
-        zIndexOffset: 1000,
-      }).addTo(map).bindPopup('Rider');
-      lastRiderPos = newPos;
-      if (!userPannedAway) fitToRoute();
-    } else {
-      const bearing = lastRiderPos ? calcBearing(lastRiderPos, newPos) : null;
-      animateMarkerTo(riderMarker, lastRiderPos || newPos, newPos, 900, bearing);
-      lastRiderPos = newPos;
-      if (!userPannedAway) {
-        map.panTo(newPos, { animate: true, duration: 0.9, easeLinearity: 0.3 });
-      }
-    }
-
-    if (DROPOFF_LAT && DROPOFF_LNG && LOCATIONIQ_KEY) {
-      const url = `https://us1.locationiq.com/v1/directions/driving/${lng},${lat};${DROPOFF_LNG},${DROPOFF_LAT}?key=${LOCATIONIQ_KEY}&overview=full&geometries=geojson`;
-      fetch(url)
-        .then(r => r.json())
-        .then(data => {
-          if (data.code !== 'Ok' || !data.routes || !data.routes.length) return;
-          const route = data.routes[0];
-          const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
-
-          if (routeLine) {
-            routeLine.setLatLngs(coords);
-          } else {
-            routeLine = L.polyline(coords, {
-              color: '#F5A623', weight: 5, opacity: 0.85,
-              lineCap: 'round', lineJoin: 'round',
-            }).addTo(map);
-            // Subtle outline beneath for contrast, Bolt/Uber style
-            routeLine.bringToFront();
-          }
-
-          const etaMinutes = Math.max(1, Math.round(route.duration / 60));
-          const distanceKm = (route.distance / 1000).toFixed(1);
-          document.getElementById('rider-distance').textContent = `${distanceKm} km · ETA ${etaMinutes} min`;
-          document.getElementById('eta-display').textContent = `${etaMinutes} mins`;
-          document.getElementById('map-eta-text').textContent = `${etaMinutes} min away`;
-        })
-        .catch(err => console.error('Route fetch failed:', err));
-    }
-  }
-
-  function updateUI(data) {
-    document.getElementById('status-label').textContent = data.status_label || data.status;
-
-    // Progress bar
-    const idx = STEPS.indexOf(data.status);
-    ['pending','confirmed','preparing','ready','delivered'].forEach((s, i) => {
-      const el = document.getElementById('step-' + s);
-      if (el) el.className = `flex-1 h-2 rounded-full transition-all duration-500 ${i <= idx ? 'bg-navy' : 'bg-gray-200'}`;
-    });
-
-    // Delivered — hide map, show celebration card
-    if (data.status === 'delivered') {
-      document.getElementById('delivered-card').classList.remove('hidden');
-      document.getElementById('map-section').classList.add('hidden');
-    }
-  }
-
-  // Poll order status from food API
-  function pollStatus() {
-    fetch('{% url "food:order_track_api" order.order_ref %}')
-      .then(r => r.json())
-      .then(updateUI)
-      .catch(console.error);
-  }
-
-  // Poll rider GPS from rider location API (separate, more frequent)
-  function pollRiderGPS() {
-    fetch('{% url "rider:location_api" order.order_ref %}')
-      .then(r => r.json())
-      .then(d => {
-        if (d.success && d.lat && d.lng) {
-          moveRider(parseFloat(d.lat), parseFloat(d.lng));
-          // Show rider info if not already shown
-          if (d.rider) {
-            const card = document.getElementById('rider-card');
-            card.classList.remove('hidden');
-            document.getElementById('rider-name').textContent = d.rider;
-            document.getElementById('rider-avatar').textContent = d.rider[0].toUpperCase();
-            if (d.phone) {
-              document.getElementById('rider-call').href = 'tel:' + d.phone;
-              const wa = d.phone.replace(/^0/, '233');
-              document.getElementById('rider-wa').href = `https://wa.me/${wa}`;
-            }
-          }
-        }
-      })
-      .catch(() => {});
-  }
-
-  initMap();
-  pollStatus();
-  pollRiderGPS();
-  setInterval(pollStatus, 8000);   // order status every 8s
-  setInterval(pollRiderGPS, 4000); // rider GPS every 4s — smoother updates
-})();
-</script>
 {% endblock %}

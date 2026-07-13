@@ -1,168 +1,68 @@
 {% extends "base.html" %}
-{% load static %}
-{% block title %}Your Food Cart — Lynctel{% endblock %}
+{% load i18n static %}
+
+{% block title %}Your Cart — Lynctel Food{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
+{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto px-4 md:px-6 py-10">
+<div class="container-xl px-3 py-4">
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <h1 class="h5 mb-3 font-display">Your Cart</h1>
 
-  <div class="flex items-center gap-3 mb-8">
-    <a href="{% url 'food:home' %}" class="text-gray-400 hover:text-navy transition-colors text-lg">←</a>
-    <h1 class="font-display font-bold text-2xl text-navy">Your Cart</h1>
-    {% if cart.item_count > 0 %}
-    <span class="bg-gold text-navy text-xs font-bold px-2.5 py-1 rounded-full">
-      {{ cart.item_count }} item{{ cart.item_count|pluralize }}
-    </span>
-    {% endif %}
-  </div>
-
-  {% if items %}
-
-    <!-- Vendor info -->
-    {% if cart.vendor %}
-    <div class="flex items-center gap-3 bg-gold-light rounded-2xl px-4 py-3 mb-5">
-      {% if cart.vendor.logo %}
-      <img src="{{ cart.vendor.logo.url }}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0"/>
-      {% else %}
-      <div class="w-10 h-10 rounded-xl bg-navy flex items-center justify-center text-xl flex-shrink-0">🍽️</div>
-      {% endif %}
-      <div class="flex-1 min-w-0">
-        <p class="font-semibold text-navy text-sm">{{ cart.vendor.vendor.shop_name }}</p>
-        <p class="text-xs text-gray-500">{{ cart.vendor.avg_prep_time }}–{{ cart.vendor.avg_prep_time|add:10 }} min prep time</p>
-      </div>
-      <a href="{% url 'food:menu' cart.vendor.pk %}"
-         class="text-xs text-gold-dark font-semibold hover:underline flex-shrink-0">
-        + Add more
-      </a>
-    </div>
-    {% endif %}
-
-    <!-- Cart items -->
-    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-5">
-      <div class="divide-y divide-gray-50">
-        {% for item in items %}
-        <div class="flex items-center gap-4 px-5 py-4" id="cart-row-{{ item.menu_item.pk }}">
-
-          {% if item.menu_item.image %}
-          <img src="{{ item.menu_item.image.url }}" alt="{{ item.menu_item.name }}"
-               class="w-16 h-16 rounded-xl object-cover flex-shrink-0"/>
-          {% else %}
-          <div class="w-16 h-16 rounded-xl bg-gray-50 flex items-center justify-center text-2xl flex-shrink-0">🍽️</div>
-          {% endif %}
-
-          <div class="flex-1 min-w-0">
-            <p class="font-semibold text-navy text-sm">{{ item.menu_item.name }}</p>
-            <p class="text-gold-dark font-bold text-sm mt-0.5">GHS {{ item.menu_item.price }}</p>
+      {% if cart_items %}
+      <div class="list-group mb-3">
+        {% for item in cart_items %}
+        <div class="list-group-item d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-3">
+            {% if item.product.image %}
+            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="rounded-2" style="width:64px;height:64px;object-fit:cover;">
+            {% else %}
+            <div class="rounded-2 bg-light d-flex align-items-center justify-content-center" style="width:64px;height:64px;">🍽️</div>
+            {% endif %}
+            <div class="min-width-0">
+              <div class="fw-semibold text-truncate">{{ item.product.name }}</div>
+              <div class="small text-muted">GHS {{ item.unit_price|floatformat:2 }} · {{ item.quantity }} ×</div>
+            </div>
           </div>
-
-          <!-- Qty controls -->
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <button onclick="updateQty({{ item.menu_item.pk }}, {{ item.quantity }}, -1)"
-                    class="w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center
-                           text-navy font-bold hover:bg-navy hover:text-white hover:border-navy
-                           transition-colors text-sm">−</button>
-            <span id="qty-{{ item.menu_item.pk }}"
-                  class="w-6 text-center font-bold text-navy text-sm">{{ item.quantity }}</span>
-            <button onclick="updateQty({{ item.menu_item.pk }}, {{ item.quantity }}, 1)"
-                    class="w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center
-                           text-navy font-bold hover:bg-navy hover:text-white hover:border-navy
-                           transition-colors text-sm">+</button>
+          <div class="text-end">
+            <div class="fw-semibold">GHS {{ item.total_price|floatformat:2 }}</div>
+            <div class="d-flex gap-2 mt-2">
+              <form method="post" action="{% url 'food:cart_update' item.pk %}" class="d-flex gap-1 align-items-center">
+                {% csrf_token %}
+                <input type="number" name="quantity" min="1" value="{{ item.quantity }}" class="form-control form-control-sm" style="width:68px">
+                <button class="btn btn-sm btn-outline-secondary" type="submit">Update</button>
+              </form>
+              <form method="post" action="{% url 'food:cart_remove' item.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-danger">Remove</button>
+              </form>
+            </div>
           </div>
-
-          <!-- Line total -->
-          <p id="subtotal-{{ item.menu_item.pk }}"
-             class="w-20 text-right font-display font-700 text-navy text-sm flex-shrink-0">
-            GHS {{ item.subtotal }}
-          </p>
-
         </div>
         {% endfor %}
       </div>
-    </div>
 
-    <!-- Order total -->
-    <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
-      <div class="space-y-2 text-sm">
-        <div class="flex justify-between text-gray-500">
-          <span>Subtotal</span>
-          <span id="cart-total">GHS {{ cart.total }}</span>
-        </div>
-        <div class="flex justify-between text-gray-400 text-xs">
-          <span>Delivery fee</span>
-          <span>Calculated at checkout</span>
-        </div>
-        <div class="border-t border-gray-100 pt-2 flex justify-between
-                    font-display font-700 text-navy text-xl">
-          <span>Total</span>
-          <span id="cart-grand-total">GHS {{ cart.total }}</span>
-        </div>
+      {% else %}
+      <div class="card p-4 text-center text-muted">
+        Your cart is empty.
       </div>
+      {% endif %}
     </div>
 
-    <a href="{% url 'food:checkout' %}"
-       class="block w-full text-center bg-navy hover:bg-navy-700 text-white font-bold
-              py-4 rounded-xl transition-colors text-sm btn-press">
-      Proceed to Checkout →
-    </a>
-
-  {% else %}
-
-    <!-- Empty cart -->
-    <div class="text-center py-20">
-      <div class="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center
-                  text-5xl mx-auto mb-5">🛒</div>
-      <h2 class="font-display font-700 text-xl text-navy mb-2">Your cart is empty</h2>
-      <p class="text-gray-400 text-sm mb-6">Browse restaurants and add some food to get started.</p>
-      <a href="{% url 'food:home' %}"
-         class="inline-block bg-navy hover:bg-navy-700 text-white font-semibold
-                px-8 py-3.5 rounded-xl transition-colors text-sm">
-        Browse Restaurants →
-      </a>
-    </div>
-
-  {% endif %}
-
+    <aside class="col-lg-4">
+      <div class="card p-3">
+        <h6 class="mb-2">Order summary</h6>
+        <dl class="row mb-3">
+          <dt class="col-6 small text-muted">Subtotal</dt><dd class="col-6 text-end">GHS {{ cart_subtotal|floatformat:2 }}</dd>
+          <dt class="col-6 small text-muted">Delivery</dt><dd class="col-6 text-end">GHS {{ delivery_fee|floatformat:2 }}</dd>
+          <dt class="col-6 small text-muted">Total</dt><dd class="col-6 text-end fw-bold">GHS {{ cart_total|floatformat:2 }}</dd>
+        </dl>
+        <a href="{% url 'food:checkout' %}" class="btn btn-lg btn-navy w-100">Proceed to Checkout</a>
+      </div>
+    </aside>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-  const CSRF = '{{ csrf_token }}';
-
-  function updateQty(itemId, currentQty, delta) {
-    const newQty = Math.max(0, currentQty + delta);
-
-    fetch(`/food/cart/update/${itemId}/`, {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': CSRF,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `quantity=${newQty}`
-    })
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        if (newQty <= 0) {
-          // Remove row
-          const row = document.getElementById(`cart-row-${itemId}`);
-          if (row) row.style.opacity = '0';
-          setTimeout(() => { if (row) row.remove(); }, 300);
-        } else {
-          document.getElementById(`qty-${itemId}`).textContent = newQty;
-          // Update line subtotal
-          fetch(`/food/cart/`)
-            .then(() => {})
-            .catch(() => {});
-        }
-        // Update totals
-        document.getElementById('cart-total').textContent       = 'GHS ' + parseFloat(d.cart_total).toFixed(2);
-        document.getElementById('cart-grand-total').textContent = 'GHS ' + parseFloat(d.cart_total).toFixed(2);
-
-        if (d.cart_count === 0) {
-          setTimeout(() => location.reload(), 400);
-        }
-      }
-    });
-  }
-</script>
 {% endblock %}
