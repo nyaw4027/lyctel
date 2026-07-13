@@ -32,76 +32,81 @@
       align-items: center;
       gap: 6px;
       transition: all .2s ease;
+      background: #fff;
+      color: #4b5563;
+      border: 1px solid #e5e7eb;
     }
+    .mobile-tab-pill.active { background: var(--navy); color: #fff; border-color: var(--navy); }
   }
   @media (min-width: 1024px) {
     .mobile-tab-bar { display: none; }
   }
 
   .touch-btn { min-height: 44px; }
+
+  .profile-nav-btn { color: #4b5563; }
+  .profile-nav-btn.active { background: var(--navy); color: #fff; }
+  .profile-nav-btn.active:hover { background: var(--navy-700); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
+<div class="container px-3 px-md-4 py-4 py-md-5" style="max-width: 72rem;">
 
   <!-- Header -->
-  <div class="mb-5 md:mb-8 fade-up fade-up-1">
-    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">My Account</p>
-    <h1 class="font-display font-700 text-xl md:text-2xl text-navy">
+  <div class="mb-4 mb-md-5 fade-up fade-up-1">
+    <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em;">My Account</p>
+    <h1 class="font-display fw-bold fs-3 text-navy">
       Welcome back, {{ user.first_name|default:"there" }} 👋
     </h1>
   </div>
 
   <!-- Profile card — always visible on mobile -->
-  <div class="bg-white rounded-2xl border border-gray-100 p-4 md:p-5 mb-4 text-center lg:hidden">
-    <div class="relative inline-block mb-2">
+  <div class="bg-white rounded-2xl border p-3 p-md-4 mb-3 text-center d-lg-none">
+    <div class="position-relative d-inline-block mb-2">
       {% if user.profile_pic %}
-      <img src="{{ user.profile_pic.url }}" class="w-16 h-16 rounded-full object-cover border-4 border-white shadow-lg mx-auto"/>
+      <img src="{{ user.profile_pic.url }}" class="rounded-circle object-fit-cover border border-4 border-white shadow mx-auto" style="width:4rem;height:4rem;"/>
       {% else %}
-      <div class="w-16 h-16 rounded-full bg-gradient-to-br from-navy to-navy-500
-                  flex items-center justify-center text-white font-display font-700 text-xl
-                  mx-auto border-4 border-white shadow-lg">
+      <div class="rounded-circle d-flex align-items-center justify-content-center text-white font-display fw-bold fs-3
+                  mx-auto border border-4 border-white shadow" style="width:4rem;height:4rem;background:linear-gradient(135deg,var(--navy),var(--navy-700));">
         {{ user.first_name|first|upper|default:"U" }}
       </div>
       {% endif %}
       <form id="pic-form-mobile" method="POST" action="{% url 'accounts:update_picture' %}" enctype="multipart/form-data" style="position:absolute;bottom:0;right:0;">{% csrf_token %}<label style="width:28px;height:28px;background:#F5A623;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2);"><svg style="width:14px;height:14px;color:#0F1B2D;pointer-events:none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg><input type="file" name="profile_pic" accept="image/*" onchange="this.form.submit()" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;"></label></form>
     </div>
-    <h2 class="font-display font-700 text-navy text-sm">{{ user.get_full_name|default:"Update your name" }}</h2>
-    <p class="text-xs text-gray-400">{{ user.phone }}</p>
+    <h2 class="font-display fw-bold text-navy small mb-0">{{ user.get_full_name|default:"Update your name" }}</h2>
+    <p class="small text-secondary mb-0">{{ user.phone }}</p>
   </div>
 
   <!-- Mobile tab pills -->
   <div class="mobile-tab-bar">
     {% for tab_id, tab_icon, tab_label in tabs %}
     <button onclick="showTab('{{ tab_id }}')" id="mnav-{{ tab_id }}"
-            class="mobile-tab-pill {% if forloop.first %}bg-navy text-white{% else %}bg-white text-gray-600 border border-gray-200{% endif %}">
+            class="mobile-tab-pill {% if forloop.first %}active{% endif %}">
       <span>{{ tab_icon }}</span>{{ tab_label }}
     </button>
     {% endfor %}
   </div>
 
-  <div class="flex flex-col lg:flex-row gap-6">
+  <div class="d-flex flex-column flex-lg-row gap-4">
 
     <!-- ── DESKTOP SIDEBAR ─────────────────── -->
-    <div class="sidebar-nav w-full lg:w-64 flex-shrink-0">
-      <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-4 text-center">
-        <div class="relative inline-block mb-3">
+    <div class="sidebar-nav w-100 flex-shrink-0" style="max-width: 16rem;">
+      <div class="bg-white rounded-2xl border p-4 mb-3 text-center">
+        <div class="position-relative d-inline-block mb-3">
           {% if user.profile_pic %}
-          <img src="{{ user.profile_pic.url }}" class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg mx-auto"/>
+          <img src="{{ user.profile_pic.url }}" class="rounded-circle object-fit-cover border border-4 border-white shadow mx-auto" style="width:5rem;height:5rem;"/>
           {% else %}
-          <div class="w-20 h-20 rounded-full bg-gradient-to-br from-navy to-navy-500
-                      flex items-center justify-center text-white font-display font-700 text-2xl
-                      mx-auto border-4 border-white shadow-lg">
+          <div class="rounded-circle d-flex align-items-center justify-content-center text-white font-display fw-bold fs-2
+                      mx-auto border border-4 border-white shadow" style="width:5rem;height:5rem;background:linear-gradient(135deg,var(--navy),var(--navy-700));">
             {{ user.first_name|first|upper|default:"U" }}
           </div>
           {% endif %}
           <form id="pic-form" method="POST" action="{% url 'accounts:update_picture' %}" enctype="multipart/form-data">
             {% csrf_token %}
-            <label class="absolute bottom-0 right-0 w-7 h-7 bg-gold rounded-full flex items-center
-                          justify-center cursor-pointer hover:bg-gold-dark transition-colors shadow-sm"
-                   style="overflow:visible;">
-              <svg class="w-3.5 h-3.5 text-navy pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <label class="position-absolute bottom-0 end-0 bg-gold rounded-circle d-flex align-items-center
+                          justify-content-center shadow-sm" style="width:1.75rem;height:1.75rem;cursor:pointer;overflow:visible;">
+              <svg style="width:.875rem;height:.875rem;pointer-events:none;" class="text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -111,218 +116,211 @@
                      style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;">
             </label>
           </form>
-          </form>
         </div>
-        <h2 class="font-display font-700 text-navy">{{ user.get_full_name|default:"Update your name" }}</h2>
-        <p class="text-xs text-gray-400 mt-0.5">{{ user.phone }}</p>
-        <div class="mt-3 inline-flex items-center gap-1.5 bg-green-50 text-green-700
-                    text-xs font-semibold px-3 py-1 rounded-full">
-          <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>Active Customer
+        <h2 class="font-display fw-bold text-navy mb-0">{{ user.get_full_name|default:"Update your name" }}</h2>
+        <p class="small text-secondary mt-1 mb-0">{{ user.phone }}</p>
+        <div class="mt-3 d-inline-flex align-items-center gap-1 bg-success bg-opacity-10 text-success
+                    small fw-semibold px-3 py-1 rounded-pill">
+          <span class="bg-success rounded-circle" style="width:6px;height:6px;"></span>Active Customer
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div class="bg-white rounded-2xl border overflow-hidden">
         {% for tab_id, tab_icon, tab_label in tabs %}
         <button onclick="showTab('{{ tab_id }}')" id="nav-{{ tab_id }}"
-                class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium
-                       text-left transition-colors hover:bg-gray-50
-                       {% if forloop.first %}bg-navy text-white hover:bg-navy-700{% else %}text-gray-600{% endif %}
-                       {% if not forloop.last %}border-b border-gray-50{% endif %}">
-          <span class="text-base">{{ tab_icon }}</span>{{ tab_label }}
+                class="profile-nav-btn w-100 d-flex align-items-center gap-2 px-3 py-3 small fw-medium
+                       text-start border-0 bg-white
+                       {% if forloop.first %}active{% endif %}
+                       {% if not forloop.last %}border-bottom{% endif %}">
+          <span>{{ tab_icon }}</span>{{ tab_label }}
         </button>
         {% endfor %}
         <a href="{% url 'accounts:logout' %}"
-           class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium
-                  text-red-500 hover:bg-red-50 transition-colors border-t border-gray-100">
-          <span class="text-base">→</span>Sign Out
+           class="w-100 d-flex align-items-center gap-2 px-3 py-3 small fw-medium
+                  text-danger border-top text-decoration-none">
+          <span>→</span>Sign Out
         </a>
       </div>
     </div>
 
     <!-- ── MAIN PANELS ─────────────────────── -->
-    <div class="flex-1 min-w-0">
+    <div class="flex-fill min-w-0">
 
       <!-- OVERVIEW -->
       <div id="panel-overview">
-        <div class="grid grid-cols-3 gap-2.5 md:gap-3 mb-5 md:mb-6">
-          <div class="bg-white rounded-2xl border border-gray-100 p-3 md:p-4 text-center">
-            <p class="font-display font-700 text-lg md:text-2xl text-navy">{{ total_orders }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">Orders</p>
+        <div class="row row-cols-3 g-2 mb-4">
+          <div class="col">
+            <div class="bg-white rounded-2xl border p-3 text-center h-100">
+              <p class="font-display fw-bold fs-5 text-navy mb-0">{{ total_orders }}</p>
+              <p class="small text-secondary mt-1 mb-0">Orders</p>
+            </div>
           </div>
-          <div class="bg-white rounded-2xl border border-gray-100 p-3 md:p-4 text-center">
-            <p class="font-display font-700 text-lg md:text-2xl text-green-600">{{ delivered_orders }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">Delivered</p>
+          <div class="col">
+            <div class="bg-white rounded-2xl border p-3 text-center h-100">
+              <p class="font-display fw-bold fs-5 text-success mb-0">{{ delivered_orders }}</p>
+              <p class="small text-secondary mt-1 mb-0">Delivered</p>
+            </div>
           </div>
-          <div class="bg-white rounded-2xl border border-gray-100 p-3 md:p-4 text-center">
-            <p class="font-display font-700 text-base md:text-2xl text-gold-dark">GHS {{ total_spent|floatformat:0 }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">Spent</p>
+          <div class="col">
+            <div class="bg-white rounded-2xl border p-3 text-center h-100">
+              <p class="font-display fw-bold fs-6 text-gold-dark mb-0">GHS {{ total_spent|floatformat:0 }}</p>
+              <p class="small text-secondary mt-1 mb-0">Spent</p>
+            </div>
           </div>
         </div>
 
-        <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-5">
-          <div class="flex items-center justify-between px-4 md:px-5 py-3.5 md:py-4 border-b border-gray-50">
-            <h2 class="font-display font-700 text-navy text-sm md:text-base">Recent Orders</h2>
-            <button onclick="showTab('orders')" class="text-xs text-gold-dark hover:underline font-medium">View all →</button>
+        <div class="bg-white rounded-2xl border overflow-hidden mb-4">
+          <div class="d-flex align-items-center justify-content-between px-3 px-md-4 py-3 border-bottom">
+            <h2 class="font-display fw-bold text-navy small mb-0">Recent Orders</h2>
+            <button onclick="showTab('orders')" class="btn btn-link small text-gold-dark fw-medium p-0 text-decoration-none">View all →</button>
           </div>
           {% if recent_orders %}
-          <div class="divide-y divide-gray-50">
+          <ul class="list-group list-group-flush">
             {% for order in recent_orders %}
-            <div class="flex items-center gap-2 md:gap-4 px-4 md:px-5 py-3">
-              <div class="flex-1 min-w-0">
-                <p class="font-semibold text-navy text-xs md:text-sm truncate">{{ order.order_ref }}</p>
-                <p class="text-xs text-gray-400">{{ order.created_at|date:"M d, Y" }}</p>
+            <li class="list-group-item d-flex align-items-center gap-2 gap-md-3 px-3 px-md-4 py-3">
+              <div class="flex-fill min-w-0">
+                <p class="fw-semibold text-navy small text-truncate mb-0">{{ order.order_ref }}</p>
+                <p class="small text-secondary mb-0">{{ order.created_at|date:"M d, Y" }}</p>
               </div>
-              <span class="text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0
-                           {% if order.status == 'delivered' %}bg-green-100 text-green-700
-                           {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
-                           {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
-                           {% else %}bg-gray-100 text-gray-600{% endif %}">
+              <span class="badge rounded-pill flex-shrink-0
+                           {% if order.status == 'delivered' %}text-bg-success
+                           {% elif order.status == 'dispatched' %}text-bg-primary
+                           {% elif order.status == 'pending' %}text-bg-warning
+                           {% else %}text-bg-secondary{% endif %}">
                 {{ order.get_status_display }}
               </span>
-              <p class="font-display font-700 text-navy text-xs md:text-sm flex-shrink-0">GHS {{ order.total_amount }}</p>
+              <p class="font-display fw-bold text-navy small flex-shrink-0 mb-0">GHS {{ order.total_amount }}</p>
               <a href="{% url 'delivery:track_delivery' order.order_ref %}"
-                 class="text-xs text-gold-dark hover:underline flex-shrink-0">Track →</a>
-            </div>
+                 class="small text-gold-dark flex-shrink-0">Track →</a>
+            </li>
             {% endfor %}
-          </div>
+          </ul>
           {% else %}
-          <div class="text-center py-10 text-gray-400">
-            <p class="text-4xl mb-2">📦</p>
-            <p class="text-sm">No orders yet.</p>
-            <a href="{% url 'products:list' %}" class="text-sm text-gold-dark hover:underline mt-1 inline-block">Start shopping →</a>
+          <div class="text-center py-5 text-secondary">
+            <p class="fs-1 mb-2">📦</p>
+            <p class="small mb-0">No orders yet.</p>
+            <a href="{% url 'products:list' %}" class="small text-gold-dark d-inline-block mt-1">Start shopping →</a>
           </div>
           {% endif %}
         </div>
 
         {% if addresses %}
-        <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div class="px-4 md:px-5 py-3.5 md:py-4 border-b border-gray-50">
-            <h2 class="font-display font-700 text-navy text-sm md:text-base">Saved Addresses</h2>
+        <div class="bg-white rounded-2xl border overflow-hidden">
+          <div class="px-3 px-md-4 py-3 border-bottom">
+            <h2 class="font-display fw-bold text-navy small mb-0">Saved Addresses</h2>
           </div>
-          <div class="divide-y divide-gray-50">
+          <ul class="list-group list-group-flush">
             {% for addr in addresses %}
-            <div class="flex items-start gap-3 px-4 md:px-5 py-3">
-              <span class="text-lg mt-0.5">📍</span>
-              <div class="flex-1">
-                <p class="text-sm font-semibold text-navy">{{ addr.label }}</p>
-                <p class="text-xs text-gray-500">{{ addr.address }}, {{ addr.city }}</p>
+            <li class="list-group-item d-flex align-items-start gap-2 px-3 px-md-4 py-3">
+              <span class="fs-5 mt-1">📍</span>
+              <div class="flex-fill">
+                <p class="small fw-semibold text-navy mb-0">{{ addr.label }}</p>
+                <p class="small text-secondary mb-0">{{ addr.address }}, {{ addr.city }}</p>
               </div>
-            </div>
+            </li>
             {% endfor %}
-          </div>
+          </ul>
         </div>
         {% endif %}
       </div>
 
       <!-- ORDERS -->
-      <div id="panel-orders" class="hidden">
-        <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div class="px-4 md:px-5 py-3.5 md:py-4 border-b border-gray-50">
-            <h2 class="font-display font-700 text-navy text-sm md:text-base">All Orders</h2>
+      <div id="panel-orders" class="d-none">
+        <div class="bg-white rounded-2xl border overflow-hidden">
+          <div class="px-3 px-md-4 py-3 border-bottom">
+            <h2 class="font-display fw-bold text-navy small mb-0">All Orders</h2>
           </div>
           {% if all_orders %}
-          <div class="divide-y divide-gray-50">
+          <ul class="list-group list-group-flush">
             {% for order in all_orders %}
-            <div class="px-4 md:px-5 py-4">
-              <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+            <li class="list-group-item px-3 px-md-4 py-3">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                 <div>
-                  <p class="font-display font-700 text-navy text-sm">{{ order.order_ref }}</p>
-                  <p class="text-xs text-gray-400">{{ order.created_at|date:"M d, Y · H:i" }}</p>
+                  <p class="font-display fw-bold text-navy small mb-0">{{ order.order_ref }}</p>
+                  <p class="small text-secondary mb-0">{{ order.created_at|date:"M d, Y · H:i" }}</p>
                 </div>
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="text-xs font-semibold px-2 py-1 rounded-full
-                               {% if order.status == 'delivered' %}bg-green-100 text-green-700
-                               {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
-                               {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
-                               {% else %}bg-gray-100 text-gray-600{% endif %}">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <span class="badge rounded-pill
+                               {% if order.status == 'delivered' %}text-bg-success
+                               {% elif order.status == 'dispatched' %}text-bg-primary
+                               {% elif order.status == 'pending' %}text-bg-warning
+                               {% else %}text-bg-secondary{% endif %}">
                     {{ order.get_status_display }}
                   </span>
-                  <span class="font-display font-700 text-navy text-sm">GHS {{ order.total_amount }}</span>
+                  <span class="font-display fw-bold text-navy small">GHS {{ order.total_amount }}</span>
                 </div>
               </div>
-              <div class="flex items-center gap-2 flex-wrap mb-3">
+              <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
                 {% for item in order.items.all|slice:":3" %}
                 {% with img=item.product.images.first %}
-                {% if img %}<img src="{{ img.image.url }}" class="w-9 h-9 rounded-xl object-cover border border-gray-100"/>
-                {% else %}<div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-sm">📦</div>{% endif %}
+                {% if img %}<img src="{{ img.image.url }}" class="rounded-3 object-fit-cover border" style="width:2.25rem;height:2.25rem;"/>
+                {% else %}<div class="rounded-3 bg-light d-flex align-items-center justify-content-center small" style="width:2.25rem;height:2.25rem;">📦</div>{% endif %}
                 {% endwith %}
                 {% endfor %}
-                {% if order.items.count > 3 %}<span class="text-xs text-gray-400">+{{ order.items.count|add:"-3" }} more</span>{% endif %}
+                {% if order.items.count > 3 %}<span class="small text-secondary">+{{ order.items.count|add:"-3" }} more</span>{% endif %}
               </div>
-              <div class="flex gap-2">
+              <div class="d-flex gap-2">
                 <a href="{% url 'delivery:track_delivery' order.order_ref %}"
-                   class="text-xs bg-navy hover:bg-navy-700 text-white font-semibold
-                          px-4 py-2 rounded-xl transition-colors touch-btn flex items-center">
+                   class="btn btn-navy btn-sm small fw-semibold rounded-xl touch-btn d-flex align-items-center">
                   {% if order.status == 'delivered' %}View Details{% else %}Track Order{% endif %}
                 </a>
                 {% if order.status == 'delivered' %}
                 <a href="{% url 'products:list' %}"
-                   class="text-xs border border-gray-200 hover:border-navy text-gray-600
-                          hover:text-navy font-semibold px-4 py-2 rounded-xl transition-colors touch-btn flex items-center">
+                   class="btn btn-outline-secondary btn-sm small fw-semibold rounded-xl touch-btn d-flex align-items-center">
                   Buy Again
                 </a>
                 {% endif %}
               </div>
-            </div>
+            </li>
             {% endfor %}
-          </div>
+          </ul>
           {% else %}
-          <div class="text-center py-14 text-gray-400">
-            <p class="text-5xl mb-3">📦</p>
-            <p class="font-semibold text-navy mb-1">No orders yet</p>
-            <a href="{% url 'products:list' %}"
-               class="text-sm bg-navy text-white font-semibold px-6 py-2.5 rounded-xl
-                      hover:bg-navy-700 transition-colors mt-3 inline-block touch-btn">Start Shopping</a>
+          <div class="text-center py-5 text-secondary">
+            <p class="display-6 mb-3">📦</p>
+            <p class="fw-semibold text-navy mb-1">No orders yet</p>
+            <a href="{% url 'products:list' %}" class="btn btn-navy btn-sm small fw-semibold rounded-xl mt-2 touch-btn">Start Shopping</a>
           </div>
           {% endif %}
         </div>
       </div>
 
       <!-- PROFILE EDIT -->
-      <div id="panel-profile" class="hidden">
-        <div class="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-          <h2 class="font-display font-700 text-navy mb-4 md:mb-5 text-sm md:text-base">Personal Information</h2>
+      <div id="panel-profile" class="d-none">
+        <div class="bg-white rounded-2xl border p-3 p-md-4">
+          <h2 class="font-display fw-bold text-navy mb-3 small">Personal Information</h2>
 
           {% if profile_success %}
-          <div class="bg-green-50 border border-green-200 text-green-700 text-sm
-                      rounded-xl px-4 py-3 mb-5 flex items-center gap-2">✓ Profile updated successfully!</div>
+          <div class="alert-success small rounded-xl px-3 py-2 mb-4 d-flex align-items-center gap-2">✓ Profile updated successfully!</div>
           {% endif %}
 
-          <form method="POST" action="{% url 'accounts:update_profile' %}" class="space-y-4" enctype="multipart/form-data">
+          <form method="POST" action="{% url 'accounts:update_profile' %}" class="d-flex flex-column gap-3" enctype="multipart/form-data">
             {% csrf_token %}
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">First Name</label>
-                <input type="text" name="first_name" value="{{ user.first_name }}"
-                       class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-gold transition-colors"/>
+            <div class="row row-cols-1 row-cols-sm-2 g-3">
+              <div class="col">
+                <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">First Name</label>
+                <input type="text" name="first_name" value="{{ user.first_name }}" class="auth-input form-control rounded-xl"/>
               </div>
-              <div>
-                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Last Name</label>
-                <input type="text" name="last_name" value="{{ user.last_name }}"
-                       class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-gold transition-colors"/>
+              <div class="col">
+                <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">Last Name</label>
+                <input type="text" name="last_name" value="{{ user.last_name }}" class="auth-input form-control rounded-xl"/>
               </div>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Phone Number</label>
-              <input type="tel" value="{{ user.phone }}" disabled
-                     class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-400 cursor-not-allowed"/>
-              <p class="text-xs text-gray-400 mt-1">Phone number cannot be changed.</p>
+              <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">Phone Number</label>
+              <input type="tel" value="{{ user.phone }}" disabled class="form-control rounded-xl bg-light text-secondary" style="cursor:not-allowed;"/>
+              <p class="small text-secondary mt-1 mb-0">Phone number cannot be changed.</p>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Email Address</label>
+              <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">Email Address</label>
               <input type="email" name="email" value="{{ user.email|default:'' }}"
-                     placeholder="your@email.com" inputmode="email"
-                     class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-gold transition-colors"/>
+                     placeholder="your@email.com" inputmode="email" class="auth-input form-control rounded-xl"/>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Delivery Address</label>
+              <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">Delivery Address</label>
               <input type="text" name="address" value="{{ user.address|default:'' }}"
-                     placeholder="Your default delivery address"
-                     class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-gold transition-colors"/>
+                     placeholder="Your default delivery address" class="auth-input form-control rounded-xl"/>
             </div>
-            <button type="submit"
-                    class="w-full sm:w-auto bg-navy hover:bg-navy-700 text-white font-semibold
-                           px-6 py-3.5 rounded-xl transition-colors btn-press touch-btn">
+            <button type="submit" class="btn btn-navy fw-semibold rounded-xl btn-press touch-btn align-self-start px-4">
               Save Changes
             </button>
           </form>
@@ -330,67 +328,59 @@
       </div>
 
       <!-- SECURITY -->
-      <div id="panel-security" class="hidden">
-        <div class="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 mb-5">
-          <h2 class="font-display font-700 text-navy mb-1 text-sm md:text-base">Change Password</h2>
-          <p class="text-sm text-gray-400 mb-5">Choose a strong password to keep your account safe.</p>
+      <div id="panel-security" class="d-none">
+        <div class="bg-white rounded-2xl border p-3 p-md-4 mb-4">
+          <h2 class="font-display fw-bold text-navy mb-1 small">Change Password</h2>
+          <p class="small text-secondary mb-4">Choose a strong password to keep your account safe.</p>
 
           {% if password_error %}
-          <div class="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3 mb-4">{{ password_error }}</div>
+          <div class="alert-danger small rounded-xl px-3 py-2 mb-3">{{ password_error }}</div>
           {% endif %}
           {% if password_success %}
-          <div class="bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-3 mb-4">✓ Password updated successfully!</div>
+          <div class="alert-success small rounded-xl px-3 py-2 mb-3">✓ Password updated successfully!</div>
           {% endif %}
 
-          <form method="POST" action="{% url 'accounts:change_password' %}" class="space-y-4" enctype="multipart/form-data">
+          <form method="POST" action="{% url 'accounts:change_password' %}" class="d-flex flex-column gap-3" enctype="multipart/form-data">
             {% csrf_token %}
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Current Password</label>
-              <input type="password" name="current_password"
-                     class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-gold transition-colors"/>
+              <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">Current Password</label>
+              <input type="password" name="current_password" class="auth-input form-control rounded-xl"/>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">New Password</label>
-              <input type="password" name="new_password" id="new-pass"
-                     class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-gold transition-colors"
-                     oninput="checkStrength(this.value)"/>
-              <div class="mt-2 flex gap-1">
-                <div id="str-1" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
-                <div id="str-2" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
-                <div id="str-3" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
-                <div id="str-4" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
+              <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">New Password</label>
+              <input type="password" name="new_password" id="new-pass" class="auth-input form-control rounded-xl" oninput="checkStrength(this.value)"/>
+              <div class="mt-2 d-flex gap-1">
+                <div id="str-1" class="flex-fill rounded-pill bg-light" style="height:.25rem;"></div>
+                <div id="str-2" class="flex-fill rounded-pill bg-light" style="height:.25rem;"></div>
+                <div id="str-3" class="flex-fill rounded-pill bg-light" style="height:.25rem;"></div>
+                <div id="str-4" class="flex-fill rounded-pill bg-light" style="height:.25rem;"></div>
               </div>
-              <p id="str-label" class="text-xs text-gray-400 mt-1"></p>
+              <p id="str-label" class="small mt-1 mb-0"></p>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Confirm New Password</label>
-              <input type="password" name="confirm_password"
-                     class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-gold transition-colors"/>
+              <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">Confirm New Password</label>
+              <input type="password" name="confirm_password" class="auth-input form-control rounded-xl"/>
             </div>
-            <button type="submit"
-                    class="w-full sm:w-auto bg-navy hover:bg-navy-700 text-white font-semibold
-                           px-6 py-3.5 rounded-xl transition-colors btn-press touch-btn">
+            <button type="submit" class="btn btn-navy fw-semibold rounded-xl btn-press touch-btn align-self-start px-4">
               Update Password
             </button>
           </form>
         </div>
 
-        <div class="bg-red-50 border border-red-100 rounded-2xl p-4 md:p-5">
-          <h3 class="font-semibold text-red-700 mb-1 text-sm md:text-base">Danger Zone</h3>
-          <p class="text-sm text-red-500 mb-3">Deleting your account is permanent and cannot be undone.</p>
-          <button onclick="confirmDelete()"
-                  class="text-sm border border-red-300 text-red-600 hover:bg-red-100
-                         font-semibold px-5 py-2.5 rounded-xl transition-colors touch-btn">
+        <div class="bg-danger bg-opacity-10 rounded-2xl p-3 p-md-4">
+          <h3 class="fw-semibold text-danger mb-1 small">Danger Zone</h3>
+          <p class="small text-danger mb-3">Deleting your account is permanent and cannot be undone.</p>
+          <button onclick="confirmDelete()" class="btn btn-outline-danger btn-sm small fw-semibold rounded-xl touch-btn">
             Delete My Account
           </button>
         </div>
       </div>
 
       <!-- Mobile-only sign out button -->
-      <div class="lg:hidden mt-5">
+      <div class="d-lg-none mt-4">
         <a href="{% url 'accounts:logout' %}"
-           class="w-full flex items-center justify-center gap-2 bg-red-50 text-red-500
-                  font-semibold py-3.5 rounded-2xl transition-colors touch-btn text-sm">
+           class="btn w-100 d-flex align-items-center justify-content-center gap-2 bg-danger bg-opacity-10 text-danger
+                  fw-semibold rounded-2xl touch-btn small py-3">
           Sign Out
         </a>
       </div>
@@ -406,25 +396,13 @@
 
   function showTab(name) {
     tabs.forEach(t => {
-      document.getElementById('panel-' + t)?.classList.toggle('hidden', t !== name);
+      document.getElementById('panel-' + t)?.classList.toggle('d-none', t !== name);
 
       const nav = document.getElementById('nav-' + t);
-      if (nav) {
-        nav.classList.toggle('bg-navy', t === name);
-        nav.classList.toggle('text-white', t === name);
-        nav.classList.toggle('text-gray-600', t !== name);
-      }
+      if (nav) nav.classList.toggle('active', t === name);
 
       const mnav = document.getElementById('mnav-' + t);
-      if (mnav) {
-        if (t === name) {
-          mnav.classList.add('bg-navy','text-white');
-          mnav.classList.remove('bg-white','text-gray-600','border','border-gray-200');
-        } else {
-          mnav.classList.remove('bg-navy','text-white');
-          mnav.classList.add('bg-white','text-gray-600','border','border-gray-200');
-        }
-      }
+      if (mnav) mnav.classList.toggle('active', t === name);
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -434,13 +412,13 @@
     const label  = document.getElementById('str-label');
     const checks = [val.length >= 8, /[A-Z]/.test(val), /[0-9]/.test(val), /[^A-Za-z0-9]/.test(val)];
     const score  = checks.filter(Boolean).length;
-    const colors = ['','bg-red-400','bg-orange-400','bg-yellow-400','bg-green-500'];
+    const colors = ['','#ef4444','#f97316','#eab308','#22c55e'];
     const labels = ['','Weak','Fair','Good','Strong'];
     bars.forEach((b,i) => {
-      b.className = `h-1 flex-1 rounded-full transition-colors ${i < score ? colors[score] : 'bg-gray-200'}`;
+      b.style.backgroundColor = i < score ? colors[score] : '#e5e7eb';
     });
     label.textContent = val ? labels[score] : '';
-    label.className = `text-xs mt-1 ${score >= 3 ? 'text-green-600' : 'text-orange-500'}`;
+    label.className = 'small mt-1 mb-0 ' + (score >= 3 ? 'text-success' : 'text-warning');
   }
 
   function confirmDelete() {
