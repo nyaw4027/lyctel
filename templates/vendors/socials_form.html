@@ -2,68 +2,64 @@
 {% block title %}Update Social Links — Lynctel{% endblock %}
 
 {% block extra_head %}
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   body { font-family: 'Plus Jakarta Sans', sans-serif; }
   .social-field { transition: border-color .2s, box-shadow .2s, background-color .2s; }
   .social-field:focus { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); outline: none; background-color: #fff; }
   .icon-wrap { pointer-events: none; transition: transform 0.2s; }
-  .form-group:focus-within .icon-wrap { transform: scale(1.1); }
-  
-  @keyframes fu { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:none;} }
-  .fu  { animation: fu 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
-  .fu2 { animation: fu 0.4s 0.08s cubic-bezier(0.16, 1, 0.3, 1) both; }
-  
-  .save-btn { background: linear-gradient(135deg, #2563eb, #1d4ed8); transition: all .2s cubic-bezier(0.16, 1, 0.3, 1); }
-  .save-btn:hover { opacity: .95; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+  .social-form-group:focus-within .icon-wrap { transform: scale(1.1); }
+
+  .save-btn { background: linear-gradient(135deg, #2563eb, #1d4ed8); transition: all .2s cubic-bezier(0.16, 1, 0.3, 1); border: none; }
+  .save-btn:hover { opacity: .95; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); color: #fff; }
   .save-btn:active { transform: translateY(0); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-slate-50/50 flex items-start justify-center px-4 py-12 sm:py-16">
-  <div class="w-full max-w-xl">
+<div class="bg-light d-flex align-items-start justify-content-center px-3 py-5" style="min-height: 100vh;">
+  <div class="w-100" style="max-width: 36rem;">
 
     <!-- Header Navigation Section -->
-    <div class="mb-8 fu">
-      <a href="{% url 'vendors:dashboard' %}?tab=settings" class="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-slate-800 font-bold uppercase tracking-wider mb-4 transition group">
-        <svg class="w-4 h-4 transform transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+    <div class="mb-4">
+      <a href="{% url 'vendors:dashboard' %}?tab=settings" class="d-inline-flex align-items-center gap-2 small text-secondary fw-bold text-uppercase mb-3 text-decoration-none" style="letter-spacing:.06em;">
+        <svg style="width:1rem;height:1rem;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
         </svg>
         Back to Settings
       </a>
-      <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Social Configurations</h1>
-      <p class="text-sm text-slate-500 mt-1">Connect your digital touchpoints to showcase your brand presence.</p>
+      <h1 class="fs-2 fw-bold text-dark" style="letter-spacing:-.02em;">Social Configurations</h1>
+      <p class="small text-secondary mt-1 mb-0">Connect your digital touchpoints to showcase your brand presence.</p>
     </div>
 
     <!-- Main Entry Form Panel -->
-    <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-6 sm:p-8 fu2">
+    <div class="bg-white rounded-3xl shadow-sm border p-4">
       <!-- Explicit layout path ensuring parameters remain fully intact -->
-      <form method="POST" action="{% url 'vendors:dashboard' %}?tab=settings&pane=social" class="space-y-5" autocomplete="off">
+      <form method="POST" action="{% url 'vendors:dashboard' %}?tab=settings&pane=social" class="d-flex flex-column gap-3" autocomplete="off">
         {% csrf_token %}
 
         <!-- WhatsApp Layout Panel -->
-        <div class="form-group">
-          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">WhatsApp Business</label>
-          <div class="relative rounded-xl">
-            <div class="icon-wrap absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
-              <svg class="w-5 h-5 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24">
+        <div class="social-form-group">
+          <label class="small fw-bold text-secondary text-uppercase mb-2 d-block" style="letter-spacing:.06em;">WhatsApp Business</label>
+          <div class="position-relative">
+            <div class="icon-wrap position-absolute top-50 translate-middle-y d-flex align-items-center justify-content-center" style="left:1rem;">
+              <svg style="width:1.25rem;height:1.25rem;" fill="#25D366" viewBox="0 0 24 24">
                 <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-4.846c1.66.986 3.296 1.489 4.973 1.493 5.42-.001 9.834-4.415 9.838-9.84.002-2.628-1.022-5.1-2.885-6.964C16.712 1.982 14.243 1.056 11.993 1.056c-5.424 0-9.84 4.415-9.843 9.844-.002 1.81.474 3.578 1.377 5.143l-1.006 3.68 3.77-.989zm11.415-7.14c-.3-.149-1.774-.874-2.048-.974-.274-.1-.474-.149-.674.149-.2.3-.774.974-.949 1.173-.175.2-.35.225-.65.075-1.03-.519-1.787-.96-2.474-2.14-.17-.294.17-.273.487-.903.075-.15.038-.282-.019-.397-.057-.115-.474-1.14-.65-1.56-.172-.413-.347-.356-.474-.362-.122-.006-.262-.008-.402-.008-.14 0-.368.052-.56.262-.193.21-1.738 1.696-1.738 4.135 0 2.44 1.774 4.794 2.023 5.122.25.328 3.492 5.332 8.46 7.48 1.182.511 2.106.817 2.825 1.046 1.19.378 2.274.325 3.13.197.954-.142 2.774-1.133 3.162-2.226.387-1.093.387-2.03.272-2.226-.114-.195-.415-.3-.715-.449z"/>
               </svg>
             </div>
             <input type="text" name="whatsapp" value="{{ vendor.whatsapp|default:'' }}"
                    placeholder="233XXXXXXXXX" pattern="[0-9+]*"
-                   class="social-field w-full border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm bg-slate-50/50 text-slate-800 font-medium placeholder-slate-400"/>
+                   class="social-field form-control rounded-3" style="padding-left:3rem;background:#f8fafc;"/>
           </div>
-          <p class="text-xs text-slate-400 mt-1.5 px-1">Enter your numerical identifier containing country dialing formats (e.g., <span class="font-medium text-slate-500">233244000000</span>).</p>
+          <p class="small text-secondary mt-2 px-1 mb-0">Enter your numerical identifier containing country dialing formats (e.g., <span class="fw-medium text-secondary">233244000000</span>).</p>
         </div>
 
         <!-- Instagram Layout Panel -->
-        <div class="form-group">
-          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Instagram Profile</label>
-          <div class="relative rounded-xl">
-            <div class="icon-wrap absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none">
+        <div class="social-form-group">
+          <label class="small fw-bold text-secondary text-uppercase mb-2 d-block" style="letter-spacing:.06em;">Instagram Profile</label>
+          <div class="position-relative">
+            <div class="icon-wrap position-absolute top-50 translate-middle-y d-flex align-items-center justify-content-center" style="left:1rem;">
+              <svg style="width:1.25rem;height:1.25rem;" viewBox="0 0 24 24" fill="none">
                 <defs>
                   <linearGradient id="instagram-grad" x1="100%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stop-color="#C13584" />
@@ -76,76 +72,76 @@
             </div>
             <input type="url" name="instagram" value="{{ vendor.instagram|default:'' }}"
                    placeholder="https://instagram.com/yourshop"
-                   class="social-field w-full border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm bg-slate-50/50 text-slate-800 font-medium placeholder-slate-400"/>
+                   class="social-field form-control rounded-3" style="padding-left:3rem;background:#f8fafc;"/>
           </div>
         </div>
 
         <!-- Facebook Layout Panel -->
-        <div class="form-group">
-          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Facebook Page</label>
-          <div class="relative rounded-xl">
-            <div class="icon-wrap absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
-              <svg class="w-5 h-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
+        <div class="social-form-group">
+          <label class="small fw-bold text-secondary text-uppercase mb-2 d-block" style="letter-spacing:.06em;">Facebook Page</label>
+          <div class="position-relative">
+            <div class="icon-wrap position-absolute top-50 translate-middle-y d-flex align-items-center justify-content-center" style="left:1rem;">
+              <svg style="width:1.25rem;height:1.25rem;" fill="#1877F2" viewBox="0 0 24 24">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
               </svg>
             </div>
             <input type="url" name="facebook" value="{{ vendor.facebook|default:'' }}"
                    placeholder="https://facebook.com/yourpage"
-                   class="social-field w-full border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm bg-slate-50/50 text-slate-800 font-medium placeholder-slate-400"/>
+                   class="social-field form-control rounded-3" style="padding-left:3rem;background:#f8fafc;"/>
           </div>
         </div>
 
         <!-- Twitter / X Layout Panel -->
-        <div class="form-group">
-          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Twitter / X Handle</label>
-          <div class="relative rounded-xl">
-            <div class="icon-wrap absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
-              <svg class="w-4.5 h-4.5 text-slate-900" fill="currentColor" viewBox="0 0 24 24">
+        <div class="social-form-group">
+          <label class="small fw-bold text-secondary text-uppercase mb-2 d-block" style="letter-spacing:.06em;">Twitter / X Handle</label>
+          <div class="position-relative">
+            <div class="icon-wrap position-absolute top-50 translate-middle-y d-flex align-items-center justify-content-center" style="left:1rem;">
+              <svg style="width:1.125rem;height:1.125rem;" fill="#0f172a" viewBox="0 0 24 24">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
               </svg>
             </div>
             <input type="url" name="twitter" value="{{ vendor.twitter|default:'' }}"
                    placeholder="https://x.com/yourhandle"
-                   class="social-field w-full border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm bg-slate-50/50 text-slate-800 font-medium placeholder-slate-400"/>
+                   class="social-field form-control rounded-3" style="padding-left:3rem;background:#f8fafc;"/>
           </div>
         </div>
 
         <!-- TikTok Layout Panel -->
-        <div class="form-group">
-          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">TikTok Channel</label>
-          <div class="relative rounded-xl">
-            <div class="icon-wrap absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
-              <svg class="w-5 h-5 text-slate-900" fill="currentColor" viewBox="0 0 24 24">
+        <div class="social-form-group">
+          <label class="small fw-bold text-secondary text-uppercase mb-2 d-block" style="letter-spacing:.06em;">TikTok Channel</label>
+          <div class="position-relative">
+            <div class="icon-wrap position-absolute top-50 translate-middle-y d-flex align-items-center justify-content-center" style="left:1rem;">
+              <svg style="width:1.25rem;height:1.25rem;" fill="#0f172a" viewBox="0 0 24 24">
                 <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.05 1.62 4.2 1.21 1.4 2.93 2.37 4.78 2.64v3.87c-1.8-.12-3.57-.75-5.06-1.78-.17-.12-.34-.25-.5-.39v6.7c-.03 2.1-.6 4.23-1.87 5.86-1.55 2.05-4.05 3.32-6.62 3.31-2.92.03-5.75-1.42-7.24-3.95-1.58-2.61-1.56-6.04.06-8.64 1.43-2.37 4.02-3.86 6.82-3.88.03 1.42-.01 2.84-.01 4.26-1.57.03-3.17.78-3.94 2.16-.88 1.5-.72 3.56.44 4.88 1.11 1.31 3.03 1.8 4.63 1.15 1.25-.48 2.08-1.64 2.14-2.97.04-2.73.02-5.46.03-8.19V.02z"/>
               </svg>
             </div>
             <input type="url" name="tiktok" value="{{ vendor.tiktok|default:'' }}"
                    placeholder="https://tiktok.com/@yourshop"
-                   class="social-field w-full border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm bg-slate-50/50 text-slate-800 font-medium placeholder-slate-400"/>
+                   class="social-field form-control rounded-3" style="padding-left:3rem;background:#f8fafc;"/>
           </div>
         </div>
 
         <!-- YouTube Layout Panel -->
-        <div class="form-group">
-          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">YouTube Link</label>
-          <div class="relative rounded-xl">
-            <div class="icon-wrap absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
-              <svg class="w-5 h-5 text-[#FF0000]" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93 Rud.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+        <div class="social-form-group">
+          <label class="small fw-bold text-secondary text-uppercase mb-2 d-block" style="letter-spacing:.06em;">YouTube Link</label>
+          <div class="position-relative">
+            <div class="icon-wrap position-absolute top-50 translate-middle-y d-flex align-items-center justify-content-center" style="left:1rem;">
+              <svg style="width:1.25rem;height:1.25rem;" fill="#FF0000" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
               </svg>
             </div>
             <input type="url" name="youtube" value="{{ vendor.youtube|default:'' }}"
                    placeholder="https://youtube.com/@yourchannel"
-                   class="social-field w-full border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm bg-slate-50/50 text-slate-800 font-medium placeholder-slate-400"/>
+                   class="social-field form-control rounded-3" style="padding-left:3rem;background:#f8fafc;"/>
           </div>
         </div>
 
         <!-- Form Action Intercept Links -->
-        <div class="flex items-center justify-between pt-4 border-t border-slate-100 mt-8">
-          <a href="{% url 'vendors:dashboard' %}?tab=settings" class="text-sm text-slate-400 hover:text-slate-600 font-semibold transition">
+        <div class="d-flex align-items-center justify-content-between pt-3 border-top mt-3">
+          <a href="{% url 'vendors:dashboard' %}?tab=settings" class="small text-secondary fw-semibold text-decoration-none">
             Cancel
           </a>
-          <button type="submit" class="save-btn text-white px-7 py-3 rounded-xl text-sm font-bold tracking-wide shadow-md shadow-blue-500/10">
+          <button type="submit" class="save-btn text-white px-4 py-3 rounded-xl small fw-bold shadow" style="letter-spacing:.02em;">
             Save Changes
           </button>
         </div>
@@ -154,7 +150,7 @@
     </div>
 
     <!-- Descriptive Metadata Info Footer -->
-    <p class="text-center text-xs text-slate-400 mt-5 font-medium tracking-normal">
+    <p class="text-center small text-secondary mt-3 fw-medium mb-0">
       Fields left entirely blank are automatically excluded from public shop page displays.
     </p>
 
