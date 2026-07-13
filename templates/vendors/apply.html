@@ -19,81 +19,85 @@
 {% block content %}
 
 <!-- ── HERO ──────────────────────────────────────────────── -->
-<section class="bg-navy relative overflow-hidden">
-  <div class="absolute inset-0 opacity-5"
-       style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);
-              background-size:28px 28px"></div>
-  <div class="absolute top-0 right-0 w-96 h-96 bg-gold opacity-10 rounded-full
-              translate-x-1/3 -translate-y-1/3 blur-3xl pointer-events-none"></div>
+<section class="bg-navy position-relative overflow-hidden">
+  <div class="position-absolute top-0 start-0 w-100 h-100 dotted-bg" style="opacity:.05;"></div>
+  <div class="position-absolute top-0 end-0 bg-gold rounded-circle"
+       style="width:24rem;height:24rem;opacity:.1;transform:translate(33%,-33%);filter:blur(64px);pointer-events:none;"></div>
 
-  <div class="relative max-w-4xl mx-auto px-4 md:px-6 py-16 text-center">
-    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-3">
+  <div class="position-relative container px-3 px-md-4 py-5 text-center" style="max-width: 56rem;">
+    <p class="text-gold small fw-semibold text-uppercase mb-3" style="letter-spacing:.08em;">
       Start Selling Today
     </p>
-    <h1 class="font-display font-700 text-3xl md:text-4xl text-white mb-4 leading-tight">
+    <h1 class="font-display fw-bold fs-2 fs-md-1 text-white mb-3" style="line-height:1.2;">
       Open Your Shop on Lynctel
     </h1>
-    <p class="text-gray-400 text-sm max-w-md mx-auto mb-10">
+    <p class="text-secondary small mx-auto mb-5" style="max-width: 28rem;">
       Join hundreds of vendors across Ghana. Keep 96% of every sale.
       Registration is completely free — we only earn when you do.
     </p>
 
     <!-- Floating benefit cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl mx-auto">
-      <div class="float-1 bg-white/10 backdrop-blur-sm border border-white/10
-                  rounded-2xl p-4 text-center">
-        <p class="text-3xl mb-2">🛍️</p>
-        <p class="text-xs font-semibold text-white">Your own shop page</p>
+    <div class="row row-cols-2 row-cols-md-4 g-3 mx-auto" style="max-width: 36rem;">
+      <div class="col">
+        <div class="float-1 bg-white bg-opacity-10 border border-white border-opacity-10 rounded-2xl p-3 text-center h-100" style="backdrop-filter:blur(4px);">
+          <p class="fs-3 mb-2">🛍️</p>
+          <p class="small fw-semibold text-white mb-0">Your own shop page</p>
+        </div>
       </div>
-      <div class="float-2 bg-white/10 backdrop-blur-sm border border-white/10
-                  rounded-2xl p-4 text-center">
-        <p class="text-3xl mb-2">💰</p>
-        <p class="text-xs font-semibold text-white">Keep 96% of sales</p>
+      <div class="col">
+        <div class="float-2 bg-white bg-opacity-10 border border-white border-opacity-10 rounded-2xl p-3 text-center h-100" style="backdrop-filter:blur(4px);">
+          <p class="fs-3 mb-2">💰</p>
+          <p class="small fw-semibold text-white mb-0">Keep 96% of sales</p>
+        </div>
       </div>
-      <div class="float-3 bg-white/10 backdrop-blur-sm border border-white/10
-                  rounded-2xl p-4 text-center">
-        <p class="text-3xl mb-2">🛵</p>
-        <p class="text-xs font-semibold text-white">We deliver for you</p>
+      <div class="col">
+        <div class="float-3 bg-white bg-opacity-10 border border-white border-opacity-10 rounded-2xl p-3 text-center h-100" style="backdrop-filter:blur(4px);">
+          <p class="fs-3 mb-2">🛵</p>
+          <p class="small fw-semibold text-white mb-0">We deliver for you</p>
+        </div>
       </div>
-      <div class="float-4 bg-white/10 backdrop-blur-sm border border-white/10
-                  rounded-2xl p-4 text-center">
-        <p class="text-3xl mb-2">📱</p>
-        <p class="text-xs font-semibold text-white">Weekly MoMo payouts</p>
+      <div class="col">
+        <div class="float-4 bg-white bg-opacity-10 border border-white border-opacity-10 rounded-2xl p-3 text-center h-100" style="backdrop-filter:blur(4px);">
+          <p class="fs-3 mb-2">📱</p>
+          <p class="small fw-semibold text-white mb-0">Weekly MoMo payouts</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ── HOW IT WORKS ──────────────────────────────────────── -->
-<section class="bg-white border-b border-gray-100 py-10">
-  <div class="max-w-3xl mx-auto px-4">
-    <p class="text-center text-xs font-semibold text-gray-400 uppercase tracking-widest mb-8">
+<section class="bg-white border-bottom py-4">
+  <div class="container px-3" style="max-width: 48rem;">
+    <p class="text-center small fw-semibold text-secondary text-uppercase mb-4" style="letter-spacing:.08em;">
       3 Simple Steps
     </p>
-    <div class="grid grid-cols-3 gap-4 relative">
+    <div class="row row-cols-3 g-3 position-relative">
 
       <!-- Step 1 -->
-      <div class="step-line relative text-center">
-        <div class="w-11 h-11 bg-gold-light border-2 border-gold rounded-full flex items-center
-                    justify-center mx-auto mb-3 relative z-10 font-display font-700 text-navy">1</div>
-        <p class="font-semibold text-navy text-sm mb-1">Fill the Form</p>
-        <p class="text-xs text-gray-400">Enter your shop info and payout details</p>
+      <div class="step-line col position-relative text-center">
+        <div class="bg-gold-light border border-2 border-gold rounded-circle d-flex align-items-center
+                    justify-content-center mx-auto mb-2 position-relative font-display fw-bold text-navy"
+             style="width:2.75rem;height:2.75rem;z-index:1;">1</div>
+        <p class="fw-semibold text-navy small mb-1">Fill the Form</p>
+        <p class="small text-secondary mb-0">Enter your shop info and payout details</p>
       </div>
 
       <!-- Step 2 -->
-      <div class="step-line relative text-center">
-        <div class="w-11 h-11 bg-gold-light border-2 border-gold rounded-full flex items-center
-                    justify-center mx-auto mb-3 relative z-10 font-display font-700 text-navy">2</div>
-        <p class="font-semibold text-navy text-sm mb-1">Get Approved</p>
-        <p class="text-xs text-gray-400">We review your shop within 24 hours</p>
+      <div class="step-line col position-relative text-center">
+        <div class="bg-gold-light border border-2 border-gold rounded-circle d-flex align-items-center
+                    justify-content-center mx-auto mb-2 position-relative font-display fw-bold text-navy"
+             style="width:2.75rem;height:2.75rem;z-index:1;">2</div>
+        <p class="fw-semibold text-navy small mb-1">Get Approved</p>
+        <p class="small text-secondary mb-0">We review your shop within 24 hours</p>
       </div>
 
       <!-- Step 3 -->
-      <div class="relative text-center">
-        <div class="w-11 h-11 bg-gold rounded-full flex items-center justify-center mx-auto mb-3
-                    relative z-10 font-display font-700 text-navy shadow-lg">3</div>
-        <p class="font-semibold text-navy text-sm mb-1">Start Selling</p>
-        <p class="text-xs text-gray-400">List products and earn immediately</p>
+      <div class="col position-relative text-center">
+        <div class="bg-gold rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2
+                    position-relative font-display fw-bold text-navy shadow" style="width:2.75rem;height:2.75rem;z-index:1;">3</div>
+        <p class="fw-semibold text-navy small mb-1">Start Selling</p>
+        <p class="small text-secondary mb-0">List products and earn immediately</p>
       </div>
 
     </div>
@@ -101,147 +105,138 @@
 </section>
 
 <!-- ── MAIN FORM ──────────────────────────────────────────── -->
-<div class="max-w-3xl mx-auto px-4 md:px-6 py-12">
+<div class="container px-3 px-md-4 py-5" style="max-width: 48rem;">
 
   <!-- Free registration notice -->
-  <div class="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 mb-8
-              flex items-start gap-3">
-    <span class="text-2xl flex-shrink-0">🎉</span>
+  <div class="alert-success rounded-2xl px-3 py-3 mb-4 d-flex align-items-start gap-3">
+    <span class="fs-3 flex-shrink-0">🎉</span>
     <div>
-      <p class="font-display font-700 text-navy text-sm">Registration is 100% Free!</p>
-      <p class="text-gray-600 text-xs mt-0.5 leading-relaxed">
+      <p class="font-display fw-bold text-navy small mb-0">Registration is 100% Free!</p>
+      <p class="small mt-1 mb-0" style="line-height:1.5;">
         No upfront cost. We only take a small 4% commission per sale.
         You keep 96% of everything you earn.
       </p>
     </div>
   </div>
 
-  <form method="POST" enctype="multipart/form-data" class="space-y-6">
+  <form method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-4">
     {% csrf_token %}
 
     <!-- ── SECTION 1: SHOP INFO ───────────────────────── -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
-        <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center
-                    text-white text-sm font-display font-700">1</div>
-        <h2 class="font-display font-700 text-navy">Shop Information</h2>
+    <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
+      <div class="px-4 py-3 border-bottom d-flex align-items-center gap-3">
+        <div class="bg-navy rounded-xl d-flex align-items-center justify-content-center
+                    text-white small font-display fw-bold" style="width:2rem;height:2rem;">1</div>
+        <h2 class="font-display fw-bold text-navy mb-0">Shop Information</h2>
       </div>
-      <div class="px-6 py-6 space-y-5">
+      <div class="px-4 py-4 d-flex flex-column gap-3">
 
         <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+          <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
             Shop Name *
           </label>
           <input type="text" name="shop_name"
                  value="{{ form_data.shop_name|default:'' }}"
                  placeholder="e.g. Kofi Electronics, Ama Fabrics..."
-                 class="w-full px-4 py-3 border rounded-xl text-sm
-                        {% if errors.shop_name %}border-red-400 bg-red-50
-                        {% else %}border-gray-200{% endif %}"/>
+                 class="form-control rounded-xl {% if errors.shop_name %}is-invalid{% endif %}"/>
           {% if errors.shop_name %}
-          <p class="text-red-500 text-xs mt-1 flex items-center gap-1">
+          <p class="text-danger small mt-1 mb-0 d-flex align-items-center gap-1">
             ⚠ {{ errors.shop_name }}
           </p>
           {% endif %}
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+          <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
             Description
           </label>
           <textarea name="description" rows="3"
                     placeholder="What products do you sell? What makes your shop special?"
-                    class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none">{{ form_data.description|default:'' }}</textarea>
-          <p class="text-xs text-gray-400 mt-1">This appears on your public shop page.</p>
+                    class="form-control rounded-xl" style="resize:none;">{{ form_data.description|default:'' }}</textarea>
+          <p class="small text-secondary mt-1 mb-0">This appears on your public shop page.</p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
+          <div class="col">
+            <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
               Shop Phone *
             </label>
             <input type="tel" name="phone"
                    value="{{ form_data.phone|default:'' }}"
                    placeholder="0241234567"
-                   class="w-full px-4 py-3 border rounded-xl text-sm
-                          {% if errors.phone %}border-red-400 bg-red-50
-                          {% else %}border-gray-200{% endif %}"/>
+                   class="form-control rounded-xl {% if errors.phone %}is-invalid{% endif %}"/>
             {% if errors.phone %}
-            <p class="text-red-500 text-xs mt-1 flex items-center gap-1">
+            <p class="text-danger small mt-1 mb-0 d-flex align-items-center gap-1">
               ⚠ {{ errors.phone }}
             </p>
             {% endif %}
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+          <div class="col">
+            <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
               Location
             </label>
             <input type="text" name="location"
                    value="{{ form_data.location|default:'' }}"
                    placeholder="e.g. Accra, Kumasi, Takoradi..."
-                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+                   class="form-control rounded-xl"/>
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+          <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
             Shop Logo
           </label>
-          <div class="border-2 border-dashed border-gray-200 rounded-xl px-4 py-5 text-center
-                      hover:border-gold transition-colors cursor-pointer"
+          <div class="border border-2 rounded-xl px-3 py-4 text-center position-relative"
+               style="border-style:dashed !important;cursor:pointer;"
                onclick="document.getElementById('logo-input').click()">
-            <p class="text-3xl mb-2">🖼️</p>
-            <p class="text-sm font-medium text-navy">Click to upload logo</p>
-            <p class="text-xs text-gray-400 mt-0.5">PNG, JPG up to 5MB — square recommended</p>
+            <p class="fs-3 mb-2">🖼️</p>
+            <p class="small fw-medium text-navy mb-0">Click to upload logo</p>
+            <p class="small text-secondary mt-1 mb-0">PNG, JPG up to 5MB — square recommended</p>
             <input type="file" id="logo-input" name="logo" accept="image/*" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:1;" onchange="previewLogo(this)"/>
           </div>
           <img id="logo-preview"
-               class="hidden mt-3 w-20 h-20 rounded-2xl object-cover
-                      border-2 border-gold/30 mx-auto"/>
+               class="d-none mt-3 rounded-2xl object-fit-cover border border-2 mx-auto d-block"
+               style="width:5rem;height:5rem;border-color:rgba(245,166,35,.3) !important;"/>
         </div>
 
       </div>
     </div>
 
     <!-- ── SECTION 2: PAYOUT DETAILS ─────────────────── -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
-        <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center
-                    text-white text-sm font-display font-700">2</div>
-        <h2 class="font-display font-700 text-navy">Payout Details</h2>
+    <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
+      <div class="px-4 py-3 border-bottom d-flex align-items-center gap-3">
+        <div class="bg-navy rounded-xl d-flex align-items-center justify-content-center
+                    text-white small font-display fw-bold" style="width:2rem;height:2rem;">2</div>
+        <h2 class="font-display fw-bold text-navy mb-0">Payout Details</h2>
       </div>
-      <div class="px-6 py-6 space-y-5">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+      <div class="px-4 py-4 d-flex flex-column gap-3">
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
+          <div class="col">
+            <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
               MoMo Number *
             </label>
             <input type="tel" name="momo_number"
                    value="{{ form_data.momo_number|default:'' }}"
                    placeholder="0241234567"
-                   class="w-full px-4 py-3 border rounded-xl text-sm
-                          {% if errors.momo_number %}border-red-400 bg-red-50
-                          {% else %}border-gray-200{% endif %}"/>
+                   class="form-control rounded-xl {% if errors.momo_number %}is-invalid{% endif %}"/>
             {% if errors.momo_number %}
-            <p class="text-red-500 text-xs mt-1 flex items-center gap-1">
+            <p class="text-danger small mt-1 mb-0 d-flex align-items-center gap-1">
               ⚠ {{ errors.momo_number }}
             </p>
             {% endif %}
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+          <div class="col">
+            <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
               Network
             </label>
-            <select name="momo_network"
-                    class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white">
+            <select name="momo_network" class="form-select rounded-xl">
               <option value="mtn">MTN Mobile Money</option>
               <option value="vodafone">Vodafone Cash</option>
               <option value="airteltigo">AirtelTigo Money</option>
             </select>
           </div>
         </div>
-        <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3
-                    text-xs text-blue-600 flex gap-2">
+        <div class="alert-info rounded-xl px-3 py-3 small d-flex gap-2">
           <span class="flex-shrink-0">💡</span>
           <span>Payouts are processed weekly to this number. Make sure it's correct.</span>
         </div>
@@ -250,128 +245,123 @@
 
     <!-- ── SECTION 3: ACCOUNT (unauthenticated only) ── -->
     {% if not user.is_authenticated %}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-navy rounded-xl flex items-center justify-center
-                      text-white text-sm font-display font-700">3</div>
-          <h2 class="font-display font-700 text-navy">Create Your Account</h2>
+    <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
+      <div class="px-4 py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+          <div class="bg-navy rounded-xl d-flex align-items-center justify-content-center
+                      text-white small font-display fw-bold" style="width:2rem;height:2rem;">3</div>
+          <h2 class="font-display fw-bold text-navy mb-0">Create Your Account</h2>
         </div>
-        <a href="{% url 'accounts:login' %}?next={% url 'vendors:apply' %}"
-           class="text-xs text-gold-dark font-semibold hover:underline">
+        <a href="{% url 'accounts:login' %}?next={% url 'vendors:apply' %}" class="small text-gold-dark fw-semibold text-decoration-none">
           Already have an account? Sign in →
         </a>
       </div>
-      <div class="px-6 py-6 space-y-5">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+      <div class="px-4 py-4 d-flex flex-column gap-3">
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
+          <div class="col">
+            <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
               First Name *
             </label>
             <input type="text" name="first_name"
                    value="{{ form_data.first_name|default:'' }}"
-                   class="w-full px-4 py-3 border rounded-xl text-sm
-                          {% if errors.first_name %}border-red-400 bg-red-50
-                          {% else %}border-gray-200{% endif %}"/>
+                   class="form-control rounded-xl {% if errors.first_name %}is-invalid{% endif %}"/>
             {% if errors.first_name %}
-            <p class="text-red-500 text-xs mt-1">⚠ {{ errors.first_name }}</p>
+            <p class="text-danger small mt-1 mb-0">⚠ {{ errors.first_name }}</p>
             {% endif %}
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+          <div class="col">
+            <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
               Last Name
             </label>
             <input type="text" name="last_name"
                    value="{{ form_data.last_name|default:'' }}"
-                   class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"/>
+                   class="form-control rounded-xl"/>
           </div>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+          <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
             Password *
           </label>
-          <div class="relative">
+          <div class="position-relative">
             <input type="password" name="password" id="pass-input"
                    placeholder="At least 6 characters"
-                   class="w-full px-4 py-3 border rounded-xl text-sm pr-12
-                          {% if errors.password %}border-red-400 bg-red-50
-                          {% else %}border-gray-200{% endif %}"
+                   class="form-control rounded-xl {% if errors.password %}is-invalid{% endif %}"
+                   style="padding-right:3rem;"
                    oninput="strengthCheck(this.value)"/>
             <button type="button" onclick="togglePass()"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
-                           hover:text-navy text-sm">👁</button>
+                    class="btn btn-link position-absolute top-50 translate-middle-y text-secondary small p-0" style="right:1rem;">👁</button>
           </div>
           {% if errors.password %}
-          <p class="text-red-500 text-xs mt-1">⚠ {{ errors.password }}</p>
+          <p class="text-danger small mt-1 mb-0">⚠ {{ errors.password }}</p>
           {% endif %}
-          <div class="flex gap-1 mt-2">
-            <div id="s1" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
-            <div id="s2" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
-            <div id="s3" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
-            <div id="s4" class="h-1 flex-1 rounded-full bg-gray-200 transition-colors"></div>
+          <div class="d-flex gap-1 mt-2">
+            <div id="s1" class="flex-fill rounded-pill bg-light" style="height:.25rem;"></div>
+            <div id="s2" class="flex-fill rounded-pill bg-light" style="height:.25rem;"></div>
+            <div id="s3" class="flex-fill rounded-pill bg-light" style="height:.25rem;"></div>
+            <div id="s4" class="flex-fill rounded-pill bg-light" style="height:.25rem;"></div>
           </div>
         </div>
       </div>
     </div>
     {% else %}
-    <div class="bg-green-50 border border-green-200 rounded-2xl px-5 py-4
-                flex items-center gap-3 text-green-700">
-      <span class="text-xl">✅</span>
+    <div class="alert-success rounded-2xl px-3 py-3 d-flex align-items-center gap-3">
+      <span class="fs-4">✅</span>
       <div>
-        <p class="font-semibold text-sm">
+        <p class="fw-semibold small mb-0">
           Applying as {{ user.get_full_name|default:user.phone }}
         </p>
-        <p class="text-xs opacity-70">You're signed in — no account needed</p>
+        <p class="small mb-0" style="opacity:.7;">You're signed in — no account needed</p>
       </div>
     </div>
     {% endif %}
 
     <!-- ── SUBMIT ──────────────────────────────────────── -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-      <div class="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
+    <div class="bg-white rounded-2xl border shadow-sm p-4">
+      <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
         <div>
-          <p class="font-display font-700 text-navy">Free to Register</p>
-          <p class="text-xs text-gray-400 mt-0.5">4% commission on sales only</p>
+          <p class="font-display fw-bold text-navy mb-0">Free to Register</p>
+          <p class="small text-secondary mt-1 mb-0">4% commission on sales only</p>
         </div>
-        <p class="font-display font-700 text-2xl text-green-600">GHS 0</p>
+        <p class="font-display fw-bold fs-2 text-success mb-0">GHS 0</p>
       </div>
-      <p class="text-xs text-gray-400 text-center mb-4">
+      <p class="small text-secondary text-center mb-3">
         By submitting you agree to Lynctel's
-        <a href="{% url 'frontend:terms' %}"
-           class="text-gold-dark hover:underline">Terms of Service</a>
+        <a href="{% url 'frontend:terms' %}" class="text-gold-dark">Terms of Service</a>
         and
-        <a href="{% url 'frontend:privacy_policy' %}"
-           class="text-gold-dark hover:underline">Privacy Policy</a>.
+        <a href="{% url 'frontend:privacy_policy' %}" class="text-gold-dark">Privacy Policy</a>.
       </p>
-      <button type="submit"
-              class="w-full bg-navy hover:bg-navy-700 text-white font-semibold
-                     py-4 rounded-2xl transition-colors btn-press flex items-center
-                     justify-center gap-2 text-sm">
+      <button type="submit" class="btn btn-navy w-100 fw-semibold py-3 rounded-2xl btn-press
+                     d-flex align-items-center justify-content-center gap-2 small">
         Submit Application
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 5l7 7-7 7"/>
+        <svg style="width:1rem;height:1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
         </svg>
       </button>
     </div>
   </form>
 
   <!-- ── TRUST BADGES ───────────────────────────────────── -->
-  <div class="mt-8 grid grid-cols-3 gap-4 text-center">
-    <div class="bg-white rounded-2xl border border-gray-100 p-4">
-      <p class="text-2xl mb-1.5">🎉</p>
-      <p class="text-xs font-semibold text-navy">Always Free</p>
-      <p class="text-xs text-gray-400">No registration fee ever</p>
+  <div class="mt-4 row row-cols-3 g-3 text-center">
+    <div class="col">
+      <div class="bg-white rounded-2xl border p-3 h-100">
+        <p class="fs-3 mb-2">🎉</p>
+        <p class="small fw-semibold text-navy mb-0">Always Free</p>
+        <p class="small text-secondary mb-0">No registration fee ever</p>
+      </div>
     </div>
-    <div class="bg-white rounded-2xl border border-gray-100 p-4">
-      <p class="text-2xl mb-1.5">⚡</p>
-      <p class="text-xs font-semibold text-navy">Fast Approval</p>
-      <p class="text-xs text-gray-400">Within 24 hours</p>
+    <div class="col">
+      <div class="bg-white rounded-2xl border p-3 h-100">
+        <p class="fs-3 mb-2">⚡</p>
+        <p class="small fw-semibold text-navy mb-0">Fast Approval</p>
+        <p class="small text-secondary mb-0">Within 24 hours</p>
+      </div>
     </div>
-    <div class="bg-white rounded-2xl border border-gray-100 p-4">
-      <p class="text-2xl mb-1.5">🇬🇭</p>
-      <p class="text-xs font-semibold text-navy">Ghana-Built</p>
-      <p class="text-xs text-gray-400">For Ghanaian sellers</p>
+    <div class="col">
+      <div class="bg-white rounded-2xl border p-3 h-100">
+        <p class="fs-3 mb-2">🇬🇭</p>
+        <p class="small fw-semibold text-navy mb-0">Ghana-Built</p>
+        <p class="small text-secondary mb-0">For Ghanaian sellers</p>
+      </div>
     </div>
   </div>
 
@@ -387,7 +377,7 @@
     reader.onload = e => {
       const img = document.getElementById('logo-preview');
       img.src = e.target.result;
-      img.classList.remove('hidden');
+      img.classList.remove('d-none');
     };
     reader.readAsDataURL(file);
   }
@@ -401,9 +391,9 @@
     const bars   = [1,2,3,4].map(i => document.getElementById('s' + i));
     const checks = [val.length >= 6, /[A-Z]/.test(val), /[0-9]/.test(val), /[^A-Za-z0-9]/.test(val)];
     const score  = checks.filter(Boolean).length;
-    const colors = { 1:'bg-red-400', 2:'bg-orange-400', 3:'bg-yellow-400', 4:'bg-green-500' };
+    const colors = { 1:'#ef4444', 2:'#f97316', 3:'#eab308', 4:'#22c55e' };
     bars.forEach((b,i) => {
-      b.className = `h-1 flex-1 rounded-full transition-colors ${i < score ? colors[score] : 'bg-gray-200'}`;
+      b.style.backgroundColor = i < score ? colors[score] : '#e5e7eb';
     });
   }
 </script>

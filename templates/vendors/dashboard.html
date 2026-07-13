@@ -8,8 +8,6 @@
   .tab-btn.active { background:#0F1B2D; color:#fff; }
   .stat-card { transition: transform .2s, box-shadow .2s; }
   .stat-card:hover { transform:translateY(-3px); box-shadow:0 12px 32px rgba(15,27,45,.10); }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-  .fade-in { animation: fadeUp .4s ease both; }
 
   /* Video grid */
   .video-thumb {
@@ -49,50 +47,42 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
+<div class="container px-3 px-md-4 py-4">
 
   <!-- ── HEADER ──────────────────────────────────────── -->
-  <div class="flex items-center justify-between flex-wrap gap-4 mb-8 fade-in">
-    <div class="flex items-center gap-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 fade-up">
+    <div class="d-flex align-items-center gap-3">
       {% if vendor.logo %}
-      <img src="{{ vendor.logo.url }}"
-           class="w-14 h-14 rounded-2xl object-cover border border-gray-100 shadow-sm"/>
+      <img src="{{ vendor.logo.url }}" class="rounded-2xl object-fit-cover border shadow-sm" style="width:3.5rem;height:3.5rem;"/>
       {% else %}
-      <div class="w-14 h-14 rounded-2xl bg-navy flex items-center justify-center
-                  text-white font-display font-700 text-xl">
+      <div class="rounded-2xl bg-navy d-flex align-items-center justify-content-center
+                  text-white font-display fw-bold fs-4" style="width:3.5rem;height:3.5rem;">
         {{ vendor.shop_name|first|upper }}
       </div>
       {% endif %}
       <div>
-        <h1 class="font-display font-700 text-xl text-navy">{{ vendor.shop_name }}</h1>
-        <div class="flex items-center gap-2 mt-0.5">
-          <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-          <span class="text-xs text-green-600 font-semibold">Active Shop</span>
-          <span class="text-gray-300">·</span>
-          <a href="{% url 'vendors:shop' vendor.slug %}"
-             class="text-xs text-gold-dark hover:underline" target="_blank">
+        <h1 class="font-display fw-bold fs-4 text-navy mb-0">{{ vendor.shop_name }}</h1>
+        <div class="d-flex align-items-center gap-2 mt-1">
+          <span class="bg-success rounded-circle" style="width:.5rem;height:.5rem;"></span>
+          <span class="small text-success fw-semibold">Active Shop</span>
+          <span class="text-secondary">·</span>
+          <a href="{% url 'vendors:shop' vendor.slug %}" class="small text-gold-dark" target="_blank">
             View Shop →
           </a>
         </div>
       </div>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
       {% if active_stream %}
-      <a href="{% url 'livestream:go_live' %}"
-         class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white
-                font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">
-        <span class="w-2 h-2 bg-white rounded-full live-dot"></span> You're Live — Manage
+      <a href="{% url 'livestream:go_live' %}" class="btn btn-danger d-flex align-items-center gap-2 fw-bold small px-4 py-2 rounded-xl">
+        <span class="bg-white rounded-circle live-dot" style="width:.5rem;height:.5rem;"></span> You're Live — Manage
       </a>
       {% else %}
-      <a href="{% url 'livestream:go_live' %}"
-         class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white
-                font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">
+      <a href="{% url 'livestream:go_live' %}" class="btn btn-danger d-flex align-items-center gap-2 fw-bold small px-4 py-2 rounded-xl">
         🔴 Go Live
       </a>
       {% endif %}
-      <a href="{% url 'vendors:product_add' %}"
-         class="flex items-center gap-2 bg-navy hover:bg-navy-700 text-white
-                font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors btn-press">
+      <a href="{% url 'vendors:product_add' %}" class="btn btn-navy d-flex align-items-center gap-2 fw-semibold small px-4 py-2 rounded-xl btn-press">
         + Add Product
       </a>
     </div>
@@ -100,71 +90,78 @@
 
   <!-- ── LIVE NOW BANNER ─────────────────────────────── -->
   {% if active_stream %}
-  <div class="live-now-banner bg-gradient-to-r from-red-600 to-red-500 rounded-2xl p-5 mb-8
-              flex items-center justify-between flex-wrap gap-4 text-white shadow-lg shadow-red-500/20">
-    <div class="flex items-center gap-4">
-      <div class="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center text-2xl">📺</div>
+  <div class="live-now-banner rounded-2xl p-4 mb-4 d-flex align-items-center justify-content-between
+              flex-wrap gap-3 text-white shadow" style="background:linear-gradient(to right,#dc2626,#ef4444);">
+    <div class="d-flex align-items-center gap-3">
+      <div class="bg-white bg-opacity-10 rounded-xl d-flex align-items-center justify-content-center fs-3" style="width:3rem;height:3rem;">📺</div>
       <div>
-        <p class="font-display font-700 text-base flex items-center gap-2">
-          <span class="w-2 h-2 bg-white rounded-full live-dot"></span> Live now — {{ active_stream.title }}
+        <p class="font-display fw-bold d-flex align-items-center gap-2 mb-0">
+          <span class="bg-white rounded-circle live-dot" style="width:.5rem;height:.5rem;"></span> Live now — {{ active_stream.title }}
         </p>
-        <p class="text-xs text-white/80 mt-0.5">👁 {{ active_stream.current_viewers|default:0 }} watching right now</p>
+        <p class="small text-white mt-1 mb-0" style="opacity:.8;">👁 {{ active_stream.current_viewers|default:0 }} watching right now</p>
       </div>
     </div>
-    <a href="{% url 'livestream:go_live' %}"
-       class="bg-white text-red-600 font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-red-50 transition-colors">
+    <a href="{% url 'livestream:go_live' %}" class="btn bg-white text-danger fw-bold small px-4 py-2 rounded-xl">
       Manage Stream →
     </a>
   </div>
   {% endif %}
 
   <!-- ── STATS GRID ──────────────────────────────────── -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
 
-    <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Revenue</p>
-      <p class="font-display font-700 text-2xl text-navy">GHS {{ total_revenue|floatformat:2 }}</p>
-      <p class="text-xs text-green-600 mt-1 font-medium">
-        Today: GHS {{ revenue_today|floatformat:2 }}
-      </p>
+    <div class="col">
+      <div class="stat-card bg-white rounded-2xl border p-3 h-100">
+        <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.05em;">Total Revenue</p>
+        <p class="font-display fw-bold fs-3 text-navy mb-0">GHS {{ total_revenue|floatformat:2 }}</p>
+        <p class="small text-success mt-1 fw-medium mb-0">
+          Today: GHS {{ revenue_today|floatformat:2 }}
+        </p>
+      </div>
     </div>
 
-    <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Pending Payout</p>
-      <p class="font-display font-700 text-2xl text-orange-500">GHS {{ pending_payout|floatformat:2 }}</p>
-      {% if held_payout > 0 %}
-      <p class="text-xs text-red-500 mt-1 font-medium">
-        🛡 GHS {{ held_payout|floatformat:2 }} held for fraud review
-      </p>
-      {% else %}
-      <p class="text-xs text-gray-400 mt-1">Awaiting transfer</p>
-      {% endif %}
+    <div class="col">
+      <div class="stat-card bg-white rounded-2xl border p-3 h-100">
+        <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.05em;">Pending Payout</p>
+        <p class="font-display fw-bold fs-3 text-warning mb-0">GHS {{ pending_payout|floatformat:2 }}</p>
+        {% if held_payout > 0 %}
+        <p class="small text-danger mt-1 fw-medium mb-0">
+          🛡 GHS {{ held_payout|floatformat:2 }} held for fraud review
+        </p>
+        {% else %}
+        <p class="small text-secondary mt-1 mb-0">Awaiting transfer</p>
+        {% endif %}
+      </div>
     </div>
 
-    <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Orders</p>
-      <p class="font-display font-700 text-2xl text-navy">{{ total_orders }}</p>
-      <p class="text-xs text-blue-600 mt-1 font-medium">Today: {{ orders_today }}</p>
+    <div class="col">
+      <div class="stat-card bg-white rounded-2xl border p-3 h-100">
+        <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.05em;">Total Orders</p>
+        <p class="font-display fw-bold fs-3 text-navy mb-0">{{ total_orders }}</p>
+        <p class="small text-primary mt-1 fw-medium mb-0">Today: {{ orders_today }}</p>
+      </div>
     </div>
 
-    <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Paid Out</p>
-      <p class="font-display font-700 text-2xl text-green-600">GHS {{ paid_out|floatformat:2 }}</p>
-      {% if low_stock_count > 0 %}
-      <p class="text-xs text-red-500 mt-1 font-medium">⚠ {{ low_stock_count }} low stock</p>
-      {% else %}
-      <p class="text-xs text-gray-400 mt-1">All confirmed</p>
-      {% endif %}
+    <div class="col">
+      <div class="stat-card bg-white rounded-2xl border p-3 h-100">
+        <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.05em;">Paid Out</p>
+        <p class="font-display fw-bold fs-3 text-success mb-0">GHS {{ paid_out|floatformat:2 }}</p>
+        {% if low_stock_count > 0 %}
+        <p class="small text-danger mt-1 fw-medium mb-0">⚠ {{ low_stock_count }} low stock</p>
+        {% else %}
+        <p class="small text-secondary mt-1 mb-0">All confirmed</p>
+        {% endif %}
+      </div>
     </div>
 
   </div>
 
   <!-- ── SALES CHART ─────────────────────────────────── -->
-  <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-8 fade-in">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="font-display font-700 text-navy">Sales — Last 7 Days</h2>
+  <div class="bg-white rounded-2xl border p-3 mb-4 fade-up">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="font-display fw-bold text-navy fs-6 mb-0">Sales — Last 7 Days</h2>
       {% if top_product %}
-      <span class="text-xs text-gray-400">
+      <span class="small text-secondary">
         Top product: <strong class="text-navy">{{ top_product.name }}</strong>
       </span>
       {% endif %}
@@ -173,11 +170,11 @@
   </div>
 
   <!-- ── TABS ────────────────────────────────────────── -->
-  <div class="flex gap-2 flex-wrap mb-6">
+  <div class="d-flex gap-2 flex-wrap mb-4">
     {% for tab_id, tab_label in tabs %}
     <a href="?tab={{ tab_id }}"
-       class="tab-btn px-5 py-2 rounded-xl text-sm font-semibold border border-gray-200
-              {% if current_tab == tab_id %}active{% else %}bg-white text-gray-600 hover:border-navy hover:text-navy{% endif %}">
+       class="tab-btn px-3 py-2 rounded-xl small fw-semibold border text-decoration-none
+              {% if current_tab == tab_id %}active{% else %}bg-white text-secondary{% endif %}">
       {% if tab_id == 'products' %}📦
       {% elif tab_id == 'orders' %}🧾
       {% elif tab_id == 'earnings' %}💰
@@ -187,7 +184,7 @@
       {% endif %}
       {{ tab_label }}
       {% if tab_id == 'streams' and active_stream %}
-      <span class="inline-block w-1.5 h-1.5 bg-red-500 rounded-full live-dot ml-1"></span>
+      <span class="d-inline-block bg-danger rounded-circle live-dot ms-1" style="width:6px;height:6px;"></span>
       {% endif %}
     </a>
     {% endfor %}
@@ -197,108 +194,100 @@
         TAB: PRODUCTS
   ═══════════════════════════════════════════════════ -->
   {% if current_tab == 'products' %}
-  <div class="fade-in">
+  <div class="fade-up">
 
     {% if low_stock_products %}
-    <div class="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-5
-                flex items-center gap-3 text-sm text-orange-700">
+    <div class="alert-warning rounded-xl px-3 py-3 mb-4 d-flex align-items-center gap-3 small">
       ⚠️ <span><strong>{{ low_stock_count }} product{{ low_stock_count|pluralize }}</strong> running low on stock.</span>
     </div>
     {% endif %}
 
     {% if products %}
-    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
-            <th class="px-5 py-3 text-left font-semibold">Product</th>
-            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Category</th>
-            <th class="px-5 py-3 text-right font-semibold">Price</th>
-            <th class="px-5 py-3 text-right font-semibold">Stock</th>
-            <th class="px-5 py-3 text-center font-semibold hidden sm:table-cell">Media</th>
-            <th class="px-5 py-3 text-center font-semibold">Status</th>
-            <th class="px-5 py-3 text-right font-semibold">Actions</th>
+    <div class="bg-white rounded-2xl border overflow-hidden">
+      <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr class="small text-secondary text-uppercase">
+            <th class="px-4 py-2">Product</th>
+            <th class="px-4 py-2 d-none d-md-table-cell">Category</th>
+            <th class="px-4 py-2 text-end">Price</th>
+            <th class="px-4 py-2 text-end">Stock</th>
+            <th class="px-4 py-2 text-center d-none d-sm-table-cell">Media</th>
+            <th class="px-4 py-2 text-center">Status</th>
+            <th class="px-4 py-2 text-end">Actions</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-50">
+        <tbody>
           {% for product in products %}
-          <tr class="hover:bg-gray-50 transition-colors">
+          <tr>
 
-            <td class="px-5 py-3.5">
-              <div class="flex items-center gap-3">
+            <td class="px-4 py-2">
+              <div class="d-flex align-items-center gap-3">
                 {% with img=product.images.first %}
                 {% if img %}
-                <img src="{{ img.image.url }}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0"/>
+                <img src="{{ img.image.url }}" class="rounded-3 object-fit-cover flex-shrink-0" style="width:2.5rem;height:2.5rem;"/>
                 {% else %}
-                <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-lg flex-shrink-0">📦</div>
+                <div class="rounded-3 bg-light d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:2.5rem;height:2.5rem;">📦</div>
                 {% endif %}
                 {% endwith %}
                 <div>
-                  <p class="font-semibold text-navy leading-tight">{{ product.name }}</p>
-                  <p class="text-xs text-gray-400">{{ product.created_at|date:"M d, Y" }}</p>
+                  <p class="fw-semibold text-navy mb-0" style="line-height:1.2;">{{ product.name }}</p>
+                  <p class="small text-secondary mb-0">{{ product.created_at|date:"M d, Y" }}</p>
                 </div>
               </div>
             </td>
 
-            <td class="px-5 py-3.5 text-gray-500 hidden md:table-cell">
+            <td class="px-4 py-2 text-secondary d-none d-md-table-cell">
               {{ product.category.name|default:"—" }}
             </td>
 
-            <td class="px-5 py-3.5 text-right font-display font-700 text-navy">
+            <td class="px-4 py-2 text-end font-display fw-bold text-navy">
               GHS {{ product.selling_price }}
             </td>
 
-            <td class="px-5 py-3.5 text-right">
+            <td class="px-4 py-2 text-end">
               {# Use the model's own is_low_stock property, not a hardcoded <= 5 #}
-              <span class="font-semibold
-                {% if product.stock_qty == 0 %}text-red-500
-                {% elif product.is_low_stock %}text-orange-500
+              <span class="fw-semibold
+                {% if product.stock_qty == 0 %}text-danger
+                {% elif product.is_low_stock %}text-warning
                 {% else %}text-navy{% endif %}">
                 {{ product.stock_qty }}
               </span>
             </td>
 
             {# Media badge: shows image count + video indicator #}
-            <td class="px-5 py-3.5 text-center hidden sm:table-cell">
-              <div class="flex items-center justify-center gap-1.5">
+            <td class="px-4 py-2 text-center d-none d-sm-table-cell">
+              <div class="d-flex align-items-center justify-content-center gap-1">
                 {% with img_count=product.images.count %}
                 {% if img_count %}
-                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                  🖼 {{ img_count }}
-                </span>
+                <span class="badge rounded-pill text-bg-light">🖼 {{ img_count }}</span>
                 {% endif %}
                 {% endwith %}
                 {% with vid_count=product.videos.count %}
                 {% if vid_count %}
-                <span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
-                  🎬 {{ vid_count }}
-                </span>
+                <span class="badge rounded-pill text-bg-primary">🎬 {{ vid_count }}</span>
                 {% endif %}
                 {% endwith %}
               </div>
             </td>
 
-            <td class="px-5 py-3.5 text-center">
-              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
-                {% if product.status == 'active' %}bg-green-100 text-green-700
-                {% else %}bg-gray-100 text-gray-500{% endif %}">
+            <td class="px-4 py-2 text-center">
+              <span class="badge rounded-pill
+                {% if product.status == 'active' %}text-bg-success
+                {% else %}text-bg-secondary{% endif %}">
                 {{ product.get_status_display }}
               </span>
             </td>
 
-            <td class="px-5 py-3.5 text-right">
-              <div class="flex items-center justify-end gap-2">
-                <a href="{% url 'vendors:product_edit' product.pk %}"
-                   class="text-xs border border-gray-200 hover:border-navy text-gray-600
-                          hover:text-navy font-semibold px-3 py-1.5 rounded-lg transition-colors">
+            <td class="px-4 py-2 text-end">
+              <div class="d-flex align-items-center justify-content-end gap-2">
+                <a href="{% url 'vendors:product_edit' product.pk %}" class="btn btn-sm btn-light">
                   Edit
                 </a>
                 <form method="POST" action="{% url 'vendors:product_delete' product.pk %}"
                       onsubmit="return confirm('Delete {{ product.name|escapejs }}?')" enctype="multipart/form-data">
                   {% csrf_token %}
-                  <button type="submit"
-                          class="text-xs border border-red-200 hover:bg-red-500 hover:border-red-500
-                                 text-red-500 hover:text-white font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
                     Delete
                   </button>
                 </form>
@@ -309,15 +298,14 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
     {% else %}
-    <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
-      <p class="text-5xl mb-4">📦</p>
-      <p class="font-display font-700 text-navy mb-2">No products yet</p>
-      <p class="text-gray-400 text-sm mb-5">Start adding products to your shop.</p>
-      <a href="{% url 'vendors:product_add' %}"
-         class="inline-block bg-navy text-white text-sm font-semibold px-6 py-2.5
-                rounded-xl hover:bg-navy-700 transition-colors">
+    <div class="bg-white rounded-2xl border py-5 text-center">
+      <p class="display-4 mb-3">📦</p>
+      <p class="font-display fw-bold text-navy mb-2">No products yet</p>
+      <p class="small text-secondary mb-3">Start adding products to your shop.</p>
+      <a href="{% url 'vendors:product_add' %}" class="btn btn-navy btn-sm small fw-semibold rounded-xl">
         + Add First Product
       </a>
     </div>
@@ -328,57 +316,59 @@
         TAB: ORDERS
   ═══════════════════════════════════════════════════ -->
   {% elif current_tab == 'orders' %}
-  <div class="fade-in">
+  <div class="fade-up">
     {% if recent_orders %}
-    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
-            <th class="px-5 py-3 text-left font-semibold">Order</th>
-            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Product</th>
-            <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Qty</th>
-            <th class="px-5 py-3 text-right font-semibold">Amount</th>
-            <th class="px-5 py-3 text-center font-semibold">Status</th>
-            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Date</th>
+    <div class="bg-white rounded-2xl border overflow-hidden">
+      <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr class="small text-secondary text-uppercase">
+            <th class="px-4 py-2">Order</th>
+            <th class="px-4 py-2 d-none d-md-table-cell">Product</th>
+            <th class="px-4 py-2 text-end d-none d-md-table-cell">Qty</th>
+            <th class="px-4 py-2 text-end">Amount</th>
+            <th class="px-4 py-2 text-center">Status</th>
+            <th class="px-4 py-2 d-none d-md-table-cell">Date</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-50">
+        <tbody>
           {% for item in recent_orders %}
-          <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-5 py-3.5 font-bold text-gold-dark">
+          <tr>
+            <td class="px-4 py-2 fw-bold text-gold-dark">
               {{ item.order.order_ref }}
             </td>
-            <td class="px-5 py-3.5 text-navy hidden md:table-cell">
+            <td class="px-4 py-2 text-navy d-none d-md-table-cell">
               {{ item.product.name|default:"—" }}
             </td>
-            <td class="px-5 py-3.5 text-right text-gray-600 hidden md:table-cell">
+            <td class="px-4 py-2 text-end text-secondary d-none d-md-table-cell">
               × {{ item.quantity }}
             </td>
-            <td class="px-5 py-3.5 text-right font-display font-700 text-navy">
+            <td class="px-4 py-2 text-end font-display fw-bold text-navy">
               GHS {{ item.subtotal|default:item.price }}
             </td>
-            <td class="px-5 py-3.5 text-center">
-              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
-                {% if item.order.status == 'delivered' %}bg-green-100 text-green-700
-                {% elif item.order.status == 'dispatched' %}bg-blue-100 text-blue-700
-                {% elif item.order.status == 'pending' %}bg-yellow-100 text-yellow-700
-                {% else %}bg-gray-100 text-gray-500{% endif %}">
+            <td class="px-4 py-2 text-center">
+              <span class="badge rounded-pill
+                {% if item.order.status == 'delivered' %}text-bg-success
+                {% elif item.order.status == 'dispatched' %}text-bg-primary
+                {% elif item.order.status == 'pending' %}text-bg-warning
+                {% else %}text-bg-secondary{% endif %}">
                 {{ item.order.get_status_display }}
               </span>
             </td>
-            <td class="px-5 py-3.5 text-gray-400 text-xs hidden md:table-cell">
+            <td class="px-4 py-2 small text-secondary d-none d-md-table-cell">
               {{ item.order.created_at|date:"M d, Y" }}
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
     {% else %}
-    <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
-      <p class="text-5xl mb-4">🧾</p>
-      <p class="font-display font-700 text-navy mb-1">No orders yet</p>
-      <p class="text-gray-400 text-sm">Orders will appear here once customers start buying.</p>
+    <div class="bg-white rounded-2xl border py-5 text-center">
+      <p class="display-4 mb-3">🧾</p>
+      <p class="font-display fw-bold text-navy mb-1">No orders yet</p>
+      <p class="small text-secondary mb-0">Orders will appear here once customers start buying.</p>
     </div>
     {% endif %}
   </div>
@@ -387,75 +377,83 @@
         TAB: EARNINGS
   ═══════════════════════════════════════════════════ -->
   {% elif current_tab == 'earnings' %}
-  <div class="fade-in">
+  <div class="fade-up">
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-        <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Total Earned</p>
-        <p class="font-display font-700 text-2xl text-navy">GHS {{ total_revenue|floatformat:2 }}</p>
+    <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+      <div class="col">
+        <div class="bg-white rounded-2xl border p-3 text-center h-100">
+          <p class="small text-secondary text-uppercase mb-1" style="letter-spacing:.05em;">Total Earned</p>
+          <p class="font-display fw-bold fs-3 text-navy mb-0">GHS {{ total_revenue|floatformat:2 }}</p>
+        </div>
       </div>
-      <div class="bg-orange-50 border border-orange-100 rounded-2xl p-5 text-center">
-        <p class="text-xs text-orange-500 uppercase tracking-wider mb-1">Pending</p>
-        <p class="font-display font-700 text-2xl text-orange-600">GHS {{ pending_payout|floatformat:2 }}</p>
+      <div class="col">
+        <div class="bg-warning bg-opacity-10 rounded-2xl p-3 text-center h-100">
+          <p class="small text-warning-emphasis text-uppercase mb-1" style="letter-spacing:.05em;">Pending</p>
+          <p class="font-display fw-bold fs-3 text-warning-emphasis mb-0">GHS {{ pending_payout|floatformat:2 }}</p>
+        </div>
       </div>
-      <div class="bg-green-50 border border-green-100 rounded-2xl p-5 text-center">
-        <p class="text-xs text-green-600 uppercase tracking-wider mb-1">Paid Out</p>
-        <p class="font-display font-700 text-2xl text-green-700">GHS {{ paid_out|floatformat:2 }}</p>
+      <div class="col">
+        <div class="bg-success bg-opacity-10 rounded-2xl p-3 text-center h-100">
+          <p class="small text-success text-uppercase mb-1" style="letter-spacing:.05em;">Paid Out</p>
+          <p class="font-display fw-bold fs-3 text-success mb-0">GHS {{ paid_out|floatformat:2 }}</p>
+        </div>
       </div>
     </div>
 
     {% if earnings %}
-    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
-            <th class="px-5 py-3 text-left font-semibold">Order</th>
-            <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Gross</th>
-            <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Commission</th>
-            <th class="px-5 py-3 text-right font-semibold">Net Earned</th>
-            <th class="px-5 py-3 text-center font-semibold">Status</th>
-            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Date</th>
+    <div class="bg-white rounded-2xl border overflow-hidden">
+      <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr class="small text-secondary text-uppercase">
+            <th class="px-4 py-2">Order</th>
+            <th class="px-4 py-2 text-end d-none d-md-table-cell">Gross</th>
+            <th class="px-4 py-2 text-end d-none d-md-table-cell">Commission</th>
+            <th class="px-4 py-2 text-end">Net Earned</th>
+            <th class="px-4 py-2 text-center">Status</th>
+            <th class="px-4 py-2 d-none d-md-table-cell">Date</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-50">
+        <tbody>
           {% for earning in earnings %}
-          <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-5 py-3.5 font-bold text-gold-dark">
+          <tr>
+            <td class="px-4 py-2 fw-bold text-gold-dark">
               {{ earning.order.order_ref }}
             </td>
-            <td class="px-5 py-3.5 text-right text-gray-500 hidden md:table-cell">
+            <td class="px-4 py-2 text-end text-secondary d-none d-md-table-cell">
               GHS {{ earning.gross_amount }}
             </td>
-            <td class="px-5 py-3.5 text-right text-red-400 hidden md:table-cell">
+            <td class="px-4 py-2 text-end text-danger d-none d-md-table-cell">
               -GHS {{ earning.commission }}
             </td>
-            <td class="px-5 py-3.5 text-right font-display font-700 text-navy">
+            <td class="px-4 py-2 text-end font-display fw-bold text-navy">
               GHS {{ earning.net_amount }}
             </td>
-            <td class="px-5 py-3.5 text-center">
-              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
-                {% if earning.status == 'paid' %}bg-green-100 text-green-700
-                {% else %}bg-orange-100 text-orange-700{% endif %}">
+            <td class="px-4 py-2 text-center">
+              <span class="badge rounded-pill
+                {% if earning.status == 'paid' %}text-bg-success
+                {% else %}text-bg-warning{% endif %}">
                 {{ earning.get_status_display }}
               </span>
             </td>
-            <td class="px-5 py-3.5 text-gray-400 text-xs hidden md:table-cell">
+            <td class="px-4 py-2 small text-secondary d-none d-md-table-cell">
               {{ earning.created_at|date:"M d, Y" }}
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
     {% else %}
-    <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
-      <p class="text-5xl mb-4">💰</p>
-      <p class="font-display font-700 text-navy mb-1">No earnings yet</p>
-      <p class="text-gray-400 text-sm">Earnings will appear here once you start getting paid orders.</p>
+    <div class="bg-white rounded-2xl border py-5 text-center">
+      <p class="display-4 mb-3">💰</p>
+      <p class="font-display fw-bold text-navy mb-1">No earnings yet</p>
+      <p class="small text-secondary mb-0">Earnings will appear here once you start getting paid orders.</p>
     </div>
     {% endif %}
 
-    <div class="mt-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-600">
+    <div class="mt-3 alert-info rounded-xl px-3 py-3 small">
       💡 Payouts are processed to your MoMo number
       <strong>{{ vendor.momo_number }}</strong>
       ({{ vendor.get_momo_network_display }}) within 3 working days.
@@ -466,23 +464,22 @@
         TAB: VIDEOS
   ═══════════════════════════════════════════════════ -->
   {% elif current_tab == 'videos' %}
-  <div class="fade-in">
+  <div class="fade-up">
 
-    <div class="flex items-center justify-between mb-5">
-      <p class="text-sm text-gray-500">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <p class="small text-secondary mb-0">
         Videos you upload appear on the Lynctel home page for all shoppers to see.
       </p>
-      <a href="{% url 'vendors:product_add' %}"
-         class="text-xs bg-navy text-white font-semibold px-4 py-2 rounded-xl
-                hover:bg-navy-700 transition-colors">
+      <a href="{% url 'vendors:product_add' %}" class="btn btn-navy btn-sm small fw-semibold rounded-xl">
         + Add Product with Video
       </a>
     </div>
 
     {% if products %}
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
       {% for product in products %}
         {% for video in product.videos.all %}
+        <div class="col">
         <div class="video-card">
 
           {# Thumbnail or raw video element #}
@@ -506,37 +503,36 @@
 
           <div class="video-actions">
             <div class="min-w-0">
-              <p class="text-white text-xs font-semibold truncate">{{ product.name }}</p>
-              <p class="text-gold text-xs font-bold">GHS {{ product.final_price }}</p>
+              <p class="text-white small fw-semibold text-truncate mb-0">{{ product.name }}</p>
+              <p class="text-gold small fw-bold mb-0">GHS {{ product.final_price }}</p>
             </div>
             <form method="POST" action="{% url 'vendors:product_edit' product.pk %}"
                   onsubmit="return confirm('Remove this video?')" enctype="multipart/form-data">
               {% csrf_token %}
               <input type="hidden" name="delete_videos" value="{{ video.pk }}">
               <button type="submit"
-                      class="flex-shrink-0 w-7 h-7 bg-red-500 hover:bg-red-600 text-white
-                             rounded-lg flex items-center justify-center transition-colors text-xs">
+                      class="btn btn-danger flex-shrink-0 rounded-2 d-flex align-items-center justify-content-center small border-0"
+                      style="width:1.75rem;height:1.75rem;padding:0;">
                 ✕
               </button>
             </form>
           </div>
 
         </div>
+        </div>
         {% endfor %}
       {% endfor %}
     </div>
     {% endif %}
 
-    <div id="no-videos-msg" class="hidden">
-      <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
-        <p class="text-5xl mb-4">🎬</p>
-        <p class="font-display font-700 text-navy mb-2">No videos yet</p>
-        <p class="text-gray-400 text-sm mb-5">
+    <div id="no-videos-msg" class="d-none">
+      <div class="bg-white rounded-2xl border py-5 text-center">
+        <p class="display-4 mb-3">🎬</p>
+        <p class="font-display fw-bold text-navy mb-2">No videos yet</p>
+        <p class="small text-secondary mb-3">
           Add a video when creating or editing a product — it will appear on the homepage.
         </p>
-        <a href="{% url 'vendors:product_add' %}"
-           class="inline-block bg-navy text-white text-sm font-semibold px-6 py-2.5
-                  rounded-xl hover:bg-navy-700 transition-colors">
+        <a href="{% url 'vendors:product_add' %}" class="btn btn-navy btn-sm small fw-semibold rounded-xl">
           + Add Product with Video
         </a>
       </div>
@@ -548,106 +544,112 @@
         TAB: LIVESTREAMS (new)
   ═══════════════════════════════════════════════════ -->
   {% elif current_tab == 'streams' %}
-  <div class="fade-in">
+  <div class="fade-up">
 
     {% if not active_stream %}
-    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-red-950 rounded-2xl p-6 mb-6
-                flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-700">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-xl backdrop-blur-sm">📺</div>
+    <div class="rounded-2xl p-4 mb-4 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 border"
+         style="background:linear-gradient(to right,#0f172a,#1e293b,#450a0a);border-color:#334155 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="bg-white bg-opacity-10 rounded-xl d-flex align-items-center justify-content-center fs-4" style="width:3rem;height:3rem;backdrop-filter:blur(4px);">📺</div>
         <div>
-          <h3 class="font-display font-700 text-white text-base">Go live and sell in real time</h3>
-          <p class="text-xs text-gray-300 mt-0.5">Chat with shoppers, pin products, run polls, and collect gifts while you stream.</p>
+          <h3 class="font-display fw-bold text-white mb-0">Go live and sell in real time</h3>
+          <p class="small text-secondary mt-1 mb-0">Chat with shoppers, pin products, run polls, and collect gifts while you stream.</p>
         </div>
       </div>
-      <a href="{% url 'livestream:go_live' %}"
-         class="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white
-                font-bold text-sm px-6 py-2.5 rounded-xl transition whitespace-nowrap">
+      <a href="{% url 'livestream:go_live' %}" class="btn btn-danger d-inline-flex align-items-center justify-content-center gap-2 fw-bold small px-4 py-2 rounded-xl text-nowrap">
         🔴 Go Live
       </a>
     </div>
     {% endif %}
 
     <!-- Livestream stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Streams</p>
-        <p class="font-display font-700 text-2xl text-navy">{{ stream_stats.total_streams|default:0 }}</p>
+    <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
+      <div class="col">
+        <div class="stat-card bg-white rounded-2xl border p-3 h-100">
+          <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.05em;">Total Streams</p>
+          <p class="font-display fw-bold fs-3 text-navy mb-0">{{ stream_stats.total_streams|default:0 }}</p>
+        </div>
       </div>
-      <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Peak Viewers Ever</p>
-        <p class="font-display font-700 text-2xl text-navy">{{ stream_stats.best_peak|default:0 }}</p>
+      <div class="col">
+        <div class="stat-card bg-white rounded-2xl border p-3 h-100">
+          <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.05em;">Peak Viewers Ever</p>
+          <p class="font-display fw-bold fs-3 text-navy mb-0">{{ stream_stats.best_peak|default:0 }}</p>
+        </div>
       </div>
-      <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Gift Revenue</p>
-        <p class="font-display font-700 text-2xl text-green-600">GHS {{ stream_stats.total_gifts|floatformat:2|default:"0.00" }}</p>
-        <p class="text-xs text-gray-400 mt-1">Vendor share (80%) of all stream gifts</p>
+      <div class="col">
+        <div class="stat-card bg-white rounded-2xl border p-3 h-100">
+          <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.05em;">Gift Revenue</p>
+          <p class="font-display fw-bold fs-3 text-success mb-0">GHS {{ stream_stats.total_gifts|floatformat:2|default:"0.00" }}</p>
+          <p class="small text-secondary mt-1 mb-0">Vendor share (80%) of all stream gifts</p>
+        </div>
       </div>
-      <div class="stat-card bg-white rounded-2xl border border-gray-100 p-5">
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Replays Saved</p>
-        <p class="font-display font-700 text-2xl text-blue-600">{{ stream_stats.replay_count|default:0 }}</p>
+      <div class="col">
+        <div class="stat-card bg-white rounded-2xl border p-3 h-100">
+          <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.05em;">Replays Saved</p>
+          <p class="font-display fw-bold fs-3 text-primary mb-0">{{ stream_stats.replay_count|default:0 }}</p>
+        </div>
       </div>
     </div>
 
     {% if stream_history %}
-    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
-            <th class="px-5 py-3 text-left font-semibold">Stream</th>
-            <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Peak Viewers</th>
-            <th class="px-5 py-3 text-right font-semibold hidden md:table-cell">Duration</th>
-            <th class="px-5 py-3 text-right font-semibold">Gifts</th>
-            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Date</th>
-            <th class="px-5 py-3 text-right font-semibold">Replay</th>
+    <div class="bg-white rounded-2xl border overflow-hidden">
+      <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr class="small text-secondary text-uppercase">
+            <th class="px-4 py-2">Stream</th>
+            <th class="px-4 py-2 text-end d-none d-md-table-cell">Peak Viewers</th>
+            <th class="px-4 py-2 text-end d-none d-md-table-cell">Duration</th>
+            <th class="px-4 py-2 text-end">Gifts</th>
+            <th class="px-4 py-2 d-none d-md-table-cell">Date</th>
+            <th class="px-4 py-2 text-end">Replay</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-50">
+        <tbody>
           {% for stream in stream_history %}
-          <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-5 py-3.5">
-              <div class="flex items-center gap-3">
+          <tr>
+            <td class="px-4 py-2">
+              <div class="d-flex align-items-center gap-3">
                 {% if stream.thumbnail %}
                 <img src="{{ stream.thumbnail.url }}" class="stream-thumb"/>
                 {% else %}
-                <div class="stream-thumb flex items-center justify-center text-lg">📺</div>
+                <div class="stream-thumb d-flex align-items-center justify-content-center fs-5">📺</div>
                 {% endif %}
-                <p class="font-semibold text-navy leading-tight">{{ stream.title }}</p>
+                <p class="fw-semibold text-navy mb-0" style="line-height:1.2;">{{ stream.title }}</p>
               </div>
             </td>
-            <td class="px-5 py-3.5 text-right text-navy font-semibold hidden md:table-cell">
+            <td class="px-4 py-2 text-end text-navy fw-semibold d-none d-md-table-cell">
               👁 {{ stream.peak_viewers|default:stream.total_viewers|default:0 }}
             </td>
-            <td class="px-5 py-3.5 text-right text-gray-500 hidden md:table-cell">
+            <td class="px-4 py-2 text-end text-secondary d-none d-md-table-cell">
               {{ stream.duration_minutes|default:"—" }}{% if stream.duration_minutes %} min{% endif %}
             </td>
-            <td class="px-5 py-3.5 text-right font-display font-700 text-green-600">
+            <td class="px-4 py-2 text-end font-display fw-bold text-success">
               GHS {{ stream.gifts_value|floatformat:2|default:"0.00" }}
             </td>
-            <td class="px-5 py-3.5 text-gray-400 text-xs hidden md:table-cell">
+            <td class="px-4 py-2 small text-secondary d-none d-md-table-cell">
               {{ stream.ended_at|date:"M d, Y" }}
             </td>
-            <td class="px-5 py-3.5 text-right">
+            <td class="px-4 py-2 text-end">
               {% if stream.recording_url %}
-              <a href="{% url 'livestream:watch' stream.id %}"
-                 class="text-xs border border-blue-200 text-blue-600 hover:bg-blue-500 hover:text-white
-                        hover:border-blue-500 font-semibold px-3 py-1.5 rounded-lg transition-colors">
+              <a href="{% url 'livestream:watch' stream.id %}" class="btn btn-sm btn-outline-primary">
                 ▶ Watch
               </a>
               {% else %}
-              <span class="text-xs text-gray-300">No replay</span>
+              <span class="small text-secondary">No replay</span>
               {% endif %}
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
     {% else %}
-    <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
-      <p class="text-5xl mb-4">📺</p>
-      <p class="font-display font-700 text-navy mb-1">No streams yet</p>
-      <p class="text-gray-400 text-sm mb-5">Go live once to see your stream history and stats here.</p>
+    <div class="bg-white rounded-2xl border py-5 text-center">
+      <p class="display-4 mb-3">📺</p>
+      <p class="font-display fw-bold text-navy mb-1">No streams yet</p>
+      <p class="small text-secondary mb-0">Go live once to see your stream history and stats here.</p>
     </div>
     {% endif %}
   </div>
@@ -656,61 +658,60 @@
         TAB: SETTINGS
   ═══════════════════════════════════════════════════ -->
   {% elif current_tab == 'settings' %}
-  <div class="fade-in">
+  <div class="fade-up">
 
     <!-- Social links banner -->
-    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 rounded-2xl p-6 mb-6
-                flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-700">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-xl backdrop-blur-sm">
+    <div class="rounded-2xl p-4 mb-4 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 border"
+         style="background:linear-gradient(to right,#0f172a,#1e293b,#172554);border-color:#334155 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="bg-white bg-opacity-10 rounded-xl d-flex align-items-center justify-content-center fs-4" style="width:3rem;height:3rem;backdrop-filter:blur(4px);">
           🌐
         </div>
         <div>
-          <h3 class="font-display font-700 text-white text-base">Storefront Social Networks</h3>
-          <p class="text-xs text-gray-300 mt-0.5">
+          <h3 class="font-display fw-bold text-white mb-0">Storefront Social Networks</h3>
+          <p class="small text-secondary mt-1 mb-0">
             Connect WhatsApp, Instagram, Facebook, TikTok, Twitter, and YouTube to your profile.
           </p>
         </div>
       </div>
       <a href="{% url 'vendors:dashboard' %}?tab=settings&pane=social"
-         class="inline-flex items-center justify-center bg-white hover:bg-gray-100 text-slate-900
-                font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-sm whitespace-nowrap">
+         class="btn bg-white text-dark d-inline-flex align-items-center justify-content-center fw-bold small px-4 py-2 rounded-xl shadow-sm text-nowrap">
         Configure Links →
       </a>
     </div>
 
     <!-- Show any currently-set social links as a quick preview -->
     {% if vendor.whatsapp or vendor.instagram or vendor.facebook or vendor.tiktok or vendor.twitter or vendor.youtube %}
-    <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Current Social Links</p>
-      <div class="flex flex-wrap gap-2">
+    <div class="bg-white rounded-2xl border p-3 mb-4">
+      <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.05em;">Current Social Links</p>
+      <div class="d-flex flex-wrap gap-2">
         {% if vendor.whatsapp %}
-        <span class="text-xs bg-green-50 text-green-700 border border-green-100 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+        <span class="small bg-success bg-opacity-10 text-success border px-3 py-2 rounded-pill d-flex align-items-center gap-1">
           <span>💬</span> WhatsApp
         </span>
         {% endif %}
         {% if vendor.instagram %}
-        <span class="text-xs bg-pink-50 text-pink-700 border border-pink-100 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+        <span class="small text-danger-emphasis border px-3 py-2 rounded-pill d-flex align-items-center gap-1" style="background:rgba(219,39,119,.08);">
           <span>📸</span> Instagram
         </span>
         {% endif %}
         {% if vendor.facebook %}
-        <span class="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+        <span class="small bg-primary bg-opacity-10 text-primary border px-3 py-2 rounded-pill d-flex align-items-center gap-1">
           <span>👤</span> Facebook
         </span>
         {% endif %}
         {% if vendor.tiktok %}
-        <span class="text-xs bg-gray-50 text-gray-700 border border-gray-200 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+        <span class="small bg-light text-secondary border px-3 py-2 rounded-pill d-flex align-items-center gap-1">
           <span>🎵</span> TikTok
         </span>
         {% endif %}
         {% if vendor.twitter %}
-        <span class="text-xs bg-sky-50 text-sky-700 border border-sky-100 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+        <span class="small bg-info bg-opacity-10 text-info-emphasis border px-3 py-2 rounded-pill d-flex align-items-center gap-1">
           <span>🐦</span> Twitter/X
         </span>
         {% endif %}
         {% if vendor.youtube %}
-        <span class="text-xs bg-red-50 text-red-700 border border-red-100 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+        <span class="small bg-danger bg-opacity-10 text-danger border px-3 py-2 rounded-pill d-flex align-items-center gap-1">
           <span>▶️</span> YouTube
         </span>
         {% endif %}
@@ -721,62 +722,57 @@
     <!-- action="?tab=settings" preserves the tab param on POST redirect -->
     <form method="POST" action="?tab=settings" enctype="multipart/form-data">
       {% csrf_token %}
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="row row-cols-1 row-cols-lg-2 g-4">
 
         <!-- Shop info -->
-        <div class="bg-white rounded-2xl border border-gray-100 p-6">
-          <h2 class="font-display font-700 text-navy mb-5">Shop Information</h2>
-          <div class="space-y-4">
+        <div class="col">
+        <div class="bg-white rounded-2xl border p-4">
+          <h2 class="font-display fw-bold text-navy mb-3 fs-6">Shop Information</h2>
+          <div class="d-flex flex-column gap-3">
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
                 Shop Name *
               </label>
-              <input type="text" name="shop_name" value="{{ vendor.shop_name }}"
-                     class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+              <input type="text" name="shop_name" value="{{ vendor.shop_name }}" class="form-control rounded-xl"/>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
                 Description
               </label>
-              <textarea name="description" rows="3"
-                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm resize-none">{{ vendor.description }}</textarea>
+              <textarea name="description" rows="3" class="form-control rounded-xl" style="resize:none;">{{ vendor.description }}</textarea>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
                 Phone
               </label>
-              <input type="tel" name="phone" value="{{ vendor.phone }}"
-                     class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+              <input type="tel" name="phone" value="{{ vendor.phone }}" class="form-control rounded-xl"/>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
                 Location
               </label>
-              <input type="text" name="location" value="{{ vendor.location }}"
-                     placeholder="e.g. Accra, Kumasi"
-                     class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+              <input type="text" name="location" value="{{ vendor.location }}" placeholder="e.g. Accra, Kumasi" class="form-control rounded-xl"/>
             </div>
           </div>
         </div>
+        </div>
 
         <!-- Payout + Images -->
-        <div class="space-y-6">
-          <div class="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 class="font-display font-700 text-navy mb-5">MoMo Payout</h2>
-            <div class="space-y-4">
+        <div class="col d-flex flex-column gap-4">
+          <div class="bg-white rounded-2xl border p-4">
+            <h2 class="font-display fw-bold text-navy mb-3 fs-6">MoMo Payout</h2>
+            <div class="d-flex flex-column gap-3">
               <div>
-                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
                   MoMo Number *
                 </label>
-                <input type="tel" name="momo_number" value="{{ vendor.momo_number }}"
-                       class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+                <input type="tel" name="momo_number" value="{{ vendor.momo_number }}" class="form-control rounded-xl"/>
               </div>
               <div>
-                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
                   Network
                 </label>
-                <select name="momo_network"
-                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white">
+                <select name="momo_network" class="form-select rounded-xl">
                   <option value="mtn"        {% if vendor.momo_network == 'mtn' %}selected{% endif %}>MTN Mobile Money</option>
                   <option value="vodafone"   {% if vendor.momo_network == 'vodafone' %}selected{% endif %}>Vodafone Cash</option>
                   <option value="airteltigo" {% if vendor.momo_network == 'airteltigo' %}selected{% endif %}>AirtelTigo Money</option>
@@ -785,26 +781,26 @@
             </div>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 class="font-display font-700 text-navy mb-5">Shop Images</h2>
-            <div class="space-y-4">
+          <div class="bg-white rounded-2xl border p-4">
+            <h2 class="font-display fw-bold text-navy mb-3 fs-6">Shop Images</h2>
+            <div class="d-flex flex-column gap-3">
               <div>
-                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
                   Logo
                 </label>
                 {% if vendor.logo %}
-                <img src="{{ vendor.logo.url }}" class="w-16 h-16 rounded-xl object-cover mb-2"/>
+                <img src="{{ vendor.logo.url }}" class="rounded-xl object-fit-cover mb-2 d-block" style="width:4rem;height:4rem;"/>
                 {% endif %}
-                <input type="file" name="logo" accept="image/*" class="w-full text-sm text-gray-600"/>
+                <input type="file" name="logo" accept="image/*" class="form-control form-control-sm rounded-xl"/>
               </div>
               <div>
-                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <label class="form-label small fw-semibold text-secondary text-uppercase" style="letter-spacing:.05em;">
                   Banner
                 </label>
                 {% if vendor.banner %}
-                <img src="{{ vendor.banner.url }}" class="w-full h-20 rounded-xl object-cover mb-2"/>
+                <img src="{{ vendor.banner.url }}" class="w-100 rounded-xl object-fit-cover mb-2 d-block" style="height:5rem;"/>
                 {% endif %}
-                <input type="file" name="banner" accept="image/*" class="w-full text-sm text-gray-600"/>
+                <input type="file" name="banner" accept="image/*" class="form-control form-control-sm rounded-xl"/>
               </div>
             </div>
           </div>
@@ -812,10 +808,8 @@
 
       </div>
 
-      <div class="mt-6">
-        <button type="submit"
-                class="bg-navy hover:bg-navy-700 text-white font-semibold
-                       px-8 py-3 rounded-xl transition-colors btn-press">
+      <div class="mt-4">
+        <button type="submit" class="btn btn-navy fw-semibold px-4 py-3 rounded-xl btn-press">
           Save Changes
         </button>
       </div>
@@ -883,7 +877,7 @@ if (chartEl) {
   const grid   = document.querySelector('#no-videos-msg');
   if (!grid) return;
   const cards  = document.querySelectorAll('.video-card');
-  if (cards.length === 0) grid.classList.remove('hidden');
+  if (cards.length === 0) grid.classList.remove('d-none');
 })();
 </script>
 {% endblock %}

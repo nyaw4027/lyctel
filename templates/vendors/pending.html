@@ -25,17 +25,18 @@
     background: #e5e7eb;
   }
   .step-item.done::after { background: #bbf7d0; }
+  .pending-bg { background: linear-gradient(135deg, #fffbeb, #fff, #eff6ff); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gradient-to-br from-amber-50 via-white to-blue-50 flex items-center justify-center px-4 py-16">
-  <div class="w-full max-w-md">
+<div class="pending-bg d-flex align-items-center justify-content-center px-3 py-5" style="min-height: 100vh;">
+  <div class="w-100" style="max-width: 28rem;">
 
     <!-- Icon -->
-    <div class="flex justify-center mb-6 fu">
-      <div class="pulse-icon w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center">
-        <svg class="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="d-flex justify-content-center mb-4 fu">
+      <div class="pulse-icon bg-warning bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width:5rem;height:5rem;">
+        <svg style="width:2.5rem;height:2.5rem;" class="text-warning-emphasis" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
@@ -43,70 +44,69 @@
     </div>
 
     <!-- Card -->
-    <div class="bg-white rounded-3xl shadow-sm border p-7 fu2">
-      <div class="text-center mb-6">
-        <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight mb-2">
+    <div class="bg-white rounded-3xl shadow-sm border p-4 fu2">
+      <div class="text-center mb-4">
+        <h1 class="fs-2 fw-bold text-dark mb-2" style="letter-spacing:-.02em;">
           Application Under Review
         </h1>
-        <p class="text-gray-500 text-sm leading-relaxed">
-          Your shop <span class="font-bold text-blue-600">{{ vendor.shop_name }}</span> has been submitted and is currently being reviewed by our team.
+        <p class="text-secondary small" style="line-height:1.6;">
+          Your shop <span class="fw-bold text-primary">{{ vendor.shop_name }}</span> has been submitted and is currently being reviewed by our team.
         </p>
       </div>
 
       <!-- Info pill -->
-      <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3 mb-6">
-        <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="alert-warning rounded-xl px-3 py-3 d-flex align-items-start gap-2 mb-4">
+        <svg style="width:1.25rem;height:1.25rem;" class="flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <p class="text-xs text-amber-800 leading-relaxed">
+        <p class="small mb-0" style="line-height:1.5;">
           We typically approve applications within <strong>24 hours</strong>. You'll be contacted at <strong>{{ vendor.phone }}</strong>.
         </p>
       </div>
 
       <!-- Progress Steps -->
-      <div class="space-y-4 mb-7">
-        <div class="step-item done flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 z-10 relative">
-            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="d-flex flex-column gap-3 mb-4">
+        <div class="step-item done d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0 position-relative" style="width:2rem;height:2rem;z-index:1;">
+            <svg style="width:1rem;height:1rem;" class="text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
             </svg>
           </div>
           <div>
-            <p class="text-sm font-semibold text-gray-800">Application Submitted</p>
-            <p class="text-xs text-gray-400">Your details have been received</p>
+            <p class="small fw-semibold text-dark mb-0">Application Submitted</p>
+            <p class="small text-secondary mb-0">Your details have been received</p>
           </div>
         </div>
 
-        <div class="step-item flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 z-10 relative">
-            <div class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></div>
+        <div class="step-item d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-warning bg-opacity-25 d-flex align-items-center justify-content-center flex-shrink-0 position-relative" style="width:2rem;height:2rem;z-index:1;">
+            <div class="rounded-circle bg-warning animate-pulse" style="width:.625rem;height:.625rem;"></div>
           </div>
           <div>
-            <p class="text-sm font-semibold text-gray-800">Under Review</p>
-            <p class="text-xs text-gray-400">Our team is verifying your shop</p>
+            <p class="small fw-semibold text-dark mb-0">Under Review</p>
+            <p class="small text-secondary mb-0">Our team is verifying your shop</p>
           </div>
         </div>
 
-        <div class="step-item flex items-center gap-3 opacity-40">
-          <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 z-10 relative">
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="step-item d-flex align-items-center gap-3" style="opacity:.4;">
+          <div class="rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0 position-relative" style="width:2rem;height:2rem;z-index:1;">
+            <svg style="width:1rem;height:1rem;" class="text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
           </div>
           <div>
-            <p class="text-sm font-semibold text-gray-600">Approved & Live</p>
-            <p class="text-xs text-gray-400">Your shop will go public</p>
+            <p class="small fw-semibold text-secondary mb-0">Approved & Live</p>
+            <p class="small text-secondary mb-0">Your shop will go public</p>
           </div>
         </div>
       </div>
 
-      <a href="{% url 'frontend:home' %}"
-         class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition text-sm">
+      <a href="{% url 'frontend:home' %}" class="btn btn-primary w-100 fw-bold py-3 rounded-xl small">
         Continue Shopping
       </a>
 
-      <p class="text-center text-xs text-gray-400 mt-4">
-        Have questions? <a href="mailto:support@lynctel.com" class="text-blue-600 hover:underline font-semibold">Contact support</a>
+      <p class="text-center small text-secondary mt-3 mb-0">
+        Have questions? <a href="mailto:support@lynctel.com" class="text-primary fw-semibold">Contact support</a>
       </p>
     </div>
 
