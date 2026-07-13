@@ -57,6 +57,8 @@ class Vendor(models.Model):
     )
 
     commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=4.00)
+    # vendors/models.py — add to the Vendor model
+    paystack_subaccount_code = models.CharField(max_length=100, blank=True, null=True)
 
     joined_at = models.DateTimeField(auto_now_add=True)
     approved_at = models.DateTimeField(null=True, blank=True)

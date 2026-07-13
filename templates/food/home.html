@@ -93,7 +93,12 @@
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
       {% for vendor in vendor_list %}
       <div class="col">
+        {% if vendor.slug %}
         <a href="{% url 'food:menu' vendor.slug %}" class="card h-100 text-decoration-none text-reset">
+        {% else %}
+        <div class="card h-100 bg-white text-reset">
+        {% endif %}
+
           <div class="position-relative">
             {% if vendor.banner %}
             <img src="{{ vendor.banner.url }}" alt="{{ vendor.name }}" class="card-img-top" style="height:140px;object-fit:cover;">
@@ -115,7 +120,12 @@
               <span class="ms-auto fw-semibold">GHS {{ vendor.min_order }}</span>
             </div>
           </div>
+
+        {% if vendor.slug %}
         </a>
+        {% else %}
+        </div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>

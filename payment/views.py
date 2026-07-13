@@ -41,7 +41,7 @@ from django.conf import settings
 from order.models import Order, OrderItem
 from order.views import get_or_create_cart
 from vendors.models import VendorEarning, AppCommission
-from delivery.utils import MIN_FARE
+import importlib
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,9 @@ def _mark_paid(order):
     _split_commissions(order)
 
     try:
-        from arkesel import sms_order_confirmed, sms_new_order_to_vendor
+        arkesel = importlib.import_module('arkesel')
+        sms_order_confirmed = getattr(arkesel, 'sms_order_confirmed')
+        sms_new_order_to_vendor = getattr(arkesel, 'sms_new_order_to_vendor')
         sms_order_confirmed(order)
         sms_new_order_to_vendor(order)
     except Exception:
@@ -329,25 +331,64 @@ def flutterwave_webhook(request):
 def paystack_init(request, order_pk):
     order = get_object_or_404(Order, pk=order_pk, customer=request.user)
 
-    if not PAYSTACK_PUBLIC:
+    if not PAYSTACK_SECRET:
         messages.error(request, 'Payment gateway not configured. Please pay on delivery.')
-        return redirect(
-    "order:tracking",
-    order_ref=order.order_ref
-)
+        return redirect("order:tracking", order_ref=order.order_ref)
 
-    email = (
-        request.user.email or
-        f'{request.user.phone}@lynctel.app'
+    email = request.user.email or f'{request.user.phone}@lynctel.app'
+
+    # Build the per-vendor split from this order's actual items — same
+    # commission logic already used for post-payment payouts, just
+    # applied at charge time instead of after the fact.
+    vendor_totals = {}
+    for item in order.items.select_related('product__vendor').all():
+        vendor = item.product.vendor if item.product else None
+        if vendor:
+            vendor_totals[vendor] = vendor_totals.get(vendor, 0) + (item.unit_price * item.quantity)
+
+    subaccounts = []
+    for vendor, gross in vendor_totals.items():
+        if not vendor.paystack_subaccount_code:
+            # Vendor hasn't been set up for direct settlement yet — fail
+            # loudly rather than silently taking their money into Lynctel's
+            # account, which is exactly the problem we're fixing.
+            messages.error(request, f"{vendor.shop_name} isn't set up for payments yet. Please contact support.")
+            return redirect("order:tracking", order_ref=order.order_ref)
+
+        rate = float(vendor.commission_rate or 4) / 100  # your 4% commission
+        vendor_share = gross * (1 - rate)
+        subaccounts.append({
+            'subaccount': vendor.paystack_subaccount_code,
+            'share': int(vendor_share * 100),  # pesewas
+        })
+
+    payload = {
+        'email': email,
+        'amount': int(order.total_amount * 100),
+        'currency': 'GHS',
+        'reference': order.order_ref,
+        'callback_url': request.build_absolute_uri(reverse('payment:paystack-callback', args=[order.order_ref])),
+        'split': {
+            'type': 'flat',
+            'currency': 'GHS',
+            'subaccounts': subaccounts,
+            'bearer_type': 'account',  # Lynctel's main account bears the Paystack transaction fee
+        },
+    }
+
+    resp = http_requests.post(
+        'https://api.paystack.co/transaction/initialize',
+        headers={'Authorization': f'Bearer {PAYSTACK_SECRET}'},
+        json=payload,
+        timeout=10,
     )
+    data = resp.json()
 
-    return render(request, 'payment/paystack.html', {
-        'order':       order,
-        'public_key':  PAYSTACK_PUBLIC,
-        'amount_kobo': int(order.total_amount * 100),
-        'email':       email,
-        'cart_count':  0,
-    })
+    if data.get('status') and data['data'].get('authorization_url'):
+        return redirect(data['data']['authorization_url'])
+
+    messages.error(request, 'Could not start payment. Please try again or pay on delivery.')
+    return redirect("order:tracking", order_ref=order.order_ref)
 
 
 # ── PAYSTACK VERIFY ───────────────────────────────────────
@@ -461,4 +502,3 @@ def paystack_webhook(request):
         logger.error('Paystack webhook error: %s', str(e))
 
     return HttpResponse(status=200)
-
