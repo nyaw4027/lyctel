@@ -22,7 +22,7 @@
   #sticky-bar { transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1); }
   #sticky-bar.visible { transform: translateY(0); }
   .tab-link { border-bottom: 2px solid transparent; transition: all .2s; }
-  .tab-link.active { border-color: #0F1B2D; color: #0F1B2D; }
+  .tab-link.active { border-color: #0F1B2D; color: #0F1B2D !important; }
   .star-filled { color: #F5A623; }
   .star-empty  { color: #E5E7EB; }
   .share-btn { transition: all .15s; }
@@ -31,140 +31,142 @@
   .bc-link:hover { color: #F5A623; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .fade-in { animation: fadeIn .4s ease both; }
+  .added-flash { background: #16a34a !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 md:px-6 py-6">
+<div class="container px-3 px-md-4 py-4" style="max-width: 72rem;">
 
   <!-- BREADCRUMB -->
-  <nav class="flex items-center gap-1.5 text-xs text-gray-400 mb-6 flex-wrap">
-    <a href="{% url 'frontend:home' %}" class="bc-link hover:text-gold">Home</a>
+  <nav class="d-flex align-items-center gap-2 small text-secondary mb-4 flex-wrap">
+    <a href="{% url 'frontend:home' %}" class="bc-link text-decoration-none text-secondary">Home</a>
     <span>›</span>
-    <a href="{% url 'products:list' %}" class="bc-link hover:text-gold">Shop</a>
+    <a href="{% url 'products:list' %}" class="bc-link text-decoration-none text-secondary">Shop</a>
     {% if product.category %}
     <span>›</span>
-    <a href="{% url 'products:list' %}?category={{ product.category.slug }}" class="bc-link hover:text-gold">{{ product.category.name }}</a>
+    <a href="{% url 'products:list' %}?category={{ product.category.slug }}" class="bc-link text-decoration-none text-secondary">{{ product.category.name }}</a>
     {% endif %}
     <span>›</span>
-    <span class="text-navy font-medium truncate max-w-[200px]">{{ product.name }}</span>
+    <span class="text-navy fw-medium text-truncate" style="max-width: 200px;">{{ product.name }}</span>
   </nav>
 
-  <div class="flex flex-col lg:flex-row gap-8 mb-10">
+  <div class="d-flex flex-column flex-lg-row gap-4 mb-5">
 
     <!-- LEFT: IMAGES -->
-    <div class="lg:w-5/12 flex-shrink-0 fade-in">
+    <div class="flex-shrink-0 fade-in" style="flex-basis: 42%;">
       <div id="main-image-wrap"
-           class="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-3 shadow-sm cursor-zoom-in relative">
+           class="bg-white rounded-2xl border overflow-hidden mb-3 shadow-sm position-relative" style="cursor: zoom-in;">
         {% if product.primary_image %}
         <img id="main-image" src="{{ product.primary_image }}" alt="{{ product.name }}"
-             class="w-full h-80 md:h-96 object-contain p-4"/>
+             class="w-100 object-fit-contain p-3" style="height:24rem;"/>
         {% else %}
-        <div class="w-full h-80 flex items-center justify-center text-7xl opacity-20">📦</div>
+        <div class="w-100 d-flex align-items-center justify-content-center display-1" style="height:20rem;opacity:.2;">📦</div>
         {% endif %}
         <div class="zoom-badge">🔍 Hover to zoom</div>
         {% if not product.is_in_stock %}
-        <div class="absolute inset-0 bg-white/70 flex items-center justify-center">
-          <span class="bg-red-600 text-white font-bold px-6 py-3 rounded-2xl text-lg rotate-[-12deg]">OUT OF STOCK</span>
+        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background:rgba(255,255,255,.7);">
+          <span class="bg-danger text-white fw-bold px-4 py-2 rounded-3 fs-5" style="transform:rotate(-12deg);">OUT OF STOCK</span>
         </div>
         {% endif %}
         {% if product.has_discount %}
-        <span class="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+        <span class="position-absolute top-0 start-0 m-2 bg-danger text-white small fw-bold px-2 py-1 rounded-pill">
           -{{ product.discount_percent }}%
         </span>
         {% endif %}
       </div>
 
       {% if product.images.count > 1 %}
-      <div class="flex gap-2 overflow-x-auto pb-1">
+      <div class="d-flex gap-2 overflow-auto pb-1">
         {% for img in product.images.all %}
-        <div class="thumb flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-white border {% if img.image.url == product.primary_image %}active{% endif %}"
+        <div class="thumb flex-shrink-0 rounded-xl overflow-hidden bg-white border {% if img.image.url == product.primary_image %}active{% endif %}"
+             style="width:4rem;height:4rem;"
              onclick="switchImage('{{ img.image.url }}', this)">
-          <img src="{{ img.image.url }}" class="w-full h-full object-cover"/>
+          <img src="{{ img.image.url }}" class="w-100 h-100 object-fit-cover"/>
         </div>
         {% endfor %}
       </div>
       {% endif %}
 
       <!-- QR code -->
-      <div class="mt-4 bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4">
+      <div class="mt-3 bg-white rounded-2xl border p-3 d-flex align-items-center gap-3">
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ request.build_absolute_uri|urlencode }}"
-             alt="QR Code" class="w-20 h-20 rounded-xl flex-shrink-0"/>
+             alt="QR Code" class="rounded-xl flex-shrink-0" style="width:5rem;height:5rem;"/>
         <div>
-          <p class="font-semibold text-navy text-sm mb-0.5">Scan to Share</p>
-          <p class="text-xs text-gray-400 leading-relaxed">Share this product with anyone by scanning the QR code.</p>
+          <p class="fw-semibold text-navy small mb-1">Scan to Share</p>
+          <p class="small text-secondary mb-0" style="line-height:1.5;">Share this product with anyone by scanning the QR code.</p>
         </div>
       </div>
     </div>
 
     <!-- RIGHT: INFO -->
-    <div class="flex-1 min-w-0 fade-in" style="animation-delay:.1s">
+    <div class="flex-fill min-w-0 fade-in" style="animation-delay:.1s">
 
       <!-- Tags -->
-      <div class="flex items-center gap-2 flex-wrap mb-3">
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
         {% if product.category %}
-        <span class="text-xs bg-gold-light text-gold-dark font-semibold px-2.5 py-0.5 rounded-full">
+        <span class="small bg-gold-light text-gold-dark fw-semibold px-2 py-1 rounded-pill">
           {{ product.category.name }}
         </span>
         {% endif %}
         {% if product.is_featured %}
-        <span class="text-xs bg-navy text-white font-semibold px-2.5 py-0.5 rounded-full">⭐ Featured</span>
+        <span class="small bg-navy text-white fw-semibold px-2 py-1 rounded-pill">⭐ Featured</span>
         {% endif %}
         {% if product.is_in_stock and product.is_low_stock %}
-        <span class="text-xs bg-orange-100 text-orange-600 font-semibold px-2.5 py-0.5 rounded-full stock-blink">
+        <span class="small bg-warning bg-opacity-25 text-warning-emphasis fw-semibold px-2 py-1 rounded-pill stock-blink">
           🔥 Only {{ product.stock_qty }} left!
         </span>
         {% endif %}
       </div>
 
       <!-- Name -->
-      <h1 class="font-display font-700 text-2xl md:text-3xl text-navy leading-tight mb-3">
+      <h1 class="font-display fw-bold fs-2 text-navy mb-3" style="line-height:1.2;">
         {{ product.name }}
       </h1>
 
       <!-- Rating summary -->
       {% if review_count %}
-      <div class="flex items-center gap-2 mb-4">
-        <div class="flex items-center gap-0.5">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <div class="d-flex align-items-center gap-1">
           {% for i in "12345" %}
-          <span class="text-sm {% if forloop.counter <= avg_rating %}star-filled{% else %}star-empty{% endif %}">★</span>
+          <span class="small {% if forloop.counter <= avg_rating %}star-filled{% else %}star-empty{% endif %}">★</span>
           {% endfor %}
         </div>
-        <span class="text-sm font-semibold text-navy">{{ avg_rating }}</span>
-        <span class="text-xs text-gray-400">({{ review_count }} review{{ review_count|pluralize }})</span>
+        <span class="small fw-semibold text-navy">{{ avg_rating }}</span>
+        <span class="small text-secondary">({{ review_count }} review{{ review_count|pluralize }})</span>
       </div>
       {% endif %}
 
       <!-- Vendor -->
       {% if product.vendor %}
       <a href="{% url 'vendors:shop' product.vendor.slug %}"
-         class="inline-flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity">
+         class="d-inline-flex align-items-center gap-2 mb-3 text-decoration-none">
         {% if product.vendor.logo %}
-        <img src="{{ product.vendor.logo.url }}" class="w-6 h-6 rounded-lg object-cover"/>
+        <img src="{{ product.vendor.logo.url }}" class="rounded-3 object-fit-cover" style="width:1.5rem;height:1.5rem;"/>
         {% else %}
-        <div class="w-6 h-6 rounded-lg bg-navy flex items-center justify-center text-white text-xs font-bold">
+        <div class="rounded-3 bg-navy d-flex align-items-center justify-content-center text-white small fw-bold" style="width:1.5rem;height:1.5rem;">
           {{ product.vendor.shop_name|first|upper }}
         </div>
         {% endif %}
-        <span class="text-sm text-navy font-semibold hover:text-gold transition-colors">{{ product.vendor.shop_name }}</span>
-        <span class="text-xs text-gray-400">→ Visit Shop</span>
+        <span class="small text-navy fw-semibold">{{ product.vendor.shop_name }}</span>
+        <span class="small text-secondary">→ Visit Shop</span>
       </a>
       {% endif %}
 
       <!-- Price -->
-      <div class="bg-cream rounded-2xl px-5 py-4 mb-5">
-        <div class="flex items-end gap-3 flex-wrap">
-          <span class="font-display font-700 text-3xl text-navy">
+      <div class="bg-cream rounded-2xl px-4 py-3 mb-4">
+        <div class="d-flex align-items-end gap-2 flex-wrap">
+          <span class="font-display fw-bold fs-2 text-navy">
             GHS {{ product.final_price }}
           </span>
           {% if product.has_discount %}
-          <span class="text-lg text-gray-400 line-through font-medium">GHS {{ product.selling_price }}</span>
-          <span class="text-sm font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-lg">
+          <span class="fs-6 text-secondary text-decoration-line-through fw-medium">GHS {{ product.selling_price }}</span>
+          <span class="small fw-bold text-success bg-success bg-opacity-10 px-2 py-1 rounded-2">
             Save GHS {{ product.selling_price|floatformat:2 }}
           </span>
           {% endif %}
         </div>
-        <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+        <div class="d-flex align-items-center gap-3 mt-2 small text-secondary flex-wrap">
           <span>🔒 Secure checkout</span>
           <span>🛵 Fast delivery</span>
           <span>💰 MoMo accepted</span>
@@ -172,126 +174,117 @@
       </div>
 
       <!-- Stock status -->
-      <div class="flex items-center gap-2 mb-5">
+      <div class="d-flex align-items-center gap-2 mb-4">
         {% if product.is_in_stock %}
-        <div class="flex items-center gap-1.5">
-          <span class="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-          <span class="text-sm font-semibold text-green-600">In Stock</span>
+        <div class="d-flex align-items-center gap-2">
+          <span class="bg-success rounded-circle" style="width:.625rem;height:.625rem;"></span>
+          <span class="small fw-semibold text-success">In Stock</span>
           {% if not product.is_low_stock %}
-          <span class="text-xs text-gray-400">({{ product.stock_qty }} available)</span>
+          <span class="small text-secondary">({{ product.stock_qty }} available)</span>
           {% endif %}
         </div>
         {% else %}
-        <div class="flex items-center gap-1.5">
-          <span class="w-2.5 h-2.5 bg-red-500 rounded-full"></span>
-          <span class="text-sm font-semibold text-red-500">Out of Stock</span>
+        <div class="d-flex align-items-center gap-2">
+          <span class="bg-danger rounded-circle" style="width:.625rem;height:.625rem;"></span>
+          <span class="small fw-semibold text-danger">Out of Stock</span>
         </div>
         {% endif %}
       </div>
 
       <!-- Qty + Add to cart -->
       {% if product.is_in_stock %}
-      <div class="flex flex-col sm:flex-row gap-3 mb-3">
-        <div class="flex items-center border border-gray-200 rounded-xl bg-white overflow-hidden flex-shrink-0">
-          <button class="qty-btn w-11 h-12 flex items-center justify-center text-navy font-bold text-lg border-r border-gray-200"
-                  onclick="changeQty(-1)">−</button>
+      <div class="d-flex flex-column flex-sm-row gap-2 mb-3">
+        <div class="d-flex align-items-center border rounded-xl bg-white overflow-hidden flex-shrink-0">
+          <button class="qty-btn d-flex align-items-center justify-content-center text-navy fw-bold fs-5 border-0 border-end"
+                  style="width:2.75rem;height:3rem;" onclick="changeQty(-1)">−</button>
           <input id="qty-input" type="number" value="1" min="1" max="{{ product.stock_qty }}"
-                 class="w-14 h-12 text-center text-sm font-bold text-navy border-none outline-none bg-white"/>
-          <button class="qty-btn w-11 h-12 flex items-center justify-center text-navy font-bold text-lg border-l border-gray-200"
-                  onclick="changeQty(1)">+</button>
+                 class="text-center small fw-bold text-navy border-0 bg-white" style="width:3.5rem;height:3rem;"/>
+          <button class="qty-btn d-flex align-items-center justify-content-center text-navy fw-bold fs-5 border-0 border-start"
+                  style="width:2.75rem;height:3rem;" onclick="changeQty(1)">+</button>
         </div>
 
         <button id="add-btn"
                 onclick="addToCartDetail({{ product.pk }})"
-                class="flex-1 bg-navy hover:bg-navy-700 text-white font-display font-700
-                       py-3 px-6 rounded-xl transition-colors btn-press
-                       flex items-center justify-center gap-2 text-sm">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="btn btn-navy flex-fill font-display fw-bold py-3 px-4 rounded-xl btn-press
+                       d-flex align-items-center justify-content-center gap-2 small">
+          <svg style="width:1.25rem;height:1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
           </svg>
           Add to Cart
         </button>
 
-        <button class="w-12 h-12 flex items-center justify-center border border-gray-200
-                       rounded-xl hover:border-red-300 hover:bg-red-50 transition-colors
-                       text-gray-400 hover:text-red-500 text-xl" title="Save for later">♡</button>
+        <button class="btn btn-outline-secondary d-flex align-items-center justify-content-center rounded-xl fs-5"
+                style="width:3rem;height:3rem;" title="Save for later">♡</button>
       </div>
 
       <!-- Buy now -->
       <a href="{% url 'order:checkout' %}"
          onclick="return handleBuyNow({{ product.pk }})"
-         class="block w-full bg-gold hover:bg-gold-dark text-navy font-display font-700
-                py-3.5 rounded-xl transition-colors btn-press text-center text-sm mb-3">
+         class="btn btn-gold w-100 font-display fw-bold py-3 rounded-xl btn-press text-center small mb-3">
         ⚡ Buy Now
       </a>
       {% else %}
-      <div class="bg-gray-50 border border-gray-200 rounded-xl px-5 py-4 mb-3 text-center">
-        <p class="text-gray-500 font-semibold mb-1">Currently unavailable</p>
-        <p class="text-xs text-gray-400">Check back later or explore similar items below.</p>
+      <div class="bg-light border rounded-xl px-4 py-3 mb-3 text-center">
+        <p class="text-secondary fw-semibold mb-1">Currently unavailable</p>
+        <p class="small text-secondary mb-0">Check back later or explore similar items below.</p>
       </div>
       {% endif %}
 
       <!-- Chat with seller -->
       {% if user.is_authenticated and product.vendor %}
       <a href="{% url 'chat:start' product.vendor.slug %}"
-         class="flex items-center justify-center gap-2 w-full border-2 border-navy
-                text-navy hover:bg-navy hover:text-white font-semibold py-3
-                rounded-2xl transition-all duration-200 btn-press text-sm mb-5">
+         class="btn-outline-navy d-flex align-items-center justify-content-center gap-2 w-100 py-3
+                rounded-2xl small mb-4 text-decoration-none">
         💬 Chat with Seller
       </a>
       {% elif not user.is_authenticated and product.vendor %}
       <a href="{% url 'accounts:login' %}?next={{ request.path }}"
-         class="flex items-center justify-center gap-2 w-full border-2 border-gray-200
-                text-gray-500 hover:border-navy hover:text-navy font-semibold py-3
-                rounded-2xl transition-all duration-200 text-sm mb-5">
+         class="d-flex align-items-center justify-content-center gap-2 w-100 border border-2
+                text-secondary fw-semibold py-3 rounded-2xl small mb-4 text-decoration-none">
         💬 Sign in to Chat with Seller
       </a>
       {% endif %}
 
       <!-- Delivery info -->
-      <div class="border border-gray-100 rounded-2xl divide-y divide-gray-100 mb-5">
-        <div class="flex items-center gap-3 px-4 py-3 text-sm">
-          <span class="text-xl">🛵</span>
+      <div class="border rounded-2xl mb-4">
+        <div class="d-flex align-items-center gap-3 px-3 py-3 small border-bottom">
+          <span class="fs-4">🛵</span>
           <div>
-            <p class="font-semibold text-navy">Fast Delivery Available</p>
-            <p class="text-xs text-gray-400">Delivered to your door across Ghana</p>
+            <p class="fw-semibold text-navy mb-0">Fast Delivery Available</p>
+            <p class="small text-secondary mb-0">Delivered to your door across Ghana</p>
           </div>
         </div>
-        <div class="flex items-center gap-3 px-4 py-3 text-sm">
-          <span class="text-xl">💳</span>
+        <div class="d-flex align-items-center gap-3 px-3 py-3 small border-bottom">
+          <span class="fs-4">💳</span>
           <div>
-            <p class="font-semibold text-navy">Pay via MoMo or Card</p>
-            <p class="text-xs text-gray-400">MTN · Vodafone · AirtelTigo · Visa · Mastercard</p>
+            <p class="fw-semibold text-navy mb-0">Pay via MoMo or Card</p>
+            <p class="small text-secondary mb-0">MTN · Vodafone · AirtelTigo · Visa · Mastercard</p>
           </div>
         </div>
-        <div class="flex items-center gap-3 px-4 py-3 text-sm">
-          <span class="text-xl">🔒</span>
+        <div class="d-flex align-items-center gap-3 px-3 py-3 small">
+          <span class="fs-4">🔒</span>
           <div>
-            <p class="font-semibold text-navy">Secure & Protected</p>
-            <p class="text-xs text-gray-400">Powered by Flutterwave payment processing</p>
+            <p class="fw-semibold text-navy mb-0">Secure & Protected</p>
+            <p class="small text-secondary mb-0">Powered by Flutterwave payment processing</p>
           </div>
         </div>
       </div>
 
       <!-- Share -->
       <div>
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Share this product</p>
-        <div class="flex gap-2 flex-wrap">
-          <button onclick="shareWA()"
-                  class="share-btn flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-3 py-2 rounded-xl">
+        <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.05em;">Share this product</p>
+        <div class="d-flex gap-2 flex-wrap">
+          <button onclick="shareWA()" class="share-btn d-flex align-items-center gap-1 bg-success text-white small fw-semibold px-3 py-2 rounded-xl border-0">
             💬 WhatsApp
           </button>
-          <button onclick="shareFB()"
-                  class="share-btn flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl">
+          <button onclick="shareFB()" class="share-btn d-flex align-items-center gap-1 bg-primary text-white small fw-semibold px-3 py-2 rounded-xl border-0">
             📘 Facebook
           </button>
-          <button onclick="shareTW()"
-                  class="share-btn flex items-center gap-1.5 bg-black hover:bg-gray-800 text-white text-xs font-semibold px-3 py-2 rounded-xl">
+          <button onclick="shareTW()" class="share-btn d-flex align-items-center gap-1 bg-dark text-white small fw-semibold px-3 py-2 rounded-xl border-0">
             🐦 Twitter
           </button>
-          <button onclick="copyLink()" id="copy-btn"
-                  class="share-btn flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-navy text-xs font-semibold px-3 py-2 rounded-xl">
+          <button onclick="copyLink()" id="copy-btn" class="share-btn d-flex align-items-center gap-1 bg-light text-navy small fw-semibold px-3 py-2 rounded-xl border-0">
             🔗 Copy Link
           </button>
         </div>
@@ -301,18 +294,20 @@
 
   <!-- PRODUCT VIDEOS -->
   {% if product.videos.all %}
-  <div class="mb-8">
-    <h3 class="font-display font-700 text-navy text-lg mb-3">📹 Product Videos</h3>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="mb-4">
+    <h3 class="font-display fw-bold text-navy fs-5 mb-3">📹 Product Videos</h3>
+    <div class="row row-cols-1 row-cols-md-2 g-3">
       {% for video in product.videos.all %}
-      <div class="rounded-2xl overflow-hidden bg-black shadow-sm">
-        <video controls preload="metadata" class="w-full max-h-72 object-contain"
+      <div class="col">
+      <div class="rounded-2xl overflow-hidden bg-dark shadow-sm">
+        <video controls preload="metadata" class="w-100 object-fit-contain" style="max-height:18rem;"
                {% if video.thumbnail %}poster="{{ video.thumbnail.url }}"{% endif %}>
           <source src="{{ video.video.url }}" type="video/mp4">
         </video>
         {% if video.title %}
-        <p class="px-4 py-2 text-xs text-gray-400 bg-gray-50">{{ video.title }}</p>
+        <p class="px-3 py-2 small text-secondary bg-light mb-0">{{ video.title }}</p>
         {% endif %}
+      </div>
       </div>
       {% endfor %}
     </div>
@@ -320,146 +315,145 @@
   {% endif %}
 
   <!-- TABS -->
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-10">
-    <div class="flex border-b border-gray-100 overflow-x-auto">
+  <div class="bg-white rounded-2xl border shadow-sm overflow-hidden mb-5">
+    <div class="d-flex border-bottom overflow-auto">
       <button onclick="switchTab('description')" id="tab-description"
-              class="tab-link active px-6 py-4 text-sm font-semibold text-gray-500 whitespace-nowrap flex-shrink-0">
+              class="tab-link active px-4 py-3 small fw-semibold text-secondary text-nowrap flex-shrink-0 bg-white border-0">
         Description
       </button>
       <button onclick="switchTab('details')" id="tab-details"
-              class="tab-link px-6 py-4 text-sm font-semibold text-gray-500 whitespace-nowrap flex-shrink-0">
+              class="tab-link px-4 py-3 small fw-semibold text-secondary text-nowrap flex-shrink-0 bg-white border-0">
         Details
       </button>
       <button onclick="switchTab('reviews')" id="tab-reviews"
-              class="tab-link px-6 py-4 text-sm font-semibold text-gray-500 whitespace-nowrap flex-shrink-0">
+              class="tab-link px-4 py-3 small fw-semibold text-secondary text-nowrap flex-shrink-0 bg-white border-0">
         Reviews
         {% if review_count %}
-        <span class="ml-1.5 bg-gold text-navy text-[10px] font-bold px-1.5 py-0.5 rounded-full">{{ review_count }}</span>
+        <span class="ms-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:10px;">{{ review_count }}</span>
         {% endif %}
       </button>
       <button onclick="switchTab('delivery')" id="tab-delivery"
-              class="tab-link px-6 py-4 text-sm font-semibold text-gray-500 whitespace-nowrap flex-shrink-0">
+              class="tab-link px-4 py-3 small fw-semibold text-secondary text-nowrap flex-shrink-0 bg-white border-0">
         Delivery & Returns
       </button>
     </div>
 
     <!-- Description -->
-    <div id="content-description" class="tab-content px-6 py-6">
+    <div id="content-description" class="tab-content px-4 py-4">
       {% if product.description %}
-      <div class="prose prose-sm max-w-none text-gray-600 leading-relaxed">
+      <div class="text-secondary small" style="line-height:1.7;">
         {{ product.description|linebreaksbr }}
       </div>
       {% else %}
-      <p class="text-gray-400 text-sm">No description provided for this product.</p>
+      <p class="text-secondary small mb-0">No description provided for this product.</p>
       {% endif %}
     </div>
 
     <!-- Details -->
-    <div id="content-details" class="tab-content hidden px-6 py-6">
-      <table class="w-full text-sm">
-        <tbody class="divide-y divide-gray-50">
+    <div id="content-details" class="tab-content d-none px-4 py-4">
+      <table class="table table-sm mb-0">
+        <tbody>
           <tr>
-            <td class="py-2.5 font-semibold text-gray-500 w-1/3">Product Name</td>
-            <td class="py-2.5 text-navy">{{ product.name }}</td>
+            <td class="py-2 fw-semibold text-secondary" style="width:33%;">Product Name</td>
+            <td class="py-2 text-navy">{{ product.name }}</td>
           </tr>
           {% if product.brand %}
           <tr>
-            <td class="py-2.5 font-semibold text-gray-500">Brand</td>
-            <td class="py-2.5 text-navy">{{ product.brand }}</td>
+            <td class="py-2 fw-semibold text-secondary">Brand</td>
+            <td class="py-2 text-navy">{{ product.brand }}</td>
           </tr>
           {% endif %}
           {% if product.category %}
           <tr>
-            <td class="py-2.5 font-semibold text-gray-500">Category</td>
-            <td class="py-2.5 text-navy">{{ product.category.name }}</td>
+            <td class="py-2 fw-semibold text-secondary">Category</td>
+            <td class="py-2 text-navy">{{ product.category.name }}</td>
           </tr>
           {% endif %}
           {% if product.vendor %}
           <tr>
-            <td class="py-2.5 font-semibold text-gray-500">Sold by</td>
-            <td class="py-2.5 text-navy">{{ product.vendor.shop_name }}</td>
+            <td class="py-2 fw-semibold text-secondary">Sold by</td>
+            <td class="py-2 text-navy">{{ product.vendor.shop_name }}</td>
           </tr>
           {% endif %}
           <tr>
-            <td class="py-2.5 font-semibold text-gray-500">Availability</td>
-            <td class="py-2.5">
+            <td class="py-2 fw-semibold text-secondary">Availability</td>
+            <td class="py-2">
               {% if product.is_in_stock %}
-              <span class="text-green-600 font-semibold">In Stock</span>
+              <span class="text-success fw-semibold">In Stock</span>
               {% else %}
-              <span class="text-red-500 font-semibold">Out of Stock</span>
+              <span class="text-danger fw-semibold">Out of Stock</span>
               {% endif %}
             </td>
           </tr>
           {% if product.weight %}
           <tr>
-            <td class="py-2.5 font-semibold text-gray-500">Weight</td>
-            <td class="py-2.5 text-navy">{{ product.weight }} kg</td>
+            <td class="py-2 fw-semibold text-secondary">Weight</td>
+            <td class="py-2 text-navy">{{ product.weight }} kg</td>
           </tr>
           {% endif %}
           <tr>
-            <td class="py-2.5 font-semibold text-gray-500">SKU</td>
-            <td class="py-2.5 text-gray-400 font-mono text-xs">LYN-{{ product.pk }}</td>
+            <td class="py-2 fw-semibold text-secondary">SKU</td>
+            <td class="py-2 text-secondary font-monospace small">LYN-{{ product.pk }}</td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <!-- Reviews -->
-    <div id="content-reviews" class="tab-content hidden px-6 py-6">
+    <div id="content-reviews" class="tab-content d-none px-4 py-4">
 
       {% if review_count %}
       <!-- Rating summary -->
-      <div class="flex flex-col sm:flex-row gap-6 mb-8 p-5 bg-cream rounded-2xl">
+      <div class="d-flex flex-column flex-sm-row gap-4 mb-4 p-3 bg-cream rounded-2xl">
         <div class="text-center flex-shrink-0">
-          <p class="font-display font-700 text-5xl text-navy">{{ avg_rating }}</p>
-          <div class="flex items-center justify-center gap-0.5 my-1">
+          <p class="font-display fw-bold display-5 text-navy mb-0">{{ avg_rating }}</p>
+          <div class="d-flex align-items-center justify-content-center gap-1 my-1">
             {% for i in "12345" %}
-            <span class="text-lg {% if forloop.counter <= avg_rating %}star-filled{% else %}star-empty{% endif %}">★</span>
+            <span class="fs-5 {% if forloop.counter <= avg_rating %}star-filled{% else %}star-empty{% endif %}">★</span>
             {% endfor %}
           </div>
-          <p class="text-xs text-gray-400">{{ review_count }} review{{ review_count|pluralize }}</p>
+          <p class="small text-secondary mb-0">{{ review_count }} review{{ review_count|pluralize }}</p>
         </div>
-        <div class="flex-1 space-y-2">
+        <div class="flex-fill d-flex flex-column gap-2">
           {% for star, data in rating_breakdown.items %}
-          <div class="flex items-center gap-3 text-xs">
-            <span class="text-gray-500 w-6 text-right font-medium">{{ star }}★</span>
-            <div class="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div class="bg-gold h-full rounded-full transition-all duration-700"
-                   style="width: {{ data.pct }}%"></div>
+          <div class="d-flex align-items-center gap-2 small">
+            <span class="text-secondary fw-medium text-end" style="width:1.5rem;">{{ star }}★</span>
+            <div class="flex-fill bg-light rounded-pill overflow-hidden" style="height:.5rem;">
+              <div class="bg-gold h-100 rounded-pill" style="width: {{ data.pct }}%;transition:width .7s;"></div>
             </div>
-            <span class="text-gray-400 w-6">{{ data.count }}</span>
+            <span class="text-secondary" style="width:1.5rem;">{{ data.count }}</span>
           </div>
           {% endfor %}
         </div>
       </div>
 
       <!-- Review list -->
-      <div class="space-y-4 mb-6">
+      <div class="d-flex flex-column gap-3 mb-4">
         {% for review in reviews %}
-        <div class="border border-gray-100 rounded-2xl p-4">
-          <div class="flex items-start gap-3">
-            <div class="w-9 h-9 rounded-full bg-navy flex items-center justify-center
-                        text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+        <div class="border rounded-2xl p-3">
+          <div class="d-flex align-items-start gap-3">
+            <div class="rounded-circle bg-navy d-flex align-items-center justify-content-center
+                        text-white small fw-bold flex-shrink-0 overflow-hidden" style="width:2.25rem;height:2.25rem;">
               {% if review.customer.profile_pic %}
-              <img src="{{ review.customer.profile_pic.url }}" class="w-full h-full object-cover"/>
+              <img src="{{ review.customer.profile_pic.url }}" class="w-100 h-100 object-fit-cover"/>
               {% else %}
               {{ review.customer.first_name|first|upper|default:"U" }}
               {% endif %}
             </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between gap-2 flex-wrap">
-                <p class="font-semibold text-navy text-sm">
+            <div class="flex-fill min-w-0">
+              <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                <p class="fw-semibold text-navy small mb-0">
                   {{ review.customer.get_full_name|default:review.customer.phone }}
                 </p>
-                <span class="text-xs text-gray-400">{{ review.created_at|date:"d M Y" }}</span>
+                <span class="small text-secondary">{{ review.created_at|date:"d M Y" }}</span>
               </div>
-              <div class="flex items-center gap-0.5 my-1">
+              <div class="d-flex align-items-center gap-1 my-1">
                 {% for i in "12345" %}
-                <span class="text-sm {% if forloop.counter <= review.rating %}star-filled{% else %}star-empty{% endif %}">★</span>
+                <span class="small {% if forloop.counter <= review.rating %}star-filled{% else %}star-empty{% endif %}">★</span>
                 {% endfor %}
               </div>
               {% if review.comment %}
-              <p class="text-sm text-gray-600 leading-relaxed">{{ review.comment }}</p>
+              <p class="small text-secondary mb-0" style="line-height:1.6;">{{ review.comment }}</p>
               {% endif %}
             </div>
           </div>
@@ -467,49 +461,47 @@
         {% endfor %}
       </div>
       {% else %}
-      <div class="text-center py-10">
-        <p class="text-4xl mb-3">⭐</p>
-        <p class="font-semibold text-navy mb-1">No reviews yet</p>
-        <p class="text-sm text-gray-400">Be the first to review this product.</p>
+      <div class="text-center py-4">
+        <p class="fs-1 mb-2">⭐</p>
+        <p class="fw-semibold text-navy mb-1">No reviews yet</p>
+        <p class="small text-secondary mb-0">Be the first to review this product.</p>
       </div>
       {% endif %}
 
       <!-- Write a review -->
       {% if user_can_review %}
-      <div class="border-t border-gray-100 pt-6">
-        <h3 class="font-display font-700 text-navy text-lg mb-4">Write a Review</h3>
+      <div class="border-top pt-4 mt-2">
+        <h3 class="font-display fw-bold text-navy fs-5 mb-3">Write a Review</h3>
         <form method="post" action="{% url 'reviews:submit' product.pk %}">
           {% csrf_token %}
-          <div class="mb-4">
-            <label class="block text-sm font-semibold text-gray-700 mb-2">Your Rating</label>
-            <div class="flex gap-2">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-dark">Your Rating</label>
+            <div class="d-flex gap-2">
               {% for i in "12345" %}
-              <label class="cursor-pointer">
-                <input type="radio" name="rating" value="{{ forloop.counter }}" class="hidden peer" required/>
-                <span class="text-2xl text-gray-300 peer-checked:text-gold transition-colors hover:text-gold">★</span>
+              <label style="cursor:pointer;">
+                <input type="radio" name="rating" value="{{ forloop.counter }}" class="d-none" required/>
+                <span class="fs-3 star-empty" style="transition:color .15s;">★</span>
               </label>
               {% endfor %}
             </div>
           </div>
-          <div class="mb-4">
-            <label class="block text-sm font-semibold text-gray-700 mb-2">Your Review</label>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-dark">Your Review</label>
             <textarea name="comment" rows="3" placeholder="Share your experience with this product..."
-                      class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none"></textarea>
+                      class="form-control rounded-xl" style="resize:none;"></textarea>
           </div>
-          <button type="submit"
-                  class="bg-navy text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-navy-700 transition-colors btn-press text-sm">
+          <button type="submit" class="btn btn-navy fw-semibold px-4 py-2 rounded-xl btn-press small">
             Submit Review
           </button>
         </form>
       </div>
       {% elif user_review %}
-      <div class="border-t border-gray-100 pt-4">
-        <p class="text-sm text-gray-400 text-center">You've already reviewed this product.</p>
+      <div class="border-top pt-3 mt-2">
+        <p class="small text-secondary text-center mb-0">You've already reviewed this product.</p>
       </div>
       {% elif not user.is_authenticated %}
-      <div class="border-t border-gray-100 pt-4 text-center">
-        <a href="{% url 'accounts:login' %}?next={{ request.path }}"
-           class="text-sm text-gold-dark font-semibold hover:underline">
+      <div class="border-top pt-3 mt-2 text-center">
+        <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="small text-gold-dark fw-semibold">
           Sign in to write a review →
         </a>
       </div>
@@ -517,28 +509,28 @@
     </div>
 
     <!-- Delivery -->
-    <div id="content-delivery" class="tab-content hidden px-6 py-6">
-      <div class="space-y-4 text-sm text-gray-600">
-        <div class="flex gap-3">
-          <span class="text-2xl flex-shrink-0">🛵</span>
+    <div id="content-delivery" class="tab-content d-none px-4 py-4">
+      <div class="d-flex flex-column gap-3 small text-secondary">
+        <div class="d-flex gap-3">
+          <span class="fs-3 flex-shrink-0">🛵</span>
           <div>
-            <p class="font-semibold text-navy mb-1">Fast Delivery Across Ghana</p>
-            <p>We deliver to Accra, Kumasi, Takoradi, Tema, and surrounding areas. Delivery fees are calculated at checkout.</p>
+            <p class="fw-semibold text-navy mb-1">Fast Delivery Across Ghana</p>
+            <p class="mb-0">We deliver to Accra, Kumasi, Takoradi, Tema, and surrounding areas. Delivery fees are calculated at checkout.</p>
           </div>
         </div>
-        <div class="flex gap-3">
-          <span class="text-2xl flex-shrink-0">📞</span>
+        <div class="d-flex gap-3">
+          <span class="fs-3 flex-shrink-0">📞</span>
           <div>
-            <p class="font-semibold text-navy mb-1">Rider Will Call You</p>
-            <p>Your assigned rider will call the delivery phone number you provide at checkout.</p>
+            <p class="fw-semibold text-navy mb-1">Rider Will Call You</p>
+            <p class="mb-0">Your assigned rider will call the delivery phone number you provide at checkout.</p>
           </div>
         </div>
-        <div class="flex gap-3">
-          <span class="text-2xl flex-shrink-0">🔄</span>
+        <div class="d-flex gap-3">
+          <span class="fs-3 flex-shrink-0">🔄</span>
           <div>
-            <p class="font-semibold text-navy mb-1">Issues & Complaints</p>
-            <p>Contact us via WhatsApp on
-              <a href="https://wa.me/233558040216" class="text-gold-dark font-semibold hover:underline">+233 55 804 0216</a>
+            <p class="fw-semibold text-navy mb-1">Issues & Complaints</p>
+            <p class="mb-0">Contact us via WhatsApp on
+              <a href="https://wa.me/233558040216" class="text-gold-dark fw-semibold">+233 55 804 0216</a>
               within 24 hours of delivery.
             </p>
           </div>
@@ -549,35 +541,37 @@
 
   <!-- RELATED PRODUCTS -->
   {% if related %}
-  <div class="mb-10">
-    <h2 class="font-display font-700 text-xl text-navy mb-4">You may also like</h2>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+  <div class="mb-5">
+    <h2 class="font-display fw-bold fs-4 text-navy mb-3">You may also like</h2>
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3">
       {% for p in related %}
-      <div class="group bg-white rounded-2xl overflow-hidden border border-gray-100 card-hover flex flex-col">
-        <a href="{% url 'products:detail' p.slug %}" class="relative block overflow-hidden bg-cream">
+      <div class="col">
+      <div class="product-card-hover bg-white rounded-2xl overflow-hidden border card-hover d-flex flex-column h-100">
+        <a href="{% url 'products:detail' p.slug %}" class="position-relative d-block overflow-hidden bg-cream">
           {% if p.primary_image %}
           <img src="{{ p.primary_image }}" alt="{{ p.name }}"
-               class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-500"/>
+               class="w-100 object-fit-cover product-card-img" style="height:10rem;"/>
           {% else %}
-          <div class="w-full h-40 flex items-center justify-center"><span class="text-4xl opacity-20">📦</span></div>
+          <div class="w-100 d-flex align-items-center justify-content-center" style="height:10rem;"><span class="fs-1" style="opacity:.2;">📦</span></div>
           {% endif %}
           {% if p.has_discount %}
-          <span class="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">-{{ p.discount_percent }}%</span>
+          <span class="position-absolute top-0 start-0 m-2 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:10px;">-{{ p.discount_percent }}%</span>
           {% endif %}
         </a>
-        <div class="p-3 flex flex-col flex-1">
+        <div class="p-2 d-flex flex-column flex-fill">
           <a href="{% url 'products:detail' p.slug %}"
-             class="text-xs font-semibold text-navy hover:text-gold line-clamp-2 mb-2 leading-snug">{{ p.name }}</a>
-          <div class="mt-auto flex items-center justify-between gap-1">
-            <span class="font-display font-700 text-navy text-sm">GHS {{ p.final_price }}</span>
+             class="small fw-semibold text-navy text-truncate-2 mb-2 text-decoration-none" style="line-height:1.35;">{{ p.name }}</a>
+          <div class="mt-auto d-flex align-items-center justify-content-between gap-1">
+            <span class="font-display fw-bold text-navy small">GHS {{ p.final_price }}</span>
             {% if p.is_in_stock %}
             <button onclick="addToCart({{ p.pk }}, this)"
-                    class="text-[10px] bg-navy hover:bg-gold hover:text-navy text-white font-semibold px-2.5 py-1.5 rounded-lg transition-all btn-press">
+                    class="quick-add-btn fw-semibold px-2 py-1 rounded-2 border-0 btn-press" style="font-size:10px;">
               + Add
             </button>
             {% endif %}
           </div>
         </div>
+      </div>
       </div>
       {% endfor %}
     </div>
@@ -588,33 +582,32 @@
 
 <!-- MOBILE STICKY BAR -->
 <div id="sticky-bar"
-     class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200
-            px-4 py-3 flex gap-3 md:hidden z-50 shadow-2xl">
-  <button onclick="shareWA()"
-          class="w-12 h-12 flex items-center justify-center bg-green-500 text-white rounded-xl flex-shrink-0 text-xl">
+     class="position-fixed bottom-0 start-0 end-0 bg-white border-top
+            px-3 py-2 d-flex d-md-none gap-2" style="z-index:1050;box-shadow:0 -8px 24px rgba(0,0,0,.15);">
+  <button onclick="shareWA()" class="btn bg-success text-white d-flex align-items-center justify-content-center rounded-xl flex-shrink-0 fs-4" style="width:3rem;height:3rem;">
     💬
   </button>
   {% if product.is_in_stock %}
   <button onclick="addToCartDetail({{ product.pk }})"
-          class="flex-1 bg-navy text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+          class="btn btn-navy flex-fill fw-semibold py-3 rounded-xl small d-flex align-items-center justify-content-center gap-2">
     🛒 Add to Cart
   </button>
   <a href="{% url 'order:checkout' %}"
-     class="flex-1 bg-gold text-navy font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+     class="btn btn-gold flex-fill fw-semibold py-3 rounded-xl small d-flex align-items-center justify-content-center gap-2">
     ⚡ Buy Now
   </a>
   {% else %}
-  <div class="flex-1 bg-gray-100 text-gray-400 font-semibold py-3 rounded-xl text-sm text-center">Out of Stock</div>
+  <div class="flex-fill bg-light text-secondary fw-semibold py-3 rounded-xl small text-center">Out of Stock</div>
   {% endif %}
 </div>
 
-<div class="h-20 md:hidden"></div>
+<div class="d-md-none" style="height:5rem;"></div>
 
 <!-- Toast -->
 <div id="toast"
-     class="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 bg-navy text-white
-            text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl opacity-0
-            transition-all duration-300 pointer-events-none z-50 whitespace-nowrap"></div>
+     class="position-fixed start-50 translate-middle-x bg-navy text-white
+            small fw-semibold px-4 py-3 rounded-3 shadow" style="bottom:6rem;opacity:0;
+            transition:opacity .3s;pointer-events:none;z-index:1060;white-space:nowrap;"></div>
 
 {% endblock %}
 
@@ -642,7 +635,7 @@
     }
     const btn = document.getElementById('add-btn');
     const qty = document.getElementById('qty-input')?.value || 1;
-    btn.innerHTML = '<svg class="animate-spin w-4 h-4 mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>';
+    btn.innerHTML = '<svg class="spin-anim" style="width:1rem;height:1rem;" fill="none" viewBox="0 0 24 24"><circle style="opacity:.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:.75;" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>';
     btn.disabled = true;
     const fd = new FormData();
     fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
@@ -654,13 +647,13 @@
     .then(d => {
       if (d.success) {
         btn.innerHTML = '✓ Added to Cart';
-        btn.classList.replace('bg-navy', 'bg-green-600');
+        btn.classList.add('added-flash');
         updateCartBadge(d.cart_count);
         showToast('✓ Added to cart!');
         setTimeout(() => {
-          btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg> Add to Cart';
+          btn.innerHTML = '<svg style="width:1.25rem;height:1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg> Add to Cart';
           btn.disabled = false;
-          btn.classList.replace('bg-green-600', 'bg-navy');
+          btn.classList.remove('added-flash');
         }, 2000);
         setTimeout(openCart, 500);
       }
@@ -684,9 +677,9 @@
   }
 
   function switchTab(tab) {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('d-none'));
     document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
-    document.getElementById('content-' + tab).classList.remove('hidden');
+    document.getElementById('content-' + tab).classList.remove('d-none');
     document.getElementById('tab-' + tab).classList.add('active');
   }
 

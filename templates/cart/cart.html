@@ -2,125 +2,118 @@
 {% block title %}Your Cart — Lynctel{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 md:px-6 py-8">
+<div class="container px-3 px-md-4 py-4" style="max-width: 64rem;">
 
-  <div class="mb-6">
-    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Shopping</p>
-    <h1 class="font-display font-700 text-2xl text-navy">Your Cart
-      <span id="page-count-wrap" class="{% if not cart.total_items %}hidden{% endif %}">
-        <span id="page-item-count" class="text-gray-400 font-400 text-lg ml-2">({{ cart.total_items }} item{{ cart.total_items|pluralize }})</span>
+  <div class="mb-4">
+    <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em;">Shopping</p>
+    <h1 class="font-display fw-bold fs-3 text-navy">Your Cart
+      <span id="page-count-wrap" class="{% if not cart.total_items %}d-none{% endif %}">
+        <span id="page-item-count" class="text-secondary fw-normal fs-5 ms-2">({{ cart.total_items }} item{{ cart.total_items|pluralize }})</span>
       </span>
     </h1>
   </div>
 
   <!-- CART HAS ITEMS -->
-  <div id="cart-page-content" class="{% if not cart_items %}hidden{% endif %}">
-    <div class="flex flex-col lg:flex-row gap-6">
+  <div id="cart-page-content" class="{% if not cart_items %}d-none{% endif %}">
+    <div class="d-flex flex-column flex-lg-row gap-4">
 
       <!-- ITEMS LIST -->
-      <div class="flex-1 space-y-3" id="cart-items">
+      <div class="flex-fill d-flex flex-column gap-3" id="cart-items">
         {% for item in cart_items %}
         <div id="row-{{ item.pk }}"
-             class="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 transition-all duration-300">
+             class="bg-white rounded-2xl border p-3 d-flex align-items-center gap-3" style="transition:all .3s ease;">
 
           <a href="{% url 'products:detail' item.product.slug %}" class="flex-shrink-0">
             {% with item.product.images.first as img %}
             {% if img %}
-            <img src="{{ img.image.url }}" class="w-20 h-20 rounded-xl object-cover"/>
+            <img src="{{ img.image.url }}" class="rounded-xl object-fit-cover" style="width:5rem;height:5rem;"/>
             {% else %}
-            <div class="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-3xl">📦</div>
+            <div class="rounded-xl bg-light d-flex align-items-center justify-content-center fs-2" style="width:5rem;height:5rem;">📦</div>
             {% endif %}
             {% endwith %}
           </a>
 
-          <div class="flex-1 min-w-0">
+          <div class="flex-fill min-w-0">
             <a href="{% url 'products:detail' item.product.slug %}"
-               class="font-semibold text-navy hover:text-gold transition-colors line-clamp-2 text-sm leading-snug">
+               class="fw-semibold text-navy text-truncate-2 small text-decoration-none" style="line-height:1.35;">
               {{ item.product.name }}
             </a>
             {% if item.product.vendor %}
-            <p class="text-xs text-gray-400 mt-0.5">🏪 {{ item.product.vendor.shop_name }}</p>
+            <p class="small text-secondary mt-1 mb-0">🏪 {{ item.product.vendor.shop_name }}</p>
             {% endif %}
-            <p class="font-display font-700 text-navy mt-1 text-sm">GHS {{ item.product.selling_price }}</p>
+            <p class="font-display fw-bold text-navy mt-1 small mb-0">GHS {{ item.product.selling_price }}</p>
           </div>
 
           <!-- Qty controls -->
-          <div class="flex items-center gap-2 flex-shrink-0">
+          <div class="d-flex align-items-center gap-2 flex-shrink-0">
             <button onclick="pageUpdateQty({{ item.pk }}, -1)"
-                    class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-navy hover:text-white
-                           flex items-center justify-center font-bold transition-colors text-gray-600">−</button>
-            <span id="qty-{{ item.pk }}" class="w-8 text-center font-semibold text-navy text-sm">{{ item.quantity }}</span>
+                    class="btn btn-light rounded-2 d-flex align-items-center justify-content-center fw-bold text-secondary border-0"
+                    style="width:2rem;height:2rem;">−</button>
+            <span id="qty-{{ item.pk }}" class="text-center fw-semibold text-navy small" style="width:2rem;">{{ item.quantity }}</span>
             <button onclick="pageUpdateQty({{ item.pk }}, 1)"
-                    class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-navy hover:text-white
-                           flex items-center justify-center font-bold transition-colors text-gray-600">+</button>
+                    class="btn btn-light rounded-2 d-flex align-items-center justify-content-center fw-bold text-secondary border-0"
+                    style="width:2rem;height:2rem;">+</button>
           </div>
 
           <!-- Subtotal + remove -->
-          <div class="text-right flex-shrink-0 min-w-[80px]">
-            <p id="sub-{{ item.pk }}" class="font-display font-700 text-navy text-sm">GHS {{ item.subtotal }}</p>
-            <button onclick="pageRemoveItem({{ item.pk }})"
-                    class="text-xs text-red-400 hover:text-red-600 transition-colors mt-1">Remove</button>
+          <div class="text-end flex-shrink-0" style="min-width: 80px;">
+            <p id="sub-{{ item.pk }}" class="font-display fw-bold text-navy small mb-0">GHS {{ item.subtotal }}</p>
+            <button onclick="pageRemoveItem({{ item.pk }})" class="btn btn-link small text-danger p-0 mt-1 text-decoration-none">Remove</button>
           </div>
         </div>
         {% endfor %}
 
-        <a href="{% url 'products:list' %}"
-           class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-navy transition-colors mt-2">
+        <a href="{% url 'products:list' %}" class="d-inline-flex align-items-center gap-1 small text-secondary mt-2 text-decoration-none">
           ← Continue Shopping
         </a>
       </div>
 
       <!-- ORDER SUMMARY -->
-      <div class="w-full lg:w-80 flex-shrink-0">
-        <div class="bg-white rounded-2xl border border-gray-100 p-5 sticky top-20">
-          <h2 class="font-display font-700 text-navy text-lg mb-4">Order Summary</h2>
+      <div class="w-100 flex-shrink-0" style="max-width: 20rem;">
+        <div class="bg-white rounded-2xl border p-4 position-sticky" style="top:5rem;">
+          <h2 class="font-display fw-bold text-navy fs-5 mb-3">Order Summary</h2>
 
-          <div class="space-y-3 text-sm mb-5">
-            <div class="flex justify-between">
-              <span class="text-gray-500">Subtotal</span>
-              <span id="summary-subtotal" class="font-semibold text-navy">GHS {{ cart.total_price }}</span>
+          <div class="d-flex flex-column gap-2 small mb-4">
+            <div class="d-flex justify-content-between">
+              <span class="text-secondary">Subtotal</span>
+              <span id="summary-subtotal" class="fw-semibold text-navy">GHS {{ cart.total_price }}</span>
             </div>
-            <div class="flex justify-between">
-              <span class="text-gray-400">Delivery fee</span>
-              <span class="text-gray-400 text-xs">At checkout</span>
+            <div class="d-flex justify-content-between">
+              <span class="text-secondary">Delivery fee</span>
+              <span class="text-secondary small">At checkout</span>
             </div>
-            <div class="border-t border-gray-100 pt-3 flex justify-between">
-              <span class="font-display font-700 text-navy">Total</span>
-              <span id="summary-total" class="font-display font-700 text-navy text-base">GHS {{ cart.total_price }}</span>
+            <div class="border-top pt-3 d-flex justify-content-between">
+              <span class="font-display fw-bold text-navy">Total</span>
+              <span id="summary-total" class="font-display fw-bold text-navy">GHS {{ cart.total_price }}</span>
             </div>
           </div>
 
           {% if user.is_authenticated %}
-          <a href="{% url 'order:checkout' %}"
-             class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold
-                    text-center py-3.5 rounded-xl transition-colors btn-press mb-3 text-sm">
+          <a href="{% url 'order:checkout' %}" class="btn btn-navy w-100 fw-semibold text-center py-3 rounded-xl btn-press mb-3 small">
             Proceed to Checkout →
           </a>
           {% else %}
-          <a href="{% url 'accounts:login' %}?next={% url 'order:checkout' %}"
-             class="block w-full bg-navy hover:bg-navy-700 text-white font-semibold
-                    text-center py-3.5 rounded-xl transition-colors btn-press mb-3 text-sm">
+          <a href="{% url 'accounts:login' %}?next={% url 'order:checkout' %}" class="btn btn-navy w-100 fw-semibold text-center py-3 rounded-xl btn-press mb-3 small">
             Sign In to Checkout →
           </a>
-          <p class="text-center text-xs text-gray-400 mb-3">
+          <p class="text-center small text-secondary mb-3">
             Don't have an account?
-            <a href="{% url 'accounts:signup' %}" class="text-gold-dark hover:underline">Sign up free</a>
+            <a href="{% url 'accounts:signup' %}" class="text-gold-dark">Sign up free</a>
           </p>
           {% endif %}
 
           <!-- Clear cart -->
-          <button onclick="clearCart()"
-                  class="w-full text-center text-xs text-red-400 hover:text-red-600 transition-colors py-1 font-medium">
+          <button onclick="clearCart()" class="btn btn-link w-100 text-center small text-danger py-1 fw-medium text-decoration-none">
             🗑 Clear Cart
           </button>
 
-          <div class="border-t border-gray-100 pt-3 mt-3">
-            <p class="text-xs text-center text-gray-400 mb-2">Secure payment via</p>
-            <div class="flex items-center justify-center gap-2 flex-wrap">
-              <span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">MTN MoMo</span>
-              <span class="text-xs font-semibold bg-red-100 text-red-600 px-2.5 py-1 rounded-full">Vodafone</span>
-              <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">AirtelTigo</span>
-              <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">Card</span>
+          <div class="border-top pt-3 mt-3">
+            <p class="small text-center text-secondary mb-2">Secure payment via</p>
+            <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+              <span class="small fw-semibold bg-warning bg-opacity-25 text-warning-emphasis px-2 py-1 rounded-pill">MTN MoMo</span>
+              <span class="small fw-semibold bg-danger bg-opacity-10 text-danger px-2 py-1 rounded-pill">Vodafone</span>
+              <span class="small fw-semibold bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-pill">AirtelTigo</span>
+              <span class="small fw-semibold bg-light text-secondary px-2 py-1 rounded-pill">Card</span>
             </div>
           </div>
         </div>
@@ -130,12 +123,11 @@
   </div>
 
   <!-- EMPTY STATE -->
-  <div id="cart-page-empty" class="{% if cart_items %}hidden{% endif %} flex flex-col items-center justify-center py-28 text-center">
-    <div class="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center text-5xl mb-6">🛒</div>
-    <h2 class="font-display font-700 text-2xl text-navy mb-2">Your cart is empty</h2>
-    <p class="text-gray-400 text-sm mb-8 max-w-xs">Browse our products and add items you love.</p>
-    <a href="{% url 'products:list' %}"
-       class="bg-navy hover:bg-navy-700 text-white font-semibold px-8 py-3.5 rounded-2xl transition-colors btn-press">
+  <div id="cart-page-empty" class="{% if cart_items %}d-none{% endif %} d-flex flex-column align-items-center justify-content-center py-5 text-center">
+    <div class="bg-light rounded-3xl d-flex align-items-center justify-content-center display-4 mb-4" style="width:6rem;height:6rem;">🛒</div>
+    <h2 class="font-display fw-bold fs-2 text-navy mb-2">Your cart is empty</h2>
+    <p class="text-secondary small mb-4" style="max-width: 20rem;">Browse our products and add items you love.</p>
+    <a href="{% url 'products:list' %}" class="btn btn-navy fw-semibold px-4 py-3 rounded-2xl btn-press">
       Start Shopping
     </a>
   </div>
@@ -232,19 +224,19 @@
   }
 
   function showEmptyState() {
-    document.getElementById('cart-page-content').classList.add('hidden');
-    document.getElementById('cart-page-empty').classList.remove('hidden');
-    document.getElementById('page-count-wrap').classList.add('hidden');
+    document.getElementById('cart-page-content').classList.add('d-none');
+    document.getElementById('cart-page-empty').classList.remove('d-none');
+    document.getElementById('page-count-wrap').classList.add('d-none');
   }
 
   function updatePageCount(count) {
     const wrap = document.getElementById('page-count-wrap');
     const el   = document.getElementById('page-item-count');
     if (count > 0) {
-      wrap.classList.remove('hidden');
+      wrap.classList.remove('d-none');
       el.textContent = `(${count} item${count !== 1 ? 's' : ''})`;
     } else {
-      wrap.classList.add('hidden');
+      wrap.classList.add('d-none');
     }
   }
 </script>
