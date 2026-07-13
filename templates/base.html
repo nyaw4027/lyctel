@@ -194,6 +194,13 @@
     /* ── Card hover ───────────────────────────────────────── */
     .card-hover { transition: transform .25s, box-shadow .25s; }
     .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(15,27,45,.10) !important; }
+    .product-card-img { transition: transform .4s ease; }
+    .product-card-hover:hover .product-card-img { transform: scale(1.05); }
+
+    /* ── Quick-add button (product grids) ────────────────── */
+    .quick-add-btn { background: var(--navy); color: #fff; border: none; }
+    .quick-add-btn:hover { background: var(--gold); color: var(--navy); }
+    .quick-add-btn.added { background: var(--gold); color: var(--navy); }
 
     /* ── PWA banner ───────────────────────────────────────── */
     #pwa-banner {

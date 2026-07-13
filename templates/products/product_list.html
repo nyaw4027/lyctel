@@ -2,24 +2,24 @@
 {% block title %}Shop — Lynctel{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
+<div class="container px-3 px-md-4 py-4">
 
   <!-- Page header -->
-  <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
     <div class="fade-up fade-up-1">
       {% if search_query %}
-        <p class="text-gold text-xs font-semibold uppercase tracking-wider mb-1">Results</p>
-        <h1 class="font-display font-700 text-2xl text-navy">"{{ search_query }}"</h1>
-        <p class="text-gray-400 text-sm mt-0.5">{{ products|length }} product{{ products|length|pluralize }} found</p>
+        <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.06em;">Results</p>
+        <h1 class="font-display fw-bold fs-3 text-navy">"{{ search_query }}"</h1>
+        <p class="text-secondary small mt-1 mb-0">{{ products|length }} product{{ products|length|pluralize }} found</p>
       {% elif active_category %}
-        <p class="text-gold text-xs font-semibold uppercase tracking-wider mb-1">Category</p>
-        <h1 class="font-display font-700 text-2xl text-navy">
+        <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.06em;">Category</p>
+        <h1 class="font-display fw-bold fs-3 text-navy">
           {% for c in categories %}{% if c.slug == active_category %}{{ c.name }}{% endif %}{% endfor %}
         </h1>
       {% else %}
-        <p class="text-gold text-xs font-semibold uppercase tracking-wider mb-1">Browse</p>
-        <h1 class="font-display font-700 text-2xl text-navy">All Products</h1>
-        <p class="text-gray-400 text-sm mt-0.5">{{ products|length }} item{{ products|length|pluralize }}</p>
+        <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.06em;">Browse</p>
+        <h1 class="font-display fw-bold fs-3 text-navy">All Products</h1>
+        <p class="text-secondary small mt-1 mb-0">{{ products|length }} item{{ products|length|pluralize }}</p>
       {% endif %}
     </div>
 
@@ -28,7 +28,7 @@
       {% if active_category %}<input type="hidden" name="category" value="{{ active_category }}">{% endif %}
       {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
       <select name="sort" onchange="document.getElementById('sort-form').submit()"
-              class="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-navy font-medium cursor-pointer">
+              class="form-select form-select-sm rounded-xl text-navy fw-medium">
         <option value="newest"     {% if sort_by == 'newest'     %}selected{% endif %}>Newest first</option>
         <option value="price_low"  {% if sort_by == 'price_low'  %}selected{% endif %}>Price: Low → High</option>
         <option value="price_high" {% if sort_by == 'price_high' %}selected{% endif %}>Price: High → Low</option>
@@ -38,27 +38,27 @@
     </form>
   </div>
 
-  <div class="flex gap-8">
+  <div class="d-flex gap-4">
 
     <!-- SIDEBAR -->
-    <aside class="hidden md:block w-52 flex-shrink-0">
-      <div class="mb-6">
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Categories</p>
-        <ul class="space-y-1">
+    <aside class="d-none d-md-block flex-shrink-0" style="width:13rem;">
+      <div class="mb-4">
+        <p class="small fw-semibold text-secondary text-uppercase mb-2" style="letter-spacing:.06em;">Categories</p>
+        <ul class="list-unstyled d-flex flex-column gap-1">
           <li>
             <a href="{% url 'products:list' %}"
-               class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-                      {% if not active_category %}bg-navy text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-navy{% endif %}">
+               class="d-flex align-items-center gap-2 px-3 py-2 rounded-xl small fw-medium text-decoration-none
+                      {% if not active_category %}bg-navy text-white{% else %}text-secondary{% endif %}">
               All Products
             </a>
           </li>
           {% for cat in categories %}
           <li>
             <a href="{% url 'products:list' %}?category={{ cat.slug }}"
-               class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-                      {% if active_category == cat.slug %}bg-navy text-white{% else %}text-gray-600 hover:bg-gray-100 hover:text-navy{% endif %}">
+               class="d-flex align-items-center gap-2 px-3 py-2 rounded-xl small fw-medium text-decoration-none
+                      {% if active_category == cat.slug %}bg-navy text-white{% else %}text-secondary{% endif %}">
               {% if cat.icon %}
-              <img src="{{ cat.icon.url }}" class="w-4 h-4 rounded object-cover flex-shrink-0"/>
+              <img src="{{ cat.icon.url }}" class="rounded object-fit-cover flex-shrink-0" style="width:1rem;height:1rem;"/>
               {% endif %}
               {{ cat.name }}
             </a>
@@ -69,129 +69,129 @@
 
       <!-- Deals link -->
       <a href="{% url 'products:deals' %}"
-         class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium
-                bg-gold-light text-gold-dark hover:bg-gold/20 transition-colors">
+         class="d-flex align-items-center gap-2 px-3 py-2 rounded-xl small fw-medium text-decoration-none
+                bg-gold-light text-gold-dark">
         🔥 Deals & Offers
       </a>
     </aside>
 
     <!-- PRODUCT GRID -->
-    <div class="flex-1">
+    <div class="flex-fill">
 
       <!-- Mobile category pills -->
-      <div class="flex gap-2 overflow-x-auto pb-3 mb-4 md:hidden">
+      <div class="d-flex d-md-none gap-2 overflow-auto pb-3 mb-3">
         <a href="{% url 'products:list' %}"
-           class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-semibold transition-colors
-                  {% if not active_category %}bg-navy text-white{% else %}bg-white border border-gray-200 text-gray-600{% endif %}">
+           class="flex-shrink-0 px-3 py-2 rounded-xl small fw-semibold text-decoration-none
+                  {% if not active_category %}bg-navy text-white{% else %}bg-white border text-secondary{% endif %}">
           All
         </a>
         {% for cat in categories %}
         <a href="{% url 'products:list' %}?category={{ cat.slug }}"
-           class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-semibold transition-colors
-                  {% if active_category == cat.slug %}bg-navy text-white{% else %}bg-white border border-gray-200 text-gray-600{% endif %}">
+           class="flex-shrink-0 px-3 py-2 rounded-xl small fw-semibold text-decoration-none
+                  {% if active_category == cat.slug %}bg-navy text-white{% else %}bg-white border text-secondary{% endif %}">
           {{ cat.name }}
         </a>
         {% endfor %}
         <a href="{% url 'products:deals' %}"
-           class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-semibold bg-gold-light text-gold-dark">
+           class="flex-shrink-0 px-3 py-2 rounded-xl small fw-semibold text-decoration-none bg-gold-light text-gold-dark">
           🔥 Deals
         </a>
       </div>
 
       {% if products %}
-      <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div class="row row-cols-2 row-cols-lg-3 row-cols-xl-4 g-3">
         {% for product in products %}
-        <div class="group bg-white rounded-2xl overflow-hidden border border-gray-100
-                    card-hover flex flex-col fade-up"
+        <div class="col">
+        <div class="product-card-hover bg-white rounded-2xl overflow-hidden border
+                    card-hover d-flex flex-column h-100 fade-up"
              style="animation-delay:{{ forloop.counter0 }}0ms; opacity:0">
 
           <a href="{% url 'products:detail' product.slug %}"
-             class="relative block overflow-hidden bg-cream">
+             class="position-relative d-block overflow-hidden bg-cream">
             {% with product.images.first as img %}
             {% if img %}
             <img src="{{ img.image.url }}" alt="{{ product.name }}"
-                 class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"/>
+                 class="w-100 object-fit-cover product-card-img" style="height:12rem;"/>
             {% else %}
-            <div class="w-full h-48 flex items-center justify-center">
-              <span class="text-5xl opacity-20">📦</span>
+            <div class="w-100 d-flex align-items-center justify-content-center" style="height:12rem;">
+              <span class="display-4" style="opacity:.2;">📦</span>
             </div>
             {% endif %}
             {% endwith %}
 
             <!-- Badges -->
-            <div class="absolute top-2.5 left-2.5 flex flex-col gap-1">
+            <div class="position-absolute top-0 start-0 m-2 d-flex flex-column gap-1">
               {% if not product.is_in_stock %}
-              <span class="bg-gray-800/80 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+              <span class="fw-bold rounded-pill px-2 py-1 text-white" style="font-size:10px;background:rgba(31,41,55,.8);">
                 Out of stock
               </span>
               {% elif product.is_low_stock %}
-              <span class="bg-orange-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+              <span class="bg-warning text-dark fw-bold rounded-pill px-2 py-1" style="font-size:10px;">
                 Only {{ product.stock_qty }} left
               </span>
               {% endif %}
               {% if product.has_discount %}
-              <span class="bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+              <span class="bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:10px;">
                 -{{ product.discount_percent }}%
               </span>
               {% endif %}
             </div>
             {% if product.is_featured %}
-            <span class="absolute top-2.5 right-2.5 bg-gold text-navy text-[10px] font-bold px-2.5 py-1 rounded-full">⭐</span>
+            <span class="position-absolute top-0 end-0 m-2 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:10px;">⭐</span>
             {% endif %}
           </a>
 
-          <div class="p-4 flex flex-col flex-1">
+          <div class="p-3 d-flex flex-column flex-fill">
             {% if product.vendor %}
             <a href="{% url 'vendors:shop' product.vendor.slug %}"
-               class="text-[10px] text-gold-dark font-semibold mb-1.5 hover:underline truncate">
+               class="text-gold-dark fw-semibold mb-2 text-truncate text-decoration-none" style="font-size:10px;">
               🏪 {{ product.vendor.shop_name }}
             </a>
             {% endif %}
 
             <a href="{% url 'products:detail' product.slug %}"
-               class="text-sm font-semibold text-navy hover:text-gold transition-colors line-clamp-2 mb-1 leading-snug">
+               class="small fw-semibold text-navy text-truncate-2 mb-1 text-decoration-none" style="line-height:1.35;">
               {{ product.name }}
             </a>
             {% if product.category %}
-            <span class="text-xs text-gray-400 mb-3">{{ product.category.name }}</span>
+            <span class="small text-secondary mb-3">{{ product.category.name }}</span>
             {% endif %}
 
-            <div class="mt-auto flex items-center justify-between gap-2">
+            <div class="mt-auto d-flex align-items-center justify-content-between gap-2">
               <div>
                 {% if product.has_discount %}
-                <p class="font-display font-700 text-navy text-base leading-tight">GHS {{ product.final_price }}</p>
-                <p class="text-xs text-gray-400 line-through leading-tight">GHS {{ product.selling_price }}</p>
+                <p class="font-display fw-bold text-navy mb-0" style="line-height:1.2;">GHS {{ product.final_price }}</p>
+                <p class="small text-secondary text-decoration-line-through mb-0" style="line-height:1.2;">GHS {{ product.selling_price }}</p>
                 {% else %}
-                <p class="font-display font-700 text-navy text-base">GHS {{ product.selling_price }}</p>
+                <p class="font-display fw-bold text-navy mb-0">GHS {{ product.selling_price }}</p>
                 {% endif %}
               </div>
               {% if product.is_in_stock %}
               <button onclick="addToCart({{ product.pk }}, this)"
-                      class="text-xs bg-navy hover:bg-gold hover:text-navy text-white
-                             font-semibold px-3 py-2 rounded-xl transition-all duration-200 btn-press flex-shrink-0">
+                      class="quick-add-btn small fw-semibold px-2 py-2 rounded-xl border-0 btn-press flex-shrink-0">
                 + Add
               </button>
               {% else %}
-              <span class="text-xs text-gray-300 font-medium">Unavailable</span>
+              <span class="small text-secondary fw-medium">Unavailable</span>
               {% endif %}
             </div>
           </div>
+        </div>
         </div>
         {% endfor %}
       </div>
 
       {% else %}
-      <div class="flex flex-col items-center justify-center py-28 text-center">
-        <div class="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center text-4xl mb-5">🔍</div>
-        <h3 class="font-display font-700 text-xl text-navy mb-2">No products found</h3>
+      <div class="d-flex flex-column align-items-center justify-content-center py-5 text-center">
+        <div class="bg-light rounded-3xl d-flex align-items-center justify-content-center display-6 mb-4" style="width:5rem;height:5rem;">🔍</div>
+        <h3 class="font-display fw-bold fs-4 text-navy mb-2">No products found</h3>
         {% if search_query %}
-        <p class="text-gray-400 text-sm mb-5">No results for "{{ search_query }}"</p>
-        <a href="{% url 'products:list' %}"
-           class="bg-navy text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-navy-700 transition-colors">
+        <p class="text-secondary small mb-4">No results for "{{ search_query }}"</p>
+        <a href="{% url 'products:list' %}" class="btn btn-navy btn-sm small fw-semibold rounded-xl">
           Clear search
         </a>
         {% else %}
-        <p class="text-gray-400 text-sm">Check back soon — new stock coming!</p>
+        <p class="text-secondary small mb-0">Check back soon — new stock coming!</p>
         {% endif %}
       </div>
       {% endif %}

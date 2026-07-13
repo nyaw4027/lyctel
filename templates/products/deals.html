@@ -2,105 +2,105 @@
 {% block title %}Deals & Offers — Lynctel{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
+<div class="container px-3 px-md-4 py-4">
 
   <!-- Header -->
-  <div class="mb-8 fade-up fade-up-1">
-    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Limited Time</p>
-    <h1 class="font-display font-700 text-3xl text-navy">🔥 Deals & Offers</h1>
-    <p class="text-gray-400 text-sm mt-1">Best prices on top products — grab them before they're gone.</p>
+  <div class="mb-4 fade-up fade-up-1">
+    <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em;">Limited Time</p>
+    <h1 class="font-display fw-bold fs-2 text-navy">🔥 Deals & Offers</h1>
+    <p class="text-secondary small mt-1 mb-0">Best prices on top products — grab them before they're gone.</p>
   </div>
 
   {% if deals %}
-  <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  <div class="row row-cols-2 row-cols-lg-3 row-cols-xl-4 g-3">
     {% for product in deals %}
-    <div class="group bg-white rounded-2xl overflow-hidden border border-gray-100
-                card-hover flex flex-col fade-up"
+    <div class="col">
+    <div class="product-card-hover bg-white rounded-2xl overflow-hidden border
+                card-hover d-flex flex-column h-100 fade-up"
          style="animation-delay:{{ forloop.counter0 }}0ms; opacity:0">
 
-      <a href="{% url 'products:detail' product.slug %}" class="relative block overflow-hidden bg-cream">
+      <a href="{% url 'products:detail' product.slug %}" class="position-relative d-block overflow-hidden bg-cream">
         {% with product.images.first as img %}
         {% if img %}
         <img src="{{ img.image.url }}" alt="{{ product.name }}"
-             class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"/>
+             class="w-100 object-fit-cover product-card-img" style="height:12rem;"/>
         {% else %}
-        <div class="w-full h-48 flex items-center justify-center">
-          <span class="text-5xl opacity-20">📦</span>
+        <div class="w-100 d-flex align-items-center justify-content-center" style="height:12rem;">
+          <span class="display-4" style="opacity:.2;">📦</span>
         </div>
         {% endif %}
         {% endwith %}
 
         <!-- Discount badge -->
-        <div class="absolute top-2.5 left-2.5 flex flex-col gap-1">
-          <span class="bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+        <div class="position-absolute top-0 start-0 m-2 d-flex flex-column gap-1">
+          <span class="bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:10px;">
             -{{ product.discount_percent }}% OFF
           </span>
           {% if product.is_low_stock %}
-          <span class="bg-orange-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+          <span class="bg-warning text-dark fw-bold rounded-pill px-2 py-1" style="font-size:10px;">
             Only {{ product.stock_qty }} left
           </span>
           {% endif %}
         </div>
         {% if product.is_featured %}
-        <span class="absolute top-2.5 right-2.5 bg-gold text-navy text-[10px] font-bold px-2.5 py-1 rounded-full">⭐</span>
+        <span class="position-absolute top-0 end-0 m-2 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:10px;">⭐</span>
         {% endif %}
       </a>
 
-      <div class="p-4 flex flex-col flex-1">
+      <div class="p-3 d-flex flex-column flex-fill">
         {% if product.vendor %}
         <a href="{% url 'vendors:shop' product.vendor.slug %}"
-           class="text-[10px] text-gold-dark font-semibold mb-1.5 hover:underline truncate">
+           class="text-gold-dark fw-semibold mb-2 text-truncate text-decoration-none" style="font-size:10px;">
           🏪 {{ product.vendor.shop_name }}
         </a>
         {% endif %}
 
         <a href="{% url 'products:detail' product.slug %}"
-           class="text-sm font-semibold text-navy hover:text-gold transition-colors line-clamp-2 mb-1 leading-snug">
+           class="small fw-semibold text-navy text-truncate-2 mb-1 text-decoration-none" style="line-height:1.35;">
           {{ product.name }}
         </a>
         {% if product.category %}
-        <span class="text-xs text-gray-400 mb-3">{{ product.category.name }}</span>
+        <span class="small text-secondary mb-3">{{ product.category.name }}</span>
         {% endif %}
 
         <div class="mt-auto">
           <!-- Price with savings -->
-          <div class="flex items-end gap-2 mb-3">
-            <span class="font-display font-700 text-navy text-lg leading-tight">
+          <div class="d-flex align-items-end gap-2 mb-2">
+            <span class="font-display fw-bold text-navy" style="line-height:1.2;">
               GHS {{ product.final_price }}
             </span>
-            <span class="text-xs text-gray-400 line-through leading-loose">
+            <span class="small text-secondary text-decoration-line-through" style="line-height:1.8;">
               GHS {{ product.selling_price }}
             </span>
           </div>
 
           <!-- Savings chip -->
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-lg">
+          <div class="d-flex align-items-center justify-content-between gap-2">
+            <span class="small fw-semibold text-success bg-success bg-opacity-10 px-2 py-1 rounded-2">
               Save GHS {{ product.selling_price|floatformat:2 }}
             </span>
             {% if product.is_in_stock %}
             <button onclick="addToCart({{ product.pk }}, this)"
-                    class="text-xs bg-navy hover:bg-gold hover:text-navy text-white
-                           font-semibold px-3 py-2 rounded-xl transition-all duration-200 btn-press flex-shrink-0">
+                    class="quick-add-btn small fw-semibold px-2 py-2 rounded-xl border-0 btn-press flex-shrink-0">
               + Add
             </button>
             {% else %}
-            <span class="text-xs text-gray-300 font-medium">Unavailable</span>
+            <span class="small text-secondary fw-medium">Unavailable</span>
             {% endif %}
           </div>
         </div>
       </div>
     </div>
+    </div>
     {% endfor %}
   </div>
 
   {% else %}
-  <div class="flex flex-col items-center justify-center py-28 text-center">
-    <div class="w-20 h-20 bg-gold-light rounded-3xl flex items-center justify-center text-4xl mb-5">🏷️</div>
-    <h3 class="font-display font-700 text-xl text-navy mb-2">No deals right now</h3>
-    <p class="text-gray-400 text-sm mb-6">Check back soon — new deals drop regularly.</p>
-    <a href="{% url 'products:list' %}"
-       class="bg-navy text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-navy-700 transition-colors">
+  <div class="d-flex flex-column align-items-center justify-content-center py-5 text-center">
+    <div class="bg-gold-light rounded-3xl d-flex align-items-center justify-content-center display-6 mb-4" style="width:5rem;height:5rem;">🏷️</div>
+    <h3 class="font-display fw-bold fs-4 text-navy mb-2">No deals right now</h3>
+    <p class="text-secondary small mb-4">Check back soon — new deals drop regularly.</p>
+    <a href="{% url 'products:list' %}" class="btn btn-navy btn-sm small fw-semibold rounded-xl">
       Browse All Products
     </a>
   </div>
