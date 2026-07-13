@@ -1,254 +1,241 @@
 ﻿<!DOCTYPE html>
 {% load static i18n %}
-<html lang="{{ LANGUAGE_CODE|default:'en' }}" data-bs-theme="light" data-theme="light">
+<html lang="{{ LANGUAGE_CODE|default:'en' }}" data-bs-theme="light">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>{% block title %}Lynctel — Quality Products Delivered{% endblock %}</title>
-
-  <meta name="description" content="Lynctel — Quality products delivered fast across Ghana. Shop electronics, gadgets, food and more."/>
-  <meta name="keywords" content="Lynctel, Ghana, online shopping, food delivery, electronics, fast delivery, MoMo payment"/>
+  <meta name="description" content="Lynctel — Quality products delivered fast across Ghana."/>
+  <meta name="keywords" content="Lynctel, Ghana, online shopping, food delivery, MoMo payment"/>
   <meta name="author" content="Lynctel"/>
   <meta name="robots" content="index, follow"/>
-
-  <meta property="og:type"        content="website"/>
-  <meta property="og:url"         content="https://lynctel.up.railway.app/"/>
-  <meta property="og:title"       content="Lynctel — Quality Products Delivered"/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:url" content="https://lynctel.up.railway.app/"/>
+  <meta property="og:title" content="Lynctel — Quality Products Delivered"/>
   <meta property="og:description" content="Shop electronics, gadgets, food and more. Fast delivery across Ghana."/>
-  <meta property="og:image"       content="{% static 'icons/icon-512x512.png' %}"/>
-  <meta property="og:locale"      content="en_GH"/>
-  <meta name="twitter:card"        content="summary_large_image"/>
-  <meta name="twitter:title"       content="Lynctel — Quality Products Delivered"/>
+  <meta property="og:image" content="{% static 'icons/icon-512x512.png' %}"/>
+  <meta property="og:locale" content="en_GH"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Lynctel — Quality Products Delivered"/>
   <meta name="twitter:description" content="Shop electronics, gadgets, food and more."/>
-  <meta name="twitter:image"       content="{% static 'icons/icon-512x512.png' %}"/>
-
+  <meta name="twitter:image" content="{% static 'icons/icon-512x512.png' %}"/>
   <link rel="manifest" href="/manifest.json"/>
-  <meta name="theme-color" content="#1B2E4D"/>
+  <meta name="theme-color" content="#0F1B2D"/>
   <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-capable"          content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title"            content="Lynctel"/>
-  <link rel="apple-touch-icon" sizes="152x152" href="{% static 'icons/icon-152x152.png' %}"/>
+  <meta name="apple-mobile-web-app-title" content="Lynctel"/>
   <link rel="apple-touch-icon" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}"/>
   <link rel="apple-touch-icon" sizes="512x512" href="{% static 'icons/icon-512x512.png' %}"/>
-  <link rel="apple-touch-startup-image" href="{% static 'icons/icon-512x512.png' %}"/>
-  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-96x96.png' %}"/>
-  <link rel="shortcut icon" href="{% static 'icons/icon-96x96.png' %}"/>
+  <link rel="icon" type="image/png" href="{% static 'icons/icon-96x96.png' %}"/>
 
-  <!-- Bootstrap 5.3 via CDN — unlike the old Tailwind Play CDN, this is
-       explicitly production-safe: it's a compiled stylesheet, not a
-       runtime JIT compiler, so none of the defer/race/config-timing
-       issues that caused problems earlier apply here. -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous"/>
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
 
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
 
+  <!-- Mobile file upload fix -->
+  <link rel="stylesheet" href="{% static 'css/uploads.css' %}"/>
+
   <style>
-    /* ═══════════════════════════════════════════════════════
-       BRAND THEME — layered on top of Bootstrap
-       Navy/gold aren't Bootstrap's default $primary/$secondary, so
-       they're defined here as custom properties + utility classes
-       rather than requiring a full Sass rebuild. Bootstrap's own
-       --bs-primary etc. are also repointed at these values so any
-       plain Bootstrap component (buttons, badges, etc.) picks up
-       the brand color automatically without needing a custom class.
-    ═══════════════════════════════════════════════════════ */
-    :root {
-      --navy:       #1B2E4D;
-      --navy-dark:  #152540;
-      --navy-light: #24406B;
-      --gold:       #F5A623;
-      --gold-dark:  #c8841a;
-      --gold-light: #FEF3D7;
-      --cream:      #FAFAF7;
-
-      --bg-primary:    #FAFAF7;
-      --bg-secondary:  #ffffff;
-      --bg-tertiary:   #f3f4f6;
-      --text-primary:  #1B2E4D;
-      --text-secondary:#6b7280;
-      --text-muted:    #9ca3af;
-      --border-color:  #e5e7eb;
-      --navbar-bg:     #ffffff;
-      --card-bg:       #ffffff;
-      --input-bg:      #f9fafb;
-      --footer-bg:     #1B2E4D;
-      --shadow-color:  rgba(15,27,45,.10);
-
-      /* Repoint Bootstrap's own theme variables at the brand palette */
-      --bs-primary: var(--navy);
-      --bs-primary-rgb: 27, 46, 77;
-      --bs-body-font-family: 'DM Sans', sans-serif;
-      --bs-link-color: var(--navy);
-      --bs-link-hover-color: var(--gold-dark);
-    }
-    [data-bs-theme="dark"] {
-      --bg-primary:    #0a0f1a;
-      --bg-secondary:  #111827;
-      --bg-tertiary:   #1f2937;
-      --text-primary:  #f9fafb;
-      --text-secondary:#d1d5db;
-      --text-muted:    #9ca3af;
-      --border-color:  #374151;
-      --navbar-bg:     #111827;
-      --card-bg:       #1f2937;
-      --input-bg:      #1f2937;
-      --footer-bg:     #030712;
-      --shadow-color:  rgba(0,0,0,.4);
-    }
-
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background-color: var(--bg-primary);
-      color: var(--text-primary);
-      padding-bottom: 64px; /* space for mobile bottom nav */
-      transition: background-color .3s ease, color .3s ease;
-    }
+    /* ── Brand fonts ──────────────────────────────────────── */
+    body { font-family: 'DM Sans', sans-serif; background: #FAFAF7; padding-bottom: 64px; }
     @media (min-width: 768px) { body { padding-bottom: 0; } }
-    h1, h2, h3, .font-display { font-family: 'Syne', sans-serif; }
+    h1,h2,h3,h4,.font-display { font-family: 'Syne', sans-serif; }
 
-    /* ── Brand utility classes (Bootstrap doesn't ship these) ── */
-    .bg-navy   { background-color: var(--navy) !important; }
-    .text-navy { color: var(--navy) !important; }
-    .bg-navy-hover:hover { background-color: var(--navy-dark) !important; }
-    .btn-navy {
-      background-color: var(--navy); border-color: var(--navy); color: #fff;
+    /* ── Brand colours as CSS vars ───────────────────────── */
+    :root {
+      --navy:       #0F1B2D;
+      --navy-700:   #1a2d47;
+      --gold:       #F5A623;
+      --gold-light: #FEF3D7;
+      --gold-dark:  #c8841a;
+      --cream:      #FAFAF7;
     }
-    .btn-navy:hover { background-color: var(--navy-dark); border-color: var(--navy-dark); color: #fff; }
-    .bg-gold       { background-color: var(--gold) !important; }
-    .text-gold     { color: var(--gold) !important; }
-    .text-gold-dark{ color: var(--gold-dark) !important; }
+
+    /* Bootstrap theme overrides */
+    .btn-navy    { background: var(--navy);  color: #fff; border-color: var(--navy); }
+    .btn-navy:hover { background: var(--navy-700); color: #fff; border-color: var(--navy-700); }
+    .btn-gold    { background: var(--gold);  color: var(--navy); border-color: var(--gold); font-weight: 600; }
+    .btn-gold:hover { background: var(--gold-dark); color: #fff; }
+    .bg-navy     { background-color: var(--navy) !important; }
+    .bg-gold     { background-color: var(--gold) !important; }
     .bg-gold-light { background-color: var(--gold-light) !important; }
-    .btn-gold {
-      background-color: var(--gold); border-color: var(--gold); color: var(--navy); font-weight: 700;
+    .text-navy   { color: var(--navy) !important; }
+    .text-gold   { color: var(--gold) !important; }
+    .text-gold-dark { color: var(--gold-dark) !important; }
+    .border-gold { border-color: var(--gold) !important; }
+    .rounded-xl  { border-radius: 12px !important; }
+    .rounded-2xl { border-radius: 16px !important; }
+    .rounded-3xl { border-radius: 24px !important; }
+
+    /* ── Navbar ───────────────────────────────────────────── */
+    #main-navbar {
+      background: #fff;
+      border-bottom: 1px solid #f3f4f6;
+      box-shadow: none;
+      transition: box-shadow .3s;
     }
-    .btn-gold:hover { background-color: var(--gold-dark); border-color: var(--gold-dark); color: var(--navy); }
-
-    /* Larger corner radii than Bootstrap's default scale (rounded-1..5) */
-    .rounded-xl  { border-radius: 14px !important; }
-    .rounded-2xl { border-radius: 18px !important; }
-    .rounded-3xl { border-radius: 22px !important; }
-
-    /* Finer font-size scale than Bootstrap's fs-1..6 */
-    .fs-xs  { font-size: .75rem !important; }
-    .fs-sm  { font-size: .8125rem !important; }
-    .fs-md  { font-size: .9375rem !important; }
-    .fs-2xl { font-size: 1.5rem !important; }
-    .fs-3xl { font-size: 1.875rem !important; }
-
-    .transition-all { transition: all .2s ease; }
-    .btn-press:active { transform: scale(.97); }
-    html { scroll-behavior: smooth; }
-
-    /* ── Dark mode: retint Bootstrap surfaces via the CSS vars above ── */
-    [data-bs-theme="dark"] .bg-white   { background-color: var(--card-bg) !important; }
-    [data-bs-theme="dark"] .bg-light   { background-color: var(--bg-tertiary) !important; }
-    [data-bs-theme="dark"] .text-navy  { color: #f9fafb !important; }
-    [data-bs-theme="dark"] .border     { border-color: var(--border-color) !important; }
-    [data-bs-theme="dark"] .form-control,
-    [data-bs-theme="dark"] .form-select {
-      background-color: var(--input-bg) !important;
-      color: var(--text-primary) !important;
-      border-color: var(--border-color) !important;
-    }
-    [data-bs-theme="dark"] #navbar   { background-color: var(--navbar-bg) !important; border-color: var(--border-color) !important; }
-    [data-bs-theme="dark"] #mobile-nav { background-color: var(--navbar-bg) !important; border-color: var(--border-color) !important; }
-    [data-bs-theme="dark"] #cart-offcanvas { background-color: var(--card-bg) !important; }
-
-    /* ── Animations ──────────────────────────────────── */
-    @keyframes fadeUp { from { opacity:0; transform:translateY(16px);} to { opacity:1; transform:translateY(0);} }
-    .fade-up { animation: fadeUp .5s ease forwards; }
-
-    @keyframes pop { 0%,100%{transform:scale(1)} 50%{transform:scale(1.45)} }
-    .badge-pop { animation: pop .3s ease; }
-
-    @keyframes brandGlow {
-      0%, 100% { color: var(--navy); text-shadow: none; }
-      50%       { color: var(--gold-dark); text-shadow: 0 0 12px rgba(245,166,35,.35); }
-    }
-    [data-bs-theme="dark"] .brand-name { animation: none; color: #f9fafb; }
+    #main-navbar.scrolled { box-shadow: 0 2px 20px rgba(15,27,45,.10); }
     .brand-name {
-      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem;
-      letter-spacing: -0.02em; color: var(--navy);
-      animation: brandGlow 3.5s ease-in-out infinite; display: inline-block;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: var(--navy);
+      animation: brandGlow 3.5s ease-in-out infinite;
     }
-    @keyframes dotPulse { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(1.5);opacity:.7;} }
-    .brand-dot { animation: dotPulse 2s ease-in-out infinite; display: inline-block; }
-
-    .card-hover { transition: transform .25s ease, box-shadow .25s ease; }
-    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px var(--shadow-color); }
-    .nav-scrolled { box-shadow: 0 2px 20px var(--shadow-color); }
-
-    .form-control:focus, .form-select:focus {
-      box-shadow: 0 0 0 3px rgba(245,166,35,.2) !important;
-      border-color: var(--gold) !important;
+    .brand-dot { animation: dotPulse 2s ease-in-out infinite; display: inline-block; color: var(--gold); }
+    @keyframes brandGlow {
+      0%,100% { color: var(--navy); }
+      50%      { color: var(--gold-dark); }
+    }
+    @keyframes dotPulse {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.5); }
     }
 
-    /* ── Live pulse badge ─────────────────────────────── */
-    .live-badge-dot {
+    /* ── Search ───────────────────────────────────────────── */
+    .search-input {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: .55rem 1rem .55rem 2.5rem;
+      font-size: .875rem;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .search-input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(245,166,35,.2);
+      outline: none;
+    }
+    .search-icon {
+      position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
+      color: #9ca3af; pointer-events: none;
+    }
+
+    /* ── Dropdown ─────────────────────────────────────────── */
+    .profile-dropdown { min-width: 260px; border-radius: 16px; border: 1px solid #f3f4f6; box-shadow: 0 20px 60px rgba(15,27,45,.15); }
+    .profile-dropdown .dropdown-item { padding: .65rem 1rem; font-size: .875rem; border-radius: 8px; margin: 0 4px; width: calc(100% - 8px); transition: background .15s; }
+    .profile-dropdown .dropdown-item:hover { background: #f9fafb; }
+    .profile-dropdown .dropdown-item .icon-wrap { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .role-badge-admin    { background: #fee2e2; color: #b91c1c; }
+    .role-badge-staff    { background: #dbeafe; color: #1d4ed8; }
+    .role-badge-vendor   { background: #ede9fe; color: #7c3aed; }
+    .role-badge-rider    { background: #ffedd5; color: #c2410c; }
+    .role-badge-customer { background: #f3f4f6; color: #374151; }
+
+    /* ── Live dot ─────────────────────────────────────────── */
+    .live-dot {
       width: 7px; height: 7px; background: #ef4444; border-radius: 50%;
       display: inline-block; animation: livePulse 1.2s ease-in-out infinite;
     }
     @keyframes livePulse {
-      0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
-      50%       { transform: scale(1.3); opacity: .9; box-shadow: 0 0 0 4px rgba(239,68,68,0); }
+      0%,100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
+      50%      { transform: scale(1.3); box-shadow: 0 0 0 4px rgba(239,68,68,0); }
+    }
+    .live-btn { position: relative; }
+    .live-btn .live-dot { position: absolute; top: 6px; right: 6px; }
+
+    /* ── Cart badge ───────────────────────────────────────── */
+    .cart-badge {
+      position: absolute; top: -2px; right: -2px;
+      background: var(--gold); color: var(--navy);
+      font-size: 10px; font-weight: 700;
+      min-width: 18px; height: 18px; border-radius: 999px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 4px; line-height: 1;
     }
 
-    /* ── PWA install banner ───────────────────────────── */
-    #pwa-banner {
-      display: none; position: fixed; bottom: 80px; left: 16px; right: 16px; z-index: 1080;
-      background: var(--navy); color: white; padding: 14px 16px; border-radius: 20px;
-      box-shadow: 0 8px 40px rgba(15,27,45,.5);
-      align-items: center; gap: 12px; animation: fadeUp .4s ease forwards;
+    /* ── Cart drawer ──────────────────────────────────────── */
+    #cart-drawer {
+      position: fixed; top: 0; right: 0; height: 100%; width: 100%;
+      max-width: 380px; background: #fff; z-index: 1060;
+      transform: translateX(100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
+      display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(15,27,45,.12);
     }
+    #cart-drawer.open { transform: translateX(0); }
+    #cart-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      z-index: 1055; opacity: 0; visibility: hidden; transition: all .3s;
+    }
+    #cart-overlay.open { opacity: 1; visibility: visible; }
+
+    /* ── Mobile bottom nav ────────────────────────────────── */
+    #mobile-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 1030;
+      background: #fff; border-top: 1px solid #f3f4f6;
+      box-shadow: 0 -4px 20px rgba(15,27,45,.08);
+      padding-bottom: env(safe-area-inset-bottom);
+      display: grid; grid-template-columns: repeat(5, 1fr); height: 64px;
+    }
+    @media (min-width: 768px) { #mobile-nav { display: none; } }
+    .mobile-nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 2px; color: #6b7280;
+      text-decoration: none; font-size: 10px; font-weight: 500;
+      border: none; background: none; cursor: pointer; transition: color .15s;
+    }
+    .mobile-nav-item:hover { color: var(--navy); }
+    .mobile-nav-item.food:hover { color: #f97316; }
+    .mobile-nav-item svg { width: 20px; height: 20px; }
+
+    /* ── Flash messages ───────────────────────────────────── */
+    .flash-wrap { position: relative; z-index: 30; }
+
+    /* ── Card hover ───────────────────────────────────────── */
+    .card-hover { transition: transform .25s, box-shadow .25s; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(15,27,45,.10) !important; }
+
+    /* ── PWA banner ───────────────────────────────────────── */
+    #pwa-banner {
+      display: none; position: fixed; bottom: 80px; left: 16px; right: 16px;
+      z-index: 9999; background: var(--navy); color: white;
+      padding: 14px 16px; border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(15,27,45,.5);
+      align-items: center; gap: 12px;
+      animation: fadeUp .4s ease forwards;
+    }
+    #pwa-banner.show { display: flex; }
     @media (min-width: 640px) {
       #pwa-banner { left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); bottom: 24px; }
     }
-    #pwa-banner.show { display: flex; }
 
-    @keyframes slideUp { from { transform: translateY(100%);} to { transform: translateY(0);} }
+    /* ── iOS install sheet ────────────────────────────────── */
     #ios-install-sheet {
-      display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1090;
-      background: var(--card-bg); border-radius: 24px 24px 0 0;
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      z-index: 9999; background: #fff; border-radius: 24px 24px 0 0;
       box-shadow: 0 -8px 40px rgba(15,27,45,.2); padding: 24px 24px 44px;
     }
     #ios-install-sheet.show { display: block; animation: slideUp .35s cubic-bezier(.4,0,.2,1) forwards; }
-    #ios-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1085; backdrop-filter: blur(2px); }
+    #ios-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9998; }
     #ios-overlay.show { display: block; }
 
-    .role-admin    { background: #fee2e2; color: #b91c1c; }
-    .role-staff    { background: #dbeafe; color: #1d4ed8; }
-    .role-vendor   { background: #ede9fe; color: #7c3aed; }
-    .role-rider    { background: #ffedd5; color: #c2410c; }
-    .role-customer { background: #f3f4f6; color: #374151; }
+    /* ── Animations ───────────────────────────────────────── */
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .fade-up { animation: fadeUp .5s ease forwards; }
 
-    #mobile-nav {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 1030;
-      background: white; border-top: 1px solid #f3f4f6;
-      box-shadow: 0 -4px 20px rgba(15,27,45,.08);
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-    #mobile-nav .nav-link-mobile {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 2px; color: #6b7280; font-size: 10px; font-weight: 500; height: 64px; text-decoration: none;
-    }
-    #mobile-nav .nav-link-mobile:hover { color: var(--navy); }
+    /* ── Dark mode ────────────────────────────────────────── */
+    [data-bs-theme="dark"] body         { background: #0a0f1a; }
+    [data-bs-theme="dark"] #main-navbar { background: #111827 !important; border-color: #374151 !important; }
+    [data-bs-theme="dark"] #mobile-nav  { background: #111827 !important; border-color: #374151 !important; }
+    [data-bs-theme="dark"] #cart-drawer { background: #111827 !important; }
+    [data-bs-theme="dark"] .brand-name  { color: #f9fafb; animation: none; }
+    [data-bs-theme="dark"] .search-input { background: #1f2937; border-color: #374151; color: #f9fafb; }
+    [data-bs-theme="dark"] .text-navy   { color: #f9fafb !important; }
 
-    .theme-toggle { transition: transform .3s ease; }
-    .theme-toggle:hover { transform: rotate(20deg); }
-    .lang-btn.active { background: var(--navy); color: white; }
-    [data-bs-theme="dark"] .lang-btn.active { background: var(--gold); color: var(--navy); }
+    /* ── Mobile file upload fix ───────────────────────────── */
+    .mobile-file-input { position:absolute;opacity:0;width:1px;height:1px;overflow:hidden;pointer-events:none; }
+    .mobile-file-overlay { position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2; }
+    .file-upload-wrap { position:relative;display:block;cursor:pointer; }
 
-    .support-badge {
-      position: absolute; top: -4px; right: -4px; background: #ef4444; color: white;
-      font-size: 9px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 999px;
-      display: flex; align-items: center; justify-content: center; padding: 0 3px;
-    }
-    .support-badge.hidden { display: none; }
+    /* ── Utilities ────────────────────────────────────────── */
+    .btn-press:active { transform: scale(.97); }
+    .text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   </style>
 
   {% block extra_head %}{% endblock %}
@@ -256,647 +243,477 @@
 
 <body>
 
-  <!-- ── NAVBAR ──────────────────────────────────────── -->
-  <nav id="navbar" class="navbar navbar-expand-md bg-white sticky-top border-bottom py-2">
-    <div class="container-xl d-flex align-items-center gap-3">
+  <!-- ── NAVBAR ─────────────────────────────────────────── -->
+  <nav id="main-navbar" class="navbar sticky-top py-0">
+    <div class="container-xl px-3">
+      <div class="d-flex align-items-center w-100 gap-2 py-2">
 
-      <a href="{% url 'frontend:home' %}" class="navbar-brand d-flex align-items-center gap-2 m-0">
-        <img src="{% static 'logo.png' %}" alt="Lynctel" height="32" class="d-inline-block"/>
-        <span class="brand-name">Lynctel</span>
-        <span class="brand-dot text-gold fw-bold fs-4 lh-1">·</span>
-      </a>
-
-      <form method="GET" action="{% url 'products:list' %}" class="flex-grow-1 d-none d-md-flex" style="max-width:32rem;">
-        <div class="input-group">
-          <span class="input-group-text bg-light border-end-0">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
-            </svg>
-          </span>
-          <input type="text" name="q" value="{{ search_query|default:'' }}"
-                 placeholder="{% trans 'Search products, shops, vendors...' %}"
-                 class="form-control bg-light border-start-0 rounded-end-3"/>
-        </div>
-      </form>
-
-      <div class="d-flex align-items-center gap-1 ms-auto">
-
-        <button onclick="toggleTheme()" class="theme-toggle btn btn-light rounded-3" title="Toggle dark mode" aria-label="Toggle dark mode">
-          <span id="theme-icon">🌙</span>
-        </button>
-
-        <div class="dropdown d-none d-md-block">
-          <button class="btn btn-light dropdown-toggle d-flex align-items-center gap-1 fs-sm" data-bs-toggle="dropdown" aria-label="Change language">
-            <span id="current-lang-flag">🇬🇧</span>
-            <span id="current-lang-label" class="fs-xs">EN</span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow rounded-3">
-            <li><h6 class="dropdown-header">Language</h6></li>
-            <li><button class="dropdown-item lang-btn" onclick="setLang('en')" data-lang="en">🇬🇧 English</button></li>
-            <li><button class="dropdown-item lang-btn" onclick="setLang('tw')" data-lang="tw">🇬🇭 Twi</button></li>
-            <li><button class="dropdown-item lang-btn" onclick="setLang('ga')" data-lang="ga">🇬🇭 Ga</button></li>
-            <li><button class="dropdown-item lang-btn" onclick="setLang('ha')" data-lang="ha">🇬🇭 Hausa</button></li>
-          </ul>
-        </div>
-
-        <a href="{% url 'vendors:directory' %}" class="btn btn-light d-none d-md-inline-flex fs-sm">{% trans "Shops" %}</a>
-        <a href="{% url 'food:home' %}" class="btn btn-light d-none d-md-inline-flex fs-sm">🍔 {% trans "Food" %}</a>
-
-        {% if user.is_authenticated %}
-          {% if user.role == 'vendor' %}
-          <a href="{% url 'vendors:dashboard' %}" class="btn bg-gold-light text-gold-dark fw-semibold d-none d-md-inline-flex fs-sm">{% trans "My Shop" %}</a>
-          {% else %}
-          <a href="{% url 'vendors:apply' %}" class="btn bg-gold-light text-gold-dark fw-semibold d-none d-md-inline-flex fs-sm">{% trans "Sell Here" %}</a>
-          {% endif %}
-        {% else %}
-          <a href="{% url 'vendors:apply' %}" class="btn bg-gold-light text-gold-dark fw-semibold d-none d-md-inline-flex fs-sm">{% trans "Sell Here" %}</a>
-        {% endif %}
-
-        {% if user.is_authenticated %}
-        <div class="dropdown">
-          <button class="btn btn-light dropdown-toggle d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-            {% if user.profile_pic %}
-            <img src="{{ user.profile_pic.url }}" class="rounded-circle object-fit-cover" width="32" height="32" style="border:2px solid var(--gold);"/>
-            {% else %}
-            <span class="bg-navy text-white rounded-circle d-inline-flex align-items-center justify-content-center fw-bold" style="width:32px;height:32px;font-size:13px;">
-              {{ user.first_name|first|upper|default:"U" }}
-            </span>
-            {% endif %}
-            <span class="d-none d-md-inline fs-sm text-truncate" style="max-width:80px;">{{ user.first_name|default:user.phone }}</span>
-          </button>
-
-          <ul class="dropdown-menu dropdown-menu-end shadow rounded-3 p-0 overflow-hidden" style="width:260px;">
-            <li class="px-3 py-3 bg-light border-bottom">
-              <div class="d-flex align-items-center gap-2">
-                {% if user.profile_pic %}
-                <img src="{{ user.profile_pic.url }}" class="rounded-circle object-fit-cover" width="40" height="40"/>
-                {% else %}
-                <span class="bg-navy text-white rounded-circle d-inline-flex align-items-center justify-content-center fw-bold" style="width:40px;height:40px;">
-                  {{ user.first_name|first|upper|default:"U" }}
-                </span>
-                {% endif %}
-                <div class="text-truncate">
-                  <p class="fw-semibold text-navy mb-0 fs-sm text-truncate">{{ user.get_full_name|default:user.phone }}</p>
-                  <p class="text-muted mb-0 fs-xs text-truncate">{{ user.phone }}</p>
-                </div>
-              </div>
-              <span class="badge rounded-pill role-{{ user.role }} mt-2 fs-xs">{{ user.role|title }}</span>
-            </li>
-
-            <li><a class="dropdown-item py-2" href="{% url 'accounts:profile' %}">👤 {% trans "My Profile" %}</a></li>
-            <li><a class="dropdown-item py-2" href="{% url 'order:history' %}">📦 {% trans "My Orders" %}</a></li>
-            <li>
-              <a class="dropdown-item py-2 position-relative" href="{% url 'livestream:list' %}">
-                📺 {% trans "Live Shopping" %}
-                <span class="live-badge-dot position-absolute" style="top:12px; left:20px;"></span>
-              </a>
-            </li>
-
-            {% if user.role == 'admin' or user.role == 'staff' %}
-            <li>
-              <a class="dropdown-item py-2 position-relative" href="{% url 'chat:support_admin_inbox' %}">
-                🛟 {% trans "Support Inbox" %}
-                <span id="support-badge-dropdown" class="support-badge hidden" style="position:static;float:right;">0</span>
-              </a>
-            </li>
-            {% else %}
-            <li>
-              <a class="dropdown-item py-2 position-relative" href="{% url 'chat:support_my_inbox' %}">
-                🛟 {% trans "Get Help" %}
-                <span id="support-badge-dropdown" class="support-badge hidden" style="position:static;float:right;">0</span>
-              </a>
-            </li>
-            {% endif %}
-
-            {% if user.role == 'admin' %}
-            <li class="px-2"><a href="{% url 'dashboard:home' %}" class="btn btn-navy w-100 mb-1 fs-sm">⚡ Admin Dashboard</a></li>
-            {% endif %}
-            {% if user.role == 'staff' %}
-            <li class="px-2"><a href="{% url 'dashboard:home' %}" class="btn btn-primary w-100 mb-1 fs-sm">⚡ Staff Dashboard</a></li>
-            {% endif %}
-            {% if user.role == 'admin' or user.role == 'staff' %}
-            <li class="px-2"><a href="{% url 'fraud:flagged_orders' %}" class="btn btn-danger w-100 mb-1 fs-sm">🛡 Fraud Review</a></li>
-            {% endif %}
-            {% if user.role == 'rider' %}
-            <li class="px-2"><a href="{% url 'rider:dashboard' %}" class="btn btn-warning w-100 mb-1 fs-sm">🛵 Rider Dashboard</a></li>
-            {% endif %}
-            {% if user.role == 'vendor' %}
-            <li class="px-2"><a href="{% url 'vendors:dashboard' %}" class="btn text-white w-100 mb-1 fs-sm" style="background:#7c3aed;">🏪 Vendor Dashboard</a></li>
-            <li class="px-2 mb-1"><a href="{% url 'livestream:go_live' %}" class="btn btn-danger w-100 fs-sm"><span class="live-badge-dot me-1"></span>Go Live</a></li>
-            {% endif %}
-            {% if user.role == 'customer' %}
-            <li><a class="dropdown-item py-2" href="{% url 'vendors:apply' %}">🏪 {% trans "Sell on Lynctel" %}</a></li>
-            {% endif %}
-
-            <li><a class="dropdown-item py-2" href="{% url 'food:register' %}">🍴 {% trans "List Your Restaurant" %}</a></li>
-            <li><button class="dropdown-item py-2" onclick="toggleTheme()"><span id="dropdown-theme-icon">🌙</span> <span id="dropdown-theme-label">{% trans "Dark Mode" %}</span></button></li>
-            <li><button class="dropdown-item py-2" onclick="showInstallPrompt()">📲 {% trans "Install App" %}</button></li>
-            <li><hr class="dropdown-divider"/></li>
-            <li><a class="dropdown-item py-2 text-danger" href="{% url 'accounts:logout' %}">🚪 {% trans "Sign Out" %}</a></li>
-          </ul>
-        </div>
-        {% else %}
-        <a href="{% url 'accounts:login' %}" class="btn btn-light d-none d-md-inline-flex fs-sm">{% trans "Sign In" %}</a>
-        <a href="{% url 'accounts:signup' %}" class="btn btn-navy btn-press fs-sm">{% trans "Sign Up" %}</a>
-        {% endif %}
-
-        <a href="{% url 'livestream:list' %}" class="btn btn-light position-relative" title="{% trans 'Live Shopping' %}" aria-label="{% trans 'Live Shopping' %}">
-          📺
-          <span class="live-badge-dot position-absolute" style="top:8px; right:8px;"></span>
+        <!-- Logo -->
+        <a href="{% url 'frontend:home' %}" class="navbar-brand d-flex align-items-center gap-2 me-3 flex-shrink-0">
+          <img src="{% static 'logo.png' %}" alt="Lynctel" height="32" class="object-fit-contain"/>
+          <span class="brand-name">Lynctel</span>
+          <span class="brand-dot fw-bold fs-5 lh-1">·</span>
         </a>
 
-        <button onclick="openCart()" class="btn btn-light position-relative" aria-label="{% trans 'Open cart' %}">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+        <!-- Search (desktop) -->
+        <form method="GET" action="{% url 'products:list' %}" class="d-none d-md-flex flex-grow-1 position-relative me-3" style="max-width:480px">
+          <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
           </svg>
-          <span id="cart-count" class="badge bg-gold text-navy rounded-pill position-absolute top-0 start-100 translate-middle {% if not cart_count or cart_count == 0 %}d-none{% endif %}">
-            {{ cart_count|default:0 }}
-          </span>
-        </button>
+          <input type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products, shops, vendors..." class="search-input w-100"/>
+        </form>
 
-      </div>
-    </div>
+        <!-- Right nav -->
+        <div class="d-flex align-items-center gap-1 ms-auto">
 
-    <!-- Mobile search -->
-    <div class="d-md-none container-xl mt-2">
-      <form method="GET" action="{% url 'products:list' %}">
-        <div class="input-group">
-          <span class="input-group-text bg-light border-end-0">🔍</span>
-          <input type="text" name="q" value="{{ search_query|default:'' }}"
-                 placeholder="{% trans 'Search products...' %}" class="form-control bg-light border-start-0"/>
+          <!-- Dark mode -->
+          <button onclick="toggleTheme()" class="btn btn-light btn-sm px-2 py-1 border-0 rounded-3" title="Toggle dark mode">
+            <span id="theme-icon">🌙</span>
+          </button>
+
+          <!-- Desktop links -->
+          <a href="{% url 'vendors:directory' %}" class="btn btn-sm btn-light border-0 d-none d-md-inline-flex text-muted">Shops</a>
+          <a href="{% url 'food:home' %}" class="btn btn-sm btn-light border-0 d-none d-md-inline-flex text-muted">🍔 Food</a>
+
+          {% if user.is_authenticated %}
+            {% if user.role == 'vendor' %}
+            <a href="{% url 'vendors:dashboard' %}" class="btn btn-sm d-none d-md-inline-flex" style="background:var(--gold-light);color:var(--gold-dark)">My Shop</a>
+            {% else %}
+            <a href="{% url 'vendors:apply' %}" class="btn btn-sm d-none d-md-inline-flex" style="background:var(--gold-light);color:var(--gold-dark)">Sell Here</a>
+            {% endif %}
+          {% else %}
+          <a href="{% url 'vendors:apply' %}" class="btn btn-sm d-none d-md-inline-flex" style="background:var(--gold-light);color:var(--gold-dark)">Sell Here</a>
+          {% endif %}
+
+          {% if user.is_authenticated %}
+          <!-- Profile dropdown -->
+          <div class="dropdown">
+            <button class="btn btn-light btn-sm border-0 d-flex align-items-center gap-2 rounded-3 px-2 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none">
+              {% if user.profile_pic %}
+              <img src="{{ user.profile_pic.url }}" width="32" height="32" class="rounded-circle object-fit-cover flex-shrink-0" style="border:2px solid var(--gold)"/>
+              {% else %}
+              <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:32px;height:32px;background:var(--navy);font-size:12px">{{ user.first_name|first|upper|default:"U" }}</div>
+              {% endif %}
+              <span class="d-none d-md-inline text-truncate text-muted" style="max-width:80px;font-size:.875rem">{{ user.first_name|default:user.phone }}</span>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end profile-dropdown mt-2 p-2">
+              <!-- Profile header -->
+              <li>
+                <div class="px-2 py-2 mb-1 rounded-3" style="background:#f9fafb">
+                  <div class="d-flex align-items-center gap-3">
+                    {% if user.profile_pic %}
+                    <img src="{{ user.profile_pic.url }}" width="40" height="40" class="rounded-circle object-fit-cover" style="border:2px solid var(--gold)"/>
+                    {% else %}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:var(--navy);font-size:14px">{{ user.first_name|first|upper|default:"U" }}</div>
+                    {% endif %}
+                    <div class="overflow-hidden">
+                      <p class="mb-0 fw-semibold text-truncate" style="color:var(--navy);font-size:.875rem">{{ user.get_full_name|default:user.phone }}</p>
+                      <p class="mb-0 text-muted text-truncate" style="font-size:.75rem">{{ user.phone }}</p>
+                    </div>
+                  </div>
+                  <span class="badge rounded-pill mt-2 role-badge-{{ user.role }}" style="font-size:.7rem">{{ user.role|title }}</span>
+                </div>
+              </li>
+              <li><hr class="dropdown-divider my-1"/></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'accounts:profile' %}"><span class="icon-wrap bg-light">👤</span>My Profile</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'order:history' %}"><span class="icon-wrap bg-light">📦</span>My Orders</a></li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'livestream:list' %}">
+                  <span class="icon-wrap position-relative" style="background:#fef2f2">📺<span class="live-dot" style="position:absolute;top:2px;right:2px;width:6px;height:6px"></span></span>
+                  Live Shopping
+                </a>
+              </li>
+              {% if user.role == 'admin' or user.role == 'staff' %}
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'chat:support_admin_inbox' %}"><span class="icon-wrap" style="background:#fef2f2">🛟</span>Support Inbox</a></li>
+              {% else %}
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'chat:support_my_inbox' %}"><span class="icon-wrap" style="background:#fef2f2">🛟</span>Get Help</a></li>
+              {% endif %}
+              <li><hr class="dropdown-divider my-1"/></li>
+              {% if user.role == 'admin' %}
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'dashboard:home' %}" style="background:var(--navy)"><span>⚡</span>Admin Dashboard</a></li>
+              {% endif %}
+              {% if user.role == 'staff' %}
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'staff:home' %}" style="background:#2563eb"><span>🔧</span>Staff Panel</a></li>
+              {% endif %}
+              {% if user.role == 'admin' or user.role == 'staff' %}
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'fraud:flagged_orders' %}" style="background:#dc2626"><span>🛡</span>Fraud Review</a></li>
+              {% endif %}
+              {% if user.role == 'rider' %}
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'rider:dashboard' %}" style="background:#f97316"><span>🛵</span>Rider Dashboard</a></li>
+              {% endif %}
+              {% if user.role == 'vendor' %}
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'vendors:dashboard' %}" style="background:#7c3aed"><span>🏪</span>Vendor Dashboard</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'livestream:go_live' %}" style="background:#dc2626"><span class="live-dot"></span>Go Live</a></li>
+              {% endif %}
+              {% if user.role == 'customer' %}
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'vendors:apply' %}"><span class="icon-wrap bg-gold-light">🏪</span>Sell on Lynctel</a></li>
+              {% endif %}
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'food:register' %}"><span class="icon-wrap" style="background:#fff7ed">🍴</span>List Your Restaurant</a></li>
+              <li><hr class="dropdown-divider my-1"/></li>
+              <li>
+                <button onclick="toggleTheme()" class="dropdown-item d-flex align-items-center gap-2 w-100 border-0 bg-transparent">
+                  <span class="icon-wrap bg-light" id="dropdown-theme-icon">🌙</span>
+                  <span id="dropdown-theme-label">Dark Mode</span>
+                </button>
+              </li>
+              <li>
+                <button onclick="showInstallPrompt()" class="dropdown-item d-flex align-items-center gap-2 w-100 border-0 bg-transparent">
+                  <span class="icon-wrap" style="background:#eff6ff">📲</span>Install App
+                </button>
+              </li>
+              <li><hr class="dropdown-divider my-1"/></li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="{% url 'accounts:logout' %}">
+                  <span class="icon-wrap" style="background:#fef2f2">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                  </span>Sign Out
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {% else %}
+          <a href="{% url 'accounts:login' %}" class="btn btn-sm btn-light border-0 text-muted d-none d-md-inline-flex">Sign In</a>
+          <a href="{% url 'accounts:signup' %}" class="btn btn-sm btn-navy rounded-3">Sign Up</a>
+          {% endif %}
+
+          <!-- Live button — next to cart -->
+          <a href="{% url 'livestream:list' %}" class="btn btn-light btn-sm border-0 rounded-3 position-relative live-btn px-2" title="Live Shopping">
+            <span style="font-size:1.1rem">📺</span>
+            <span class="live-dot"></span>
+          </a>
+
+          <!-- Cart -->
+          <button onclick="openCart()" class="btn btn-light btn-sm border-0 rounded-3 position-relative px-2">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="text-muted">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+            </svg>
+            <span id="cart-count" class="cart-badge {% if not cart_count or cart_count == 0 %}d-none{% endif %}">{{ cart_count|default:0 }}</span>
+          </button>
+
         </div>
-      </form>
+      </div>
+
+      <!-- Mobile search -->
+      <div class="d-md-none pb-2">
+        <form method="GET" action="{% url 'products:list' %}" class="position-relative">
+          <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+          </svg>
+          <input type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products..." class="search-input w-100"/>
+        </form>
+      </div>
     </div>
   </nav>
 
   <!-- Flash messages -->
   {% if messages %}
-  <div id="flash-wrap" class="container-xl pt-3">
+  <div class="flash-wrap container-xl px-3 mt-3">
     {% for message in messages %}
-    <div class="alert fade-up d-flex align-items-center justify-content-between rounded-3 py-2 px-3
-                {% if message.tags == 'success' %}alert-success
-                {% elif message.tags == 'error' %}alert-danger
-                {% elif message.tags == 'warning' %}alert-warning
-                {% else %}alert-info{% endif %}">
+    <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %} alert-dismissible fade show rounded-3 d-flex align-items-center justify-content-between" role="alert">
       <span>{{ message }}</span>
-      <button type="button" class="btn-close" onclick="this.closest('.alert').remove()" aria-label="Dismiss"></button>
+      <button type="button" class="btn-close ms-3 p-0" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endfor %}
   </div>
   {% endif %}
 
-  <main>{% block content %}{% endblock %}</main>
+  <!-- Main content -->
+  <main class="flex-grow-1">{% block content %}{% endblock %}</main>
 
-  <!-- ── FOOTER ──────────────────────────────────────── -->
-  <footer class="bg-navy text-white mt-5 position-relative overflow-hidden">
-    <div class="position-absolute top-0 start-0 end-0" style="height:1px;background:linear-gradient(90deg,transparent,rgba(245,166,35,.35),transparent)"></div>
-    <div class="container-xl py-5 position-relative">
-      <div class="row g-4">
-
+  <!-- ── FOOTER ─────────────────────────────────────────── -->
+  <footer class="bg-navy text-white mt-5 pt-5 pb-4" style="border-top:1px solid rgba(255,255,255,.1)">
+    <div class="container-xl px-3">
+      <div class="row g-4 mb-4">
         <div class="col-12 col-lg-4">
           <div class="d-flex align-items-center gap-2 mb-3">
-            <img src="{% static 'logo.png' %}" alt="Lynctel" height="40" style="filter:brightness(0) invert(1);"/>
-            <span class="font-display fw-bold fs-4 text-white">Lynctel</span>
-            <span class="text-gold fw-bold fs-4">·</span>
+            <img src="{% static 'logo.png' %}" alt="Lynctel" height="40" class="brightness-0 invert"/>
+            <span class="fw-bold fs-5 text-white" style="font-family:'Syne',sans-serif">Lynctel</span>
+            <span class="fw-bold fs-5" style="color:var(--gold)">·</span>
           </div>
-          <p class="text-white-50 fs-sm" style="max-width:28rem;">
-            {% trans "Lynctel connects customers, vendors, and riders across Ghana through fast delivery, secure payments, and a premium ecommerce experience." %}
-          </p>
-          <div class="d-flex flex-column gap-2 fs-sm mt-3">
-            <a href="tel:+233558040216" class="text-white-50 text-decoration-none">📞 +233 55 804 0216</a>
-            <a href="https://wa.me/233558040216" target="_blank" class="text-white-50 text-decoration-none">💬 WhatsApp Support</a>
-            <a href="https://www.google.com/maps/search/?api=1&query=Accra,Ghana" target="_blank" class="text-white-50 text-decoration-none">📍 Accra, Ghana</a>
+          <p class="text-muted small mb-4">Connecting customers, vendors, and riders across Ghana through fast delivery and secure payments.</p>
+          <div class="d-flex flex-column gap-2">
+            <a href="tel:+233558040216" class="text-decoration-none text-secondary d-flex align-items-center gap-2 small">📞 +233 55 804 0216</a>
+            <a href="https://wa.me/233558040216" target="_blank" class="text-decoration-none text-secondary d-flex align-items-center gap-2 small">💬 WhatsApp Support</a>
+            <span class="text-secondary d-flex align-items-center gap-2 small">📍 Accra, Ghana</span>
           </div>
         </div>
-
-        <div class="col-6 col-lg-2">
-          <h3 class="fs-xs text-uppercase text-white-50 fw-bold mb-3">{% trans "Marketplace" %}</h3>
-          <ul class="list-unstyled fs-sm d-flex flex-column gap-2">
-            <li><a href="{% url 'products:list' %}" class="text-white-50 text-decoration-none">{% trans "All Products" %}</a></li>
-            <li><a href="{% url 'food:home' %}" class="text-white-50 text-decoration-none">🍔 {% trans "Food Delivery" %}</a></li>
-            <li><a href="{% url 'livestream:list' %}" class="text-white-50 text-decoration-none"><span class="live-badge-dot me-1"></span>{% trans "Live Shopping" %}</a></li>
-            <li><a href="{% url 'vendors:directory' %}" class="text-white-50 text-decoration-none">{% trans "Vendors & Shops" %}</a></li>
-            <li><a href="{% url 'cart:detail' %}" class="text-white-50 text-decoration-none">{% trans "Shopping Cart" %}</a></li>
-            <li><a href="{% url 'order:history' %}" class="text-white-50 text-decoration-none">{% trans "My Orders" %}</a></li>
+        <div class="col-6 col-md-3 col-lg-2">
+          <h6 class="fw-bold text-uppercase text-muted small tracking-wide mb-3" style="letter-spacing:.08em">Marketplace</h6>
+          <ul class="list-unstyled d-flex flex-column gap-2">
+            <li><a href="{% url 'products:list' %}" class="text-secondary text-decoration-none small">All Products</a></li>
+            <li><a href="{% url 'food:home' %}" class="text-secondary text-decoration-none small">🍔 Food Delivery</a></li>
+            <li><a href="{% url 'livestream:list' %}" class="text-secondary text-decoration-none small d-flex align-items-center gap-2"><span class="live-dot"></span>Live Shopping</a></li>
+            <li><a href="{% url 'vendors:directory' %}" class="text-secondary text-decoration-none small">Vendors & Shops</a></li>
+            <li><a href="{% url 'products:deals' %}" class="text-secondary text-decoration-none small">🔥 Deals</a></li>
           </ul>
         </div>
-
-        <div class="col-6 col-lg-2">
-          <h3 class="fs-xs text-uppercase text-white-50 fw-bold mb-3">{% trans "Company" %}</h3>
-          <ul class="list-unstyled fs-sm d-flex flex-column gap-2">
-            <li><a href="{% url 'frontend:about' %}" class="text-white-50 text-decoration-none">{% trans "About Us" %}</a></li>
-            <li><a href="{% url 'frontend:contact' %}" class="text-white-50 text-decoration-none">{% trans "Contact Us" %}</a></li>
-            <li><a href="{% url 'frontend:how_it_works' %}" class="text-white-50 text-decoration-none">{% trans "How It Works" %}</a></li>
-            <li><a href="{% url 'vendors:apply' %}" class="text-white-50 text-decoration-none">{% trans "Become a Vendor" %}</a></li>
-            <li><a href="{% url 'rider:apply' %}" class="text-white-50 text-decoration-none">{% trans "Become a Rider" %}</a></li>
-            <li><a href="{% url 'food:register' %}" class="text-white-50 text-decoration-none">🍴 {% trans "List Your Restaurant" %}</a></li>
+        <div class="col-6 col-md-3 col-lg-2">
+          <h6 class="fw-bold text-uppercase text-muted small mb-3" style="letter-spacing:.08em">Company</h6>
+          <ul class="list-unstyled d-flex flex-column gap-2">
+            <li><a href="{% url 'frontend:about' %}" class="text-secondary text-decoration-none small">About Us</a></li>
+            <li><a href="{% url 'frontend:contact' %}" class="text-secondary text-decoration-none small">Contact Us</a></li>
+            <li><a href="{% url 'vendors:apply' %}" class="text-secondary text-decoration-none small">Become a Vendor</a></li>
+            <li><a href="{% url 'rider:apply' %}" class="text-secondary text-decoration-none small">Become a Rider</a></li>
+            <li><a href="{% url 'food:register' %}" class="text-secondary text-decoration-none small">🍴 List Restaurant</a></li>
           </ul>
         </div>
-
-        <div class="col-6 col-lg-2">
-          <h3 class="fs-xs text-uppercase text-white-50 fw-bold mb-3">{% trans "Account" %}</h3>
-          <ul class="list-unstyled fs-sm d-flex flex-column gap-2">
+        <div class="col-6 col-md-3 col-lg-2">
+          <h6 class="fw-bold text-uppercase text-muted small mb-3" style="letter-spacing:.08em">Account</h6>
+          <ul class="list-unstyled d-flex flex-column gap-2">
             {% if user.is_authenticated %}
-            <li><a href="{% url 'accounts:profile' %}" class="text-white-50 text-decoration-none">{% trans "My Profile" %}</a></li>
-            <li><a href="{% url 'order:history' %}" class="text-white-50 text-decoration-none">{% trans "Order History" %}</a></li>
-            <li><a href="{% if user.role == 'admin' or user.role == 'staff' %}{% url 'chat:support_admin_inbox' %}{% else %}{% url 'chat:support_my_inbox' %}{% endif %}" class="text-white-50 text-decoration-none">🛟 {% trans "Get Help" %}</a></li>
+            <li><a href="{% url 'accounts:profile' %}" class="text-secondary text-decoration-none small">My Profile</a></li>
+            <li><a href="{% url 'order:history' %}" class="text-secondary text-decoration-none small">Order History</a></li>
+            <li><a href="{% url 'accounts:logout' %}" class="text-secondary text-decoration-none small">Sign Out</a></li>
             {% else %}
-            <li><a href="{% url 'accounts:login' %}" class="text-white-50 text-decoration-none">{% trans "Sign In" %}</a></li>
-            <li><a href="{% url 'accounts:signup' %}" class="text-white-50 text-decoration-none">{% trans "Create Account" %}</a></li>
+            <li><a href="{% url 'accounts:login' %}" class="text-secondary text-decoration-none small">Sign In</a></li>
+            <li><a href="{% url 'accounts:signup' %}" class="text-secondary text-decoration-none small">Create Account</a></li>
             {% endif %}
-            <li><button class="btn btn-link text-white-50 text-decoration-none p-0 fs-sm" onclick="toggleTheme()"><span id="footer-theme-icon">🌙</span> <span id="footer-theme-label">{% trans "Dark Mode" %}</span></button></li>
+            <li>
+              <button onclick="toggleTheme()" class="btn btn-link text-secondary text-decoration-none p-0 small d-flex align-items-center gap-1">
+                <span id="footer-theme-icon">🌙</span><span id="footer-theme-label">Dark Mode</span>
+              </button>
+            </li>
           </ul>
-          <div class="mt-3">
-            <p class="fs-xs text-white-50 text-uppercase fw-bold mb-2">{% trans "Language" %}</p>
-            <div class="d-flex flex-wrap gap-2">
-              <button onclick="setLang('en')" data-lang="en" class="lang-btn btn btn-outline-light btn-sm fs-xs">🇬🇧 EN</button>
-              <button onclick="setLang('tw')" data-lang="tw" class="lang-btn btn btn-outline-light btn-sm fs-xs">🇬🇭 TW</button>
-              <button onclick="setLang('ga')" data-lang="ga" class="lang-btn btn btn-outline-light btn-sm fs-xs">🇬🇭 GA</button>
-              <button onclick="setLang('ha')" data-lang="ha" class="lang-btn btn btn-outline-light btn-sm fs-xs">🇬🇭 HA</button>
-            </div>
-          </div>
         </div>
-
       </div>
-    </div>
-
-    <div class="border-top border-white border-opacity-10">
-      <div class="container-xl py-3 d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
-        <p class="fs-xs text-white-50 mb-0">&copy; {% now "Y" %} Lynctel. {% trans "All rights reserved." %} 🇬🇭</p>
-        <div class="d-flex flex-wrap justify-content-center gap-3 fs-xs text-white-50">
-          <a href="{% url 'frontend:privacy_policy' %}" class="text-white-50 text-decoration-none">{% trans "Privacy Policy" %}</a>
-          <a href="{% url 'frontend:terms' %}" class="text-white-50 text-decoration-none">{% trans "Terms of Service" %}</a>
-          <a href="{% url 'frontend:cookies' %}" class="text-white-50 text-decoration-none">{% trans "Cookies" %}</a>
+      <hr style="border-color:rgba(255,255,255,.1)"/>
+      <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+        <p class="text-muted small mb-0">© {% now "Y" %} Lynctel. All rights reserved. 🇬🇭</p>
+        <div class="d-flex gap-4">
+          <a href="{% url 'frontend:privacy_policy' %}" class="text-muted text-decoration-none small">Privacy Policy</a>
+          <a href="{% url 'frontend:terms' %}" class="text-muted text-decoration-none small">Terms of Service</a>
         </div>
       </div>
     </div>
   </footer>
 
-  <!-- ── MOBILE BOTTOM NAV ───────────────────────────────── -->
-  <nav id="mobile-nav" class="d-md-none">
-    <div class="row row-cols-5 g-0 text-center">
-      <div class="col"><a href="{% url 'frontend:home' %}" class="nav-link-mobile">🏠<span>{% trans "Home" %}</span></a></div>
-      <div class="col"><a href="{% url 'products:list' %}" class="nav-link-mobile">📦<span>{% trans "Products" %}</span></a></div>
-      <div class="col"><a href="{% url 'food:home' %}" class="nav-link-mobile">🍔<span>{% trans "Food" %}</span></a></div>
-      <div class="col">
-        <button onclick="openCart()" class="nav-link-mobile btn border-0 bg-transparent w-100 position-relative" aria-label="{% trans 'Open cart' %}">
-          🛒
-          <span id="mobile-cart-count" class="badge bg-gold text-navy rounded-pill position-absolute {% if not cart_count or cart_count == 0 %}d-none{% endif %}" style="top:4px; right:24px; font-size:9px;">{{ cart_count|default:0 }}</span>
-          <span>{% trans "Cart" %}</span>
-        </button>
+  <!-- ── MOBILE BOTTOM NAV (5 tabs) ────────────────────── -->
+  <div id="mobile-nav">
+    <a href="{% url 'frontend:home' %}" class="mobile-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Home
+    </a>
+    <a href="{% url 'products:list' %}" class="mobile-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
+      Products
+    </a>
+    <a href="{% url 'food:home' %}" class="mobile-nav-item food">
+      <span style="font-size:1.25rem;line-height:1">🍔</span>
+      Food
+    </a>
+    <button onclick="openCart()" class="mobile-nav-item">
+      <div class="position-relative d-inline-flex">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        <span id="mobile-cart-count" class="cart-badge {% if not cart_count or cart_count == 0 %}d-none{% endif %}">{{ cart_count|default:0 }}</span>
       </div>
-      <div class="col">
-        {% if user.is_authenticated %}
-        <a href="{% url 'accounts:profile' %}" class="nav-link-mobile">
-          {% if user.profile_pic %}<img src="{{ user.profile_pic.url }}" class="rounded-circle object-fit-cover" width="22" height="22"/>{% else %}👤{% endif %}
-          <span>{% trans "Profile" %}</span>
-        </a>
-        {% else %}
-        <a href="{% url 'accounts:login' %}" class="nav-link-mobile">👤<span>{% trans "Sign In" %}</span></a>
-        {% endif %}
-      </div>
-    </div>
-  </nav>
+      Cart
+    </button>
+    {% if user.is_authenticated %}
+    <a href="{% url 'accounts:profile' %}" class="mobile-nav-item">
+      {% if user.profile_pic %}
+      <img src="{{ user.profile_pic.url }}" width="24" height="24" class="rounded-circle object-fit-cover" style="border:1px solid var(--gold)"/>
+      {% else %}
+      <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width:24px;height:24px;background:var(--navy);font-size:9px;font-weight:700">{{ user.first_name|first|upper|default:"U" }}</div>
+      {% endif %}
+      Profile
+    </a>
+    {% else %}
+    <a href="{% url 'accounts:login' %}" class="mobile-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      Sign In
+    </a>
+    {% endif %}
+  </div>
 
-  <!-- ── CART OFFCANVAS (Bootstrap's native slide-out panel) ───── -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="cart-offcanvas" style="width:400px;">
-    <div class="offcanvas-header border-bottom">
-      <h5 class="offcanvas-title d-flex align-items-center gap-2 font-display fw-bold text-navy">
-        🛒 {% trans "Your Cart" %}
-        <span id="drawer-count" class="badge bg-gold text-navy rounded-pill">0</span>
-      </h5>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  <!-- Cart overlay & drawer -->
+  <div id="cart-overlay" onclick="closeCart()"></div>
+  <div id="cart-drawer">
+    <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom flex-shrink-0">
+      <div class="d-flex align-items-center gap-2">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--navy)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        <h2 class="mb-0 fw-bold text-navy fs-5" style="font-family:'Syne',sans-serif">Your Cart</h2>
+        <span id="drawer-count" class="badge rounded-pill fw-bold" style="background:var(--gold);color:var(--navy)">0</span>
+      </div>
+      <button onclick="closeCart()" class="btn btn-light btn-sm rounded-3 border-0 fw-bold text-muted fs-5 lh-1 px-2">✕</button>
     </div>
-    <div class="offcanvas-body d-flex flex-column p-0">
-      <div id="drawer-items" class="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-2"></div>
-      <div id="drawer-empty" class="d-none flex-grow-1 flex-column align-items-center justify-content-center text-center p-4">
-        <div class="fs-1 mb-3">🛒</div>
-        <p class="fw-bold text-navy mb-1">{% trans "Your cart is empty" %}</p>
-        <p class="text-muted fs-sm mb-3">{% trans "Add items to get started" %}</p>
-        <button class="btn btn-link text-gold-dark fw-semibold" data-bs-dismiss="offcanvas">{% trans "Continue Shopping" %} →</button>
+    <div id="drawer-items" class="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-3"></div>
+    <div id="drawer-empty" class="d-none flex-grow-1 d-flex flex-column align-items-center justify-content-center text-center p-4">
+      <div class="rounded-3 bg-light d-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px;font-size:2rem">🛒</div>
+      <p class="fw-bold text-navy mb-1">Your cart is empty</p>
+      <p class="text-muted small mb-3">Add items to get started</p>
+      <button onclick="closeCart()" class="btn btn-link text-decoration-none p-0" style="color:var(--gold-dark)">Continue Shopping →</button>
+    </div>
+    <div id="drawer-footer" class="border-top p-3 flex-shrink-0">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="text-muted small">Subtotal</span>
+        <span id="drawer-subtotal" class="fw-bold fs-5 text-navy" style="font-family:'Syne',sans-serif">GHS 0.00</span>
       </div>
-      <div id="drawer-footer" class="border-top p-3">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <span class="text-muted fs-sm fw-medium">{% trans "Subtotal" %}</span>
-          <span id="drawer-subtotal" class="font-display fw-bold text-navy fs-4">GHS 0.00</span>
-        </div>
-        <p class="fs-xs text-muted mb-3">{% trans "Delivery fee calculated at checkout" %}</p>
-        <a href="{% url 'order:checkout' %}" class="btn btn-navy w-100 mb-2 btn-press">{% trans "Proceed to Checkout" %} →</a>
-        <a href="{% url 'cart:detail' %}" class="btn btn-link w-100 text-muted text-decoration-none">{% trans "View Full Cart" %}</a>
-      </div>
+      <p class="text-muted small mb-3">Delivery fee calculated at checkout</p>
+      <a href="{% url 'order:checkout' %}" class="btn btn-navy w-100 rounded-3 fw-semibold mb-2">Proceed to Checkout →</a>
+      <a href="{% url 'cart:detail' %}" class="btn btn-light w-100 rounded-3 text-muted small border-0">View Full Cart</a>
     </div>
   </div>
 
   <!-- PWA banner -->
-  <div id="pwa-banner" class="rounded-4">
+  <div id="pwa-banner">
     <img src="{% static 'icons/icon-72x72.png' %}" alt="" width="40" height="40" class="rounded-3 flex-shrink-0"/>
-    <div class="flex-grow-1">
-      <p class="fw-semibold fs-sm mb-0">{% trans "Install Lynctel" %}</p>
-      <p class="text-white-50 fs-xs mb-0">{% trans "Faster, full-screen experience" %}</p>
+    <div class="overflow-hidden">
+      <p class="fw-semibold small mb-0 lh-tight">Install Lynctel</p>
+      <p class="text-secondary small mb-0" style="font-size:.75rem">Faster, full-screen experience</p>
     </div>
-    <button id="pwa-install-btn" class="btn btn-gold btn-sm flex-shrink-0">{% trans "Install" %}</button>
-    <button onclick="dismissPWA()" class="btn btn-link text-white-50 fs-4 lh-1 p-0 flex-shrink-0" aria-label="{% trans 'Dismiss' %}">✕</button>
+    <button id="pwa-install-btn" class="btn btn-gold btn-sm rounded-3 flex-shrink-0 ms-auto">Install</button>
+    <button onclick="dismissPWA()" class="btn btn-link text-secondary p-0 ms-1 fs-5 lh-1 flex-shrink-0">✕</button>
   </div>
 
   <!-- iOS install sheet -->
   <div id="ios-overlay" onclick="closeIOSSheet()"></div>
   <div id="ios-install-sheet">
-    <div class="mx-auto mb-4 bg-secondary bg-opacity-25 rounded-pill" style="width:40px;height:4px;"></div>
+    <div class="mx-auto mb-4 rounded-pill bg-secondary" style="width:40px;height:4px;opacity:.3"></div>
     <div class="d-flex align-items-center justify-content-between mb-4">
       <div class="d-flex align-items-center gap-3">
-        <img src="{% static 'icons/icon-96x96.png' %}" width="56" height="56" class="rounded-4 shadow"/>
-        <div>
-          <p class="font-display fw-bold text-navy fs-5 mb-0">{% trans "Install Lynctel" %}</p>
-          <p class="fs-xs text-muted mb-0">lynctel.up.railway.app</p>
-        </div>
+        <img src="{% static 'icons/icon-96x96.png' %}" width="56" height="56" class="rounded-3 shadow-sm"/>
+        <div><p class="fw-bold text-navy mb-0 fs-5" style="font-family:'Syne',sans-serif">Install Lynctel</p><p class="text-muted small mb-0">lynctel.up.railway.app</p></div>
       </div>
-      <button onclick="closeIOSSheet()" class="btn btn-light rounded-circle" style="width:32px;height:32px;" aria-label="{% trans 'Close' %}">✕</button>
+      <button onclick="closeIOSSheet()" class="btn btn-light rounded-circle d-flex align-items-center justify-content-center fw-bold text-muted border-0" style="width:32px;height:32px">✕</button>
     </div>
     <div class="d-flex flex-column gap-3 mb-4">
-      <div class="d-flex align-items-center gap-3 bg-primary bg-opacity-10 rounded-4 p-3">
-        <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:40px;height:40px;">1</div>
-        <div><p class="fw-semibold text-navy fs-sm mb-0">{% trans "Tap the Share button" %} ⬆</p><p class="fs-xs text-muted mb-0">{% trans "At the bottom of Safari's browser bar" %}</p></div>
+      <div class="d-flex align-items-center gap-3 rounded-3 p-3 bg-primary bg-opacity-10">
+        <div class="rounded-3 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:#3b82f6">1</div>
+        <div><p class="fw-semibold text-navy mb-0 small">Tap the Share button ⬆</p><p class="text-muted mb-0" style="font-size:.75rem">At the bottom of Safari</p></div>
       </div>
-      <div class="d-flex align-items-center gap-3 bg-success bg-opacity-10 rounded-4 p-3">
-        <div class="bg-success text-white rounded-3 d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:40px;height:40px;">2</div>
-        <div><p class="fw-semibold text-navy fs-sm mb-0">{% trans "Tap 'Add to Home Screen'" %}</p><p class="fs-xs text-muted mb-0">{% trans "Scroll down in the Share menu" %}</p></div>
+      <div class="d-flex align-items-center gap-3 rounded-3 p-3" style="background:#f0fdf4">
+        <div class="rounded-3 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:#22c55e">2</div>
+        <div><p class="fw-semibold text-navy mb-0 small">Tap 'Add to Home Screen'</p><p class="text-muted mb-0" style="font-size:.75rem">Scroll down in the Share menu</p></div>
       </div>
-      <div class="d-flex align-items-center gap-3 bg-gold-light rounded-4 p-3">
-        <div class="bg-gold text-navy rounded-3 d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:40px;height:40px;">✓</div>
-        <div><p class="fw-semibold text-navy fs-sm mb-0">{% trans "Tap 'Add' — you're done!" %}</p><p class="fs-xs text-muted mb-0">{% trans "Lynctel appears on your home screen" %}</p></div>
+      <div class="d-flex align-items-center gap-3 rounded-3 p-3" style="background:var(--gold-light)">
+        <div class="rounded-3 d-flex align-items-center justify-content-center fw-bold flex-shrink-0 text-navy" style="width:40px;height:40px;background:var(--gold)">✓</div>
+        <div><p class="fw-semibold text-navy mb-0 small">Tap 'Add' — you're done!</p><p class="text-muted mb-0" style="font-size:.75rem">Lynctel appears on your home screen</p></div>
       </div>
     </div>
-    <button onclick="closeIOSSheet()" class="btn btn-navy w-100 py-3">{% trans "Got it, thanks!" %} 👍</button>
+    <button onclick="closeIOSSheet()" class="btn btn-navy w-100 rounded-3 fw-semibold py-3">Got it! 👍</button>
   </div>
-
-  <!-- Bootstrap 5.3 bundle (includes Popper — needed for dropdowns/offcanvas) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-          integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
   <script>
     const CSRF_TOKEN       = '{{ csrf_token }}';
     const IS_AUTHENTICATED = {{ user.is_authenticated|yesno:"true,false" }};
     const LOGIN_URL        = "{% url 'accounts:login' %}";
-    const LOCATIONIQ_KEY   = '{{ LOCATIONIQ_API_KEY|default:"" }}';
-    const VAPID_PUBLIC_KEY = 'BAEw351eT-whUPpELa7PRDNEM0E_qzbKy6V9pI2jMjjHIS_JQx6cUj9hPahI9k86eCuG1QntOHnGi_1Yi_fWVwM';
+    const VAPID_PUBLIC_KEY = '{{ VAPID_PUBLIC_KEY|default:"" }}';
 
-    function urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-      const raw     = window.atob(base64);
-      const output  = new Uint8Array(raw.length);
-      for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
-      return output;
-    }
-
-    async function subscribeToPush() {
-      if (!IS_AUTHENTICATED) return;
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        let sub = await reg.pushManager.getSubscription();
-        if (!sub) {
-          const permission = await Notification.requestPermission();
-          if (permission !== 'granted') return;
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-          });
+    // ── MOBILE FILE INPUT PATCH ───────────────────────────
+    (function(){
+      function fix(el){
+        if(!el||el._p)return;el._p=true;
+        var s=window.getComputedStyle(el);
+        if(s.display==='none'||el.classList.contains('hidden')||el.classList.contains('d-none')||el.style.display==='none'){
+          el.classList.remove('hidden','d-none');el.style.display='';
+          el.style.position='absolute';el.style.opacity='0';
+          el.style.width='100%';el.style.height='100%';
+          el.style.top='0';el.style.left='0';el.style.cursor='pointer';el.style.zIndex='2';
+          var p=el.parentElement;
+          if(p&&window.getComputedStyle(p).position==='static')p.style.position='relative';
         }
-        await fetch('/push/subscribe/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-          body: JSON.stringify(sub.toJSON()),
-        });
-      } catch (err) { console.warn('[Push] Subscription failed:', err); }
-    }
-    if (IS_AUTHENTICATED) setTimeout(subscribeToPush, 3000);
-
-    // ── DARK MODE (now toggles Bootstrap's data-bs-theme too) ──
-    const THEME_KEY = 'lynctel-theme';
-    function applyTheme(theme) {
-      const html = document.documentElement;
-      const isDark = theme === 'dark';
-      html.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
-      html.setAttribute('data-theme', isDark ? 'dark' : 'light');
-      const icon  = isDark ? '☀️' : '🌙';
-      const label = isDark ? 'Light Mode' : 'Dark Mode';
-      ['theme-icon','dropdown-theme-icon','footer-theme-icon'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.textContent = icon;
-      });
-      ['dropdown-theme-label','footer-theme-label'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.textContent = label;
-      });
-    }
-    function toggleTheme() {
-      const next = (localStorage.getItem(THEME_KEY)||'light')==='dark' ? 'light' : 'dark';
-      localStorage.setItem(THEME_KEY, next);
-      applyTheme(next);
-    }
-    (function(){
-      const saved  = localStorage.getItem(THEME_KEY);
-      const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      applyTheme(saved || system);
-    })();
-
-    // ── LANGUAGE ─────────────────────────────────────────
-    const LANG_KEY  = 'lynctel-lang';
-    const LANG_META = { en:{flag:'🇬🇧',label:'EN'}, tw:{flag:'🇬🇭',label:'TW'}, ga:{flag:'🇬🇭',label:'GA'}, ha:{flag:'🇬🇭',label:'HA'} };
-    const TRANSLATIONS = {
-      en:{ search_placeholder:'Search products, shops, vendors...' },
-      tw:{ search_placeholder:'Hwehwɛ adeɛ, dukan, nneɛma...' },
-      ga:{ search_placeholder:'Lɛ ŋmɛ, shia, adeɛ...' },
-      ha:{ search_placeholder:'Nemi kaya, shago, dilali...' },
-    };
-    let currentLang = localStorage.getItem(LANG_KEY) || 'en';
-    function setLang(lang) {
-      if (!TRANSLATIONS[lang]) return;
-      currentLang = lang;
-      localStorage.setItem(LANG_KEY, lang);
-      applyLang(lang);
-      document.querySelectorAll('[data-lang]').forEach(btn => btn.classList.toggle('active', btn.dataset.lang===lang));
-    }
-    function t(key) { return (TRANSLATIONS[currentLang]&&TRANSLATIONS[currentLang][key]) || TRANSLATIONS['en'][key] || key; }
-    function applyLang(lang) {
-      const meta = LANG_META[lang]; if(!meta) return;
-      const flagEl = document.getElementById('current-lang-flag');
-      const labelEl = document.getElementById('current-lang-label');
-      if (flagEl) flagEl.textContent = meta.flag;
-      if (labelEl) labelEl.textContent = meta.label;
-      document.querySelectorAll('input[name="q"]').forEach(el => el.placeholder = t('search_placeholder'));
-    }
-    (function(){
-      applyLang(currentLang);
-      document.querySelectorAll('[data-lang]').forEach(btn => btn.classList.toggle('active', btn.dataset.lang===currentLang));
-    })();
-
-    // ── CART (Bootstrap offcanvas API instead of custom drawer) ──
-    let cartOffcanvas;
-    document.addEventListener('DOMContentLoaded', () => {
-      cartOffcanvas = new bootstrap.Offcanvas(document.getElementById('cart-offcanvas'));
-    });
-    function openCart() { cartOffcanvas.show(); refreshDrawer(); }
-    function closeCart() { cartOffcanvas.hide(); }
-
-    function refreshDrawer() {
-      fetch('/cart/data/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(r => r.json()).then(renderDrawer).catch(console.error);
-    }
-    function renderDrawer(data) {
-      const itemsEl = document.getElementById('drawer-items');
-      const emptyEl = document.getElementById('drawer-empty');
-      const footerEl = document.getElementById('drawer-footer');
-      const countEl = document.getElementById('drawer-count');
-      const subEl = document.getElementById('drawer-subtotal');
-      const count = data.count || 0;
-      countEl.textContent = count;
-      subEl.textContent = 'GHS ' + parseFloat(data.total||0).toFixed(2);
-      if (!data.items || data.items.length === 0) {
-        itemsEl.innerHTML = ''; itemsEl.classList.add('d-none');
-        emptyEl.classList.remove('d-none'); emptyEl.classList.add('d-flex');
-        footerEl.classList.add('d-none');
-        return;
       }
-      itemsEl.classList.remove('d-none');
-      emptyEl.classList.remove('d-flex'); emptyEl.classList.add('d-none');
-      footerEl.classList.remove('d-none');
-      itemsEl.innerHTML = data.items.map(item => `
-        <div id="ditem-${item.id}" class="d-flex align-items-start gap-2 bg-light rounded-3 p-2">
-          <a href="/products/${item.slug}/" class="flex-shrink-0">
-            ${item.image ? `<img src="${item.image}" alt="${item.name}" class="rounded-3 object-fit-cover" width="64" height="64"/>` : `<div class="rounded-3 bg-secondary bg-opacity-25 d-flex align-items-center justify-content-center fs-3" style="width:64px;height:64px;">📦</div>`}
-          </a>
-          <div class="flex-grow-1 min-w-0">
-            <p class="fw-semibold text-navy fs-sm mb-1">${item.name}</p>
-            ${item.vendor ? `<p class="fs-xs text-muted mb-1">🏪 ${item.vendor}</p>` : ''}
-            <p class="font-display fw-bold text-navy fs-sm mb-0">GHS ${item.price}</p>
-          </div>
-          <div class="d-flex flex-column align-items-end gap-2 flex-shrink-0">
-            <div class="d-flex align-items-center gap-1">
-              <button onclick="drawerQty(${item.id},${item.quantity},-1)" class="btn btn-outline-secondary btn-sm rounded-2 px-2 py-0">−</button>
-              <span class="fw-semibold text-navy fs-sm" style="width:24px;text-align:center;">${item.quantity}</span>
-              <button onclick="drawerQty(${item.id},${item.quantity},1)" class="btn btn-outline-secondary btn-sm rounded-2 px-2 py-0">+</button>
-            </div>
-            <button onclick="drawerRemove(${item.id})" class="btn btn-link btn-sm text-danger p-0 fs-xs">Remove</button>
-          </div>
-        </div>`).join('');
+      document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('input[type="file"]').forEach(fix);});
+      if(window.MutationObserver)new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(function(n){if(n.nodeType!==1)return;if(n.matches&&n.matches('input[type="file"]'))fix(n);if(n.querySelectorAll)n.querySelectorAll('input[type="file"]').forEach(fix);});});}).observe(document.documentElement,{childList:true,subtree:true});
+    })();
+
+    // ── DARK MODE ─────────────────────────────────────────
+    var THEME_KEY='lynctel-theme';
+    function applyTheme(t){
+      var d=t==='dark';
+      document.documentElement.setAttribute('data-bs-theme',d?'dark':'light');
+      var icon=d?'☀️':'🌙',label=d?'Light Mode':'Dark Mode';
+      ['theme-icon','dropdown-theme-icon','footer-theme-icon'].forEach(function(id){var e=document.getElementById(id);if(e)e.textContent=icon;});
+      ['dropdown-theme-label','footer-theme-label'].forEach(function(id){var e=document.getElementById(id);if(e)e.textContent=label;});
     }
-    function addToCart(productId, btn) {
-      if (!IS_AUTHENTICATED) { window.location.href = LOGIN_URL + '?next=' + encodeURIComponent(window.location.pathname); return; }
-      const orig = btn ? btn.innerHTML : '';
-      if (btn) { btn.innerHTML = '...'; btn.disabled = true; }
-      const fd = new FormData(); fd.append('csrfmiddlewaretoken', CSRF_TOKEN); fd.append('quantity', 1);
-      fetch(`/cart/add/${productId}/`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
-        .then(r => r.json()).then(d => {
-          if (d.success) {
-            updateCartBadge(d.cart_count);
-            if (btn) {
-              btn.innerHTML = '✓ Added'; btn.classList.add('btn-success'); btn.classList.remove('btn-navy');
-              setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; btn.classList.remove('btn-success'); btn.classList.add('btn-navy'); }, 1200);
-            }
-            setTimeout(openCart, 350);
-          }
-        }).catch(() => { if (btn) { btn.innerHTML = orig; btn.disabled = false; } });
+    function toggleTheme(){var n=(localStorage.getItem(THEME_KEY)||'light')==='dark'?'light':'dark';localStorage.setItem(THEME_KEY,n);applyTheme(n);}
+    (function(){applyTheme(localStorage.getItem(THEME_KEY)||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));})();
+
+    // ── CART ──────────────────────────────────────────────
+    function openCart(){document.getElementById('cart-drawer').classList.add('open');document.getElementById('cart-overlay').classList.add('open');document.body.style.overflow='hidden';refreshDrawer();}
+    function closeCart(){document.getElementById('cart-drawer').classList.remove('open');document.getElementById('cart-overlay').classList.remove('open');document.body.style.overflow='';}
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCart();});
+
+    function refreshDrawer(){
+      fetch('/cart/data/',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.json();}).then(renderDrawer).catch(console.error);
     }
-    function drawerQty(itemId, current, delta) {
-      const newQty = Math.max(1, current + delta);
-      const fd = new FormData(); fd.append('csrfmiddlewaretoken', CSRF_TOKEN); fd.append('quantity', newQty);
-      fetch(`/cart/update/${itemId}/`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
-        .then(r => r.json()).then(d => { if (d.success) { updateCartBadge(d.cart_count); refreshDrawer(); } });
-    }
-    function drawerRemove(itemId) {
-      const fd = new FormData(); fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
-      fetch(`/cart/remove/${itemId}/`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
-        .then(r => r.json()).then(d => {
-          if (d.success) {
-            updateCartBadge(d.cart_count);
-            const row = document.getElementById('ditem-'+itemId);
-            if (row) { row.style.opacity = '0'; setTimeout(refreshDrawer, 300); }
-          }
-        });
-    }
-    function updateCartBadge(count) {
-      ['cart-count','mobile-cart-count'].forEach(id => {
-        const badge = document.getElementById(id); if (!badge) return;
-        badge.textContent = count;
-        if (count > 0) { badge.classList.remove('d-none'); badge.classList.add('badge-pop'); setTimeout(() => badge.classList.remove('badge-pop'), 300); }
-        else badge.classList.add('d-none');
-      });
+    function renderDrawer(data){
+      var iEl=document.getElementById('drawer-items'),eEl=document.getElementById('drawer-empty'),fEl=document.getElementById('drawer-footer');
+      var cEl=document.getElementById('drawer-count'),sEl=document.getElementById('drawer-subtotal');
+      cEl.textContent=data.count||0;sEl.textContent='GHS '+parseFloat(data.total||0).toFixed(2);
+      if(!data.items||!data.items.length){iEl.innerHTML='';iEl.classList.add('d-none');eEl.classList.remove('d-none');fEl.classList.add('d-none');return;}
+      iEl.classList.remove('d-none');eEl.classList.add('d-none');fEl.classList.remove('d-none');
+      iEl.innerHTML=data.items.map(function(item){
+        return '<div id="ditem-'+item.id+'" class="d-flex align-items-start gap-3 bg-light rounded-3 p-3">'
+          +'<a href="/products/'+item.slug+'/" class="flex-shrink-0">'+(item.image?'<img src="'+item.image+'" alt="'+item.name+'" width="64" height="64" class="rounded-3 object-fit-cover"/>':'<div class="rounded-3 bg-secondary bg-opacity-25 d-flex align-items-center justify-content-center flex-shrink-0" style="width:64px;height:64px;font-size:1.5rem">📦</div>')+'</a>'
+          +'<div class="flex-grow-1 overflow-hidden"><p class="fw-semibold text-navy mb-0 small text-truncate-2">'+item.name+'</p>'+(item.vendor?'<p class="text-muted mb-0" style="font-size:.75rem">🏪 '+item.vendor+'</p>':'')+'<p class="fw-bold text-navy mb-0 small">GHS '+item.price+'</p></div>'
+          +'<div class="d-flex flex-column align-items-end gap-2 flex-shrink-0">'
+          +'<div class="d-flex align-items-center gap-1"><button onclick="drawerQty('+item.id+','+item.quantity+',-1)" class="btn btn-light btn-sm border rounded-2 d-flex align-items-center justify-content-center fw-bold" style="width:28px;height:28px;padding:0">−</button>'
+          +'<span class="fw-semibold text-center" style="min-width:24px;font-size:.875rem">'+item.quantity+'</span>'
+          +'<button onclick="drawerQty('+item.id+','+item.quantity+',1)" class="btn btn-light btn-sm border rounded-2 d-flex align-items-center justify-content-center fw-bold" style="width:28px;height:28px;padding:0">+</button></div>'
+          +'<button onclick="drawerRemove('+item.id+')" class="btn btn-link text-danger p-0" style="font-size:.75rem">Remove</button></div></div>';
+      }).join('');
     }
 
-    {% if user.is_authenticated %}
-    let supportBadgeInterval = null;
-    function refreshSupportBadge() {
-      fetch('/chat/unread/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(r => r.json()).then(d => {
-          const count = d.unread || 0;
-          const badge = document.getElementById('support-badge-dropdown');
-          if (!badge) return;
-          badge.textContent = count > 9 ? '9+' : count;
-          badge.classList.toggle('hidden', count === 0);
-        }).catch(() => {});
+    function addToCart(productId,btn){
+      if(!IS_AUTHENTICATED){window.location.href=LOGIN_URL+'?next='+encodeURIComponent(window.location.pathname);return;}
+      var orig=btn?btn.innerHTML:'';if(btn){btn.innerHTML='...';btn.disabled=true;}
+      var fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF_TOKEN);fd.append('quantity',1);
+      fetch('/cart/add/'+productId+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd})
+        .then(function(r){return r.json();}).then(function(d){
+          if(d.success){updateCartBadge(d.cart_count);if(btn){btn.innerHTML='✓ Added';setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1200);}setTimeout(openCart,350);}
+        }).catch(function(){if(btn){btn.innerHTML=orig;btn.disabled=false;}});
     }
-    function startSupportBadgePolling() { if (supportBadgeInterval) return; refreshSupportBadge(); supportBadgeInterval = setInterval(refreshSupportBadge, 30000); }
-    function stopSupportBadgePolling() { clearInterval(supportBadgeInterval); supportBadgeInterval = null; }
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') startSupportBadgePolling(); else stopSupportBadgePolling(); });
-    startSupportBadgePolling();
-    {% endif %}
+    function drawerQty(id,cur,delta){
+      var fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF_TOKEN);fd.append('quantity',Math.max(1,cur+delta));
+      fetch('/cart/update/'+id+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd}).then(function(r){return r.json();}).then(function(d){if(d.success){updateCartBadge(d.cart_count);refreshDrawer();}});
+    }
+    function drawerRemove(id){
+      var fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF_TOKEN);
+      fetch('/cart/remove/'+id+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd}).then(function(r){return r.json();}).then(function(d){
+        if(d.success){updateCartBadge(d.cart_count);var row=document.getElementById('ditem-'+id);if(row){row.style.opacity='0';setTimeout(refreshDrawer,300);}}
+      });
+    }
+    function updateCartBadge(count){
+      ['cart-count','mobile-cart-count'].forEach(function(id){
+        var b=document.getElementById(id);if(!b)return;
+        b.textContent=count;
+        if(count>0)b.classList.remove('d-none');
+        else b.classList.add('d-none');
+      });
+    }
 
     // ── PWA ───────────────────────────────────────────────
-    let _deferredPrompt = null;
-    const _isIOS = (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream);
-    const _isStandalone = (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true);
+    var _dp=null,_iOS=(/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream),_sa=(window.matchMedia('(display-mode:standalone)').matches||window.navigator.standalone===true);
+    window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();_dp=e;if(!localStorage.getItem('pwa-dismissed')&&!_sa)setTimeout(function(){document.getElementById('pwa-banner').classList.add('show');},window.innerWidth<640?2000:4000);});
+    document.getElementById('pwa-install-btn').addEventListener('click',async function(){if(!_dp)return;_dp.prompt();await _dp.userChoice;_dp=null;document.getElementById('pwa-banner').classList.remove('show');});
+    function dismissPWA(){document.getElementById('pwa-banner').classList.remove('show');localStorage.setItem('pwa-dismissed','1');}
+    function showInstallPrompt(){if(_sa){alert('Lynctel is already installed! ✅');return;}document.getElementById('ios-install-sheet').classList.add('show');document.getElementById('ios-overlay').classList.add('show');document.body.style.overflow='hidden';}
+    function closeIOSSheet(){document.getElementById('ios-install-sheet').classList.remove('show');document.getElementById('ios-overlay').classList.remove('show');document.body.style.overflow='';}
+    if(_iOS&&!_sa&&!localStorage.getItem('ios-hint-shown'))setTimeout(function(){document.getElementById('ios-install-sheet').classList.add('show');document.getElementById('ios-overlay').classList.add('show');localStorage.setItem('ios-hint-shown','1');},6000);
+    if(_sa)document.getElementById('pwa-banner').style.display='none';
 
-    window.addEventListener('beforeinstallprompt', e => {
-      e.preventDefault(); _deferredPrompt = e;
-      if (!localStorage.getItem('pwa-dismissed') && !_isStandalone) {
-        setTimeout(() => document.getElementById('pwa-banner').classList.add('show'), window.innerWidth < 640 ? 2000 : 4000);
-      }
-    });
-    document.getElementById('pwa-install-btn').addEventListener('click', async () => {
-      if (!_deferredPrompt) return;
-      _deferredPrompt.prompt();
-      const { outcome } = await _deferredPrompt.userChoice;
-      _deferredPrompt = null;
-      document.getElementById('pwa-banner').classList.remove('show');
-      if (outcome === 'accepted') localStorage.setItem('pwa-installed', '1');
-    });
-    function dismissPWA() { document.getElementById('pwa-banner').classList.remove('show'); localStorage.setItem('pwa-dismissed', '1'); }
-    function showInstallPrompt() {
-      if (_isStandalone) { alert('Lynctel is already installed! ✅'); return; }
-      document.getElementById('ios-install-sheet').classList.add('show');
-      document.getElementById('ios-overlay').classList.add('show');
-      document.body.style.overflow = 'hidden';
+    // ── PUSH ──────────────────────────────────────────────
+    function urlB64ToUint8(b){var p='='.repeat((4-b.length%4)%4),b64=(b+p).replace(/-/g,'+').replace(/_/g,'/'),raw=window.atob(b64),o=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)o[i]=raw.charCodeAt(i);return o;}
+    async function subscribeToPush(){
+      if(!IS_AUTHENTICATED||!VAPID_PUBLIC_KEY)return;
+      if(!('serviceWorker'in navigator)||!('PushManager'in window))return;
+      try{
+        var reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+        if(!sub){var perm=await Notification.requestPermission();if(perm!=='granted')return;sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8(VAPID_PUBLIC_KEY)});}
+        await fetch('/push/subscribe/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF_TOKEN},body:JSON.stringify(sub.toJSON())});
+        console.log('[Push] Notifications enabled.');
+      }catch(err){console.warn('[Push] Failed:',err);}
     }
-    function closeIOSSheet() {
-      document.getElementById('ios-install-sheet').classList.remove('show');
-      document.getElementById('ios-overlay').classList.remove('show');
-      document.body.style.overflow = '';
-    }
-    if (_isIOS && !_isStandalone && !localStorage.getItem('ios-hint-shown')) {
-      setTimeout(() => {
-        document.getElementById('ios-install-sheet').classList.add('show');
-        document.getElementById('ios-overlay').classList.add('show');
-        localStorage.setItem('ios-hint-shown', '1');
-      }, 6000);
-    }
-    if (_isStandalone) document.getElementById('pwa-banner').style.display = 'none';
+    if(IS_AUTHENTICATED)setTimeout(subscribeToPush,3000);
 
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
-          .then(r => console.log('[SW] Registered:', r.scope))
-          .catch(e => console.error('[SW] Failed:', e));
-      });
-    }
+    // ── SERVICE WORKER ─────────────────────────────────────
+    if('serviceWorker'in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(r){console.log('[SW] Registered:',r.scope);}).catch(function(e){console.error('[SW] Failed:',e);});});
 
-    setTimeout(() => {
-      const el = document.getElementById('flash-wrap');
-      if (el) { el.style.transition = 'opacity .5s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 500); }
-    }, 5000);
-
-    window.addEventListener('scroll', () => {
-      document.getElementById('navbar').classList.toggle('nav-scrolled', window.scrollY > 10);
-    });
+    // ── NAVBAR SHADOW ──────────────────────────────────────
+    window.addEventListener('scroll',function(){document.getElementById('main-navbar').classList.toggle('scrolled',window.scrollY>10);});
   </script>
 
   {% block extra_js %}{% endblock %}
