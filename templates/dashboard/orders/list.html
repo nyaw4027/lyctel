@@ -4,16 +4,15 @@
 {% block page_title_lg %}Orders{% endblock %}
 
 {% block content %}
-<div class="flex items-center gap-3 mb-6 flex-wrap">
-  <form method="GET" class="flex gap-2">
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <form method="GET" class="d-flex gap-2">
     <input type="text" name="q" value="{{ query }}" placeholder="Search orders..."
-           class="px-4 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand w-64"/>
-    <button class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm px-4 py-2 rounded-xl">Search</button>
+           class="form-control form-control-sm rounded-3" style="width: 16rem;"/>
+    <button class="btn btn-light btn-sm rounded-3">Search</button>
   </form>
   <form method="GET">
     {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
-    <select name="status" onchange="this.form.submit()"
-            class="text-sm border border-gray-300 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand">
+    <select name="status" onchange="this.form.submit()" class="form-select form-select-sm rounded-3">
       <option value="">All statuses</option>
       {% for val, label in status_choices %}
       <option value="{{ val }}" {% if filter_status == val %}selected{% endif %}>{{ label }}</option>
@@ -22,62 +21,63 @@
   </form>
 </div>
 
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-  <table class="w-full text-sm">
-    <thead>
-      <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
-        <th class="px-5 py-3 text-left font-semibold">Order</th>
-        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Customer</th>
-        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">City</th>
-        <th class="px-5 py-3 text-left font-semibold">Total</th>
-        <th class="px-5 py-3 text-left font-semibold">Status</th>
-        <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Payment</th>
-        <th class="px-5 py-3 text-right font-semibold"></th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-gray-50">
-      {% for order in orders %}
-      <tr class="hover:bg-gray-50">
-        <td class="px-5 py-3">
-          <p class="font-bold text-brand">{{ order.order_ref }}</p>
-          <p class="text-xs text-gray-400">{{ order.created_at|date:"M d, H:i" }}</p>
-        </td>
-        <td class="px-5 py-3 text-gray-600 hidden md:table-cell">
-          {{ order.customer.get_full_name|default:order.customer.phone|default:"—" }}
-        </td>
-        <td class="px-5 py-3 text-gray-600 hidden md:table-cell">{{ order.delivery_city }}</td>
-        <td class="px-5 py-3 font-bold">GHS {{ order.total_amount }}</td>
-        <td class="px-5 py-3">
-          <span class="text-xs font-semibold px-2.5 py-1 rounded-full
-            {% if order.status == 'delivered' %}bg-green-100 text-green-700
-            {% elif order.status == 'dispatched' %}bg-blue-100 text-blue-700
-            {% elif order.status == 'cancelled' %}bg-red-100 text-red-700
-            {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
-            {% else %}bg-gray-100 text-gray-600{% endif %}">
-            {{ order.get_status_display }}
-          </span>
-        </td>
-        <td class="px-5 py-3 hidden md:table-cell">
-          <span class="text-xs font-semibold px-2.5 py-1 rounded-full
-            {% if order.payment_status == 'paid' %}bg-green-100 text-green-700
-            {% elif order.payment_status == 'failed' %}bg-red-100 text-red-700
-            {% else %}bg-orange-100 text-orange-700{% endif %}">
-            {{ order.get_payment_status_display }}
-          </span>
-        </td>
-        <td class="px-5 py-3 text-right">
-          <a href="{% url 'dashboard:order_detail' order.pk %}"
-             class="text-xs bg-gray-100 hover:bg-brand hover:text-white text-gray-600 px-3 py-1.5 rounded-lg transition-colors">
-            Manage
-          </a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="7" class="px-5 py-12 text-center text-gray-400">No orders yet.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="card border-0 rounded-2xl shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr class="small text-secondary text-uppercase tracking-wide">
+          <th class="px-4 py-2">Order</th>
+          <th class="px-4 py-2 d-none d-md-table-cell">Customer</th>
+          <th class="px-4 py-2 d-none d-md-table-cell">City</th>
+          <th class="px-4 py-2">Total</th>
+          <th class="px-4 py-2">Status</th>
+          <th class="px-4 py-2 d-none d-md-table-cell">Payment</th>
+          <th class="px-4 py-2 text-end"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td class="px-4 py-2">
+            <p class="fw-bold text-brand mb-0">{{ order.order_ref }}</p>
+            <p class="small text-secondary mb-0">{{ order.created_at|date:"M d, H:i" }}</p>
+          </td>
+          <td class="px-4 py-2 text-secondary d-none d-md-table-cell">
+            {{ order.customer.get_full_name|default:order.customer.phone|default:"—" }}
+          </td>
+          <td class="px-4 py-2 text-secondary d-none d-md-table-cell">{{ order.delivery_city }}</td>
+          <td class="px-4 py-2 fw-bold">GHS {{ order.total_amount }}</td>
+          <td class="px-4 py-2">
+            <span class="badge rounded-pill
+              {% if order.status == 'delivered' %}text-bg-success
+              {% elif order.status == 'dispatched' %}text-bg-primary
+              {% elif order.status == 'cancelled' %}text-bg-danger
+              {% elif order.status == 'pending' %}text-bg-warning
+              {% else %}text-bg-secondary{% endif %}">
+              {{ order.get_status_display }}
+            </span>
+          </td>
+          <td class="px-4 py-2 d-none d-md-table-cell">
+            <span class="badge rounded-pill
+              {% if order.payment_status == 'paid' %}text-bg-success
+              {% elif order.payment_status == 'failed' %}text-bg-danger
+              {% else %}text-bg-warning{% endif %}">
+              {{ order.get_payment_status_display }}
+            </span>
+          </td>
+          <td class="px-4 py-2 text-end">
+            <a href="{% url 'dashboard:order_detail' order.pk %}" class="btn btn-sm btn-light">
+              Manage
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="px-4 py-5 text-center text-secondary">No orders yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

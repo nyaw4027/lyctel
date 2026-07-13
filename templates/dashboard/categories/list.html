@@ -4,41 +4,41 @@
 {% block page_title_lg %}Manage Categories{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="d-flex flex-column gap-4">
 
   <!-- PAGE HEADER -->
-  <div class="flex items-center justify-between">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">
+      <h1 class="fs-3 fw-bold text-dark mb-0">
         Categories
       </h1>
-      <p class="text-sm text-gray-500 mt-1">
+      <p class="small text-secondary mt-1 mb-0">
         Organize products using main categories and subcategories
       </p>
     </div>
 
-    <div class="bg-brand-light text-brand px-4 py-2 rounded-xl text-sm font-semibold">
+    <div class="bg-brand-light text-brand px-3 py-2 rounded-3 small fw-semibold">
       {{ categories|length }} Total
     </div>
   </div>
 
   <!-- ADD CATEGORY -->
-  <div class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+  <div class="card rounded-3xl shadow-sm">
 
-    <div class="px-6 py-5 border-b border-gray-100">
-      <h2 class="font-bold text-lg text-gray-800">
+    <div class="card-header bg-white px-4 py-3">
+      <h2 class="fw-bold fs-5 text-dark mb-0">
         Add New Category
       </h2>
     </div>
 
-    <div class="p-6">
+    <div class="card-body p-4">
 
-      <form method="POST" enctype="multipart/form-data" class="space-y-5">
+      <form method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-4">
         {% csrf_token %}
 
         <!-- NAME -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
+          <label class="form-label small fw-semibold text-dark">
             Category Name
           </label>
 
@@ -46,21 +46,16 @@
                  name="name"
                  placeholder="e.g. Electronics"
                  required
-                 class="w-full px-4 py-3 border border-gray-300 rounded-2xl
-                        text-sm focus:outline-none focus:ring-4
-                        focus:ring-brand/20 focus:border-brand">
+                 class="form-control rounded-3">
         </div>
 
         <!-- PARENT -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
+          <label class="form-label small fw-semibold text-dark">
             Parent Category
           </label>
 
-          <select name="parent"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-2xl
-                         text-sm focus:outline-none focus:ring-4
-                         focus:ring-brand/20 focus:border-brand">
+          <select name="parent" class="form-select rounded-3">
 
             <option value="">Main Category</option>
 
@@ -74,42 +69,37 @@
 
           </select>
 
-          <p class="text-xs text-gray-400 mt-2">
+          <p class="small text-secondary mt-2 mb-0">
             Leave empty to create a main category
           </p>
         </div>
 
         <!-- DESCRIPTION -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
+          <label class="form-label small fw-semibold text-dark">
             Description
           </label>
 
           <textarea name="description"
                     rows="3"
                     placeholder="Optional category description..."
-                    class="w-full px-4 py-3 border border-gray-300 rounded-2xl
-                           text-sm focus:outline-none focus:ring-4
-                           focus:ring-brand/20 focus:border-brand"></textarea>
+                    class="form-control rounded-3"></textarea>
         </div>
 
         <!-- FEATURED -->
-        <div class="flex items-center gap-3">
+        <div class="form-check d-flex align-items-center gap-2">
           <input type="checkbox"
                  name="is_featured"
-                 class="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand">
+                 class="form-check-input mt-0"
+                 id="id_is_featured">
 
-          <label class="text-sm text-gray-700 font-medium">
+          <label class="form-check-label small text-dark fw-medium" for="id_is_featured">
             Featured Category
           </label>
         </div>
 
         <!-- BUTTON -->
-        <button type="submit"
-                class="w-full sm:w-auto bg-brand hover:bg-brand-dark
-                       text-white font-bold px-6 py-3 rounded-2xl
-                       shadow-lg hover:shadow-xl transition">
-
+        <button type="submit" class="btn btn-brand fw-bold px-4 py-2 rounded-3 shadow-sm align-self-start">
           + Add Category
         </button>
 
@@ -119,34 +109,34 @@
   </div>
 
   <!-- CATEGORIES LIST -->
-  <div class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+  <div class="card rounded-3xl shadow-sm">
 
-    <div class="px-6 py-5 border-b border-gray-100">
-      <h2 class="font-bold text-lg text-gray-800">
+    <div class="card-header bg-white px-4 py-3">
+      <h2 class="fw-bold fs-5 text-dark mb-0">
         All Categories
       </h2>
     </div>
 
     {% if categories %}
 
-    <div class="divide-y divide-gray-100">
+    <ul class="list-group list-group-flush">
 
       {% for cat in categories %}
 
-      <div class="px-6 py-5 hover:bg-gray-50 transition">
+      <li class="list-group-item list-group-item-action px-4 py-3">
 
-        <div class="flex items-start justify-between gap-4">
+        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
 
           <!-- LEFT -->
-          <div class="flex items-start gap-4">
+          <div class="d-flex align-items-start gap-3">
 
             <!-- ICON -->
             {% if cat.icon %}
               <img src="{{ cat.icon.url }}"
-                   class="w-12 h-12 rounded-2xl object-cover border border-gray-200">
+                   class="icon-12 rounded-2xl object-fit-cover border">
             {% else %}
-              <div class="w-12 h-12 rounded-2xl bg-brand-light flex items-center justify-center">
-                <svg class="w-6 h-6 text-brand"
+              <div class="icon-12 rounded-2xl bg-brand-light d-flex align-items-center justify-content-center flex-shrink-0">
+                <svg class="icon-6 text-brand"
                      fill="none"
                      stroke="currentColor"
                      viewBox="0 0 24 24">
@@ -163,24 +153,24 @@
             <div>
 
               <!-- NAME -->
-              <div class="flex items-center gap-2 flex-wrap">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
 
-                <h3 class="font-bold text-gray-900">
+                <h3 class="fw-bold text-dark fs-6 mb-0">
                   {{ cat.name }}
                 </h3>
 
                 {% if cat.parent %}
-                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                <span class="badge rounded-pill text-bg-primary">
                   Subcategory
                 </span>
                 {% else %}
-                <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold">
+                <span class="badge rounded-pill text-bg-dark">
                   Main
                 </span>
                 {% endif %}
 
                 {% if cat.is_featured %}
-                <span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-semibold">
+                <span class="badge rounded-pill text-bg-warning">
                   Featured
                 </span>
                 {% endif %}
@@ -188,19 +178,19 @@
               </div>
 
               <!-- PATH -->
-              <p class="text-sm text-gray-500 mt-1">
+              <p class="small text-secondary mt-1 mb-0">
                 {{ cat.get_full_path }}
               </p>
 
               <!-- DESCRIPTION -->
               {% if cat.description %}
-              <p class="text-sm text-gray-600 mt-2">
+              <p class="small text-secondary mt-2 mb-0">
                 {{ cat.description|truncatechars:100 }}
               </p>
               {% endif %}
 
               <!-- STATS -->
-              <div class="flex items-center gap-4 mt-3 text-xs text-gray-400">
+              <div class="d-flex align-items-center gap-3 mt-2 small text-secondary flex-wrap">
 
                 <span>
                   {{ cat.products.count }} product{{ cat.products.count|pluralize }}
@@ -223,28 +213,21 @@
           </div>
 
           <!-- RIGHT -->
-          <div class="flex items-center gap-2">
+          <div class="d-flex align-items-center gap-2">
 
             <!-- STATUS -->
-            <span class="text-xs font-semibold px-3 py-1 rounded-full
-                         {% if cat.is_active %}
-                         bg-green-100 text-green-700
-                         {% else %}
-                         bg-gray-100 text-gray-500
-                         {% endif %}">
-
+            <span class="badge rounded-pill {% if cat.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">
               {% if cat.is_active %}
                 Active
               {% else %}
                 Hidden
               {% endif %}
-
             </span>
 
             <!-- VIEW -->
             <a href="{% url 'products:list' %}?category={{ cat.slug }}"
                target="_blank"
-               class="text-sm text-brand hover:underline font-semibold">
+               class="small link-brand fw-semibold">
 
               View →
             </a>
@@ -253,18 +236,18 @@
 
         </div>
 
-      </div>
+      </li>
 
       {% endfor %}
 
-    </div>
+    </ul>
 
     {% else %}
 
-    <div class="px-6 py-14 text-center">
+    <div class="card-body px-4 py-5 text-center">
 
-      <div class="w-20 h-20 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-4">
-        <svg class="w-10 h-10 text-gray-400"
+      <div class="icon-20 mx-auto rounded-circle bg-light d-flex align-items-center justify-content-center mb-3">
+        <svg class="icon-10 text-secondary"
              fill="none"
              stroke="currentColor"
              viewBox="0 0 24 24">
@@ -276,11 +259,11 @@
         </svg>
       </div>
 
-      <h3 class="text-lg font-bold text-gray-700">
+      <h3 class="fs-5 fw-bold text-dark">
         No Categories Yet
       </h3>
 
-      <p class="text-sm text-gray-400 mt-2">
+      <p class="small text-secondary mt-2 mb-0">
         Create your first category above
       </p>
 

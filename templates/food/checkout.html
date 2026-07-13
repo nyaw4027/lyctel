@@ -17,10 +17,10 @@
   }
 
   /* Defensive re-assertion of Leaflet's own tile-sizing rules.
-     Tailwind's base reset applies `img { max-width: 100%; height: auto; }`
+     Bootstrap's base reset applies `img { max-width: 100%; height: auto; }`
      globally, which fights with Leaflet's tile <img> elements. leaflet.css
      normally overrides this with !important — but if it loads after
-     Tailwind's stylesheet (or fails to load at all, e.g. CDN blocked by a
+     Bootstrap's stylesheet (or fails to load at all, e.g. CDN blocked by a
      CSP/firewall/ad-blocker), tiles silently collapse to zero visible size
      and the map looks completely blank even though tiles downloaded fine.
      These rules make that impossible regardless of load order. */

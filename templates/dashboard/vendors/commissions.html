@@ -6,63 +6,74 @@
 {% block content %}
 
 <!-- STATS -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Commission Earned</p>
-    <p class="text-3xl font-bold text-gray-800">GHS {{ total|floatformat:2 }}</p>
-    <p class="text-xs text-gray-400 mt-1">All time</p>
+<div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+  <div class="col">
+    <div class="card border-0 rounded-2xl shadow-sm h-100">
+      <div class="card-body p-4">
+        <p class="small fw-semibold text-secondary text-uppercase tracking-wide mb-1">Total Commission Earned</p>
+        <p class="fs-2 fw-bold text-dark mb-0">GHS {{ total|floatformat:2 }}</p>
+        <p class="small text-secondary mt-1 mb-0">All time</p>
+      </div>
+    </div>
   </div>
-  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">This Month</p>
-    <p class="text-3xl font-bold text-green-600">GHS {{ month_total|floatformat:2 }}</p>
-    <p class="text-xs text-gray-400 mt-1">{{ now|date:"F Y" }}</p>
+  <div class="col">
+    <div class="card border-0 rounded-2xl shadow-sm h-100">
+      <div class="card-body p-4">
+        <p class="small fw-semibold text-secondary text-uppercase tracking-wide mb-1">This Month</p>
+        <p class="fs-2 fw-bold text-success mb-0">GHS {{ month_total|floatformat:2 }}</p>
+        <p class="small text-secondary mt-1 mb-0">{{ now|date:"F Y" }}</p>
+      </div>
+    </div>
   </div>
-  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Entries</p>
-    <p class="text-3xl font-bold text-gray-800">{{ commissions|length }}</p>
-    <p class="text-xs text-gray-400 mt-1">Commission records</p>
+  <div class="col">
+    <div class="card border-0 rounded-2xl shadow-sm h-100">
+      <div class="card-body p-4">
+        <p class="small fw-semibold text-secondary text-uppercase tracking-wide mb-1">Total Entries</p>
+        <p class="fs-2 fw-bold text-dark mb-0">{{ commissions|length }}</p>
+        <p class="small text-secondary mt-1 mb-0">Commission records</p>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- TABLE -->
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-  <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-    <h2 class="font-bold text-gray-800">All Commission Records</h2>
-    <a href="{% url 'dashboard:vendor_list' %}" class="text-xs text-blue-600 hover:underline">View Vendors →</a>
+<div class="card border-0 rounded-2xl shadow-sm">
+  <div class="card-header bg-white d-flex align-items-center justify-content-between px-4 py-3">
+    <h2 class="fw-bold text-dark fs-6 mb-0">All Commission Records</h2>
+    <a href="{% url 'dashboard:vendor_list' %}" class="small link-brand">View Vendors →</a>
   </div>
 
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
-          <th class="px-5 py-3 text-left font-semibold">Order</th>
-          <th class="px-5 py-3 text-left font-semibold">Vendor</th>
-          <th class="px-5 py-3 text-left font-semibold">Rate</th>
-          <th class="px-5 py-3 text-left font-semibold">Commission</th>
-          <th class="px-5 py-3 text-left font-semibold">Date</th>
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr class="small text-secondary text-uppercase tracking-wide">
+          <th class="px-4 py-2">Order</th>
+          <th class="px-4 py-2">Vendor</th>
+          <th class="px-4 py-2">Rate</th>
+          <th class="px-4 py-2">Commission</th>
+          <th class="px-4 py-2">Date</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-50">
+      <tbody>
         {% for commission in commissions %}
-        <tr class="hover:bg-gray-50">
-          <td class="px-5 py-3 font-bold text-blue-600">
-            <a href="{% url 'dashboard:order_detail' commission.order.pk %}" class="hover:underline">
+        <tr>
+          <td class="px-4 py-2 fw-bold text-brand">
+            <a href="{% url 'dashboard:order_detail' commission.order.pk %}" class="link-brand">
               {{ commission.order.order_ref }}
             </a>
           </td>
-          <td class="px-5 py-3">
-            <a href="{% url 'dashboard:vendor_detail' commission.vendor.pk %}"
-               class="font-medium text-gray-700 hover:text-blue-600 hover:underline">
+          <td class="px-4 py-2">
+            <a href="{% url 'dashboard:vendor_detail' commission.vendor.pk %}" class="fw-medium text-dark link-brand">
               {{ commission.vendor.shop_name }}
             </a>
           </td>
-          <td class="px-5 py-3 text-gray-600">{{ commission.rate }}%</td>
-          <td class="px-5 py-3 font-semibold text-gray-800">GHS {{ commission.amount|floatformat:2 }}</td>
-          <td class="px-5 py-3 text-gray-400 text-xs">{{ commission.created_at|date:"d M Y, H:i" }}</td>
+          <td class="px-4 py-2 text-secondary">{{ commission.rate }}%</td>
+          <td class="px-4 py-2 fw-semibold text-dark">GHS {{ commission.amount|floatformat:2 }}</td>
+          <td class="px-4 py-2 small text-secondary">{{ commission.created_at|date:"d M Y, H:i" }}</td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="5" class="px-5 py-12 text-center text-gray-400 text-sm">No commission records yet.</td>
+          <td colspan="5" class="px-4 py-5 text-center text-secondary small">No commission records yet.</td>
         </tr>
         {% endfor %}
       </tbody>

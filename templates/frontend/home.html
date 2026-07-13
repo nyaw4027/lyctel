@@ -3,99 +3,95 @@
 {% block title %}Lynctel — Quality Products Delivered in Ghana{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/home.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/home.css' %}">
 {% endblock %}
 
 {% block content %}
 
 <!-- ── HERO ───────────────────────────────── -->
-<section class="relative overflow-hidden bg-navy">
-  <div class="absolute inset-0 opacity-5"
-       style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);background-size:32px 32px;"></div>
-  <div class="absolute top-0 right-0 w-96 h-96 bg-gold opacity-10 rounded-full
-              translate-x-1/3 -translate-y-1/4 blur-3xl pointer-events-none"></div>
+<section class="position-relative overflow-hidden bg-navy">
+  <div class="position-absolute top-0 start-0 w-100 h-100 dotted-bg" style="opacity:.05;"></div>
+  <div class="position-absolute top-0 end-0 bg-gold rounded-circle"
+       style="width:24rem;height:24rem;opacity:.1;transform:translate(33%,-25%);filter:blur(64px);pointer-events:none;"></div>
 
-  <div class="relative max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-24">
-    <div class="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
+  <div class="position-relative container px-3 px-md-4 py-5 py-md-5">
+    <div class="d-flex flex-column flex-lg-row align-items-center gap-4 gap-lg-5">
 
       <!-- LEFT -->
-      <div class="flex-1 text-center lg:text-left">
-        <div class="inline-flex items-center gap-2 bg-white/10 text-gold text-xs font-semibold
-                    px-4 py-2 rounded-full mb-4 fade-up fade-up-1">
-          <span class="w-1.5 h-1.5 bg-gold rounded-full animate-pulse"></span>
+      <div class="flex-fill text-center text-lg-start">
+        <div class="d-inline-flex align-items-center gap-2 bg-white bg-opacity-10 text-gold small fw-semibold
+                    px-3 py-2 rounded-pill mb-3 fade-up fade-up-1">
+          <span class="bg-gold rounded-circle animate-pulse" style="width:6px;height:6px;"></span>
           Fast Delivery Across Ghana 🇬🇭
         </div>
-        <h1 class="font-display font-800 text-3xl md:text-5xl lg:text-6xl text-white
-                   leading-tight mb-4 fade-up fade-up-2">
+        <h1 class="font-display text-white mb-3 fade-up fade-up-2" style="font-weight:800;font-size:clamp(2rem,6vw,3.75rem);line-height:1.1;">
           Quality Products.<br/>
           <span class="shimmer">Delivered Fast.</span>
         </h1>
-        <p class="text-gray-300 text-base md:text-lg mb-6 max-w-lg mx-auto lg:mx-0
-                  fade-up fade-up-3 leading-relaxed">
+        <p class="text-white-50 fs-6 mb-4 mx-auto mx-lg-0 fade-up fade-up-3" style="max-width:32rem;line-height:1.7;">
           Browse electronics, fashion, gadgets and more — delivered straight to your door anywhere in Ghana.
         </p>
-        <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start fade-up fade-up-3 mb-8">
+        <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center justify-content-lg-start fade-up fade-up-3 mb-4">
           <a href="{% url 'products:list' %}"
-             class="hero-btn bg-gold hover:bg-gold-dark text-navy font-semibold px-8 py-3.5
-                    rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/30
-                    touch-target flex items-center justify-center gap-2">Shop Now →</a>
+             class="btn btn-gold fw-semibold px-4 py-3 rounded-2xl btn-press shadow touch-target
+                    d-inline-flex align-items-center justify-content-center gap-2">Shop Now →</a>
           <a href="{% url 'food:home' %}"
-             class="hero-btn bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5
-                    rounded-2xl transition-colors btn-press text-center touch-target
-                    flex items-center justify-center gap-2">🍔 Order Food</a>
+             class="btn btn-food-orange fw-semibold px-4 py-3 rounded-2xl btn-press touch-target
+                    d-inline-flex align-items-center justify-content-center gap-2">🍔 Order Food</a>
         </div>
-        <div class="flex items-center gap-5 justify-center lg:justify-start fade-up fade-up-3">
-          <div class="text-center lg:text-left">
-            <p class="font-display font-700 text-xl md:text-2xl text-white stat-num">500+</p>
-            <p class="text-gray-400 text-xs">Products</p>
+        <div class="d-flex align-items-center gap-4 justify-content-center justify-content-lg-start fade-up fade-up-3">
+          <div class="text-center text-lg-start">
+            <p class="font-display fw-bold fs-4 text-white mb-0">500+</p>
+            <p class="text-white-50 small mb-0">Products</p>
           </div>
-          <div class="w-px h-7 bg-white/20"></div>
-          <div class="text-center lg:text-left">
-            <p class="font-display font-700 text-xl md:text-2xl text-white stat-num">50+</p>
-            <p class="text-gray-400 text-xs">Vendors</p>
+          <div class="bg-white bg-opacity-25" style="width:1px;height:1.75rem;"></div>
+          <div class="text-center text-lg-start">
+            <p class="font-display fw-bold fs-4 text-white mb-0">50+</p>
+            <p class="text-white-50 small mb-0">Vendors</p>
           </div>
-          <div class="w-px h-7 bg-white/20"></div>
-          <div class="text-center lg:text-left">
-            <p class="font-display font-700 text-xl md:text-2xl text-white stat-num">Accra</p>
-            <p class="text-gray-400 text-xs">Same-day</p>
+          <div class="bg-white bg-opacity-25" style="width:1px;height:1.75rem;"></div>
+          <div class="text-center text-lg-start">
+            <p class="font-display fw-bold fs-4 text-white mb-0">Accra</p>
+            <p class="text-white-50 small mb-0">Same-day</p>
           </div>
         </div>
       </div>
 
       <!-- RIGHT: Slideshow -->
-      <div class="flex-1 w-full max-w-md mx-auto lg:mx-0 fade-up fade-up-2">
-        <div id="hero-slideshow" class="relative select-none">
+      <div class="flex-fill w-100 mx-auto mx-lg-0 fade-up fade-up-2 hero-visual-col" style="max-width:28rem;">
+        <div id="hero-slideshow" class="position-relative" style="user-select:none;">
 
           <!-- SLIDE 1 -->
           <div class="slide active">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
-              <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full mb-4">✨ How Lynctel Works</div>
-              <div class="space-y-4">
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3xl p-4 p-md-4"
+                 style="backdrop-filter:blur(6px);">
+              <div class="d-inline-flex align-items-center gap-2 bg-gold bg-opacity-25 text-gold small fw-bold px-3 py-2 rounded-pill mb-3">✨ How Lynctel Works</div>
+              <div class="d-flex flex-column gap-3">
                 {% for step in "123" %}
-                <div class="flex items-start gap-4 group">
-                  <div class="w-10 h-10 {% if forloop.first %}bg-gold{% else %}bg-white/10 border border-white/20{% endif %}
-                              rounded-xl flex items-center justify-center
-                              {% if forloop.first %}text-navy{% else %}text-gold{% endif %}
-                              font-display font-700 text-sm flex-shrink-0 group-hover:scale-110 transition-transform">{{ forloop.counter }}</div>
+                <div class="d-flex align-items-start gap-3">
+                  <div class="{% if forloop.first %}bg-gold{% else %}bg-white bg-opacity-10 border border-white border-opacity-25{% endif %}
+                              rounded-3 d-flex align-items-center justify-content-center flex-shrink-0
+                              font-display fw-bold small {% if forloop.first %}text-navy{% else %}text-gold{% endif %}"
+                       style="width:2.5rem;height:2.5rem;">{{ forloop.counter }}</div>
                   <div>
                     {% if forloop.first %}
-                    <p class="text-white font-semibold text-sm">Browse & Add to Cart</p>
-                    <p class="text-gray-400 text-xs mt-0.5 leading-relaxed">Explore hundreds of products from verified vendors.</p>
+                    <p class="text-white fw-semibold small mb-1">Browse & Add to Cart</p>
+                    <p class="text-white-50 small mb-0" style="line-height:1.5;">Explore hundreds of products from verified vendors.</p>
                     {% elif forloop.counter == 2 %}
-                    <p class="text-white font-semibold text-sm">Pay with MoMo or Card</p>
-                    <p class="text-gray-400 text-xs mt-0.5 leading-relaxed">Checkout securely with MTN, Vodafone, AirtelTigo or Paystack.</p>
+                    <p class="text-white fw-semibold small mb-1">Pay with MoMo or Card</p>
+                    <p class="text-white-50 small mb-0" style="line-height:1.5;">Checkout securely with MTN, Vodafone, AirtelTigo or Paystack.</p>
                     {% else %}
-                    <p class="text-white font-semibold text-sm">Get It Delivered</p>
-                    <p class="text-gray-400 text-xs mt-0.5 leading-relaxed">A Lynctel rider delivers it right to your door.</p>
+                    <p class="text-white fw-semibold small mb-1">Get It Delivered</p>
+                    <p class="text-white-50 small mb-0" style="line-height:1.5;">A Lynctel rider delivers it right to your door.</p>
                     {% endif %}
                   </div>
                 </div>
-                {% if not forloop.last %}<div class="w-px h-3 bg-white/10 ml-5"></div>{% endif %}
+                {% if not forloop.last %}<div class="bg-white bg-opacity-10" style="width:1px;height:.75rem;margin-left:1.25rem;"></div>{% endif %}
                 {% endfor %}
               </div>
               <a href="{% url 'products:list' %}"
-                 class="mt-5 flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark
-                        text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full touch-target">
+                 class="mt-3 d-flex align-items-center justify-content-center gap-2 btn-gold
+                        fw-semibold small py-3 rounded-3 w-100 touch-target text-decoration-none">
                 Start Shopping →
               </a>
             </div>
@@ -103,62 +99,64 @@
 
           <!-- SLIDE 2 -->
           <div class="slide">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5">
-              <div class="flex items-center justify-between mb-4">
-                <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full">🔥 Most Purchased</div>
-                <a href="{% url 'products:list' %}" class="text-gray-400 hover:text-gold text-xs transition-colors">View all →</a>
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3xl p-4" style="backdrop-filter:blur(6px);">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-inline-flex align-items-center gap-2 bg-gold bg-opacity-25 text-gold small fw-bold px-3 py-2 rounded-pill">🔥 Most Purchased</div>
+                <a href="{% url 'products:list' %}" class="text-white-50 small text-decoration-none">View all →</a>
               </div>
               {% if hot_products %}
-              <div class="grid grid-cols-2 gap-2.5">
+              <div class="row row-cols-2 g-2">
                 {% for p in hot_products %}
+                <div class="col">
                 <a href="{% url 'products:detail' p.slug %}"
-                   class="slide-card bg-white/5 hover:bg-white/10 border border-white/10 hover:border-gold/30 rounded-2xl overflow-hidden transition-all">
-                  <div class="overflow-hidden h-20 relative">
+                   class="slide-card d-block bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3 overflow-hidden text-decoration-none">
+                  <div class="position-relative overflow-hidden" style="height:5rem;">
                     {% if p.primary_image %}
-                    <img src="{{ p.primary_image }}" alt="{{ p.name }}" class="slide-card-img w-full h-20 object-cover"/>
+                    <img src="{{ p.primary_image }}" alt="{{ p.name }}" class="w-100 h-100 object-fit-cover"/>
                     {% else %}
-                    <div class="w-full h-20 bg-white/5 flex items-center justify-center text-2xl">📦</div>
+                    <div class="w-100 h-100 bg-white bg-opacity-10 d-flex align-items-center justify-content-center fs-3">📦</div>
                     {% endif %}
-                    <span class="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">🔥</span>
+                    <span class="position-absolute top-0 start-0 m-1 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:9px;">🔥</span>
                     {% if p.has_discount %}
-                    <span class="absolute top-1.5 right-1.5 bg-gold text-navy text-[9px] font-bold px-1.5 py-0.5 rounded-full">-{{ p.discount_percent }}%</span>
+                    <span class="position-absolute top-0 end-0 m-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:9px;">-{{ p.discount_percent }}%</span>
                     {% endif %}
                   </div>
                   <div class="p-2">
-                    <p class="text-white text-xs font-medium truncate">{{ p.name }}</p>
-                    <p class="text-gold text-xs font-bold">GHS {{ p.final_price }}
-                      {% if p.has_discount %}<span class="text-gray-500 line-through text-[10px] ml-1">{{ p.selling_price }}</span>{% endif %}
+                    <p class="text-white small fw-medium text-truncate mb-0">{{ p.name }}</p>
+                    <p class="text-gold small fw-bold mb-0">GHS {{ p.final_price }}
+                      {% if p.has_discount %}<span class="text-white-50 text-decoration-line-through ms-1" style="font-size:10px;">{{ p.selling_price }}</span>{% endif %}
                     </p>
                   </div>
                 </a>
+                </div>
                 {% endfor %}
               </div>
               {% else %}
-              <div class="grid grid-cols-2 gap-2.5">{% for i in "1234" %}<div class="skeleton h-32"></div>{% endfor %}</div>
+              <div class="row row-cols-2 g-2">{% for i in "1234" %}<div class="col"><div class="skeleton" style="height:8rem;"></div></div>{% endfor %}</div>
               {% endif %}
             </div>
           </div>
 
           <!-- SLIDE 3 -->
           <div class="slide">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
-              <div class="inline-flex items-center gap-2 bg-orange-400/20 text-orange-300 text-xs font-bold px-3 py-1.5 rounded-full mb-4">🍔 Food Delivery</div>
-              <h3 class="font-display font-700 text-white text-lg mb-2">Hungry? Order Now</h3>
-              <p class="text-gray-400 text-sm mb-4 leading-relaxed">From local restaurants straight to your door in 30–45 minutes.</p>
-              <div class="space-y-2 mb-4">
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3xl p-4 p-md-4" style="backdrop-filter:blur(6px);">
+              <div class="d-inline-flex align-items-center gap-2 bg-food-orange bg-opacity-25 text-food-orange small fw-bold px-3 py-2 rounded-pill mb-3">🍔 Food Delivery</div>
+              <h3 class="font-display fw-bold text-white fs-5 mb-2">Hungry? Order Now</h3>
+              <p class="text-white-50 small mb-3" style="line-height:1.5;">From local restaurants straight to your door in 30–45 minutes.</p>
+              <div class="d-flex flex-column gap-2 mb-3">
                 {% for item in "1234" %}
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5">
-                  {% if forloop.first %}<span>🍽️</span><p class="text-white text-sm">Choose from local restaurants</p>
-                  {% elif forloop.counter == 2 %}<span>📍</span><p class="text-white text-sm">Enter address — fee auto-calculates</p>
-                  {% elif forloop.counter == 3 %}<span>🛵</span><p class="text-white text-sm">Rider picks up and delivers fast</p>
-                  {% else %}<span>💵</span><p class="text-white text-sm">Pay on delivery or MoMo</p>
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2">
+                  {% if forloop.first %}<span>🍽️</span><p class="text-white small mb-0">Choose from local restaurants</p>
+                  {% elif forloop.counter == 2 %}<span>📍</span><p class="text-white small mb-0">Enter address — fee auto-calculates</p>
+                  {% elif forloop.counter == 3 %}<span>🛵</span><p class="text-white small mb-0">Rider picks up and delivers fast</p>
+                  {% else %}<span>💵</span><p class="text-white small mb-0">Pay on delivery or MoMo</p>
                   {% endif %}
                 </div>
                 {% endfor %}
               </div>
               <a href="{% url 'food:home' %}"
-                 class="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600
-                        text-white font-semibold text-sm py-3 rounded-xl transition-colors w-full touch-target">
+                 class="d-flex align-items-center justify-content-center gap-2 btn-food-orange
+                        fw-semibold small py-3 rounded-3 w-100 touch-target text-decoration-none">
                 🍔 Order Food Now →
               </a>
             </div>
@@ -166,18 +164,18 @@
 
           <!-- SLIDE 4 -->
           <div class="slide">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
-              <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full mb-4">🏪 Become a Vendor</div>
-              <h3 class="font-display font-700 text-white text-lg mb-2">Sell to Thousands</h3>
-              <div class="space-y-2 mb-4">
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5"><span>💰</span><p class="text-white text-sm">Keep <span class="text-gold font-bold">96%</span> of every sale</p></div>
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5"><span>🚀</span><p class="text-white text-sm">Free setup, no monthly fees</p></div>
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5"><span>📊</span><p class="text-white text-sm">Real-time sales dashboard</p></div>
-                <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5"><span>🛵</span><p class="text-white text-sm">Our riders handle deliveries</p></div>
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3xl p-4 p-md-4" style="backdrop-filter:blur(6px);">
+              <div class="d-inline-flex align-items-center gap-2 bg-gold bg-opacity-25 text-gold small fw-bold px-3 py-2 rounded-pill mb-3">🏪 Become a Vendor</div>
+              <h3 class="font-display fw-bold text-white fs-5 mb-2">Sell to Thousands</h3>
+              <div class="d-flex flex-column gap-2 mb-3">
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span>💰</span><p class="text-white small mb-0">Keep <span class="text-gold fw-bold">96%</span> of every sale</p></div>
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span>🚀</span><p class="text-white small mb-0">Free setup, no monthly fees</p></div>
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span>📊</span><p class="text-white small mb-0">Real-time sales dashboard</p></div>
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span>🛵</span><p class="text-white small mb-0">Our riders handle deliveries</p></div>
               </div>
               <a href="{% url 'vendors:apply' %}"
-                 class="flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark
-                        text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full touch-target">
+                 class="d-flex align-items-center justify-content-center gap-2 btn-gold
+                        fw-semibold small py-3 rounded-3 w-100 touch-target text-decoration-none">
                 Open Your Shop →
               </a>
             </div>
@@ -185,46 +183,46 @@
 
           <!-- SLIDE 5 -->
           <div class="slide">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-3xl p-5 md:p-8">
-              <div class="inline-flex items-center gap-2 bg-gold/20 text-gold text-xs font-bold px-3 py-1.5 rounded-full mb-4">🛵 Fast Delivery</div>
-              <h3 class="font-display font-700 text-white text-lg mb-2">We Bring It To You</h3>
-              <div class="bg-white/5 rounded-2xl p-4 mb-4 space-y-3">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2"><div class="w-2 h-2 bg-green-400 rounded-full"></div><span class="text-white text-sm">Accra & Tema</span></div>
-                  <span class="text-green-400 text-xs font-semibold bg-green-400/10 px-2 py-0.5 rounded-full">Same day</span>
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3xl p-4 p-md-4" style="backdrop-filter:blur(6px);">
+              <div class="d-inline-flex align-items-center gap-2 bg-gold bg-opacity-25 text-gold small fw-bold px-3 py-2 rounded-pill mb-3">🛵 Fast Delivery</div>
+              <h3 class="font-display fw-bold text-white fs-5 mb-2">We Bring It To You</h3>
+              <div class="bg-white bg-opacity-10 rounded-3 p-3 mb-3 d-flex flex-column gap-2">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-2"><div class="bg-success rounded-circle" style="width:.5rem;height:.5rem;"></div><span class="text-white small">Accra & Tema</span></div>
+                  <span class="text-success small fw-semibold bg-success bg-opacity-10 px-2 py-1 rounded-pill">Same day</span>
                 </div>
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2"><div class="w-2 h-2 bg-gold rounded-full"></div><span class="text-white text-sm">Kumasi</span></div>
-                  <span class="text-gold text-xs font-semibold bg-gold/10 px-2 py-0.5 rounded-full">1–2 days</span>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-2"><div class="bg-gold rounded-circle" style="width:.5rem;height:.5rem;"></div><span class="text-white small">Kumasi</span></div>
+                  <span class="text-gold small fw-semibold bg-gold bg-opacity-10 px-2 py-1 rounded-pill">1–2 days</span>
                 </div>
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2"><div class="w-2 h-2 bg-blue-400 rounded-full"></div><span class="text-white text-sm">Other regions</span></div>
-                  <span class="text-blue-400 text-xs font-semibold bg-blue-400/10 px-2 py-0.5 rounded-full">2–4 days</span>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-2"><div class="bg-primary rounded-circle" style="width:.5rem;height:.5rem;"></div><span class="text-white small">Other regions</span></div>
+                  <span class="text-primary small fw-semibold bg-primary bg-opacity-10 px-2 py-1 rounded-pill">2–4 days</span>
                 </div>
               </div>
               <a href="{% url 'products:list' %}"
-                 class="flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark
-                        text-navy font-semibold text-sm py-3 rounded-xl transition-colors w-full touch-target">
+                 class="d-flex align-items-center justify-content-center gap-2 btn-gold
+                        fw-semibold small py-3 rounded-3 w-100 touch-target text-decoration-none">
                 Order Now →
               </a>
             </div>
           </div>
 
           <!-- Progress bar + dots -->
-          <div class="mt-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
-            <div id="slide-progress" class="h-full bg-gold slide-progress-bar"></div>
+          <div class="mt-3 rounded-pill overflow-hidden bg-white bg-opacity-10" style="height:2px;">
+            <div id="slide-progress" class="h-100 bg-gold slide-progress-bar"></div>
           </div>
-          <div class="mt-3 flex items-center justify-between">
-            <div class="flex items-center gap-1.5" id="slide-dots">
-              <button class="slide-dot active h-1.5 w-6 bg-gold rounded-full touch-target" onclick="goToSlide(0)"></button>
-              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full touch-target" onclick="goToSlide(1)"></button>
-              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full touch-target" onclick="goToSlide(2)"></button>
-              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full touch-target" onclick="goToSlide(3)"></button>
-              <button class="slide-dot h-1.5 w-1.5 bg-white/30 rounded-full touch-target" onclick="goToSlide(4)"></button>
+          <div class="mt-3 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2" id="slide-dots">
+              <button class="slide-dot active touch-target" onclick="goToSlide(0)"></button>
+              <button class="slide-dot touch-target" onclick="goToSlide(1)"></button>
+              <button class="slide-dot touch-target" onclick="goToSlide(2)"></button>
+              <button class="slide-dot touch-target" onclick="goToSlide(3)"></button>
+              <button class="slide-dot touch-target" onclick="goToSlide(4)"></button>
             </div>
-            <div class="flex items-center gap-2">
-              <button onclick="prevSlide()" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors touch-target">‹</button>
-              <button onclick="nextSlide()" class="w-9 h-9 rounded-xl bg-gold hover:bg-gold-dark flex items-center justify-center text-navy transition-colors font-bold touch-target">›</button>
+            <div class="d-flex align-items-center gap-2">
+              <button onclick="prevSlide()" class="btn bg-white bg-opacity-10 text-white rounded-3 border-0 touch-target d-flex align-items-center justify-content-center" style="width:2.25rem;height:2.25rem;">‹</button>
+              <button onclick="nextSlide()" class="btn btn-gold rounded-3 fw-bold touch-target d-flex align-items-center justify-content-center" style="width:2.25rem;height:2.25rem;">›</button>
             </div>
           </div>
         </div>
@@ -234,27 +232,27 @@
 </section>
 
 <!-- ── TRUST BADGES ───────────────────────── -->
-<section class="border-b border-gray-100 bg-white">
-  <div class="max-w-7xl mx-auto px-4 md:px-6 py-4">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 bg-gold-light rounded-xl flex items-center justify-center text-lg flex-shrink-0">🚚</div>
-        <div><p class="font-semibold text-navy text-xs md:text-sm">Fast Delivery</p><p class="text-gray-400 text-xs">Accra same day</p></div>
+<section class="border-bottom bg-white">
+  <div class="container px-3 px-md-4 py-3">
+    <div class="row row-cols-2 row-cols-md-4 g-3">
+      <div class="col d-flex align-items-center gap-2">
+        <div class="bg-gold-light rounded-3 d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:2.25rem;height:2.25rem;">🚚</div>
+        <div><p class="fw-semibold text-navy small mb-0">Fast Delivery</p><p class="text-secondary small mb-0">Accra same day</p></div>
       </div>
-      <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 bg-green-50 rounded-xl flex items-center justify-center text-lg flex-shrink-0">📱</div>
-        <div><p class="font-semibold text-navy text-xs md:text-sm">MoMo Payment</p><p class="text-gray-400 text-xs">MTN, Vodafone, ATM</p></div>
+      <div class="col d-flex align-items-center gap-2">
+        <div class="bg-success bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:2.25rem;height:2.25rem;">📱</div>
+        <div><p class="fw-semibold text-navy small mb-0">MoMo Payment</p><p class="text-secondary small mb-0">MTN, Vodafone, ATM</p></div>
       </div>
-      <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center text-lg flex-shrink-0">✅</div>
-        <div><p class="font-semibold text-navy text-xs md:text-sm">Quality Assured</p><p class="text-gray-400 text-xs">Verified vendors</p></div>
+      <div class="col d-flex align-items-center gap-2">
+        <div class="bg-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:2.25rem;height:2.25rem;">✅</div>
+        <div><p class="fw-semibold text-navy small mb-0">Quality Assured</p><p class="text-secondary small mb-0">Verified vendors</p></div>
       </div>
-      <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center text-lg flex-shrink-0">📺</div>
+      <div class="col d-flex align-items-center gap-2">
+        <div class="bg-danger bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:2.25rem;height:2.25rem;">📺</div>
         <div>
-          <p class="font-semibold text-navy text-xs md:text-sm">Live Shopping</p>
-          <a href="{% url 'livestream:list' %}" class="text-xs text-red-500 flex items-center gap-1">
-            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Watch now →
+          <p class="fw-semibold text-navy small mb-0">Live Shopping</p>
+          <a href="{% url 'livestream:list' %}" class="small text-danger text-decoration-none d-flex align-items-center gap-1">
+            <span class="bg-danger rounded-circle animate-pulse" style="width:6px;height:6px;"></span> Watch now →
           </a>
         </div>
       </div>
@@ -264,60 +262,59 @@
 
 <!-- ── LIVE NOW ────────────────────────────── -->
 {% if live_streams %}
-<section class="bg-gray-950 py-8 md:py-12 overflow-hidden">
-  <div class="max-w-7xl mx-auto px-4 md:px-6">
-    <div class="flex items-end justify-between mb-5">
+<section class="py-4 py-md-5 overflow-hidden" style="background:#0a0f1a;">
+  <div class="container px-3 px-md-4">
+    <div class="d-flex align-items-end justify-content-between mb-4">
       <div>
-        <p class="flex items-center gap-2 text-red-500 text-xs font-bold uppercase tracking-widest mb-1">
-          <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span> Live Right Now
+        <p class="d-flex align-items-center gap-2 text-danger small fw-bold text-uppercase mb-1" style="letter-spacing:.08em;">
+          <span class="bg-danger rounded-circle animate-pulse" style="width:8px;height:8px;"></span> Live Right Now
         </p>
-        <h2 class="font-display font-700 text-xl md:text-2xl text-white">Watch & Shop Live</h2>
+        <h2 class="font-display fw-bold fs-3 text-white mb-0">Watch & Shop Live</h2>
       </div>
-      <a href="{% url 'livestream:list' %}" class="text-xs font-semibold text-red-400 hover:text-red-300 transition-colors whitespace-nowrap">See all →</a>
+      <a href="{% url 'livestream:list' %}" class="small fw-semibold text-danger text-decoration-none text-nowrap">See all →</a>
     </div>
     <div class="live-scroll">
       {% for stream in live_streams %}
-      <a href="{% url 'livestream:watch' stream.id %}"
-         class="live-stream-card group relative rounded-2xl overflow-hidden bg-gray-900 block flex-shrink-0">
+      <a href="{% url 'livestream:watch' stream.id %}" class="live-stream-card position-relative rounded-3 overflow-hidden flex-shrink-0" style="background:#111827;">
         {% if stream.thumbnail %}
         <img src="{{ stream.thumbnail.url }}" alt="{{ stream.title }}"
-             class="w-full aspect-[9/16] object-cover group-hover:scale-105 transition-transform duration-300"/>
+             class="w-100 object-fit-cover" style="aspect-ratio:9/16;transition:transform .3s ease;"/>
         {% else %}
-        <div class="w-full aspect-[9/16] bg-gradient-to-b from-navy to-gray-900 flex items-center justify-center">
-          <span class="text-4xl">📺</span>
+        <div class="w-100 d-flex align-items-center justify-content-center" style="aspect-ratio:9/16;background:linear-gradient(to bottom, var(--navy), #111827);">
+          <span class="fs-1">📺</span>
         </div>
         {% endif %}
-        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
-        <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full live-ring">
-          <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> LIVE
+        <div class="position-absolute top-0 start-0 w-100 h-100" style="background:linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,.1) 60%, transparent);"></div>
+        <div class="position-absolute top-0 start-0 m-2 d-flex align-items-center gap-1 bg-danger text-white fw-bold rounded-pill px-2 py-1 live-ring" style="font-size:10px;">
+          <span class="bg-white rounded-circle animate-pulse" style="width:6px;height:6px;"></span> LIVE
         </div>
-        <div class="absolute top-2.5 right-2.5 bg-black/50 text-white text-[10px] font-semibold px-2 py-1 rounded-full backdrop-blur-sm">
+        <div class="position-absolute top-0 end-0 m-2 fw-semibold rounded-pill px-2 py-1" style="font-size:10px;background:rgba(0,0,0,.5);color:#fff;backdrop-filter:blur(4px);">
           👁 {{ stream.current_viewers }}
         </div>
-        <div class="absolute bottom-0 left-0 right-0 p-3">
-          <div class="flex items-center gap-2 mb-1">
+        <div class="position-absolute bottom-0 start-0 end-0 p-2">
+          <div class="d-flex align-items-center gap-2 mb-1">
             {% if stream.vendor.logo %}
-            <img src="{{ stream.vendor.logo.url }}" class="w-6 h-6 rounded-full object-cover border border-white/20 flex-shrink-0"/>
+            <img src="{{ stream.vendor.logo.url }}" class="rounded-circle object-fit-cover border border-white border-opacity-25 flex-shrink-0" style="width:1.5rem;height:1.5rem;"/>
             {% else %}
-            <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">{{ stream.vendor.shop_name|first|upper }}</div>
+            <div class="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:1.5rem;height:1.5rem;font-size:10px;">{{ stream.vendor.shop_name|first|upper }}</div>
             {% endif %}
-            <p class="text-white text-[11px] font-semibold truncate">{{ stream.vendor.shop_name }}</p>
+            <p class="text-white text-truncate mb-0" style="font-size:11px;font-weight:600;">{{ stream.vendor.shop_name }}</p>
           </div>
-          <p class="text-gray-300 text-[10px] line-clamp-2 leading-tight">{{ stream.title }}</p>
+          <p class="text-white-50 text-truncate-2 mb-0" style="font-size:10px;line-height:1.2;">{{ stream.title }}</p>
         </div>
       </a>
       {% endfor %}
       {% if user.is_authenticated and user.role == 'vendor' %}
       <a href="{% url 'livestream:go_live' %}"
-         class="live-stream-card flex-shrink-0 rounded-2xl border-2 border-dashed border-red-600/40
-                hover:border-red-600 bg-gray-900 flex flex-col items-center justify-center gap-3
-                transition-all group p-4 text-center aspect-[9/16]">
-        <div class="w-14 h-14 bg-red-600/20 group-hover:bg-red-600 rounded-2xl flex items-center justify-center transition-colors">
-          <span class="text-2xl">🔴</span>
+         class="live-stream-card flex-shrink-0 rounded-3 d-flex flex-column align-items-center justify-content-center gap-3
+                p-3 text-center text-decoration-none"
+         style="aspect-ratio:9/16;background:#111827;border:2px dashed rgba(220,38,38,.4);">
+        <div class="bg-danger bg-opacity-25 rounded-3 d-flex align-items-center justify-content-center" style="width:3.5rem;height:3.5rem;">
+          <span class="fs-3">🔴</span>
         </div>
         <div>
-          <p class="text-white text-xs font-bold">Start Streaming</p>
-          <p class="text-gray-500 text-[10px] mt-0.5">Go live now</p>
+          <p class="text-white small fw-bold mb-0">Start Streaming</p>
+          <p class="text-secondary mb-0" style="font-size:10px;">Go live now</p>
         </div>
       </a>
       {% endif %}
@@ -328,65 +325,66 @@
 
 <!-- ── CATEGORIES ─────────────────────────── -->
 {% if categories %}
-<section class="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-14">
-  <div class="flex items-end justify-between mb-6">
+<section class="container px-3 px-md-4 py-4 py-md-5">
+  <div class="d-flex align-items-end justify-content-between mb-4">
     <div>
-      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Browse by</p>
-      <h2 class="font-display font-700 text-xl md:text-3xl text-navy">Categories</h2>
+      <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em;">Browse by</p>
+      <h2 class="font-display fw-bold fs-4 fs-md-2 text-navy mb-0">Categories</h2>
     </div>
-    <a href="{% url 'products:list' %}" class="text-sm font-semibold text-navy hover:text-gold transition-colors">View all →</a>
+    <a href="{% url 'products:list' %}" class="small fw-semibold text-navy text-decoration-none">View all →</a>
   </div>
-  <div class="category-grid grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 md:gap-3">
+  <div class="row row-cols-3 row-cols-sm-4 row-cols-md-6 g-2">
     {% for category in categories %}
+    <div class="col">
     <a href="{% url 'products:list' %}?category={{ category.slug }}"
-       class="category-card group bg-white hover:bg-navy rounded-2xl border border-gray-100
-              p-3 md:p-4 flex flex-col items-center gap-2 transition-all duration-200
-              hover:border-navy hover:shadow-lg hover:shadow-navy/10 touch-target">
+       class="category-card d-flex flex-column align-items-center gap-2 bg-white rounded-3 border p-3 h-100 text-center touch-target">
       {% if category.icon %}
-      <img src="{{ category.icon.url }}" alt="{{ category.name }}" class="w-9 h-9 md:w-10 md:h-10 object-cover rounded-xl"/>
+      <img src="{{ category.icon.url }}" alt="{{ category.name }}" class="rounded-3 object-fit-cover category-card-icon" style="width:2.5rem;height:2.5rem;"/>
       {% else %}
-      <div class="w-9 h-9 md:w-10 md:h-10 bg-gold-light rounded-xl flex items-center justify-center group-hover:bg-gold/20 transition-colors">
-        <svg class="w-4 h-4 md:w-5 md:h-5 text-gold-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="bg-gold-light rounded-3 d-flex align-items-center justify-content-center category-card-icon" style="width:2.5rem;height:2.5rem;">
+        <svg style="width:1.25rem;height:1.25rem;" class="text-gold-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
         </svg>
       </div>
       {% endif %}
-      <span class="text-xs font-semibold text-center text-navy group-hover:text-white transition-colors leading-tight">{{ category.name }}</span>
+      <span class="small fw-semibold text-navy category-card-label" style="line-height:1.2;">{{ category.name }}</span>
     </a>
+    </div>
     {% endfor %}
   </div>
 </section>
 {% endif %}
 
 <!-- ── NEW ARRIVALS ───────────────────────── -->
-<section class="bg-white py-10 md:py-14">
-  <div class="max-w-7xl mx-auto px-4 md:px-6">
-    <div class="flex items-end justify-between mb-6">
+<section class="bg-white py-4 py-md-5">
+  <div class="container px-3 px-md-4">
+    <div class="d-flex align-items-end justify-content-between mb-4">
       <div>
-        <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Just landed</p>
-        <h2 class="font-display font-700 text-xl md:text-3xl text-navy">New Arrivals</h2>
+        <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em;">Just landed</p>
+        <h2 class="font-display fw-bold fs-4 fs-md-2 text-navy mb-0">New Arrivals</h2>
       </div>
-      <a href="{% url 'products:list' %}" class="text-sm font-semibold text-navy hover:text-gold transition-colors">See all →</a>
+      <a href="{% url 'products:list' %}" class="small fw-semibold text-navy text-decoration-none">See all →</a>
     </div>
 
-    <div class="product-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
       {% for product in new_products %}
       {% with product.videos.all as vids %}
       {% with vids.0 as first_vid %}
-      <div class="product-card group bg-cream rounded-2xl overflow-hidden card-hover border border-gray-100 flex flex-col">
+      <div class="col">
+      <div class="card-hover bg-body rounded-3xl overflow-hidden border h-100 d-flex flex-column" style="background:var(--cream);">
 
         <!-- ── Media block (image + optional video hover) ── -->
-        <div class="video-card-wrap{% if first_vid %} has-video{% endif %} relative overflow-hidden h-36 md:h-44">
+        <div class="video-card-wrap{% if first_vid %} has-video{% endif %} position-relative overflow-hidden" style="height:9rem;">
 
           <!-- Static image -->
-          <div class="video-card-img-wrap absolute inset-0">
+          <div class="position-absolute top-0 start-0 w-100 h-100">
             <a href="{% url 'products:detail' product.slug %}">
               {% if product.primary_image %}
               <img src="{{ product.primary_image }}" alt="{{ product.name }}"
-                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+                   class="w-100 h-100 object-fit-cover"/>
               {% else %}
-              <div class="w-full h-full bg-gray-100 flex items-center justify-center">
-                <span class="text-4xl opacity-20">📦</span>
+              <div class="w-100 h-100 bg-light d-flex align-items-center justify-content-center">
+                <span class="fs-1" style="opacity:.2;">📦</span>
               </div>
               {% endif %}
             </a>
@@ -404,52 +402,52 @@
           </div>
           <!-- Video badge -->
           <span class="video-badge">
-            <svg class="w-2.5 h-2.5 fill-white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg style="width:10px;height:10px;fill:#fff;" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
             Video
           </span>
           {% endif %}
 
           <!-- Badges -->
           {% if product.is_featured %}
-          <span class="absolute top-2 right-2 z-10 bg-gold text-navy text-[9px] font-bold px-1.5 py-0.5 rounded-full">⭐</span>
+          <span class="position-absolute top-0 end-0 m-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:9px;z-index:2;">⭐</span>
           {% endif %}
           {% if product.has_discount %}
-          <span class="absolute top-2 left-2 z-10 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">-{{ product.discount_percent }}%</span>
+          <span class="position-absolute top-0 start-0 m-1 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:9px;z-index:2;">-{{ product.discount_percent }}%</span>
           {% endif %}
         </div>
 
         <!-- Product info -->
-        <div class="p-3 flex flex-col flex-1">
+        <div class="p-3 d-flex flex-column flex-fill">
           <a href="{% url 'products:detail' product.slug %}"
-             class="text-xs md:text-sm font-semibold text-navy hover:text-gold transition-colors line-clamp-2 mb-2 leading-snug">
+             class="small fw-semibold text-navy text-truncate-2 mb-2 text-decoration-none" style="line-height:1.35;">
             {{ product.name }}
           </a>
-          <div class="mt-auto flex items-center justify-between gap-1">
-            <div class="flex flex-col">
-              <span class="font-display font-700 text-navy text-sm md:text-base">GHS {{ product.final_price }}</span>
+          <div class="mt-auto d-flex align-items-center justify-content-between gap-1">
+            <div class="d-flex flex-column">
+              <span class="font-display fw-bold text-navy small">GHS {{ product.final_price }}</span>
               {% if product.has_discount %}
-              <span class="text-[10px] text-gray-400 line-through">GHS {{ product.selling_price }}</span>
+              <span class="text-secondary text-decoration-line-through" style="font-size:10px;">GHS {{ product.selling_price }}</span>
               {% endif %}
             </div>
             {% if product.is_in_stock %}
             <button onclick="quickAdd({{ product.pk }}, this)"
-                    class="text-xs bg-navy hover:bg-gold hover:text-navy text-white
-                           font-semibold px-2.5 py-1.5 rounded-xl transition-all btn-press touch-target">
+                    class="quick-add-btn small fw-semibold px-2 py-2 rounded-3 border-0 btn-press touch-target">
               + Add
             </button>
             {% else %}
-            <span class="text-xs text-gray-400">Out</span>
+            <span class="small text-secondary">Out</span>
             {% endif %}
           </div>
         </div>
 
       </div>
+      </div>
       {% endwith %}
       {% endwith %}
       {% empty %}
-      <div class="col-span-full text-center py-12 text-gray-400">
-        <p class="text-4xl mb-2">📦</p>
-        <p class="text-sm">No products yet.</p>
+      <div class="col-12 text-center py-5 text-secondary">
+        <p class="fs-1 mb-2">📦</p>
+        <p class="small">No products yet.</p>
       </div>
       {% endfor %}
     </div>
@@ -457,29 +455,27 @@
 </section>
 
 <!-- ── FOOD BANNER ───────────────────────── -->
-<section class="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-14">
-  <div class="relative bg-gradient-to-r from-orange-500 to-amber-500 rounded-3xl overflow-hidden">
-    <div class="absolute inset-0 opacity-10"
-         style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);background-size:24px 24px;"></div>
-    <div class="absolute right-6 top-4 text-5xl opacity-20 hidden md:block">🍔</div>
-    <div class="absolute right-24 bottom-4 text-4xl opacity-20 hidden md:block">🍕</div>
-    <div class="relative px-6 md:px-12 py-8 md:py-10">
-      <div class="flex flex-col md:flex-row items-start md:items-center gap-5 justify-between">
+<section class="container px-3 px-md-4 py-4 py-md-5">
+  <div class="position-relative food-gradient rounded-3xl overflow-hidden">
+    <div class="position-absolute top-0 start-0 w-100 h-100 dotted-bg" style="opacity:.1;"></div>
+    <div class="position-absolute d-none d-md-block" style="right:1.5rem;top:1rem;font-size:3rem;opacity:.2;">🍔</div>
+    <div class="position-absolute d-none d-md-block" style="right:6rem;bottom:1rem;font-size:2.5rem;opacity:.2;">🍕</div>
+    <div class="position-relative px-4 px-md-5 py-4 py-md-5">
+      <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-4 justify-content-between">
         <div>
-          <div class="inline-flex items-center gap-2 bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-3">
-            <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+          <div class="d-inline-flex align-items-center gap-2 bg-white bg-opacity-25 text-white small fw-bold px-3 py-2 rounded-pill mb-3">
+            <span class="bg-white rounded-circle animate-pulse" style="width:6px;height:6px;"></span>
             NEW — Food Delivery 🛵
           </div>
-          <h2 class="font-display font-700 text-xl md:text-3xl text-white mb-2">Hungry? Order Food Now</h2>
-          <p class="text-white/80 text-sm max-w-md">From local restaurants to your door. Pay with MoMo, cash, or card. Delivered in 30–45 mins.</p>
-          <div class="flex items-center gap-3 mt-3 text-white/90 text-xs font-medium flex-wrap">
+          <h2 class="font-display fw-bold fs-4 fs-md-2 text-white mb-2">Hungry? Order Food Now</h2>
+          <p class="text-white small" style="max-width:28rem;opacity:.85;">From local restaurants to your door. Pay with MoMo, cash, or card. Delivered in 30–45 mins.</p>
+          <div class="d-flex align-items-center gap-3 mt-2 text-white small fw-medium flex-wrap" style="opacity:.9;">
             <span>🍽️ Choose</span><span>→</span><span>🛒 Add</span><span>→</span><span>🛵 Delivered</span>
           </div>
         </div>
         <a href="{% url 'food:home' %}"
-           class="bg-white hover:bg-gray-50 text-orange-600 font-bold px-6 md:px-8 py-3.5
-                  rounded-2xl transition-colors btn-press text-sm shadow-lg whitespace-nowrap
-                  touch-target flex items-center gap-2 w-full md:w-auto justify-center">
+           class="btn bg-white text-food-orange fw-bold px-4 py-3 rounded-2xl btn-press small shadow text-nowrap
+                  touch-target d-flex align-items-center gap-2 w-100 w-md-auto justify-content-center">
           🍔 Order Food Now
         </a>
       </div>
@@ -488,27 +484,24 @@
 </section>
 
 <!-- ── VENDOR CTA ─────────────────────────── -->
-<section class="max-w-7xl mx-auto px-4 md:px-6 pb-10 md:pb-14">
-  <div class="bg-navy rounded-3xl overflow-hidden relative">
-    <div class="absolute inset-0 opacity-5"
-         style="background-image:radial-gradient(circle at 1px 1px,white 1px,transparent 0);background-size:28px 28px;"></div>
-    <div class="absolute right-0 top-0 w-72 h-72 bg-gold opacity-10 rounded-full translate-x-1/4 -translate-y-1/4 blur-3xl pointer-events-none"></div>
-    <div class="relative px-6 md:px-12 py-10 md:py-12">
-      <div class="flex flex-col md:flex-row items-start md:items-center gap-5 justify-between">
+<section class="container px-3 px-md-4 pb-4 pb-md-5">
+  <div class="bg-navy rounded-3xl overflow-hidden position-relative">
+    <div class="position-absolute top-0 start-0 w-100 h-100 dotted-bg" style="opacity:.05;"></div>
+    <div class="position-absolute top-0 end-0 bg-gold rounded-circle" style="width:18rem;height:18rem;opacity:.1;transform:translate(25%,-25%);filter:blur(64px);pointer-events:none;"></div>
+    <div class="position-relative px-4 px-md-5 py-5">
+      <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-4 justify-content-between">
         <div>
-          <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-2">For sellers</p>
-          <h2 class="font-display font-700 text-xl md:text-3xl text-white mb-2">Start Selling on Lynctel</h2>
-          <p class="text-gray-400 text-sm max-w-md">No upfront cost. We only take 4% per sale. You keep 96%.</p>
+          <p class="text-gold small fw-semibold text-uppercase mb-2" style="letter-spacing:.08em;">For sellers</p>
+          <h2 class="font-display fw-bold fs-4 fs-md-2 text-white mb-2">Start Selling on Lynctel</h2>
+          <p class="text-white-50 small" style="max-width:28rem;">No upfront cost. We only take 4% per sale. You keep 96%.</p>
         </div>
-        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <div class="d-flex flex-column flex-sm-row gap-3 w-100 w-md-auto">
           <a href="{% url 'vendors:apply' %}"
-             class="bg-gold hover:bg-gold-dark text-navy font-semibold px-6 py-3.5
-                    rounded-2xl transition-colors btn-press text-center shadow-lg shadow-gold/20 whitespace-nowrap touch-target">
+             class="btn btn-gold fw-semibold px-4 py-3 rounded-2xl btn-press shadow text-nowrap touch-target">
             Open Your Shop
           </a>
           <a href="{% url 'vendors:directory' %}"
-             class="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3.5
-                    rounded-2xl transition-colors text-center whitespace-nowrap touch-target">
+             class="btn bg-white bg-opacity-10 text-white fw-semibold px-4 py-3 rounded-2xl text-nowrap touch-target">
             Browse Shops
           </a>
         </div>
@@ -532,12 +525,10 @@
     const dots   = document.querySelectorAll('.slide-dot');
     const bar    = document.getElementById('slide-progress');
     slides[currentSlide].classList.remove('active');
-    dots[currentSlide].classList.remove('active','w-6','bg-gold');
-    dots[currentSlide].classList.add('w-1.5','bg-white/30');
+    dots[currentSlide].classList.remove('active');
     currentSlide = (n + totalSlides) % totalSlides;
     slides[currentSlide].classList.add('active');
-    dots[currentSlide].classList.add('active','w-6','bg-gold');
-    dots[currentSlide].classList.remove('w-1.5','bg-white/30');
+    dots[currentSlide].classList.add('active');
     bar.style.animation = 'none'; bar.offsetHeight;
     bar.style.animation = 'progressFill 5s linear forwards';
     resetAutoPlay();
@@ -567,11 +558,11 @@
       .then(d => {
         if (d.success) {
           btn.innerHTML = '✓';
-          btn.classList.add('bg-gold','text-navy'); btn.classList.remove('bg-navy','text-white');
+          btn.classList.add('added');
           updateCartBadge(d.cart_count);
           setTimeout(() => {
             btn.innerHTML = orig; btn.disabled = false;
-            btn.classList.remove('bg-gold','text-navy'); btn.classList.add('bg-navy','text-white');
+            btn.classList.remove('added');
           }, 2000);
         }
       });

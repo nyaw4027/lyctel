@@ -4,30 +4,30 @@
 {% block page_title_lg %}{{ action }} Product{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl">
-  <a href="{% url 'dashboard:product_list' %}" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand mb-6">
+<div style="max-width: 48rem;">
+  <a href="{% url 'dashboard:product_list' %}" class="d-inline-flex align-items-center gap-1 small text-secondary link-brand mb-4">
     ← Back to products
   </a>
 
-  <form method="POST" enctype="multipart/form-data" class="space-y-6">
+  <form method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-4">
     {% csrf_token %}
 
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
-      <h2 class="font-bold text-gray-800 text-lg">Product Details</h2>
+    <div class="card border-0 rounded-2xl shadow-sm">
+      <div class="card-body p-4 d-flex flex-column gap-3">
+      <h2 class="fw-bold text-dark fs-5 mb-0">Product Details</h2>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+        <label class="form-label small fw-medium text-dark">Product Name *</label>
         <input type="text" name="name"
                value="{{ product.name|default:'' }}"
                placeholder="e.g. Wireless Bluetooth Earbuds"
-               class="w-full px-4 py-2.5 border {% if errors.name %}border-red-400{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-        {% if errors.name %}<p class="text-red-500 text-xs mt-1">{{ errors.name }}</p>{% endif %}
+               class="form-control rounded-3 {% if errors.name %}is-invalid{% endif %}"/>
+        {% if errors.name %}<p class="text-danger small mt-1">{{ errors.name }}</p>{% endif %}
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-        <select name="category_id"
-                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
+        <label class="form-label small fw-medium text-dark">Category</label>
+        <select name="category_id" class="form-select rounded-3">
           <option value="">No category</option>
           {% for cat in categories %}
           <option value="{{ cat.pk }}" {% if product.category_id == cat.pk %}selected{% endif %}>
@@ -38,48 +38,47 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <label class="form-label small fw-medium text-dark">Description</label>
         <textarea name="description" rows="4" placeholder="Describe the product..."
-                  class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none">{{ product.description|default:'' }}</textarea>
+                  class="form-control rounded-3" style="resize:none;">{{ product.description|default:'' }}</textarea>
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Cost Price (GHS) *</label>
+      <div class="row row-cols-2 g-3">
+        <div class="col">
+          <label class="form-label small fw-medium text-dark">Cost Price (GHS) *</label>
           <input type="number" name="cost_price" step="0.01" min="0"
                  value="{{ product.cost_price|default:'' }}"
                  placeholder="0.00"
-                 class="w-full px-4 py-2.5 border {% if errors.cost_price %}border-red-400{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-          <p class="text-xs text-gray-400 mt-1">What you paid (import cost)</p>
-          {% if errors.cost_price %}<p class="text-red-500 text-xs mt-1">{{ errors.cost_price }}</p>{% endif %}
+                 class="form-control rounded-3 {% if errors.cost_price %}is-invalid{% endif %}"/>
+          <p class="small text-secondary mt-1 mb-0">What you paid (import cost)</p>
+          {% if errors.cost_price %}<p class="text-danger small mt-1 mb-0">{{ errors.cost_price }}</p>{% endif %}
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (GHS) *</label>
+        <div class="col">
+          <label class="form-label small fw-medium text-dark">Selling Price (GHS) *</label>
           <input type="number" name="selling_price" step="0.01" min="0"
                  value="{{ product.selling_price|default:'' }}"
                  placeholder="0.00"
-                 class="w-full px-4 py-2.5 border {% if errors.selling_price %}border-red-400{% else %}border-gray-300{% endif %} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
-          <p class="text-xs text-gray-400 mt-1">What customer pays</p>
-          {% if errors.selling_price %}<p class="text-red-500 text-xs mt-1">{{ errors.selling_price }}</p>{% endif %}
+                 class="form-control rounded-3 {% if errors.selling_price %}is-invalid{% endif %}"/>
+          <p class="small text-secondary mt-1 mb-0">What customer pays</p>
+          {% if errors.selling_price %}<p class="text-danger small mt-1 mb-0">{{ errors.selling_price }}</p>{% endif %}
         </div>
       </div>
 
       <!-- Margin preview -->
-      <div id="margin-preview" class="hidden bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-green-700">
-        Profit per unit: <span id="margin-val" class="font-bold">—</span>
+      <div id="margin-preview" class="d-none bg-success bg-opacity-10 border border-success-subtle rounded-3 px-3 py-2 small text-success">
+        Profit per unit: <span id="margin-val" class="fw-bold">—</span>
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+      <div class="row row-cols-2 g-3">
+        <div class="col">
+          <label class="form-label small fw-medium text-dark">Stock Quantity</label>
           <input type="number" name="stock_qty" min="0"
                  value="{{ product.stock_qty|default:0 }}"
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"/>
+                 class="form-control rounded-3"/>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-          <select name="status"
-                  class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
+        <div class="col">
+          <label class="form-label small fw-medium text-dark">Status</label>
+          <select name="status" class="form-select rounded-3">
             <option value="active"       {% if not product or product.status == 'active' %}selected{% endif %}>Active</option>
             <option value="hidden"       {% if product.status == 'hidden' %}selected{% endif %}>Hidden</option>
             <option value="out_of_stock" {% if product.status == 'out_of_stock' %}selected{% endif %}>Out of Stock</option>
@@ -87,32 +86,33 @@
         </div>
       </div>
 
-      <label class="flex items-center gap-3 cursor-pointer">
+      <div class="form-check d-flex align-items-center gap-2">
         <input type="checkbox" name="is_featured"
                {% if product.is_featured %}checked{% endif %}
-               class="w-4 h-4 text-brand rounded focus:ring-brand"/>
-        <span class="text-sm font-medium text-gray-700">Feature this product on homepage</span>
-      </label>
+               class="form-check-input mt-0" id="id_is_featured"/>
+        <label class="form-check-label small fw-medium text-dark" for="id_is_featured">Feature this product on homepage</label>
+      </div>
+      </div>
     </div>
 
     <!-- Images -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-      <h2 class="font-bold text-gray-800 text-lg mb-4">Product Images</h2>
+    <div class="card border-0 rounded-2xl shadow-sm">
+      <div class="card-body p-4">
+      <h2 class="fw-bold text-dark fs-5 mb-3">Product Images</h2>
 
       {% if product.images.all %}
-      <div class="flex gap-3 flex-wrap mb-4">
+      <div class="d-flex gap-3 flex-wrap mb-3">
         {% for img in product.images.all %}
-        <div class="relative group">
-          <img src="{{ img.image.url }}" class="w-24 h-24 object-cover rounded-xl border border-gray-200"/>
+        <div class="position-relative img-hover-group">
+          <img src="{{ img.image.url }}" class="rounded-3 border object-fit-cover" style="width:6rem;height:6rem;"/>
           <form method="POST" action="{% url 'dashboard:product_image_delete' img.pk %}"
-                class="absolute inset-0 bg-black bg-opacity-50 rounded-xl opacity-0 group-hover:opacity-100
-                       flex items-center justify-center transition-opacity"
+                class="position-absolute top-0 start-0 w-100 h-100 rounded-3 d-flex align-items-center justify-content-center img-hover-overlay"
                 onsubmit="return confirm('Remove this image?')" enctype="multipart/form-data">
             {% csrf_token %}
-            <button type="submit" class="text-white text-xs font-bold bg-red-500 px-3 py-1 rounded-lg">Remove</button>
+            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
           </form>
           {% if img.is_primary %}
-          <span class="absolute top-1 left-1 bg-brand text-white text-xs px-2 py-0.5 rounded-full">Main</span>
+          <span class="badge rounded-pill bg-brand position-absolute top-0 start-0 m-1">Main</span>
           {% endif %}
         </div>
         {% endfor %}
@@ -120,28 +120,36 @@
       {% endif %}
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">
+        <label class="form-label small fw-medium text-dark">
           {% if product %}Add more images{% else %}Upload images{% endif %}
         </label>
-        <input type="file" name="images" multiple accept="image/*" id="image-input"
-               class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl
-                      file:border-0 file:text-sm file:font-semibold file:bg-brand-light
-                      file:text-brand hover:file:bg-blue-100 cursor-pointer"/>
-        <p class="text-xs text-gray-400 mt-1">Select multiple images. First image becomes the main photo.</p>
+        <input type="file" name="images" multiple accept="image/*" id="image-input" class="form-control rounded-3"/>
+        <p class="small text-secondary mt-1 mb-0">Select multiple images. First image becomes the main photo.</p>
       </div>
 
-      <div id="image-preview" class="flex gap-3 flex-wrap mt-3"></div>
+      <div id="image-preview" class="d-flex gap-3 flex-wrap mt-3"></div>
+      </div>
     </div>
 
-    <div class="flex items-center gap-3">
-      <button type="submit"
-              class="bg-brand hover:bg-brand-dark text-white font-semibold px-8 py-3 rounded-xl transition-colors">
+    <div class="d-flex align-items-center gap-3">
+      <button type="submit" class="btn btn-brand fw-semibold px-4 py-2 rounded-3">
         {% if product %}Save Changes{% else %}Add Product{% endif %}
       </button>
-      <a href="{% url 'dashboard:product_list' %}" class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
+      <a href="{% url 'dashboard:product_list' %}" class="small text-secondary">Cancel</a>
     </div>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .img-hover-overlay {
+    background: rgba(0, 0, 0, .5);
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .img-hover-group:hover .img-hover-overlay { opacity: 1; }
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -158,10 +166,10 @@
       const margin = s - c;
       const pct    = ((margin / s) * 100).toFixed(1);
       marginVal.textContent = `GHS ${margin.toFixed(2)} (${pct}%)`;
-      preview.classList.remove('hidden');
-      marginVal.className = margin > 0 ? 'font-bold text-green-700' : 'font-bold text-red-600';
+      preview.classList.remove('d-none');
+      marginVal.className = margin > 0 ? 'fw-bold text-success' : 'fw-bold text-danger';
     } else {
-      preview.classList.add('hidden');
+      preview.classList.add('d-none');
     }
   }
 
@@ -177,7 +185,10 @@
       reader.onload = e => {
         const img = document.createElement('img');
         img.src = e.target.result;
-        img.className = 'w-24 h-24 object-cover rounded-xl border-2 border-brand';
+        img.className = 'rounded-3 border border-brand object-fit-cover';
+        img.style.width = '6rem';
+        img.style.height = '6rem';
+        img.style.borderWidth = '2px';
         container.appendChild(img);
       };
       reader.readAsDataURL(file);

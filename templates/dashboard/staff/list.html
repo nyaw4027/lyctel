@@ -5,90 +5,87 @@
 
 {% block content %}
 
-<div class="flex items-center justify-between mb-6">
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
   <div>
-    <h2 class="text-2xl font-bold text-gray-900">
+    <h2 class="fs-3 fw-bold text-dark mb-0">
       Staff Management
     </h2>
 
-    <p class="text-gray-500 mt-1">
+    <p class="text-secondary mt-1 mb-0">
       Manage admins and staff accounts
     </p>
   </div>
 
-  <a href="{% url 'dashboard:create_staff' %}"
-     class="bg-brand hover:bg-brand-dark text-white px-5 py-3 rounded-xl font-semibold shadow-lg transition">
-
+  <a href="{% url 'dashboard:create_staff' %}" class="btn btn-brand fw-semibold px-4 py-2 rounded-3 shadow-sm">
     + Add Staff
   </a>
 </div>
 
-<div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+<div class="card border-0 rounded-2xl shadow-sm">
 
-  <table class="w-full">
-    <thead class="bg-gray-50">
-      <tr>
-        <th class="text-left px-6 py-4 text-sm font-semibold text-gray-700">Name</th>
-        <th class="text-left px-6 py-4 text-sm font-semibold text-gray-700">Phone</th>
-        <th class="text-left px-6 py-4 text-sm font-semibold text-gray-700">Role</th>
-        <th class="text-right px-6 py-4 text-sm font-semibold text-gray-700">Actions</th>
-      </tr>
-    </thead>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th class="px-4 py-3 small fw-semibold text-dark">Name</th>
+          <th class="px-4 py-3 small fw-semibold text-dark">Phone</th>
+          <th class="px-4 py-3 small fw-semibold text-dark">Role</th>
+          <th class="px-4 py-3 small fw-semibold text-dark text-end">Actions</th>
+        </tr>
+      </thead>
 
-    <tbody class="divide-y divide-gray-100">
+      <tbody>
 
-      {% for staff in staff_members %}
-      <tr class="hover:bg-gray-50">
+        {% for staff in staff_members %}
+        <tr>
 
-        <td class="px-6 py-4">
-          <div class="font-semibold text-gray-900">
-            {{ staff.full_name }}
-          </div>
-        </td>
+          <td class="px-4 py-3">
+            <div class="fw-semibold text-dark">
+              {{ staff.full_name }}
+            </div>
+          </td>
 
-        <td class="px-6 py-4 text-gray-600">
-          {{ staff.phone }}
-        </td>
+          <td class="px-4 py-3 text-secondary">
+            {{ staff.phone }}
+          </td>
 
-        <td class="px-6 py-4">
-          <span class="px-3 py-1 rounded-full text-xs font-semibold
-                       {% if staff.role == 'admin' %}
-                       bg-red-100 text-red-700
-                       {% else %}
-                       bg-blue-100 text-blue-700
-                       {% endif %}">
-            {{ staff.role|title }}
-          </span>
-        </td>
+          <td class="px-4 py-3">
+            <span class="badge rounded-pill
+                         {% if staff.role == 'admin' %}
+                         text-bg-danger
+                         {% else %}
+                         text-bg-primary
+                         {% endif %}">
+              {{ staff.role|title }}
+            </span>
+          </td>
 
-        <td class="px-6 py-4">
-          <div class="flex justify-end gap-3">
+          <td class="px-4 py-3">
+            <div class="d-flex justify-content-end gap-2">
 
-            <a href="{% url 'dashboard:edit_staff' staff.id %}"
-   class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700
-          hover:bg-blue-100 text-xs font-semibold transition">
-  Edit
-</a>
+              <a href="{% url 'dashboard:edit_staff' staff.id %}" class="btn btn-sm btn-light">
+                Edit
+              </a>
 
-            <a href="{% url 'dashboard:delete_staff' staff.id %}"
-               class="text-red-600 hover:text-red-800 font-medium">
-              Delete
-            </a>
+              <a href="{% url 'dashboard:delete_staff' staff.id %}" class="btn btn-sm btn-outline-danger">
+                Delete
+              </a>
 
-          </div>
-        </td>
+            </div>
+          </td>
 
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="4" class="px-6 py-10 text-center text-gray-500">
-          No staff members found.
-        </td>
-      </tr>
-      {% endfor %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="px-4 py-5 text-center text-secondary">
+            No staff members found.
+          </td>
+        </tr>
+        {% endfor %}
 
-    </tbody>
-  </table>
+      </tbody>
+    </table>
+  </div>
 
 </div>
 

@@ -1,146 +1,146 @@
-
 {% extends "dashboard/base.html" %}
 {% block title %}{{ u.display_name }} — Lynctel Admin{% endblock %}
 {% block page_title %}User Detail{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl">
+<div style="max-width: 64rem;">
 
   <!-- Back -->
-  <a href="{% url 'dashboard:user_list' %}"
-     class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800
-            transition-colors mb-6">
+  <a href="{% url 'dashboard:user_list' %}" class="d-inline-flex align-items-center gap-1 small text-secondary mb-4">
     ← Back to Users
   </a>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="row g-4">
 
     <!-- ── LEFT: Profile card ─────────────────────────── -->
-    <div class="lg:col-span-1 space-y-4">
+    <div class="col-lg-4 d-flex flex-column gap-3">
 
       <!-- Avatar + basics -->
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center">
+      <div class="card border-0 rounded-2xl shadow-sm">
+        <div class="card-body p-4 text-center">
         {% if u.profile_pic %}
-        <img src="{{ u.profile_pic.url }}"
-             class="w-20 h-20 rounded-full object-cover mx-auto border-4 border-gray-100 mb-4"/>
+        <img src="{{ u.profile_pic.url }}" class="rounded-circle object-fit-cover mx-auto border border-4 mb-3 d-block" style="width:5rem;height:5rem;"/>
         {% else %}
-        <div class="w-20 h-20 rounded-full bg-gray-900 flex items-center justify-center
-                    text-white text-2xl font-bold mx-auto mb-4">
+        <div class="rounded-circle bg-dark d-flex align-items-center justify-content-center text-white fs-3 fw-bold mx-auto mb-3" style="width:5rem;height:5rem;">
           {{ u.first_name|first|upper|default:"?" }}{{ u.last_name|first|upper }}
         </div>
         {% endif %}
 
-        <h2 class="font-bold text-gray-800 text-lg">{{ u.get_full_name|default:"No name" }}</h2>
-        <p class="text-gray-400 text-sm mt-0.5">{{ u.phone|default:"No phone" }}</p>
+        <h2 class="fw-bold text-dark fs-5 mb-0">{{ u.get_full_name|default:"No name" }}</h2>
+        <p class="text-secondary small mt-1 mb-0">{{ u.phone|default:"No phone" }}</p>
 
-        <div class="mt-3">
-          <span class="text-xs font-semibold px-3 py-1.5 rounded-full
-            {% if u.role == 'admin' %}bg-gray-900 text-white
-            {% elif u.role == 'staff' %}bg-blue-100 text-blue-700
-            {% elif u.role == 'vendor' %}bg-purple-100 text-purple-700
-            {% elif u.role == 'rider' %}bg-amber-100 text-amber-700
-            {% else %}bg-green-100 text-green-700{% endif %}">
+        <div class="mt-2">
+          <span class="badge rounded-pill
+            {% if u.role == 'admin' %}text-bg-dark
+            {% elif u.role == 'staff' %}text-bg-primary
+            {% elif u.role == 'vendor' %}text-bg-info
+            {% elif u.role == 'rider' %}text-bg-warning
+            {% else %}text-bg-success{% endif %}">
             {{ u.get_role_display }}
           </span>
         </div>
 
-        <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-          <div class="bg-gray-50 rounded-xl p-2">
-            <p class="font-bold text-gray-800 text-base">{{ total_orders }}</p>
-            <p class="text-gray-400">Orders</p>
+        <div class="row row-cols-3 g-2 mt-3 text-center small">
+          <div class="col">
+            <div class="bg-light rounded-3 p-2">
+              <p class="fw-bold text-dark fs-6 mb-0">{{ total_orders }}</p>
+              <p class="text-secondary mb-0">Orders</p>
+            </div>
           </div>
-          <div class="bg-gray-50 rounded-xl p-2">
-            <p class="font-bold text-gray-800 text-base">{{ total_spent|floatformat:0 }}</p>
-            <p class="text-gray-400">Spent</p>
+          <div class="col">
+            <div class="bg-light rounded-3 p-2">
+              <p class="fw-bold text-dark fs-6 mb-0">{{ total_spent|floatformat:0 }}</p>
+              <p class="text-secondary mb-0">Spent</p>
+            </div>
           </div>
-          <div class="bg-gray-50 rounded-xl p-2">
-            <p class="font-bold text-gray-800 text-base">
-              {% if u.is_active %}✓{% else %}✗{% endif %}
-            </p>
-            <p class="text-gray-400">Active</p>
+          <div class="col">
+            <div class="bg-light rounded-3 p-2">
+              <p class="fw-bold text-dark fs-6 mb-0">
+                {% if u.is_active %}✓{% else %}✗{% endif %}
+              </p>
+              <p class="text-secondary mb-0">Active</p>
+            </div>
           </div>
+        </div>
         </div>
       </div>
 
       <!-- Info -->
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3 text-sm">
-        <div class="flex justify-between">
-          <span class="text-gray-400">Email</span>
-          <span class="text-gray-700 text-right">{{ u.email|default:"—" }}</span>
+      <div class="card border-0 rounded-2xl shadow-sm">
+        <div class="card-body p-4 d-flex flex-column gap-2 small">
+        <div class="d-flex justify-content-between">
+          <span class="text-secondary">Email</span>
+          <span class="text-dark text-end">{{ u.email|default:"—" }}</span>
         </div>
-        <div class="flex justify-between">
-          <span class="text-gray-400">City</span>
-          <span class="text-gray-700">{{ u.city|default:"—" }}</span>
+        <div class="d-flex justify-content-between">
+          <span class="text-secondary">City</span>
+          <span class="text-dark">{{ u.city|default:"—" }}</span>
         </div>
-        <div class="flex justify-between">
-          <span class="text-gray-400">Country</span>
-          <span class="text-gray-700">{{ u.country|default:"—" }}</span>
+        <div class="d-flex justify-content-between">
+          <span class="text-secondary">Country</span>
+          <span class="text-dark">{{ u.country|default:"—" }}</span>
         </div>
-        <div class="flex justify-between">
-          <span class="text-gray-400">Joined</span>
-          <span class="text-gray-700">{{ u.created_at|date:"M d, Y" }}</span>
+        <div class="d-flex justify-content-between">
+          <span class="text-secondary">Joined</span>
+          <span class="text-dark">{{ u.created_at|date:"M d, Y" }}</span>
         </div>
-        <div class="flex justify-between">
-          <span class="text-gray-400">Last login</span>
-          <span class="text-gray-700">{{ u.last_login|date:"M d, Y"|default:"Never" }}</span>
+        <div class="d-flex justify-content-between">
+          <span class="text-secondary">Last login</span>
+          <span class="text-dark">{{ u.last_login|date:"M d, Y"|default:"Never" }}</span>
         </div>
-        <div class="flex justify-between">
-          <span class="text-gray-400">Verified</span>
-          <span class="{% if u.is_verified %}text-green-600{% else %}text-red-400{% endif %} font-semibold">
+        <div class="d-flex justify-content-between">
+          <span class="text-secondary">Verified</span>
+          <span class="{% if u.is_verified %}text-success{% else %}text-danger{% endif %} fw-semibold">
             {% if u.is_verified %}Yes{% else %}No{% endif %}
           </span>
+        </div>
         </div>
       </div>
 
     </div>
 
     <!-- ── RIGHT: Actions + orders ────────────────────── -->
-    <div class="lg:col-span-2 space-y-5">
+    <div class="col-lg-8 d-flex flex-column gap-4">
 
       <!-- Quick actions -->
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 class="font-bold text-gray-800 mb-4">Manage User</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="card border-0 rounded-2xl shadow-sm">
+        <div class="card-body p-4">
+        <h3 class="fw-bold text-dark fs-6 mb-3">Manage User</h3>
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
 
           <!-- Change role -->
-          <form method="POST" class="sm:col-span-2">
+          <form method="POST" class="col-sm-12">
             {% csrf_token %}
             <input type="hidden" name="action" value="update_role">
-            <label class="block text-xs font-semibold text-gray-500 mb-1.5">Change Role</label>
-            <div class="flex gap-2">
-              <select name="role"
-                      class="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50
-                             focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400">
+            <label class="form-label small fw-semibold text-secondary">Change Role</label>
+            <div class="d-flex gap-2">
+              <select name="role" class="form-select form-select-sm rounded-3">
                 {% for value, label in role_choices %}
                 <option value="{{ value }}" {% if u.role == value %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
               </select>
-              <button type="submit"
-                      class="px-4 py-2 bg-gray-900 text-white text-sm font-semibold
-                             rounded-xl hover:bg-gray-700 transition-colors">
+              <button type="submit" class="btn btn-dark btn-sm fw-semibold rounded-3">
                 Update
               </button>
             </div>
           </form>
 
           <!-- Toggle active -->
-          <form method="POST">
+          <form method="POST" class="col">
             {% csrf_token %}
             <input type="hidden" name="action" value="toggle_active">
-            <button type="submit"
-                    class="w-full py-2.5 text-sm font-semibold rounded-xl transition-colors
-                           {% if u.is_active %}bg-red-50 text-red-600 hover:bg-red-100{% else %}bg-green-50 text-green-600 hover:bg-green-100{% endif %}">
+            <button type="submit" class="btn btn-sm w-100 fw-semibold rounded-3
+                           {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
               {% if u.is_active %}🚫 Deactivate User{% else %}✅ Activate User{% endif %}
             </button>
           </form>
 
           <!-- Toggle verified -->
-          <form method="POST">
+          <form method="POST" class="col">
             {% csrf_token %}
             <input type="hidden" name="action" value="toggle_verified">
-            <button type="submit"
-                    class="w-full py-2.5 text-sm font-semibold rounded-xl transition-colors
-                           {% if u.is_verified %}bg-amber-50 text-amber-600 hover:bg-amber-100{% else %}bg-blue-50 text-blue-600 hover:bg-blue-100{% endif %}">
+            <button type="submit" class="btn btn-sm w-100 fw-semibold rounded-3
+                           {% if u.is_verified %}btn-outline-warning{% else %}btn-outline-primary{% endif %}">
               {% if u.is_verified %}⚠️ Unverify User{% else %}🔒 Mark as Verified{% endif %}
             </button>
           </form>
@@ -148,67 +148,62 @@
         </div>
 
         <!-- Reset password -->
-        <div class="mt-4 border-t border-gray-100 pt-4">
-          <p class="text-xs font-semibold text-gray-500 mb-2">Reset Password</p>
-          <form method="POST" class="flex gap-2">
+        <div class="mt-3 border-top pt-3">
+          <p class="small fw-semibold text-secondary mb-2">Reset Password</p>
+          <form method="POST" class="d-flex gap-2">
             {% csrf_token %}
             <input type="hidden" name="action" value="reset_password">
             <input type="password" name="new_password" placeholder="New password (min 6 chars)"
-                   class="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50
-                          focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"/>
-            <button type="submit"
-                    class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl
-                           hover:bg-blue-700 transition-colors whitespace-nowrap">
+                   class="form-control form-control-sm rounded-3"/>
+            <button type="submit" class="btn btn-primary btn-sm fw-semibold rounded-3 text-nowrap">
               Reset
             </button>
           </form>
         </div>
 
         <!-- Delete -->
-        <div class="mt-4 border-t border-gray-100 pt-4">
+        <div class="mt-3 border-top pt-3">
           <form method="POST"
                 onsubmit="return confirm('Are you sure you want to permanently delete {{ u.display_name }}? This cannot be undone.')">
             {% csrf_token %}
             <input type="hidden" name="action" value="delete_user">
-            <button type="submit"
-                    class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm
-                           font-semibold rounded-xl transition-colors">
+            <button type="submit" class="btn btn-danger w-100 fw-semibold rounded-3">
               🗑 Delete User Permanently
             </button>
           </form>
         </div>
+        </div>
       </div>
 
       <!-- Recent orders -->
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-          <h3 class="font-bold text-gray-800">Recent Orders</h3>
-          <span class="text-xs text-gray-400">{{ total_orders }} total</span>
+      <div class="card border-0 rounded-2xl shadow-sm">
+        <div class="card-header bg-white d-flex align-items-center justify-content-between px-4 py-3">
+          <h3 class="fw-bold text-dark fs-6 mb-0">Recent Orders</h3>
+          <span class="small text-secondary">{{ total_orders }} total</span>
         </div>
-        <div class="divide-y divide-gray-50">
+        <ul class="list-group list-group-flush">
           {% for order in orders %}
-          <div class="flex items-center justify-between px-5 py-3">
+          <li class="list-group-item px-4 py-3 d-flex align-items-center justify-content-between">
             <div>
-              <p class="text-sm font-semibold text-blue-600">{{ order.order_ref }}</p>
-              <p class="text-xs text-gray-400">{{ order.created_at|date:"M d, Y" }}</p>
+              <p class="small fw-semibold text-brand mb-0">{{ order.order_ref }}</p>
+              <p class="small text-secondary mb-0">{{ order.created_at|date:"M d, Y" }}</p>
             </div>
-            <div class="text-right">
-              <p class="text-sm font-semibold text-gray-800">GHS {{ order.total_amount }}</p>
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-full
-                {% if order.status == 'delivered' %}bg-green-100 text-green-700
-                {% elif order.status == 'pending' %}bg-yellow-100 text-yellow-700
-                {% elif order.status == 'cancelled' %}bg-red-100 text-red-600
-                {% else %}bg-blue-100 text-blue-700{% endif %}">
+            <div class="text-end">
+              <p class="small fw-semibold text-dark mb-0">GHS {{ order.total_amount }}</p>
+              <span class="badge rounded-pill
+                {% if order.status == 'delivered' %}text-bg-success
+                {% elif order.status == 'pending' %}text-bg-warning
+                {% elif order.status == 'cancelled' %}text-bg-danger
+                {% else %}text-bg-primary{% endif %}">
                 {{ order.get_status_display }}
               </span>
             </div>
-            <a href="{% url 'dashboard:order_detail' order.pk %}"
-               class="ml-4 text-xs text-blue-600 hover:underline">View</a>
-          </div>
+            <a href="{% url 'dashboard:order_detail' order.pk %}" class="ms-3 small link-brand">View</a>
+          </li>
           {% empty %}
-          <div class="px-5 py-8 text-center text-gray-400 text-sm">No orders yet.</div>
+          <li class="list-group-item px-4 py-4 text-center text-secondary small">No orders yet.</li>
           {% endfor %}
-        </div>
+        </ul>
       </div>
 
     </div>
