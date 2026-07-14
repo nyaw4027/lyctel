@@ -1,108 +1,257 @@
 {% extends "base.html" %}
-{% load static i18n %}
-{% block title %}Lynctel Food — Restaurants Near You{% endblock %}
+{% load i18n static %}
+{% block title %}Food Delivery — Order from Local Restaurants | Lynctel{% endblock %}
+
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
-<style>
-/* tiny page helpers */
-.cuisine-pill-row .btn { white-space:nowrap; }
-</style>
+
 {% endblock %}
 
 {% block content %}
-<div class="container-xl px-3 py-4">
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-      <h1 class="h4 mb-0 font-display">Food Delivery</h1>
-      <p class="small text-muted mb-0">Order from restaurants near you</p>
+<!-- ── HERO ──────────────────────────────────────────────── -->
+<section class="food-hero">
+  <div class="food-hero__emoji">🍔</div>
+  <div class="container position-relative">
+    <div class="text-center mb-4">
+      <span class="badge rounded-pill mb-3"
+            style="background:rgba(245,166,35,.15);color:#F5A623;
+                   font-size:11px;font-weight:700;letter-spacing:.06em;
+                   padding:6px 16px;border:1px solid rgba(245,166,35,.2)">
+        🍽️ LYNCTEL FOOD
+      </span>
+      <h1 class="font-display fw-bold text-white mb-3"
+          style="font-size:clamp(1.8rem,5vw,2.8rem);line-height:1.15">
+        Order Food from Local
+        <span style="color:#F5A623">Restaurants</span>
+      </h1>
+      <p class="text-white-50 mb-4" style="font-size:15px;max-width:480px;margin:0 auto 24px">
+        Fresh meals from your favourite local restaurants, delivered fast across Ghana.
+      </p>
     </div>
-    <div>
-      <form method="get" class="d-flex" role="search">
-        <input name="q" value="{{ request.GET.q|default:'' }}" class="form-control form-control-sm me-2" placeholder="Search restaurants or cuisines" aria-label="Search">
-        <button class="btn btn-sm btn-outline-secondary">Search</button>
-      </form>
-    </div>
-  </div>
 
-  <section class="mb-4">
-    <div class="card bg-navy text-white overflow-hidden">
-      <div class="card-body">
-        <div class="row g-3 align-items-center">
-          <div class="col-lg-7">
-            <h2 class="h3 font-display mb-2">Hungry? We've got you.</h2>
-            <p class="small text-white-50 mb-3">Order from the best restaurants near you. Track live. Pay MoMo or cash.</p>
-            <div class="d-flex gap-2">
-              <div class="flex-grow-1">
-                <div class="input-group hero-address">
-                  <span class="input-group-text bg-white bg-opacity-10 text-white border-0">📍</span>
-                  <input id="hero-address" type="text" class="form-control bg-transparent text-white border-0" placeholder="Enter your delivery address" aria-label="Delivery address">
-                </div>
-              </div>
-              <button type="button" class="btn btn-gold">Find</button>
-            </div>
-          </div>
+    <!-- Search -->
+    <form method="GET" action="{% url 'food:home' %}"
+          class="food-search mx-auto mb-2">
+      <input type="text" name="q" value="{{ query }}"
+             placeholder="Search restaurants or cuisine..."/>
+      <button type="submit">🔍 Search</button>
+    </form>
 
-          <div class="col-lg-5 d-none d-lg-block text-center">
-            <div class="rounded-3" style="background:linear-gradient(135deg,var(--gold),var(--gold-light));height:10rem;display:flex;align-items:center;justify-content:center;">
-              <span style="font-size:3rem;">🍔</span>
-            </div>
-          </div>
+    <!-- Stats -->
+    <div class="row g-0 mt-4" style="max-width:480px;margin:0 auto">
+      <div class="col-4">
+        <div class="food-stat">
+          <div class="food-stat__num">{{ vendor_list|length }}+</div>
+          <div class="food-stat__label">Restaurants</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="food-stat" style="border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08)">
+          <div class="food-stat__num">30</div>
+          <div class="food-stat__label">Min delivery</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="food-stat">
+          <div class="food-stat__num">0</div>
+          <div class="food-stat__label">Delivery fee</div>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <div class="mb-3">
-    <div class="d-flex gap-2 overflow-auto py-2 cuisine-pill-row">
-      <a href="{% url 'food:home' %}" class="btn btn-sm btn-outline-secondary {% if not selected_cuisine %}active{% endif %}">🍽️ All</a>
-      {% for value,label in cuisines %}
-      <a href="{% url 'food:home' %}?cuisine={{ value }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="btn btn-sm btn-outline-secondary {% if selected_cuisine == value %}active{% endif %}">{{ label }}</a>
+<!-- ── CUISINE FILTER ─────────────────────────────────────── -->
+<div style="background:white;border-bottom:1px solid #f3f4f6;
+            position:sticky;top:64px;z-index:100;">
+  <div class="container py-3">
+    <div class="cuisine-pills">
+      <a href="{% url 'food:home' %}{% if query %}?q={{ query }}{% endif %}"
+         class="cuisine-pill {% if not selected_cuisine %}active{% endif %}">
+        🍽️ All
+      </a>
+      {% for value, label in cuisines %}
+      <a href="{% url 'food:home' %}?cuisine={{ value }}{% if query %}&q={{ query }}{% endif %}"
+         class="cuisine-pill {% if selected_cuisine == value %}active{% endif %}">
+        {{ label }}
+      </a>
       {% endfor %}
     </div>
   </div>
+</div>
 
-  <section class="mb-4">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-      <div>
-        <h3 class="h6 mb-0 text-navy">Restaurants</h3>
-        <p class="small text-muted mb-0">{{ vendor_list|length }} restaurant{{ vendor_list|length|pluralize }}</p>
-      </div>
-      <div>
-        {% if page_obj and page_obj.has_other_pages %}
-        <nav aria-label="pagination">
-          <ul class="pagination mb-0">
-            {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹</a></li>{% endif %}
-            <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
-            {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">›</a></li>{% endif %}
-          </ul>
-        </nav>
-        {% endif %}
-      </div>
-    </div>
+<!-- ── MAIN CONTENT ───────────────────────────────────────── -->
+<div class="container py-5">
 
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
-      {% for vendor in vendor_list %}
-      <div class="col">
-        {% include 'food/_vendor_card.html' with vendor=vendor %}
-      </div>
-      {% endfor %}
-    </div>
-  </section>
-
-  {% if not vendor_list %}
-  <div class="text-center py-5 text-muted">
-    <div class="display-1 mb-3">🍽️</div>
-    <p class="small">No restaurants found.</p>
+  <!-- Active filters -->
+  {% if query or selected_cuisine %}
+  <div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
+    <span class="text-muted" style="font-size:13px">Showing results for:</span>
+    {% if query %}
+    <span class="badge rounded-pill"
+          style="background:#f3f4f6;color:#374151;font-size:12px;padding:5px 12px">
+      "{{ query }}"
+      <a href="{% url 'food:home' %}{% if selected_cuisine %}?cuisine={{ selected_cuisine }}{% endif %}"
+         class="text-muted ms-1 text-decoration-none">✕</a>
+    </span>
+    {% endif %}
+    {% if selected_cuisine %}
+    <span class="badge rounded-pill"
+          style="background:#FEF3D7;color:#c8841a;font-size:12px;padding:5px 12px">
+      {{ selected_cuisine }}
+      <a href="{% url 'food:home' %}{% if query %}?q={{ query }}{% endif %}"
+         class="text-muted ms-1 text-decoration-none">✕</a>
+    </span>
+    {% endif %}
+    <span class="text-muted ms-auto" style="font-size:13px">
+      {{ vendor_list|length }} restaurant{{ vendor_list|length|pluralize }}
+    </span>
   </div>
   {% endif %}
+
+  <!-- Restaurants grid -->
+  {% if vendor_list %}
+  <div class="row g-4">
+    {% for item in vendor_list %}
+    {% with v=item.vendor %}
+    <div class="col-6 col-md-4 col-lg-3">
+      {% raw %} {% if v.slug %} <a href="{% url 'food:menu' v.slug %}" class="vendor-card"> {% else %}
+        <!-- Banner -->
+        {% if v.banner %}
+        <img src="{{ v.banner.url }}" class="vendor-card__banner" alt="{{ v.name }}"/>
+        {% else %}
+        <div class="vendor-card__banner-placeholder">🍽️</div>
+        {% endif %}
+
+        <!-- Logo -->
+        <div class="vendor-card__logo-wrap">
+          <div class="vendor-card__logo">
+            {% if v.logo %}
+            <img src="{{ v.logo.url }}" alt="{{ v.name }}"/>
+            {% else %}
+            {{ v.name|first|upper }}
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="vendor-card__body">
+          <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
+            <div class="vendor-card__name flex-1">{{ v.name }}</div>
+            {% if v.status == 'open' %}
+            <span class="vendor-card__status vendor-card__status--open flex-shrink-0">
+              ● Open
+            </span>
+            {% elif v.status == 'busy' %}
+            <span class="vendor-card__status vendor-card__status--busy flex-shrink-0">
+              ● Busy
+            </span>
+            {% else %}
+            <span class="vendor-card__status vendor-card__status--closed flex-shrink-0">
+              ● Closed
+            </span>
+            {% endif %}
+          </div>
+          <div class="vendor-card__cuisine">{{ v.get_cuisine_display }}</div>
+
+          <div class="vendor-card__meta">
+            {% if item.eta %}
+            <span>⏱ {{ item.eta }} min</span>
+            {% else %}
+            <span>⏱ {{ v.avg_prep_time }} min</span>
+            {% endif %}
+            {% if item.distance %}
+            <span>📍 {{ item.distance }} km</span>
+            {% endif %}
+            <span>Min GHS {{ v.min_order }}</span>
+          </div>
+        </div>
+
+      </a>
+    </div>
+    {% endwith %}
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <!-- Empty state -->
+  <div class="food-empty">
+    <div class="food-empty__icon">🍽️</div>
+    <div class="food-empty__title">No restaurants found</div>
+    <p class="food-empty__text mb-4">
+      {% if query or selected_cuisine %}
+        Try a different search or browse all restaurants.
+      {% else %}
+        No restaurants are currently open. Check back soon!
+      {% endif %}
+    </p>
+    {% if query or selected_cuisine %}
+    <a href="{% url 'food:home' %}" class="btn btn-primary"
+       style="background:#0F1B2D;border:none;border-radius:12px;padding:12px 28px;font-weight:600">
+      Browse All Restaurants
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
 </div>
+
+<!-- ── VENDOR CTA ─────────────────────────────────────────── -->
+<section style="background:#F5A623;padding:60px 0">
+  <div class="container text-center">
+    <h2 class="font-display fw-bold mb-3"
+        style="color:#0F1B2D;font-size:clamp(1.4rem,4vw,2rem)">
+      Own a Restaurant?
+    </h2>
+    <p style="color:rgba(15,27,45,.7);max-width:400px;margin:0 auto 28px;font-size:15px">
+      List your restaurant on Lynctel and reach thousands of hungry customers. Free to join.
+    </p>
+    <a href="{% url 'food:register' %}"
+       class="btn fw-bold px-4 py-3"
+       style="background:#0F1B2D;color:white;border-radius:12px;font-size:15px;
+              text-decoration:none;border:none;
+              box-shadow:0 4px 16px rgba(15,27,45,.2)">
+      🚀 List Your Restaurant
+    </a>
+  </div>
+</section>
+
+<!-- ── MOBILE CART FLOAT ──────────────────────────────────── -->
+{% if food_cart_count %}
+<a href="{% url 'food:checkout' %}" id="food-cart-float" class="show">
+  <div class="d-flex align-items-center gap-3">
+    <span style="background:#F5A623;color:#0F1B2D;width:28px;height:28px;
+                 border-radius:50%;display:flex;align-items:center;
+                 justify-content:center;font-size:13px;font-weight:700">
+      {{ food_cart_count }}
+    </span>
+    <span style="font-weight:600;font-size:14px">View Cart</span>
+  </div>
+  <span style="font-size:13px;color:rgba(255,255,255,.7)">→</span>
+</a>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/food.js' %}"></script>
 <script>
-  // initialize small page behaviors (food.js exposes Food.init)
-  document.addEventListener('DOMContentLoaded', function(){ Food.init(); });
+// Get user location for distance sorting
+if (navigator.geolocation && !sessionStorage.getItem('food_location')) {
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    sessionStorage.setItem('food_location', JSON.stringify({
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude
+    }));
+    // Re-fetch with location
+    var loc = pos.coords;
+    var url = new URL(window.location.href);
+    if (!url.searchParams.get('lat')) {
+      url.searchParams.set('lat', loc.latitude.toFixed(6));
+      url.searchParams.set('lng', loc.longitude.toFixed(6));
+      window.location.replace(url.toString());
+    }
+  }, null, { timeout: 5000 });
+}
 </script>
 {% endblock %}

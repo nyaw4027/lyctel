@@ -205,3 +205,197 @@ a.card-hover:focus-visible, .menu-item-card:focus-visible, .food-item-card:focus
 img { max-width: 100%; height: auto; display: block; }
 
 /* End of file */
+
+
+<style>
+  /* ── Hero ─────────────────────────────────────────── */
+  .food-hero {
+    background: linear-gradient(135deg, #0F1B2D 0%, #1a2d47 60%, #243d5c 100%);
+    padding: 60px 0 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .food-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.04) 1px, transparent 0);
+    background-size: 28px 28px;
+  }
+  .food-hero__emoji {
+    position: absolute; right: -20px; bottom: -20px;
+    font-size: 180px; opacity: .05; pointer-events: none;
+    line-height: 1;
+  }
+
+  /* ── Search box ───────────────────────────────────── */
+  .food-search {
+    background: white;
+    border-radius: 50px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.2);
+    display: flex;
+    overflow: hidden;
+    max-width: 600px;
+  }
+  .food-search input {
+    flex: 1; border: none; padding: 16px 20px;
+    font-size: 15px; color: #0F1B2D;
+    background: transparent; outline: none;
+  }
+  .food-search input::placeholder { color: #9ca3af; }
+  .food-search button {
+    background: #F5A623; color: #0F1B2D;
+    border: none; padding: 12px 28px;
+    font-weight: 700; font-size: 14px;
+    cursor: pointer; white-space: nowrap;
+    transition: background .2s;
+  }
+  .food-search button:hover { background: #c8841a; }
+
+  /* ── Cuisine pills ────────────────────────────────── */
+  .cuisine-pills {
+    display: flex; gap: 10px;
+    overflow-x: auto; padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cuisine-pills::-webkit-scrollbar { display: none; }
+  .cuisine-pill {
+    flex-shrink: 0;
+    padding: 8px 18px;
+    border-radius: 50px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; text-decoration: none;
+    border: 1.5px solid #e5e7eb;
+    background: white; color: #374151;
+    transition: all .2s; white-space: nowrap;
+  }
+  .cuisine-pill:hover, .cuisine-pill.active {
+    background: #0F1B2D; color: white;
+    border-color: #0F1B2D;
+    text-decoration: none;
+  }
+
+  /* ── Vendor card ──────────────────────────────────── */
+  .vendor-card {
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid #f3f4f6;
+    box-shadow: 0 1px 4px rgba(15,27,45,.06);
+    transition: transform .2s, box-shadow .2s;
+    text-decoration: none; color: inherit;
+    display: block; background: white;
+    height: 100%;
+  }
+  .vendor-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(15,27,45,.14);
+    text-decoration: none; color: inherit;
+  }
+  .vendor-card__banner {
+    height: 130px; width: 100%;
+    object-fit: cover; background: #e9edf2;
+    display: block;
+  }
+  .vendor-card__banner-placeholder {
+    height: 130px; width: 100%;
+    background: linear-gradient(135deg, #0F1B2D, #243d5c);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 40px;
+  }
+  .vendor-card__logo-wrap {
+    padding: 0 16px;
+    margin-top: -28px;
+    position: relative; z-index: 1;
+  }
+  .vendor-card__logo {
+    width: 56px; height: 56px;
+    border-radius: 14px; object-fit: cover;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    background: #F5A623;
+    display: flex; align-items: center;
+    justify-content: center; font-size: 22px;
+  }
+  .vendor-card__logo img {
+    width: 100%; height: 100%;
+    object-fit: cover; border-radius: 11px;
+  }
+  .vendor-card__body { padding: 10px 16px 16px; }
+  .vendor-card__name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 15px;
+    color: #0F1B2D; margin-bottom: 4px;
+    white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .vendor-card__cuisine {
+    font-size: 12px; color: #9ca3af; margin-bottom: 8px;
+  }
+  .vendor-card__meta {
+    display: flex; align-items: center;
+    gap: 10px; flex-wrap: wrap;
+    font-size: 12px; color: #6b7280;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 10px; margin-top: 8px;
+  }
+  .vendor-card__meta span {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .vendor-card__status {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 50px;
+  }
+  .vendor-card__status--open {
+    background: #f0fdf4; color: #16a34a;
+  }
+  .vendor-card__status--busy {
+    background: #fffbeb; color: #d97706;
+  }
+  .vendor-card__status--closed {
+    background: #fef2f2; color: #dc2626;
+  }
+
+  /* ── Empty state ──────────────────────────────────── */
+  .food-empty {
+    text-align: center; padding: 60px 20px;
+  }
+  .food-empty__icon { font-size: 60px; margin-bottom: 16px; }
+  .food-empty__title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 20px;
+    color: #0F1B2D; margin-bottom: 8px;
+  }
+  .food-empty__text { font-size: 14px; color: #9ca3af; }
+
+  /* ── Cart float ───────────────────────────────────── */
+  #food-cart-float {
+    position: fixed; bottom: 80px; left: 16px; right: 16px;
+    z-index: 999;
+    background: #0F1B2D; color: white;
+    border-radius: 16px; padding: 14px 20px;
+    display: none; align-items: center; justify-content: space-between;
+    box-shadow: 0 8px 32px rgba(15,27,45,.3);
+    animation: slideUp .35s cubic-bezier(.34,1.56,.64,1);
+    text-decoration: none;
+  }
+  #food-cart-float.show { display: flex; }
+  @media (min-width: 1024px) { #food-cart-float { display: none !important; } }
+  @keyframes slideUp {
+    from { opacity:0; transform:translateY(20px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  /* ── Stats bar ────────────────────────────────────── */
+  .food-stat {
+    text-align: center; padding: 20px;
+  }
+  .food-stat__num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 28px;
+    color: #F5A623; line-height: 1;
+    margin-bottom: 4px;
+  }
+  .food-stat__label {
+    font-size: 12px; color: rgba(255,255,255,.6);
+  }
+</style>
