@@ -1,7 +1,9 @@
 {# ── stream_list.html ───────────────────────────────────── #}
 {% extends "base.html" %}
 {% block title %}Live Shopping — Lynctel{% endblock %}
-
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pages/livestream.css' %}">
+{% endblock %}
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 md:px-6 py-10">
 
