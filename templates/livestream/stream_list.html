@@ -1,25 +1,27 @@
-{# ── stream_list.html ───────────────────────────────────── #}
 {% extends "base.html" %}
 {% load i18n static %}
 {% block title %}Live Shopping — Lynctel{% endblock %}
+
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/livestream.css' %}">
 {% endblock %}
+
 {% block content %}
 <div class="container-xl px-3 py-5">
 
   <!-- Header -->
-  <div class="d-flex align-items-end justify-content-between">
+  <div class="d-flex align-items-end justify-content-between mb-4 flex-wrap gap-3">
     <div>
-      <p class="text-danger small fw-semibold text-uppercase d-flex align-items-center gap-2" style="letter-spacing:.08em">
-        <span class="rounded-pill bg-danger" style="width:.5rem;height:.5rem"></span>
+      <p class="text-danger small fw-semibold text-uppercase d-flex align-items-center gap-2 mb-1"
+         style="letter-spacing:.08em">
+        <span class="rounded-pill bg-danger d-inline-block" style="width:.45rem;height:.45rem"></span>
         Live Now
       </p>
-      <h1 class="font-display fw-bold fs-2 text-navy">Live Shopping</h1>
+      <h1 class="font-display fw-bold fs-2 text-navy mb-0">Live Shopping</h1>
     </div>
-    {% if user.is_authenticated and user.role == 'vendor'%}
+    {% if user.is_authenticated and user.role == 'vendor' %}
     <a href="{% url 'livestream:go_live' %}"
-       class="d-flex align-items-center gap-2 bg-danger text-white fw-bold small">
+       class="btn btn-danger fw-bold d-inline-flex align-items-center gap-2 rounded-3">
       🔴 Go Live
     </a>
     {% endif %}
@@ -27,60 +29,65 @@
 
   <!-- Live streams -->
   {% if live_streams %}
-  <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
+  <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3 mb-5">
     {% for stream in live_streams %}
-    <a href="{% url 'livestream:watch' stream.id %}"
-       class="stream-card d-block position-relative rounded-2xl overflow-hidden bg-dark h-100">
-      {% if stream.thumbnail %}
-      <img src="{{ stream.thumbnail.url }}"
-           class="w-100 object-fit-cover stream-thumb"/>
-      {% else %}
-      <div class="w-100 stream-thumb d-flex align-items-center justify-content-center">
-        <span class="text-4xl">📺</span>
-      </div>
-      {% endif %}
+    <div class="col">
+      <a href="{% url 'livestream:watch' stream.id %}"
+         class="stream-card d-block text-decoration-none">
 
-      <!-- Overlay -->
-      <div class="position-absolute top-0 start-0 w-100 h-100 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+        {% if stream.thumbnail %}
+        <img src="{{ stream.thumbnail.url }}"
+             class="stream-thumb" alt="{{ stream.title }}"/>
+        {% else %}
+        <div class="stream-thumb d-flex align-items-center justify-content-center"
+             style="background:#1e293b;font-size:2.5rem">📺</div>
+        {% endif %}
 
-      <!-- Live badge -->
-      <div class="position-absolute top-2 left-2 d-flex align-items-center gap-1.5 bg-red-600
-                  text-white text-[10px] font-bold px-2 py-1 rounded-full">
-        <span class="rounded-pill bg-white" style="width:.35rem;height:.35rem"></span>
-        LIVE
-      </div>
+        <!-- Gradient overlay -->
+        <div class="stream-overlay"></div>
 
-      <!-- Viewer count -->
-      <div class="position-absolute top-0 end-0 mt-2 me-2 small fw-semibold px-2 py-1 rounded-full backdrop-blur-sm">
-        👁 {{ stream.current_viewers }}
-      </div>
+        <!-- Live badge -->
+        <div class="live-badge">
+          <span class="live-dot"></span>
+          LIVE
+        </div>
 
-      <!-- Info -->
-      <div class="position-absolute bottom-0 start-0 end-0">
-        <div class="d-flex align-items-center gap-2 mb-1">
-          {% if stream.vendor.logo %}
-          <img src="{{ stream.vendor.logo.url }}"
-               class="rounded-circle" style="width:1.5rem;height:1.5rem" object-cover flex-shrink-0 border border-white/20"/>
-          {% endif %}
-          <p class="small fw-semibold text-truncate">
-            {{ stream.vendor.shop_name }}
+        <!-- Viewer count -->
+        <div class="position-absolute top-0 end-0 mt-2 me-2 small fw-semibold px-2 py-1 rounded-pill"
+             style="background:rgba(0,0,0,.5);color:rgba(255,255,255,.85);font-size:.7rem;backdrop-filter:blur(8px)">
+          👁 {{ stream.current_viewers }}
+        </div>
+
+        <!-- Stream info -->
+        <div class="position-absolute bottom-0 start-0 end-0 p-2 p-md-3">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            {% if stream.vendor.logo %}
+            <img src="{{ stream.vendor.logo.url }}"
+                 class="rounded-circle flex-shrink-0 object-fit-cover"
+                 style="width:1.5rem;height:1.5rem;border:1px solid rgba(255,255,255,.3)"/>
+            {% endif %}
+            <p class="small fw-semibold text-white text-truncate mb-0">
+              {{ stream.vendor.shop_name }}
+            </p>
+          </div>
+          <p class="text-white-50 small mb-0"
+             style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3">
+            {{ stream.title }}
           </p>
         </div>
-        <p class="text-light small text-truncate-2" style="line-height:1.2">
-          {{ stream.title }}
-        </p>
-      </div>
-    </a>
+
+      </a>
+    </div>
     {% endfor %}
   </div>
   {% else %}
-  <div class="text-center py-5 mb-12">
-    <p class="text-5xl mb-4">📺</p>
+  <div class="text-center py-5 mb-5">
+    <div style="font-size:3.5rem" class="mb-3">📺</div>
     <p class="font-display fw-bold text-navy fs-4 mb-2">No streams live right now</p>
-    <p class="text-secondary small">Check back soon — vendors go live daily.</p>
-    {% if user.is_authenticated and user.role == 'vendor'%}
+    <p class="text-secondary small mb-4">Check back soon — vendors go live daily.</p>
+    {% if user.is_authenticated and user.role == 'vendor' %}
     <a href="{% url 'livestream:go_live' %}"
-       class="d-inline-flex align-items-center gap-2 bg-danger text-white fw-bold">
+       class="btn btn-danger fw-bold d-inline-flex align-items-center gap-2 rounded-3">
       🔴 Be the first to go live
     </a>
     {% endif %}
@@ -90,46 +97,52 @@
   <!-- Recent streams -->
   {% if recent_streams %}
   <div>
-    <h2 class="font-display fw-bold text-navy fs-4 mb-5">Recent Streams</h2>
+    <h2 class="font-display fw-bold text-navy fs-4 mb-4">Recent Streams</h2>
     <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-3">
       {% for stream in recent_streams %}
-      <a href="{% if stream.recording_url %}{% url 'livestream:watch' stream.id %}{% else %}{% url 'livestream:stats' stream.id %}{% endif %}"
-         class="stream-card d-block position-relative rounded-2xl overflow-hidden bg-light h-100">
-        {% if stream.thumbnail %}
-        <img src="{{ stream.thumbnail.url }}"
-             class="w-100 object-fit-cover stream-thumb"/>
-        {% else %}
-        <div class="stream-thumb bg-light d-flex align-items-center justify-content-center">
-          <span class="text-3xl">📺</span>
-        </div>
-        {% endif %}
-        <div class="position-absolute top-0 start-0 w-100 h-100 bg-gradient-to-t from-black/70 to-transparent"></div>
+      <div class="col">
+        <a href="{% if stream.recording_url %}{% url 'livestream:watch' stream.id %}{% else %}{% url 'livestream:stats' stream.id %}{% endif %}"
+           class="stream-card d-block text-decoration-none">
 
-        {% if stream.recording_url %}
-        <!-- Replay is playable — say so, and show a play icon on hover -->
-        <div class="position-absolute top-0 start-0 mt-2 ms-2 d-flex align-items-center gap-1.5 bg-blue-600
-                    text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-          ▶ REPLAY
-        </div>
-        <div class="stream-play position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
-          <div class="rounded-circle bg-white text-navy text-sm" style="width:2.5rem;height:2.5rem">▶</div>
-        </div>
-        {% else %}
-        <div class="position-absolute top-0 start-0 mt-2 ms-2 d-flex align-items-center gap-1.5 bg-gray-700
-                    text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-          ENDED
-        </div>
-        {% endif %}
+          {% if stream.thumbnail %}
+          <img src="{{ stream.thumbnail.url }}"
+               class="stream-thumb object-fit-cover" alt="{{ stream.title }}"/>
+          {% else %}
+          <div class="stream-thumb d-flex align-items-center justify-content-center"
+               style="background:#f3f4f6;font-size:2rem">📺</div>
+          {% endif %}
 
-        <div class="position-absolute bottom-0 start-0 end-0 p-2">
-          <p class="small fw-semibold text-truncate">
-            {{ stream.vendor.shop_name }}
-          </p>
-          <p class="text-secondary small">
-            👁 {{ stream.peak_viewers|default:stream.total_viewers }} peak · {{ stream.ended_at|timesince }} ago
-          </p>
-        </div>
-      </a>
+          <div class="stream-overlay"></div>
+
+          {% if stream.recording_url %}
+          <!-- Replay available -->
+          <div class="position-absolute top-0 start-0 mt-2 ms-2 d-flex align-items-center gap-1 rounded-pill px-2 py-1"
+               style="background:#2563eb;color:white;font-size:.65rem;font-weight:700">
+            ▶ REPLAY
+          </div>
+          <div class="stream-play position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+            <div class="rounded-circle bg-white text-navy d-flex align-items-center justify-content-center fw-bold"
+                 style="width:2.5rem;height:2.5rem">▶</div>
+          </div>
+          {% else %}
+          <div class="position-absolute top-0 start-0 mt-2 ms-2 d-flex align-items-center gap-1 rounded-pill px-2 py-1"
+               style="background:rgba(0,0,0,.6);color:rgba(255,255,255,.7);font-size:.65rem;font-weight:700">
+            ENDED
+          </div>
+          {% endif %}
+
+          <div class="position-absolute bottom-0 start-0 end-0 p-2">
+            <p class="small fw-semibold text-white text-truncate mb-0">
+              {{ stream.vendor.shop_name }}
+            </p>
+            <p class="text-white-50 mb-0" style="font-size:.7rem">
+              👁 {{ stream.peak_viewers|default:stream.total_viewers }} peak
+              · {{ stream.ended_at|timesince }} ago
+            </p>
+          </div>
+
+        </a>
+      </div>
       {% endfor %}
     </div>
   </div>

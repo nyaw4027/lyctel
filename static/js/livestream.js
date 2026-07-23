@@ -463,7 +463,7 @@ function startTimer() {
 }
 
 // Restore pinned state
-{% for pid in pinned_ids %}
+{% for pid in pinned_ids %},
 currentPinnedId = {{ pid }};
 const _pb = document.querySelector('[data-id="{{ pid }}"]');
 if(_pb){
