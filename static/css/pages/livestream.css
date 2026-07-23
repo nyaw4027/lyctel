@@ -1,362 +1,450 @@
-/* ============================================================
-   LYNCTEL — LIVESTREAM
-   ============================================================ */
+/* ==========================================================
+   LYNCTEL LIVESTREAM
+   Bootstrap 5 Version
+   ========================================================== */
 
-.stream-card {
-  position: relative; border-radius: var(--radius-xl); overflow: hidden;
-  cursor: pointer; transition: transform .2s; aspect-ratio: 9/16;
-  background: var(--gray-900);
+/* ----------------------------------------------------------
+   Stream Cards
+---------------------------------------------------------- */
+
+.stream-card{
+    position:relative;
+    overflow:hidden;
+    border-radius:1rem;
+    background:#212529;
+    cursor:pointer;
+    transition:transform .25s ease;
+    aspect-ratio:9/16;
 }
-@media (min-width: 640px) { .stream-card { aspect-ratio: 4/5; } }
-.stream-card:hover { transform: scale(1.02); }
-.stream-card__thumb { width: 100%; height: 100%; object-fit: cover; }
-.stream-card__overlay {
-  position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,.8) 0%, transparent 60%);
+
+@media (min-width:768px){
+    .stream-card{
+        aspect-ratio:4/5;
+    }
 }
-.stream-card__live {
-  position: absolute; top: 10px; left: 10px;
-  background: #ef4444; color: white; font-size: 10px; font-weight: 700;
-  padding: 3px 8px; border-radius: 99px; animation: pulse 1.5s infinite;
+
+.stream-card:hover{
+    transform:translateY(-3px);
 }
-.stream-card__viewers {
-  position: absolute; top: 10px; right: 10px;
-  background: rgba(0,0,0,.5); color: white; font-size: 10px; font-weight: 600;
-  padding: 3px 8px; border-radius: 99px; backdrop-filter: blur(4px);
+
+.stream-thumb{
+    width:100%;
+    height:100%;
+    object-fit:cover;
 }
-.stream-card__info { position: absolute; bottom: 0; left: 0; right: 0; padding: 14px; }
-.stream-card__vendor { font-size: 12px; color: rgba(255,255,255,.7); margin-bottom: 3px; }
-.stream-card__title  { font-size: 14px; font-weight: 700; color: white; line-height: 1.3; }
 
-/* ── Reset for fullscreen TikTok layout ─────────────── */
-  body, html { margin:0; padding:0; background:#000; overflow:hidden; height:100%; }
-  #mobile-nav, header#navbar { display:none !important; }
+.stream-play{
+    opacity:0;
+    transition:.25s;
+}
 
-  #root { position: fixed; inset: 0; display: flex; flex-direction: column; background: #000; }
+.stream-card:hover .stream-play{
+    opacity:1;
+}
 
-  #video-bg { position: absolute; inset: 0; z-index: 1; background: #000; display: flex; align-items: center; justify-content: center; }
-  #remote-video, #vod-video { width: 100%; height: 100%; object-fit: cover; }
+/* ----------------------------------------------------------
+   Overlay
+---------------------------------------------------------- */
 
-  #ui-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-  #ui-layer > * { pointer-events: auto; }
+.stream-overlay{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(
+        to top,
+        rgba(0,0,0,.85),
+        rgba(0,0,0,.2),
+        transparent
+    );
+}
 
-  #top-bar {
-    position: absolute; top: 0; left: 0; right: 0;
-    padding: env(safe-area-inset-top, 12px) 16px 12px;
-    background: linear-gradient(to bottom, rgba(0,0,0,.7) 0%, transparent 100%);
-    display: flex; align-items: center; gap: 10px;
-    pointer-events: auto;
-  }
+/* ----------------------------------------------------------
+   Live Badge
+---------------------------------------------------------- */
 
-  #action-rail {
-    position: absolute; right: 12px; bottom: 160px;
-    display: flex; flex-direction: column; align-items: center; gap: 20px;
-    pointer-events: auto;
-  }
-  .rail-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: white; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .rail-icon { width: 48px; height: 48px; background: rgba(255,255,255,.15); backdrop-filter: blur(8px); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; transition: transform .15s cubic-bezier(.34,1.56,.64,1); }
-  .rail-btn:active .rail-icon { transform: scale(.85); }
-  .rail-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.85); }
+.live-badge{
+    position:absolute;
+    top:.75rem;
+    left:.75rem;
+    display:flex;
+    align-items:center;
+    gap:.35rem;
+    padding:.25rem .6rem;
+    background:#dc3545;
+    color:#fff;
+    border-radius:50rem;
+    font-size:.65rem;
+    font-weight:700;
+}
 
-  #chat-overlay {
-    position: absolute; left: 0; right: 72px; bottom: 80px;
-    max-height: 45vh; display: flex; flex-direction: column; justify-content: flex-end;
-    pointer-events: none; padding: 0 12px;
-    mask-image: linear-gradient(to bottom, transparent 0%, black 30%);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 30%);
-  }
-  #chat-messages { overflow-y: auto; max-height: 40vh; display: flex; flex-direction: column; gap: 6px; scrollbar-width: none; }
-  #chat-messages::-webkit-scrollbar { display: none; }
-  .chat-bubble { display: inline-flex; align-items: flex-start; gap: 6px; max-width: 85%; animation: bubbleIn .2s ease; pointer-events: auto; }
-  @keyframes bubbleIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-  .chat-text-wrap { background: rgba(0,0,0,.5); backdrop-filter: blur(6px); border-radius: 18px 18px 18px 4px; padding: 7px 12px; }
+.live-dot{
+    width:.35rem;
+    height:.35rem;
+    border-radius:50%;
+    background:#fff;
+    animation:pulse 1.2s infinite;
+}
 
-  #chat-bar {
-    position: absolute; left: 0; right: 0; bottom: 0;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to top, rgba(0,0,0,.85) 0%, transparent 100%);
-    display: flex; align-items: center; gap: 8px; pointer-events: auto;
-  }
-  #chat-input-field {
-    flex: 1; background: rgba(255,255,255,.15); backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,.2); border-radius: 24px; padding: 10px 16px;
-    color: white; font-size: 14px; outline: none; -webkit-appearance: none;
-  }
-  #chat-input-field::placeholder { color: rgba(255,255,255,.55); }
-  #chat-input-field:focus { border-color: rgba(245,166,35,.6); background: rgba(255,255,255,.2); }
+/* ----------------------------------------------------------
+   Viewer Count
+---------------------------------------------------------- */
 
-  #connecting-overlay {
-    position: absolute; inset: 0; z-index: 10;
-    background: linear-gradient(135deg, #0d0d0d 0%, #1a1020 100%);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    pointer-events: auto;
-  }
+.viewer-count{
+    position:absolute;
+    top:.75rem;
+    right:.75rem;
+    padding:.25rem .6rem;
+    border-radius:50rem;
+    background:rgba(0,0,0,.55);
+    backdrop-filter:blur(4px);
+    color:#fff;
+    font-size:.7rem;
+    font-weight:600;
+}
 
-  #gift-sheet {
-    position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
-    background: #1a1a1a; border-radius: 24px 24px 0 0;
-    padding: 12px 16px calc(20px + env(safe-area-inset-bottom, 0px));
-    transform: translateY(100%); transition: transform .35s cubic-bezier(.4,0,.2,1);
-    pointer-events: auto;
-  }
-  #gift-sheet.open { transform: translateY(0); }
-  #gift-sheet-backdrop { position: absolute; inset: 0; z-index: 19; background: transparent; display: none; pointer-events: auto; }
-  #gift-sheet-backdrop.open { display: block; }
+/* ----------------------------------------------------------
+   Stream Info
+---------------------------------------------------------- */
 
-  .gift-float { position: fixed; z-index: 999; pointer-events: none; font-size: 2.5rem; animation: giftFloat 2.6s ease forwards; }
-  @keyframes giftFloat { 0% { opacity:1; transform:translateY(0) scale(1) rotate(0deg); } 40% { opacity:1; transform:translateY(-120px) scale(1.4) rotate(12deg); } 100% { opacity:0; transform:translateY(-280px) scale(.6) rotate(-8deg); } }
-  .like-float { position: fixed; z-index: 999; pointer-events: none; font-size: 2rem; animation: likeFloat 1.4s ease forwards; }
-  @keyframes likeFloat { 0% { opacity:1; transform:translateY(0) scale(.8); } 20% { transform:translateY(-20px) scale(1.3); } 100% { opacity:0; transform:translateY(-120px) scale(.9); } }
+.stream-info{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    padding:.9rem;
+    color:#fff;
+}
 
-  #gift-combo {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0);
-    z-index: 999; pointer-events: none;
-    background: linear-gradient(135deg,#7c3aed,#ec4899); color: white; font-size: 18px; font-weight: 800;
-    padding: 10px 22px; border-radius: 99px; box-shadow: 0 8px 32px rgba(124,58,237,.5);
-    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
-  }
-  #gift-combo.show { transform: translate(-50%,-50%) scale(1); }
+.stream-vendor{
+    font-size:.75rem;
+    font-weight:600;
+}
 
-  @keyframes heartPop { 0%,100% { transform: scale(1); } 40% { transform: scale(1.5); } }
-  .heart-pop { animation: heartPop .35s cubic-bezier(.34,1.56,.64,1); }
+.stream-title{
+    font-size:.8rem;
+    line-height:1.3;
+    color:#dee2e6;
+}
 
-  #products-strip {
-    position: absolute; bottom: 80px; left: 0; right: 72px; padding: 0 12px;
-    display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; pointer-events: auto;
-  }
-  #products-strip::-webkit-scrollbar { display: none; }
-  .live-product {
-    flex-shrink: 0; width: 108px; background: rgba(0,0,0,.65); backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,.15); border-radius: 14px; overflow: hidden;
-    cursor: pointer; transition: transform .2s ease; animation: productPop .3s cubic-bezier(.34,1.56,.64,1);
-  }
-  .live-product:active { transform: scale(.95); }
-  @keyframes productPop { from { opacity:0; transform:scale(.85) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
-  .live-product.featured { border-color: #F5A623; box-shadow: 0 0 16px rgba(245,166,35,.35); }
+/* ==========================================================
+   WATCH PAGE
+========================================================== */
 
-  /* ── Viewer poll widget (new) ────────────────────────── */
-  #viewer-poll-widget {
-    position: absolute; top: 70px; left: 14px; right: 84px; z-index: 6;
-    background: rgba(0,0,0,.65); backdrop-filter: blur(8px);
-    border-radius: 16px; padding: 12px 14px; display: none; pointer-events: auto;
-  }
-  #viewer-poll-widget.show { display: block; }
-  .vp-option {
-    display: block; width: 100%; text-align: left; background: rgba(255,255,255,.08);
-    border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 9px 12px;
-    color: white; font-size: 12.5px; font-weight: 600; margin-top: 8px; cursor: pointer;
-    position: relative; overflow: hidden;
-  }
-  .vp-option.voted { border-color: #F5A623; }
-  .vp-fill { position: absolute; inset: 0; background: rgba(245,166,35,.25); width: 0%; transition: width .4s ease; z-index: -1; }
+html,
+body{
+    margin:0;
+    padding:0;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+}
 
-  /* ── Replay badge (new) ──────────────────────────────── */
-  #replay-badge {
-    display: none; align-items: center; gap: 5px;
-    background: rgba(59,130,246,.25); border: 1px solid rgba(59,130,246,.5);
-    color: #93c5fd; font-size: 10.5px; font-weight: 700; padding: 4px 9px; border-radius: 99px; flex-shrink: 0;
-  }
+#mobile-nav,
+header#navbar{
+    display:none !important;
+}
 
-  @media (min-width: 1024px) {
-    body, html { overflow: hidden; }
-    #root { flex-direction: row; }
-    #video-section { flex: 1; position: relative; }
-    #desktop-side { width: 360px; height: 100vh; background: #111; border-left: 1px solid #222; display: flex; flex-direction: column; flex-shrink: 0; }
-    #action-rail { right: 16px; bottom: 80px; }
-    #chat-overlay { right: 0; bottom: 60px; }
-    #products-strip { bottom: 60px; right: 0; }
-    #chat-bar { right: 0; }
-  }
+#root{
+    position:fixed;
+    inset:0;
+    display:flex;
+    background:#000;
+}
 
+/* ----------------------------------------------------------
+   Video
+---------------------------------------------------------- */
 
-   body, html { margin:0;padding:0;background:#000;overflow:hidden;height:100%; }
-  #mobile-nav, header#navbar { display:none !important; }
+#video-bg,
+#video-section{
+    position:relative;
+    flex:1;
+    background:#000;
+}
 
-  /* ── Root ────────────────────────────────────────────── */
-  #root { position:fixed;inset:0;display:flex;background:#000; }
+#remote-video,
+#vod-video,
+#local-video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
 
-  /* ── Video ───────────────────────────────────────────── */
-  #local-video {
-    position:absolute;inset:0;width:100%;height:100%;
-    object-fit:cover;background:#111;
+#local-video{
     transform:scaleX(-1);
-    z-index:1;
-  }
+}
 
-  /* ── Camera placeholder ──────────────────────────────── */
-  #cam-placeholder {
-    position:absolute;inset:0;z-index:5;
-    background:linear-gradient(135deg,#0d0d0d,#1a1020);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-  }
+/* ----------------------------------------------------------
+   UI
+---------------------------------------------------------- */
 
-  /* ── UI layer ────────────────────────────────────────── */
-  #ui {
-    position:absolute;inset:0;z-index:10;
+#ui-layer{
+    position:absolute;
+    inset:0;
+    z-index:5;
     pointer-events:none;
-    display:flex;flex-direction:column;
-    justify-content:space-between;
-  }
-  #ui > * { pointer-events:auto; }
+}
 
-  /* ── Top bar ─────────────────────────────────────────── */
-  #top-bar {
-    padding:env(safe-area-inset-top,12px) 14px 12px;
-    background:linear-gradient(to bottom,rgba(0,0,0,.75) 0%,transparent 100%);
-    display:flex;align-items:center;gap:10px;
+#ui-layer>*{
     pointer-events:auto;
-  }
+}
 
-  /* ── Bottom area ─────────────────────────────────────── */
-  #bottom-area {
-    pointer-events:auto;
-  }
+/* ----------------------------------------------------------
+   Top Bar
+---------------------------------------------------------- */
 
-  /* ── Chat overlay ────────────────────────────────────── */
-  #chat-overlay {
-    padding:0 60px 0 12px;
+#top-bar{
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    display:flex;
+    align-items:center;
+    gap:.75rem;
+    padding:1rem;
+    background:linear-gradient(
+        to bottom,
+        rgba(0,0,0,.75),
+        transparent
+    );
+}
+
+/* ----------------------------------------------------------
+   Action Rail
+---------------------------------------------------------- */
+
+#action-rail{
+    position:absolute;
+    right:.75rem;
+    bottom:9rem;
+    display:flex;
+    flex-direction:column;
+    gap:1rem;
+    align-items:center;
+}
+
+.rail-btn{
+    border:none;
+    background:none;
+    color:#fff;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:.25rem;
+    cursor:pointer;
+}
+
+.rail-icon{
+    width:3rem;
+    height:3rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    background:rgba(255,255,255,.15);
+    backdrop-filter:blur(8px);
+    transition:.2s;
+}
+
+.rail-btn:active .rail-icon{
+    transform:scale(.9);
+}
+
+.rail-label{
+    font-size:.7rem;
+}
+
+/* ----------------------------------------------------------
+   Chat
+---------------------------------------------------------- */
+
+#chat-overlay{
+    position:absolute;
+    left:0;
+    right:4.5rem;
+    bottom:5rem;
     max-height:40vh;
-    display:flex;flex-direction:column;justify-content:flex-end;
-    mask-image:linear-gradient(to bottom,transparent 0%,black 35%);
-    -webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 35%);
-    pointer-events:none;
-  }
-  #chat-messages {
-    overflow-y:auto;max-height:38vh;
-    display:flex;flex-direction:column;gap:5px;
+    overflow:hidden;
+    padding:0 .75rem;
+}
+
+#chat-messages{
+    display:flex;
+    flex-direction:column;
+    gap:.35rem;
+    overflow-y:auto;
+    max-height:40vh;
     scrollbar-width:none;
-  }
-  #chat-messages::-webkit-scrollbar{display:none;}
-  .chat-bubble{
-    display:inline-flex;align-items:flex-start;gap:6px;max-width:85%;
-    animation:bubbleIn .2s ease;pointer-events:auto;
-  }
-  @keyframes bubbleIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
-  .chat-bg{
-    background:rgba(0,0,0,.55);backdrop-filter:blur(6px);
-    border-radius:18px 18px 18px 4px;padding:6px 12px;
-  }
+}
 
-  /* ── Right action rail ───────────────────────────────── */
-  #rail {
-    position:absolute;right:10px;bottom:160px;
-    display:flex;flex-direction:column;align-items:center;gap:18px;
-    pointer-events:auto;z-index:15;
-  }
-  .rbtn{
-    display:flex;flex-direction:column;align-items:center;gap:3px;
-    background:none;border:none;cursor:pointer;
-    -webkit-tap-highlight-color:transparent;
-    color:white;
-  }
-  .ricon{
-    width:46px;height:46px;
-    background:rgba(255,255,255,.15);backdrop-filter:blur(8px);
-    border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-size:20px;transition:transform .15s cubic-bezier(.34,1.56,.64,1);
-  }
-  .rbtn:active .ricon{transform:scale(.82);}
-  .rlabel{font-size:10px;font-weight:600;color:rgba(255,255,255,.8);}
+#chat-messages::-webkit-scrollbar{
+    display:none;
+}
 
-  /* ── Chat input bar ──────────────────────────────────── */
-  #chat-bar {
-    display:flex;align-items:center;gap:8px;
-    padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));
-    background:linear-gradient(to top,rgba(0,0,0,.8) 0%,transparent 100%);
-    pointer-events:auto;
-  }
-  #chat-input{
-    flex:1;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);
-    border:1px solid rgba(255,255,255,.2);border-radius:24px;
-    padding:10px 16px;color:white;font-size:13px;outline:none;
-  }
-  #chat-input::placeholder{color:rgba(255,255,255,.5);}
-  #chat-input:focus{border-color:rgba(245,166,35,.6);}
+.chat-bubble{
+    display:inline-flex;
+    max-width:85%;
+}
 
-  /* ── Pin product modal ───────────────────────────────── */
-  #pin-backdrop{
-    position:fixed;inset:0;z-index:40;
-    background:rgba(0,0,0,.7);display:none;
-  }
-  #pin-sheet{
-    position:fixed;bottom:0;left:0;right:0;z-index:41;
-    background:#1a1a1a;border-radius:24px 24px 0 0;
-    padding:12px 16px calc(20px + env(safe-area-inset-bottom,0px));
-    transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
-    max-height:75vh;display:flex;flex-direction:column;
-  }
-  #pin-sheet.open{transform:translateY(0);}
+.chat-text-wrap{
+    background:rgba(0,0,0,.5);
+    backdrop-filter:blur(6px);
+    color:#fff;
+    padding:.5rem .75rem;
+    border-radius:1rem;
+}
 
-  /* ── Poll modal (new) ─────────────────────────────────── */
-  #poll-backdrop{ position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.7);display:none; }
-  #poll-sheet{
-    position:fixed;bottom:0;left:0;right:0;z-index:41;
-    background:#1a1a1a;border-radius:24px 24px 0 0;
-    padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));
-    transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
-  }
-  #poll-sheet.open{transform:translateY(0);}
-  #poll-sheet input{
-    width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
-    border-radius:12px;padding:10px 14px;color:white;font-size:13px;margin-bottom:8px;outline:none;
-  }
-  #poll-sheet input::placeholder{color:rgba(255,255,255,.4);}
+/* ----------------------------------------------------------
+   Chat Bar
+---------------------------------------------------------- */
 
-  /* Live poll widget shown to the broadcaster once a poll is running */
-  #live-poll-widget{
-    position:absolute;top:70px;left:14px;right:14px;z-index:12;
-    background:rgba(0,0,0,.65);backdrop-filter:blur(8px);
-    border-radius:16px;padding:12px 14px;display:none;pointer-events:auto;
-  }
-  #live-poll-widget.show{display:block;}
-  .poll-bar-track{
-    background:rgba(255,255,255,.12);border-radius:8px;height:26px;position:relative;overflow:hidden;margin-top:6px;
-  }
-  .poll-bar-fill{
-    background:#F5A623;height:100%;border-radius:8px;transition:width .3s ease;
-    display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:700;color:#0F1B2D;white-space:nowrap;
-  }
+#chat-bar{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    display:flex;
+    gap:.5rem;
+    align-items:center;
+    padding:.75rem;
+    background:linear-gradient(
+        to top,
+        rgba(0,0,0,.85),
+        transparent
+    );
+}
 
-  /* ── Reaction floats ─────────────────────────────────── */
-  .emoji-float{
-    position:fixed;z-index:999;pointer-events:none;
-    font-size:2.5rem;
-    animation:emojiRise 2.4s ease forwards;
-  }
-  @keyframes emojiRise{
-    0%  {opacity:1;transform:translateY(0) scale(1);}
-    50% {opacity:1;transform:translateY(-140px) scale(1.3);}
-    100%{opacity:0;transform:translateY(-280px) scale(.6);}
-  }
+#chat-input-field,
+#chat-input{
+    flex:1;
+    border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.15);
+    color:#fff;
+    border-radius:50rem;
+    padding:.65rem 1rem;
+    outline:none;
+}
 
-  /* ── Stats pill ──────────────────────────────────────── */
-  .stat-pill{
-    background:rgba(0,0,0,.55);backdrop-filter:blur(8px);
-    color:rgba(255,255,255,.85);font-size:11px;font-weight:600;
-    padding:4px 10px;border-radius:99px;
-  }
+#chat-input-field::placeholder,
+#chat-input::placeholder{
+    color:rgba(255,255,255,.6);
+}
 
-  #rec-badge{
-    display:none;align-items:center;gap:5px;
-    background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.5);
-    color:#fca5a5;font-size:10.5px;font-weight:700;
-    padding:4px 9px;border-radius:99px;flex-shrink:0;
-  }
-  #rec-badge .rec-dot{ width:6px;height:6px;border-radius:50%;background:#ef4444;animation:pulse 1s infinite; }
+/* ----------------------------------------------------------
+   Gift Sheet
+---------------------------------------------------------- */
 
-  /* ── Desktop side panel ──────────────────────────────── */
-  #desktop-side{
-    width:340px;height:100vh;
-    background:#111;border-left:1px solid #222;
-    display:none;flex-direction:column;flex-shrink:0;
-  }
-  @media(min-width:1024px){
-    #desktop-side{display:flex;}
-    #rail{right:14px;bottom:100px;}
-    #chat-overlay{padding-right:12px;}
-  }
+#gift-sheet{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    background:#1a1a1a;
+    border-radius:1.5rem 1.5rem 0 0;
+    padding:1rem;
+    transform:translateY(100%);
+    transition:.35s;
+}
 
-  @keyframes spin{to{transform:rotate(360deg);}}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-  @keyframes heartPop{0%,100%{transform:scale(1)}50%{transform:scale(1.5)}}
-  .heart-pop{animation:heartPop .3s ease;}
+#gift-sheet.open{
+    transform:translateY(0);
+}
+
+#gift-sheet-backdrop{
+    position:absolute;
+    inset:0;
+    display:none;
+    background:rgba(0,0,0,.5);
+}
+
+#gift-sheet-backdrop.open{
+    display:block;
+}
+
+/* ----------------------------------------------------------
+   Products
+---------------------------------------------------------- */
+
+#products-strip{
+    position:absolute;
+    left:0;
+    right:4.5rem;
+    bottom:5rem;
+    display:flex;
+    gap:.75rem;
+    overflow-x:auto;
+    padding:0 .75rem;
+    scrollbar-width:none;
+}
+
+#products-strip::-webkit-scrollbar{
+    display:none;
+}
+
+.live-product{
+    flex:0 0 110px;
+    border-radius:.9rem;
+    overflow:hidden;
+    background:rgba(0,0,0,.65);
+    border:1px solid rgba(255,255,255,.1);
+}
+
+.live-product.featured{
+    border-color:#f5a623;
+}
+
+/* ----------------------------------------------------------
+   Desktop
+---------------------------------------------------------- */
+
+#desktop-side{
+    display:none;
+}
+
+@media (min-width:992px){
+
+    #desktop-side{
+        display:flex;
+        width:360px;
+        background:#111;
+        border-left:1px solid #222;
+        flex-direction:column;
+    }
+
+    #action-rail{
+        right:1rem;
+        bottom:5rem;
+    }
+
+}
+
+/* ----------------------------------------------------------
+   Animations
+---------------------------------------------------------- */
+
+@keyframes pulse{
+
+    0%,100%{
+        opacity:1;
+    }
+
+    50%{
+        opacity:.4;
+    }
+
+}
+
+@keyframes heartPop{
+
+    0%,100%{
+        transform:scale(1);
+    }
+
+    50%{
+        transform:scale(1.4);
+    }
+
+}
+
+.heart-pop{
+    animation:heartPop .3s ease;
+}
