@@ -3,6 +3,13 @@
 {% block title %}Your Cart — Lynctel Food{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
+<style>
+  /* Bootstrap's CDN build doesn't ship .min-width-0 (it's an opt-in
+     utility), so text-truncate on a flex child silently did nothing —
+     the row would overflow instead of ellipsizing. Defined here so the
+     item name actually truncates. */
+  .min-width-0 { min-width: 0; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -15,28 +22,29 @@
       <div class="list-group mb-3">
         {% for item in cart_items %}
         <div class="list-group-item d-flex align-items-center justify-content-between">
-          <div class="d-flex align-items-center gap-3">
+          <div class="d-flex align-items-center gap-3 min-width-0">
             {% if item.product.image %}
-            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="rounded-2" style="width:64px;height:64px;object-fit:cover;">
+            <img src="{{ item.product.image.url }}" alt="" class="rounded-2 object-fit-cover flex-shrink-0" style="width:64px;height:64px;" loading="lazy">
             {% else %}
-            <div class="rounded-2 bg-light d-flex align-items-center justify-content-center" style="width:64px;height:64px;">🍽️</div>
+            <div class="rounded-2 bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width:64px;height:64px;" aria-hidden="true">🍽️</div>
             {% endif %}
             <div class="min-width-0">
               <div class="fw-semibold text-truncate">{{ item.product.name }}</div>
               <div class="small text-muted">GHS {{ item.unit_price|floatformat:2 }} · {{ item.quantity }} ×</div>
             </div>
           </div>
-          <div class="text-end">
+          <div class="text-end flex-shrink-0">
             <div class="fw-semibold">GHS {{ item.total_price|floatformat:2 }}</div>
             <div class="d-flex gap-2 mt-2">
               <form method="post" action="{% url 'food:cart_update' item.pk %}" class="d-flex gap-1 align-items-center">
                 {% csrf_token %}
-                <input type="number" name="quantity" min="1" value="{{ item.quantity }}" class="form-control form-control-sm" style="width:68px">
+                <label for="qty-{{ item.pk }}" class="visually-hidden">Quantity for {{ item.product.name }}</label>
+                <input id="qty-{{ item.pk }}" type="number" name="quantity" min="1" value="{{ item.quantity }}" class="form-control form-control-sm" style="width:68px">
                 <button class="btn btn-sm btn-outline-secondary" type="submit">Update</button>
               </form>
               <form method="post" action="{% url 'food:cart_remove' item.pk %}">
                 {% csrf_token %}
-                <button class="btn btn-sm btn-outline-danger">Remove</button>
+                <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Remove {{ item.product.name }} from cart">Remove</button>
               </form>
             </div>
           </div>
@@ -53,13 +61,17 @@
 
     <aside class="col-lg-4">
       <div class="card p-3">
-        <h6 class="mb-2">Order summary</h6>
+        <h2 class="h6 mb-2">Order summary</h2>
         <dl class="row mb-3">
-          <dt class="col-6 small text-muted">Subtotal</dt><dd class="col-6 text-end">GHS {{ cart_subtotal|floatformat:2 }}</dd>
-          <dt class="col-6 small text-muted">Delivery</dt><dd class="col-6 text-end">GHS {{ delivery_fee|floatformat:2 }}</dd>
-          <dt class="col-6 small text-muted">Total</dt><dd class="col-6 text-end fw-bold">GHS {{ cart_total|floatformat:2 }}</dd>
+          <dt class="col-6 small text-muted fw-normal">Subtotal</dt><dd class="col-6 text-end">GHS {{ cart_subtotal|floatformat:2 }}</dd>
+          <dt class="col-6 small text-muted fw-normal">Delivery</dt><dd class="col-6 text-end">GHS {{ delivery_fee|floatformat:2 }}</dd>
+          <dt class="col-6 small text-muted fw-normal">Total</dt><dd class="col-6 text-end fw-bold">GHS {{ cart_total|floatformat:2 }}</dd>
         </dl>
+        {% if cart_items %}
         <a href="{% url 'food:checkout' %}" class="btn btn-lg btn-navy w-100">Proceed to Checkout</a>
+        {% else %}
+        <a href="{% url 'food:home' %}" class="btn btn-lg btn-outline-navy w-100">Browse Restaurants</a>
+        {% endif %}
       </div>
     </aside>
   </div>

@@ -14,17 +14,19 @@
       <form method="post" action="{% url 'food:place_order' %}">
         {% csrf_token %}
         <div class="card mb-3 p-3">
-          <h6 class="mb-2">Delivery address</h6>
+          <h2 class="h6 mb-2">Delivery address</h2>
           <div class="mb-3">
-            <input name="address" class="form-control" placeholder="Enter delivery address" value="{{ address|default:'' }}" required>
+            <label for="checkout-address" class="form-label small text-muted">Delivery address</label>
+            <input id="checkout-address" name="address" class="form-control" placeholder="Enter delivery address" value="{{ address|default:'' }}" required>
           </div>
           <div class="mb-3">
-            <input name="notes" class="form-control" placeholder="Order notes (optional)" value="{{ notes|default:'' }}">
+            <label for="checkout-notes" class="form-label small text-muted">Order notes (optional)</label>
+            <input id="checkout-notes" name="notes" class="form-control" placeholder="Order notes (optional)" value="{{ notes|default:'' }}">
           </div>
         </div>
 
-        <div class="card mb-3 p-3">
-          <h6 class="mb-2">Payment method</h6>
+        <fieldset class="card mb-3 p-3">
+          <legend class="h6 mb-2 float-none w-auto px-0">Payment method</legend>
           <div class="form-check">
             <input class="form-check-input" type="radio" name="payment_method" id="pay-cash" value="cash" checked>
             <label class="form-check-label" for="pay-cash">Cash on delivery</label>
@@ -33,23 +35,25 @@
             <input class="form-check-input" type="radio" name="payment_method" id="pay-momo" value="momo">
             <label class="form-check-label" for="pay-momo">Mobile Money (MoMo)</label>
           </div>
-        </div>
+        </fieldset>
 
         <div class="d-flex gap-2">
           <a href="{% url 'food:cart' %}" class="btn btn-outline-secondary">Back to cart</a>
-          <button type="submit" class="btn btn-navy">Place order</button>
+          <button type="submit" class="btn btn-navy" {% if not cart_items %}disabled{% endif %}>Place order</button>
         </div>
       </form>
     </div>
 
     <aside class="col-lg-4">
       <div class="card p-3">
-        <h6 class="mb-2">Order summary</h6>
+        <h2 class="h6 mb-2">Order summary</h2>
         <ul class="list-unstyled mb-3">
           {% for item in cart_items %}
           <li class="d-flex justify-content-between small text-muted mb-2">
             <span>{{ item.product.name }} × {{ item.quantity }}</span><span>GHS {{ item.total_price|floatformat:2 }}</span>
           </li>
+          {% empty %}
+          <li class="small text-muted">Your cart is empty.</li>
           {% endfor %}
         </ul>
         <hr>
