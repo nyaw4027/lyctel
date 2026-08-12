@@ -3,6 +3,12 @@
 {% block title %}{{ vendor.name }} — Lynctel Food{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
+<style>
+  .food-cat-btn { scroll-margin-top: calc(var(--navbar-h) + 56px); }
+  .menu-item-card { cursor: pointer; }
+  .menu-item-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  section[id^="cat-"] { scroll-margin-top: calc(var(--navbar-h) + 56px); }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -13,7 +19,7 @@
 
   <div class="position-relative rounded-3 overflow-hidden mb-4 bg-navy">
     {% if vendor.banner %}
-    <img src="{{ vendor.banner.url }}" alt="{{ vendor.name }}" class="w-100" style="height:12rem;object-fit:cover;opacity:.6;"/>
+    <img src="{{ vendor.banner.url }}" alt="" class="w-100" style="height:12rem;object-fit:cover;opacity:.6;"/>
     {% else %}
     <div style="height:12rem;background:linear-gradient(135deg,var(--navy),var(--navy-700));opacity:.6"></div>
     {% endif %}
@@ -46,15 +52,28 @@
     </div>
   </div>
 
+  {% if vendor.status != 'open' %}
+  <div class="alert alert-warning rounded-3 mb-4 d-flex align-items-center gap-2">
+    <span aria-hidden="true">⏳</span>
+    <div>
+      {% if vendor.status == 'busy' %}
+      This restaurant is very busy right now — orders may take longer than usual.
+      {% else %}
+      This restaurant is currently closed. You can browse the menu, but ordering is unavailable.
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
   {% if cart_vendor_id and cart_vendor_id != vendor.pk %}
   <div class="alert alert-warning rounded-3 mb-4 d-flex align-items-center gap-2">
-    <span>⚠️</span>
+    <span aria-hidden="true">⚠️</span>
     <div>You have items from another restaurant in your cart. Adding from here will replace it.</div>
   </div>
   {% endif %}
 
   {% if categories %}
-  <div class="position-sticky top-0 zindex-sticky bg-white border-bottom mb-3" style="top:64px">
+  <nav class="position-sticky zindex-sticky bg-white border-bottom mb-3" style="top:var(--navbar-h)" aria-label="Menu categories">
     <div class="d-flex gap-2 overflow-auto py-2 px-2 align-items-center">
       {% for cat in categories %}
       <a href="#cat-{{ cat.pk }}" class="btn btn-link text-secondary text-nowrap food-cat-btn">{{ cat.name }}</a>
@@ -63,20 +82,23 @@
       <a href="#cat-other" class="btn btn-link text-secondary text-nowrap food-cat-btn">Other</a>
       {% endif %}
     </div>
-  </div>
+  </nav>
   {% endif %}
 
   {% if featured_items %}
-  <section class="mb-4">
+  <section class="mb-4" aria-label="Popular items">
     <h2 class="h6 text-navy mb-3">🔥 Popular</h2>
     <div class="d-flex gap-3 overflow-auto pb-2">
       {% for item in featured_items %}
       <div class="flex-shrink-0" style="width:208px;">
-        <div class="card menu-item-card h-100" role="button" onclick="Food.addToCart({{ item.pk }})">
+        <div class="card menu-item-card h-100" role="button" tabindex="0"
+             onclick="Food.addToCart({{ item.pk }})"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Food.addToCart({{ item.pk }});}"
+             aria-label="Add {{ item.name }} to cart, GHS {{ item.final_price }}">
           {% if item.image %}
-          <img src="{{ item.image.url }}" alt="{{ item.name }}" class="card-img-top" style="height:8rem;object-fit:cover;"/>
+          <img src="{{ item.image.url }}" alt="" class="card-img-top" style="height:8rem;object-fit:cover;" loading="lazy"/>
           {% else %}
-          <div class="card-img-top d-flex align-items-center justify-content-center" style="height:8rem;background:#f8f9fa">🍽️</div>
+          <div class="card-img-top d-flex align-items-center justify-content-center" style="height:8rem;background:#f8f9fa" aria-hidden="true">🍽️</div>
           {% endif %}
           <div class="card-body py-2 px-3">
             <p class="mb-1 fw-semibold text-truncate">{{ item.name }}</p>
@@ -90,12 +112,15 @@
   {% endif %}
 
   {% for cat in categories %}
-  <section id="cat-{{ cat.pk }}" class="mb-4">
+  <section id="cat-{{ cat.pk }}" class="mb-4" aria-label="{{ cat.name }}">
     <h3 class="h6 text-navy mb-3 border-bottom pb-2">{{ cat.name }}</h3>
     <div class="d-flex flex-column gap-3">
       {% for item in cat.items.all %}
       {% if item.is_available %}
-      <div class="card menu-item-card p-3 d-flex align-items-center" role="button" onclick="Food.addToCart({{ item.pk }})">
+      <div class="card menu-item-card p-3 d-flex align-items-center" role="button" tabindex="0"
+           onclick="Food.addToCart({{ item.pk }})"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Food.addToCart({{ item.pk }});}"
+           aria-label="Add {{ item.name }} to cart, GHS {{ item.final_price }}">
         {% include 'food/_menu_item.html' with item=item %}
       </div>
       {% endif %}
@@ -105,12 +130,15 @@
   {% endfor %}
 
   {% if uncategorized_items %}
-  <section id="cat-other" class="mb-4">
+  <section id="cat-other" class="mb-4" aria-label="Other items">
     <h3 class="h6 text-navy mb-3 border-bottom pb-2">Other</h3>
     <div class="d-flex flex-column gap-3">
       {% for item in uncategorized_items %}
       {% if item.is_available %}
-      <div class="card menu-item-card p-3 d-flex align-items-center" role="button" onclick="Food.addToCart({{ item.pk }})">
+      <div class="card menu-item-card p-3 d-flex align-items-center" role="button" tabindex="0"
+           onclick="Food.addToCart({{ item.pk }})"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Food.addToCart({{ item.pk }});}"
+           aria-label="Add {{ item.name }} to cart, GHS {{ item.final_price }}">
         {% include 'food/_menu_item.html' with item=item %}
       </div>
       {% endif %}
@@ -121,7 +149,7 @@
 
   {% if not categories and not uncategorized_items %}
   <div class="text-center py-5 text-muted">
-    <div class="display-1 mb-3">🍽️</div>
+    <div class="display-1 mb-3" aria-hidden="true">🍽️</div>
     <p class="small">This restaurant hasn't added any menu items yet.</p>
   </div>
   {% endif %}
@@ -130,4 +158,5 @@
 {% block extra_js %}
 <script src="{% static 'js/food.js' %}"></script>
 <script>document.addEventListener('DOMContentLoaded', Food.init);</script>
+{% endblock %}
 {% endblock %}

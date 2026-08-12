@@ -48,6 +48,17 @@
   }
   .food-search button:hover { background: #c8841a; }
 
+  /* ── Location pill ────────────────────────────────── */
+  .food-location-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,.08); color: rgba(255,255,255,.85);
+    border: 1px solid rgba(255,255,255,.15); border-radius: 50px;
+    padding: 6px 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: background .2s;
+  }
+  .food-location-btn:hover { background: rgba(255,255,255,.15); }
+  .food-location-btn[data-state="located"] { color: #86efac; border-color: rgba(134,239,172,.3); }
+
   /* ── Cuisine pills ────────────────────────────────── */
   .cuisine-pills {
     display: flex; gap: 10px;
@@ -82,7 +93,7 @@
     display: block; background: white;
     height: 100%;
   }
-  .vendor-card:hover {
+  .vendor-card:hover, .vendor-card:focus-visible {
     transform: translateY(-4px);
     box-shadow: 0 12px 32px rgba(15,27,45,.14);
     text-decoration: none; color: inherit;
@@ -195,6 +206,10 @@
   .food-stat__label {
     font-size: 12px; color: rgba(255,255,255,.6);
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    #food-cart-float { animation: none; }
+  }
 </style>
 {% endblock %}
 
@@ -202,7 +217,7 @@
 
 <!-- ── HERO ──────────────────────────────────────────────── -->
 <section class="food-hero">
-  <div class="food-hero__emoji">🍔</div>
+  <div class="food-hero__emoji" aria-hidden="true">🍔</div>
   <div class="container position-relative">
     <div class="text-center mb-4">
       <span class="badge rounded-pill mb-3"
@@ -223,11 +238,19 @@
 
     <!-- Search -->
     <form method="GET" action="{% url 'food:home' %}"
-          class="food-search mx-auto mb-2">
-      <input type="text" name="q" value="{{ query }}"
+          class="food-search mx-auto mb-3" role="search">
+      <label for="food-search-input" class="visually-hidden">Search restaurants or cuisine</label>
+      <input id="food-search-input" type="text" name="q" value="{{ query }}"
              placeholder="Search restaurants or cuisine..."/>
       <button type="submit">🔍 Search</button>
     </form>
+
+    <!-- Use my location (explicit opt-in, not an automatic prompt) -->
+    <div class="text-center mb-2">
+      <button type="button" id="food-location-btn" class="food-location-btn">
+        <span aria-hidden="true">📍</span> <span id="food-location-label">Use my location for distance & ETA</span>
+      </button>
+    </div>
 
     <!-- Stats -->
     <div class="row g-0 mt-4" style="max-width:480px;margin:0 auto">
@@ -255,7 +278,7 @@
 
 <!-- ── CUISINE FILTER ─────────────────────────────────────── -->
 <div style="background:white;border-bottom:1px solid #f3f4f6;
-            position:sticky;top:64px;z-index:100;">
+            position:sticky;top:var(--navbar-h);z-index:100;">
   <div class="container py-3">
     <div class="cuisine-pills">
       <a href="{% url 'food:home' %}{% if query %}?q={{ query }}{% endif %}"
@@ -284,7 +307,7 @@
           style="background:#f3f4f6;color:#374151;font-size:12px;padding:5px 12px">
       "{{ query }}"
       <a href="{% url 'food:home' %}{% if selected_cuisine %}?cuisine={{ selected_cuisine }}{% endif %}"
-         class="text-muted ms-1 text-decoration-none">✕</a>
+         class="text-muted ms-1 text-decoration-none" aria-label="Clear search text">✕</a>
     </span>
     {% endif %}
     {% if selected_cuisine %}
@@ -292,7 +315,7 @@
           style="background:#FEF3D7;color:#c8841a;font-size:12px;padding:5px 12px">
       {{ selected_cuisine }}
       <a href="{% url 'food:home' %}{% if query %}?q={{ query }}{% endif %}"
-         class="text-muted ms-1 text-decoration-none">✕</a>
+         class="text-muted ms-1 text-decoration-none" aria-label="Clear cuisine filter">✕</a>
     </span>
     {% endif %}
     <span class="text-muted ms-auto" style="font-size:13px">
@@ -311,18 +334,18 @@
 
         <!-- Banner -->
         {% if v.banner %}
-        <img src="{{ v.banner.url }}" class="vendor-card__banner" alt="{{ v.name }}"/>
+        <img src="{{ v.banner.url }}" class="vendor-card__banner" alt="" loading="lazy"/>
         {% else %}
-        <div class="vendor-card__banner-placeholder">🍽️</div>
+        <div class="vendor-card__banner-placeholder" aria-hidden="true">🍽️</div>
         {% endif %}
 
         <!-- Logo -->
         <div class="vendor-card__logo-wrap">
           <div class="vendor-card__logo">
             {% if v.logo %}
-            <img src="{{ v.logo.url }}" alt="{{ v.name }}"/>
+            <img src="{{ v.logo.url }}" alt="" loading="lazy"/>
             {% else %}
-            {{ v.name|first|upper }}
+            <span aria-hidden="true">{{ v.name|first|upper }}</span>
             {% endif %}
           </div>
         </div>
@@ -369,7 +392,7 @@
   {% else %}
   <!-- Empty state -->
   <div class="food-empty">
-    <div class="food-empty__icon">🍽️</div>
+    <div class="food-empty__icon" aria-hidden="true">🍽️</div>
     <div class="food-empty__title">No restaurants found</div>
     <p class="food-empty__text mb-4">
       {% if query or selected_cuisine %}
@@ -428,22 +451,53 @@
 
 {% block extra_js %}
 <script>
-// Get user location for distance sorting
-if (navigator.geolocation && !sessionStorage.getItem('food_location')) {
-  navigator.geolocation.getCurrentPosition(function(pos) {
-    sessionStorage.setItem('food_location', JSON.stringify({
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude
-    }));
-    // Re-fetch with location
-    var loc = pos.coords;
-    var url = new URL(window.location.href);
-    if (!url.searchParams.get('lat')) {
-      url.searchParams.set('lat', loc.latitude.toFixed(6));
-      url.searchParams.set('lng', loc.longitude.toFixed(6));
-      window.location.replace(url.toString());
+// Location is now opt-in via a button tap instead of an automatic browser
+// prompt on page load — auto-prompting for geolocation is intrusive, gets
+// silently blocked by most browsers anyway, and offered no way to retry
+// after a "block" click.
+(function () {
+  var btn = document.getElementById('food-location-btn');
+  var label = document.getElementById('food-location-label');
+  if (!btn) return;
+
+  var stored = null;
+  try { stored = JSON.parse(sessionStorage.getItem('food_location') || 'null'); } catch (e) {}
+  var url = new URL(window.location.href);
+  if (stored && !url.searchParams.get('lat')) {
+    applyLocation(stored, false);
+  }
+
+  btn.addEventListener('click', function () {
+    if (!navigator.geolocation) {
+      label.textContent = 'Location not supported on this device';
+      return;
     }
-  }, null, { timeout: 5000 });
-}
+    label.textContent = 'Locating…';
+    btn.disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        var loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        sessionStorage.setItem('food_location', JSON.stringify(loc));
+        applyLocation(loc, true);
+      },
+      function () {
+        label.textContent = 'Could not get your location — try again';
+        btn.disabled = false;
+      },
+      { timeout: 8000 }
+    );
+  });
+
+  function applyLocation(loc, reload) {
+    btn.setAttribute('data-state', 'located');
+    label.textContent = 'Sorted by distance from you';
+    if (reload) {
+      var u = new URL(window.location.href);
+      u.searchParams.set('lat', loc.lat.toFixed(6));
+      u.searchParams.set('lng', loc.lng.toFixed(6));
+      window.location.href = u.toString();
+    }
+  }
+})();
 </script>
 {% endblock %}

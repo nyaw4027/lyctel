@@ -1,9 +1,21 @@
 ﻿<!DOCTYPE html>
 {% load static i18n %}
-<html lang="{{ LANGUAGE_CODE|default:'en' }}" data-bs-theme="light">
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+
+  <!-- Set theme before first paint to avoid a light/dark flash -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('lynctel-theme');
+        var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-bs-theme', theme);
+      } catch (e) { document.documentElement.setAttribute('data-bs-theme', 'light'); }
+    })();
+  </script>
+
   <title>{% block title %}Lynctel — Quality Products Delivered{% endblock %}</title>
   <meta name="description" content="Lynctel — Quality products delivered fast across Ghana."/>
   <meta name="keywords" content="Lynctel, Ghana, online shopping, food delivery, MoMo payment"/>
@@ -20,7 +32,7 @@
   <meta name="twitter:description" content="Shop electronics, gadgets, food and more."/>
   <meta name="twitter:image" content="{% static 'icons/icon-512x512.png' %}"/>
   <link rel="manifest" href="/manifest.json"/>
-  <meta name="theme-color" content="#0F1B2D"/>
+  <meta name="theme-color" content="#0F1B2D" id="meta-theme-color"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -47,7 +59,7 @@
     @media (min-width: 768px) { body { padding-bottom: 0; } }
     h1,h2,h3,h4,.font-display { font-family: 'Syne', sans-serif; }
 
-    /* ── Brand colours as CSS vars ───────────────────────── */
+    /* ── Brand colours + layout tokens as CSS vars ─────────── */
     :root {
       --navy:       #0F1B2D;
       --navy-700:   #1a2d47;
@@ -55,6 +67,14 @@
       --gold-light: #FEF3D7;
       --gold-dark:  #c8841a;
       --cream:      #FAFAF7;
+      /* Height of the sticky navbar — child templates use this for their own
+         sticky offsets instead of a hardcoded pixel value that drifts out of
+         sync whenever the navbar's markup changes. */
+      --navbar-h: 64px;
+    }
+    @media (max-width: 767.98px) {
+      /* Mobile navbar has an extra search row beneath the main row */
+      :root { --navbar-h: 112px; }
     }
 
     /* Bootstrap theme overrides */
@@ -77,6 +97,37 @@
     .rounded-xl  { border-radius: 12px !important; }
     .rounded-2xl { border-radius: 16px !important; }
     .rounded-3xl { border-radius: 24px !important; }
+
+    /* ── object-fit utilities ───────────────────────────────
+       Bootstrap's CDN build does NOT ship .object-fit-cover /
+       .object-fit-contain (they're opt-in Sass utilities), so every image
+       across the site relying on them was silently unstyled. Defined here
+       once so every template that uses them actually works. */
+    .object-fit-cover   { object-fit: cover !important; }
+    .object-fit-contain { object-fit: contain !important; }
+
+    /* Recolor a raster logo to white for the dark footer without needing a
+       separate white logo asset. Replaces the old Tailwind-only
+       "brightness-0 invert" classes, which do nothing under Bootstrap. */
+    .footer-logo { filter: brightness(0) invert(1); }
+
+    /* ── Accessibility ───────────────────────────────────────*/
+    .skip-link {
+      position: absolute; top: -48px; left: 8px; z-index: 2000;
+      background: var(--navy); color: #fff; padding: .6rem 1rem;
+      border-radius: 0 0 10px 10px; text-decoration: none; transition: top .15s;
+    }
+    .skip-link:focus { top: 0; color: #fff; }
+    :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
 
     /* ── Navbar ───────────────────────────────────────────── */
     #main-navbar {
@@ -255,6 +306,8 @@
 
 <body>
 
+  <a href="#main-content" class="skip-link">Skip to content</a>
+
   <!-- ── NAVBAR ─────────────────────────────────────────── -->
   <nav id="main-navbar" class="navbar sticky-top py-0">
     <div class="container-xl px-3">
@@ -268,19 +321,20 @@
         </a>
 
         <!-- Search (desktop) -->
-        <form method="GET" action="{% url 'products:list' %}" class="d-none d-md-flex flex-grow-1 position-relative me-3" style="max-width:480px">
-          <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <form method="GET" action="{% url 'products:list' %}" class="d-none d-md-flex flex-grow-1 position-relative me-3" style="max-width:480px" role="search">
+          <label for="desktop-search" class="visually-hidden">Search products, shops, and vendors</label>
+          <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
           </svg>
-          <input type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products, shops, vendors..." class="search-input w-100"/>
+          <input id="desktop-search" type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products, shops, vendors..." class="search-input w-100"/>
         </form>
 
         <!-- Right nav -->
         <div class="d-flex align-items-center gap-1 ms-auto">
 
           <!-- Dark mode -->
-          <button onclick="toggleTheme()" class="btn btn-light btn-sm px-2 py-1 border-0 rounded-3" title="Toggle dark mode">
-            <span id="theme-icon">🌙</span>
+          <button type="button" onclick="toggleTheme()" class="btn btn-light btn-sm px-2 py-1 border-0 rounded-3" aria-label="Toggle dark mode" title="Toggle dark mode">
+            <span id="theme-icon" aria-hidden="true">🌙</span>
           </button>
 
           <!-- Desktop links -->
@@ -300,24 +354,24 @@
           {% if user.is_authenticated %}
           <!-- Profile dropdown -->
           <div class="dropdown">
-            <button class="btn btn-light btn-sm border-0 d-flex align-items-center gap-2 rounded-3 px-2 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none">
+            <button type="button" id="profile-menu-btn" class="btn btn-light btn-sm border-0 d-flex align-items-center gap-2 rounded-3 px-2 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Open account menu" style="text-decoration:none">
               {% if user.profile_pic %}
-              <img src="{{ user.profile_pic.url }}" width="32" height="32" class="rounded-circle object-fit-cover flex-shrink-0" style="border:2px solid var(--gold)"/>
+              <img src="{{ user.profile_pic.url }}" width="32" height="32" class="rounded-circle object-fit-cover flex-shrink-0" style="border:2px solid var(--gold)" alt=""/>
               {% else %}
-              <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:32px;height:32px;background:var(--navy);font-size:12px">{{ user.first_name|first|upper|default:"U" }}</div>
+              <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:32px;height:32px;background:var(--navy);font-size:12px" aria-hidden="true">{{ user.first_name|first|upper|default:"U" }}</div>
               {% endif %}
               <span class="d-none d-md-inline text-truncate text-muted" style="max-width:80px;font-size:.875rem">{{ user.first_name|default:user.phone }}</span>
             </button>
 
-            <ul class="dropdown-menu dropdown-menu-end profile-dropdown mt-2 p-2">
+            <ul class="dropdown-menu dropdown-menu-end profile-dropdown mt-2 p-2" aria-labelledby="profile-menu-btn">
               <!-- Profile header -->
               <li>
                 <div class="px-2 py-2 mb-1 rounded-3" style="background:#f9fafb">
                   <div class="d-flex align-items-center gap-3">
                     {% if user.profile_pic %}
-                    <img src="{{ user.profile_pic.url }}" width="40" height="40" class="rounded-circle object-fit-cover" style="border:2px solid var(--gold)"/>
+                    <img src="{{ user.profile_pic.url }}" width="40" height="40" class="rounded-circle object-fit-cover" style="border:2px solid var(--gold)" alt=""/>
                     {% else %}
-                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:var(--navy);font-size:14px">{{ user.first_name|first|upper|default:"U" }}</div>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:var(--navy);font-size:14px" aria-hidden="true">{{ user.first_name|first|upper|default:"U" }}</div>
                     {% endif %}
                     <div class="overflow-hidden">
                       <p class="mb-0 fw-semibold text-truncate" style="color:var(--navy);font-size:.875rem">{{ user.get_full_name|default:user.phone }}</p>
@@ -328,56 +382,56 @@
                 </div>
               </li>
               <li><hr class="dropdown-divider my-1"/></li>
-              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'accounts:profile' %}"><span class="icon-wrap bg-light">👤</span>My Profile</a></li>
-              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'order:history' %}"><span class="icon-wrap bg-light">📦</span>My Orders</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'accounts:profile' %}"><span class="icon-wrap bg-light" aria-hidden="true">👤</span>My Profile</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'order:history' %}"><span class="icon-wrap bg-light" aria-hidden="true">📦</span>My Orders</a></li>
               <li>
                 <a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'livestream:list' %}">
-                  <span class="icon-wrap position-relative" style="background:#fef2f2">📺<span class="live-dot" style="position:absolute;top:2px;right:2px;width:6px;height:6px"></span></span>
+                  <span class="icon-wrap position-relative" style="background:#fef2f2" aria-hidden="true">📺<span class="live-dot" style="position:absolute;top:2px;right:2px;width:6px;height:6px"></span></span>
                   Live Shopping
                 </a>
               </li>
               {% if user.role == 'admin' or user.role == 'staff' %}
-              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'chat:support_admin_inbox' %}"><span class="icon-wrap" style="background:#fef2f2">🛟</span>Support Inbox</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'chat:support_admin_inbox' %}"><span class="icon-wrap" style="background:#fef2f2" aria-hidden="true">🛟</span>Support Inbox</a></li>
               {% else %}
-              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'chat:support_my_inbox' %}"><span class="icon-wrap" style="background:#fef2f2">🛟</span>Get Help</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'chat:support_my_inbox' %}"><span class="icon-wrap" style="background:#fef2f2" aria-hidden="true">🛟</span>Get Help</a></li>
               {% endif %}
               <li><hr class="dropdown-divider my-1"/></li>
               {% if user.role == 'admin' %}
-              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'dashboard:home' %}" style="background:var(--navy)"><span>⚡</span>Admin Dashboard</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'dashboard:home' %}" style="background:var(--navy)"><span aria-hidden="true">⚡</span>Admin Dashboard</a></li>
               {% endif %}
               {% if user.role == 'staff' %}
-              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'staff:home' %}" style="background:#2563eb"><span>🔧</span>Staff Panel</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'staff:home' %}" style="background:#2563eb"><span aria-hidden="true">🔧</span>Staff Panel</a></li>
               {% endif %}
               {% if user.role == 'admin' or user.role == 'staff' %}
-              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'fraud:flagged_orders' %}" style="background:#dc2626"><span>🛡</span>Fraud Review</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'fraud:flagged_orders' %}" style="background:#dc2626"><span aria-hidden="true">🛡</span>Fraud Review</a></li>
               {% endif %}
               {% if user.role == 'rider' %}
-              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'rider:dashboard' %}" style="background:#f97316"><span>🛵</span>Rider Dashboard</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'rider:dashboard' %}" style="background:#f97316"><span aria-hidden="true">🛵</span>Rider Dashboard</a></li>
               {% endif %}
               {% if user.role == 'vendor' %}
-              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'vendors:dashboard' %}" style="background:#7c3aed"><span>🏪</span>Vendor Dashboard</a></li>
-              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'livestream:go_live' %}" style="background:#dc2626"><span class="live-dot"></span>Go Live</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'vendors:dashboard' %}" style="background:#7c3aed"><span aria-hidden="true">🏪</span>Vendor Dashboard</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2 text-white rounded-3 mb-1" href="{% url 'livestream:go_live' %}" style="background:#dc2626"><span class="live-dot" aria-hidden="true"></span>Go Live</a></li>
               {% endif %}
               {% if user.role == 'customer' %}
-              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'vendors:apply' %}"><span class="icon-wrap bg-gold-light">🏪</span>Sell on Lynctel</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'vendors:apply' %}"><span class="icon-wrap bg-gold-light" aria-hidden="true">🏪</span>Sell on Lynctel</a></li>
               {% endif %}
-              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'food:register' %}"><span class="icon-wrap" style="background:#fff7ed">🍴</span>List Your Restaurant</a></li>
+              <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'food:register' %}"><span class="icon-wrap" style="background:#fff7ed" aria-hidden="true">🍴</span>List Your Restaurant</a></li>
               <li><hr class="dropdown-divider my-1"/></li>
               <li>
-                <button onclick="toggleTheme()" class="dropdown-item d-flex align-items-center gap-2 w-100 border-0 bg-transparent">
-                  <span class="icon-wrap bg-light" id="dropdown-theme-icon">🌙</span>
+                <button type="button" onclick="toggleTheme()" class="dropdown-item d-flex align-items-center gap-2 w-100 border-0 bg-transparent">
+                  <span class="icon-wrap bg-light" id="dropdown-theme-icon" aria-hidden="true">🌙</span>
                   <span id="dropdown-theme-label">Dark Mode</span>
                 </button>
               </li>
               <li>
-                <button onclick="showInstallPrompt()" class="dropdown-item d-flex align-items-center gap-2 w-100 border-0 bg-transparent">
-                  <span class="icon-wrap" style="background:#eff6ff">📲</span>Install App
+                <button type="button" onclick="showInstallPrompt()" class="dropdown-item d-flex align-items-center gap-2 w-100 border-0 bg-transparent">
+                  <span class="icon-wrap" style="background:#eff6ff" aria-hidden="true">📲</span>Install App
                 </button>
               </li>
               <li><hr class="dropdown-divider my-1"/></li>
               <li>
                 <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="{% url 'accounts:logout' %}">
-                  <span class="icon-wrap" style="background:#fef2f2">
+                  <span class="icon-wrap" style="background:#fef2f2" aria-hidden="true">
                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                   </span>Sign Out
                 </a>
@@ -391,14 +445,14 @@
           {% endif %}
 
           <!-- Live button — next to cart -->
-          <a href="{% url 'livestream:list' %}" class="btn btn-light btn-sm border-0 rounded-3 position-relative live-btn px-2" title="Live Shopping">
-            <span style="font-size:1.1rem">📺</span>
-            <span class="live-dot"></span>
+          <a href="{% url 'livestream:list' %}" class="btn btn-light btn-sm border-0 rounded-3 position-relative live-btn px-2" aria-label="Live shopping" title="Live Shopping">
+            <span style="font-size:1.1rem" aria-hidden="true">📺</span>
+            <span class="live-dot" aria-hidden="true"></span>
           </a>
 
           <!-- Cart -->
-          <button onclick="openCart()" class="btn btn-light btn-sm border-0 rounded-3 position-relative px-2">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="text-muted">
+          <button type="button" onclick="openCart()" class="btn btn-light btn-sm border-0 rounded-3 position-relative px-2" aria-label="Open cart" aria-haspopup="dialog">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="text-muted" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
             </svg>
             <span id="cart-count" class="cart-badge {% if not cart_count or cart_count == 0 %}d-none{% endif %}">{{ cart_count|default:0 }}</span>
@@ -409,11 +463,12 @@
 
       <!-- Mobile search -->
       <div class="d-md-none pb-2">
-        <form method="GET" action="{% url 'products:list' %}" class="position-relative">
-          <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <form method="GET" action="{% url 'products:list' %}" class="position-relative" role="search">
+          <label for="mobile-search" class="visually-hidden">Search products</label>
+          <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
           </svg>
-          <input type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products..." class="search-input w-100"/>
+          <input id="mobile-search" type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products..." class="search-input w-100"/>
         </form>
       </div>
     </div>
@@ -421,7 +476,7 @@
 
   <!-- Flash messages -->
   {% if messages %}
-  <div class="flash-wrap container-xl px-3 mt-3">
+  <div class="flash-wrap container-xl px-3 mt-3" role="status" aria-live="polite">
     {% for message in messages %}
     <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %} alert-dismissible fade show rounded-3 d-flex align-items-center justify-content-between" role="alert">
       <span>{{ message }}</span>
@@ -432,7 +487,7 @@
   {% endif %}
 
   <!-- Main content -->
-  <main class="flex-grow-1">{% block content %}{% endblock %}</main>
+  <main id="main-content" class="flex-grow-1">{% block content %}{% endblock %}</main>
 
   <!-- ── FOOTER ─────────────────────────────────────────── -->
   <footer class="bg-navy text-white mt-5 pt-5 pb-4" style="border-top:1px solid rgba(255,255,255,.1)">
@@ -440,14 +495,14 @@
       <div class="row g-4 mb-4">
         <div class="col-12 col-lg-4">
           <div class="d-flex align-items-center gap-2 mb-3">
-            <img src="{% static 'logo.png' %}" alt="Lynctel" height="40" class="brightness-0 invert"/>
+            <img src="{% static 'logo.png' %}" alt="Lynctel" height="40" class="footer-logo"/>
             <span class="fw-bold fs-5 text-white" style="font-family:'Syne',sans-serif">Lynctel</span>
             <span class="fw-bold fs-5" style="color:var(--gold)">·</span>
           </div>
           <p class="text-muted small mb-4">Connecting customers, vendors, and riders across Ghana through fast delivery and secure payments.</p>
           <div class="d-flex flex-column gap-2">
             <a href="tel:+233558040216" class="text-decoration-none text-secondary d-flex align-items-center gap-2 small">📞 +233 55 804 0216</a>
-            <a href="https://wa.me/233558040216" target="_blank" class="text-decoration-none text-secondary d-flex align-items-center gap-2 small">💬 WhatsApp Support</a>
+            <a href="https://wa.me/233558040216" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-secondary d-flex align-items-center gap-2 small">💬 WhatsApp Support</a>
             <span class="text-secondary d-flex align-items-center gap-2 small">📍 Accra, Ghana</span>
           </div>
         </div>
@@ -456,7 +511,7 @@
           <ul class="list-unstyled d-flex flex-column gap-2">
             <li><a href="{% url 'products:list' %}" class="text-secondary text-decoration-none small">All Products</a></li>
             <li><a href="{% url 'food:home' %}" class="text-secondary text-decoration-none small">🍔 Food Delivery</a></li>
-            <li><a href="{% url 'livestream:list' %}" class="text-secondary text-decoration-none small d-flex align-items-center gap-2"><span class="live-dot"></span>Live Shopping</a></li>
+            <li><a href="{% url 'livestream:list' %}" class="text-secondary text-decoration-none small d-flex align-items-center gap-2"><span class="live-dot" aria-hidden="true"></span>Live Shopping</a></li>
             <li><a href="{% url 'vendors:directory' %}" class="text-secondary text-decoration-none small">Vendors & Shops</a></li>
             <li><a href="{% url 'products:deals' %}" class="text-secondary text-decoration-none small">🔥 Deals</a></li>
           </ul>
@@ -483,8 +538,8 @@
             <li><a href="{% url 'accounts:signup' %}" class="text-secondary text-decoration-none small">Create Account</a></li>
             {% endif %}
             <li>
-              <button onclick="toggleTheme()" class="btn btn-link text-secondary text-decoration-none p-0 small d-flex align-items-center gap-1">
-                <span id="footer-theme-icon">🌙</span><span id="footer-theme-label">Dark Mode</span>
+              <button type="button" onclick="toggleTheme()" class="btn btn-link text-secondary text-decoration-none p-0 small d-flex align-items-center gap-1">
+                <span id="footer-theme-icon" aria-hidden="true">🌙</span><span id="footer-theme-label">Dark Mode</span>
               </button>
             </li>
           </ul>
@@ -502,22 +557,22 @@
   </footer>
 
   <!-- ── MOBILE BOTTOM NAV (5 tabs) ────────────────────── -->
-  <div id="mobile-nav">
+  <nav id="mobile-nav" aria-label="Primary mobile navigation">
     <a href="{% url 'frontend:home' %}" class="mobile-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
       Home
     </a>
     <a href="{% url 'products:list' %}" class="mobile-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
       Products
     </a>
     <a href="{% url 'food:home' %}" class="mobile-nav-item food">
-      <span style="font-size:1.25rem;line-height:1">🍔</span>
+      <span style="font-size:1.25rem;line-height:1" aria-hidden="true">🍔</span>
       Food
     </a>
-    <button onclick="openCart()" class="mobile-nav-item">
+    <button type="button" onclick="openCart()" class="mobile-nav-item" aria-label="Open cart">
       <div class="position-relative d-inline-flex">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
         <span id="mobile-cart-count" class="cart-badge {% if not cart_count or cart_count == 0 %}d-none{% endif %}">{{ cart_count|default:0 }}</span>
       </div>
       Cart
@@ -525,37 +580,37 @@
     {% if user.is_authenticated %}
     <a href="{% url 'accounts:profile' %}" class="mobile-nav-item">
       {% if user.profile_pic %}
-      <img src="{{ user.profile_pic.url }}" width="24" height="24" class="rounded-circle object-fit-cover" style="border:1px solid var(--gold)"/>
+      <img src="{{ user.profile_pic.url }}" width="24" height="24" class="rounded-circle object-fit-cover" style="border:1px solid var(--gold)" alt=""/>
       {% else %}
-      <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width:24px;height:24px;background:var(--navy);font-size:9px;font-weight:700">{{ user.first_name|first|upper|default:"U" }}</div>
+      <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width:24px;height:24px;background:var(--navy);font-size:9px;font-weight:700" aria-hidden="true">{{ user.first_name|first|upper|default:"U" }}</div>
       {% endif %}
       Profile
     </a>
     {% else %}
     <a href="{% url 'accounts:login' %}" class="mobile-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
       Sign In
     </a>
     {% endif %}
-  </div>
+  </nav>
 
   <!-- Cart overlay & drawer -->
   <div id="cart-overlay" onclick="closeCart()"></div>
-  <div id="cart-drawer">
+  <div id="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-drawer-title">
     <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom flex-shrink-0">
       <div class="d-flex align-items-center gap-2">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--navy)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-        <h2 class="mb-0 fw-bold text-navy fs-5" style="font-family:'Syne',sans-serif">Your Cart</h2>
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--navy)" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        <h2 id="cart-drawer-title" class="mb-0 fw-bold text-navy fs-5" style="font-family:'Syne',sans-serif">Your Cart</h2>
         <span id="drawer-count" class="badge rounded-pill fw-bold" style="background:var(--gold);color:var(--navy)">0</span>
       </div>
-      <button onclick="closeCart()" class="btn btn-light btn-sm rounded-3 border-0 fw-bold text-muted fs-5 lh-1 px-2">✕</button>
+      <button type="button" onclick="closeCart()" class="btn btn-light btn-sm rounded-3 border-0 fw-bold text-muted fs-5 lh-1 px-2" aria-label="Close cart">✕</button>
     </div>
     <div id="drawer-items" class="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-3"></div>
     <div id="drawer-empty" class="d-none flex-grow-1 d-flex flex-column align-items-center justify-content-center text-center p-4">
-      <div class="rounded-3 bg-light d-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px;font-size:2rem">🛒</div>
+      <div class="rounded-3 bg-light d-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px;font-size:2rem" aria-hidden="true">🛒</div>
       <p class="fw-bold text-navy mb-1">Your cart is empty</p>
       <p class="text-muted small mb-3">Add items to get started</p>
-      <button onclick="closeCart()" class="btn btn-link text-decoration-none p-0" style="color:var(--gold-dark)">Continue Shopping →</button>
+      <button type="button" onclick="closeCart()" class="btn btn-link text-decoration-none p-0" style="color:var(--gold-dark)">Continue Shopping →</button>
     </div>
     <div id="drawer-footer" class="border-top p-3 flex-shrink-0">
       <div class="d-flex justify-content-between align-items-center mb-1">
@@ -569,42 +624,42 @@
   </div>
 
   <!-- PWA banner -->
-  <div id="pwa-banner">
+  <div id="pwa-banner" role="status">
     <img src="{% static 'icons/icon-72x72.png' %}" alt="" width="40" height="40" class="rounded-3 flex-shrink-0"/>
     <div class="overflow-hidden">
       <p class="fw-semibold small mb-0 lh-tight">Install Lynctel</p>
       <p class="text-secondary small mb-0" style="font-size:.75rem">Faster, full-screen experience</p>
     </div>
-    <button id="pwa-install-btn" class="btn btn-gold btn-sm rounded-3 flex-shrink-0 ms-auto">Install</button>
-    <button onclick="dismissPWA()" class="btn btn-link text-secondary p-0 ms-1 fs-5 lh-1 flex-shrink-0">✕</button>
+    <button type="button" id="pwa-install-btn" class="btn btn-gold btn-sm rounded-3 flex-shrink-0 ms-auto">Install</button>
+    <button type="button" onclick="dismissPWA()" class="btn btn-link text-secondary p-0 ms-1 fs-5 lh-1 flex-shrink-0" aria-label="Dismiss install prompt">✕</button>
   </div>
 
   <!-- iOS install sheet -->
   <div id="ios-overlay" onclick="closeIOSSheet()"></div>
-  <div id="ios-install-sheet">
+  <div id="ios-install-sheet" role="dialog" aria-modal="true" aria-labelledby="ios-sheet-title">
     <div class="mx-auto mb-4 rounded-pill bg-secondary" style="width:40px;height:4px;opacity:.3"></div>
     <div class="d-flex align-items-center justify-content-between mb-4">
       <div class="d-flex align-items-center gap-3">
-        <img src="{% static 'icons/icon-96x96.png' %}" width="56" height="56" class="rounded-3 shadow-sm"/>
-        <div><p class="fw-bold text-navy mb-0 fs-5" style="font-family:'Syne',sans-serif">Install Lynctel</p><p class="text-muted small mb-0">lynctel.up.railway.app</p></div>
+        <img src="{% static 'icons/icon-96x96.png' %}" width="56" height="56" class="rounded-3 shadow-sm" alt=""/>
+        <div><p id="ios-sheet-title" class="fw-bold text-navy mb-0 fs-5" style="font-family:'Syne',sans-serif">Install Lynctel</p><p class="text-muted small mb-0">lynctel.up.railway.app</p></div>
       </div>
-      <button onclick="closeIOSSheet()" class="btn btn-light rounded-circle d-flex align-items-center justify-content-center fw-bold text-muted border-0" style="width:32px;height:32px">✕</button>
+      <button type="button" onclick="closeIOSSheet()" class="btn btn-light rounded-circle d-flex align-items-center justify-content-center fw-bold text-muted border-0" style="width:32px;height:32px" aria-label="Close">✕</button>
     </div>
     <div class="d-flex flex-column gap-3 mb-4">
       <div class="d-flex align-items-center gap-3 rounded-3 p-3 bg-primary bg-opacity-10">
-        <div class="rounded-3 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:#3b82f6">1</div>
+        <div class="rounded-3 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:#3b82f6" aria-hidden="true">1</div>
         <div><p class="fw-semibold text-navy mb-0 small">Tap the Share button ⬆</p><p class="text-muted mb-0" style="font-size:.75rem">At the bottom of Safari</p></div>
       </div>
       <div class="d-flex align-items-center gap-3 rounded-3 p-3" style="background:#f0fdf4">
-        <div class="rounded-3 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:#22c55e">2</div>
+        <div class="rounded-3 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:#22c55e" aria-hidden="true">2</div>
         <div><p class="fw-semibold text-navy mb-0 small">Tap 'Add to Home Screen'</p><p class="text-muted mb-0" style="font-size:.75rem">Scroll down in the Share menu</p></div>
       </div>
       <div class="d-flex align-items-center gap-3 rounded-3 p-3" style="background:var(--gold-light)">
-        <div class="rounded-3 d-flex align-items-center justify-content-center fw-bold flex-shrink-0 text-navy" style="width:40px;height:40px;background:var(--gold)">✓</div>
+        <div class="rounded-3 d-flex align-items-center justify-content-center fw-bold flex-shrink-0 text-navy" style="width:40px;height:40px;background:var(--gold)" aria-hidden="true">✓</div>
         <div><p class="fw-semibold text-navy mb-0 small">Tap 'Add' — you're done!</p><p class="text-muted mb-0" style="font-size:.75rem">Lynctel appears on your home screen</p></div>
       </div>
     </div>
-    <button onclick="closeIOSSheet()" class="btn btn-navy w-100 rounded-3 fw-semibold py-3">Got it! 👍</button>
+    <button type="button" onclick="closeIOSSheet()" class="btn btn-navy w-100 rounded-3 fw-semibold py-3">Got it! 👍</button>
   </div>
 
   <script>
@@ -632,6 +687,8 @@
     })();
 
     // ── DARK MODE ─────────────────────────────────────────
+    // (the initial theme is already applied by the inline <head> script
+    // above, so this just keeps icons/labels/meta color in sync)
     var THEME_KEY='lynctel-theme';
     function applyTheme(t){
       var d=t==='dark';
@@ -639,9 +696,11 @@
       var icon=d?'☀️':'🌙',label=d?'Light Mode':'Dark Mode';
       ['theme-icon','dropdown-theme-icon','footer-theme-icon'].forEach(function(id){var e=document.getElementById(id);if(e)e.textContent=icon;});
       ['dropdown-theme-label','footer-theme-label'].forEach(function(id){var e=document.getElementById(id);if(e)e.textContent=label;});
+      var meta=document.getElementById('meta-theme-color');
+      if(meta)meta.setAttribute('content',d?'#0a0f1a':'#0F1B2D');
     }
     function toggleTheme(){var n=(localStorage.getItem(THEME_KEY)||'light')==='dark'?'light':'dark';localStorage.setItem(THEME_KEY,n);applyTheme(n);}
-    (function(){applyTheme(localStorage.getItem(THEME_KEY)||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));})();
+    applyTheme(document.documentElement.getAttribute('data-bs-theme')||'light');
 
     // ── CART ──────────────────────────────────────────────
     function openCart(){document.getElementById('cart-drawer').classList.add('open');document.getElementById('cart-overlay').classList.add('open');document.body.style.overflow='hidden';refreshDrawer();}
@@ -659,13 +718,13 @@
       iEl.classList.remove('d-none');eEl.classList.add('d-none');fEl.classList.remove('d-none');
       iEl.innerHTML=data.items.map(function(item){
         return '<div id="ditem-'+item.id+'" class="d-flex align-items-start gap-3 bg-light rounded-3 p-3">'
-          +'<a href="/products/'+item.slug+'/" class="flex-shrink-0">'+(item.image?'<img src="'+item.image+'" alt="'+item.name+'" width="64" height="64" class="rounded-3 object-fit-cover"/>':'<div class="rounded-3 bg-secondary bg-opacity-25 d-flex align-items-center justify-content-center flex-shrink-0" style="width:64px;height:64px;font-size:1.5rem">📦</div>')+'</a>'
+          +'<a href="/products/'+item.slug+'/" class="flex-shrink-0">'+(item.image?'<img src="'+item.image+'" alt="'+item.name+'" width="64" height="64" class="rounded-3 object-fit-cover" loading="lazy"/>':'<div class="rounded-3 bg-secondary bg-opacity-25 d-flex align-items-center justify-content-center flex-shrink-0" style="width:64px;height:64px;font-size:1.5rem">📦</div>')+'</a>'
           +'<div class="flex-grow-1 overflow-hidden"><p class="fw-semibold text-navy mb-0 small text-truncate-2">'+item.name+'</p>'+(item.vendor?'<p class="text-muted mb-0" style="font-size:.75rem">🏪 '+item.vendor+'</p>':'')+'<p class="fw-bold text-navy mb-0 small">GHS '+item.price+'</p></div>'
           +'<div class="d-flex flex-column align-items-end gap-2 flex-shrink-0">'
-          +'<div class="d-flex align-items-center gap-1"><button onclick="drawerQty('+item.id+','+item.quantity+',-1)" class="btn btn-light btn-sm border rounded-2 d-flex align-items-center justify-content-center fw-bold" style="width:28px;height:28px;padding:0">−</button>'
+          +'<div class="d-flex align-items-center gap-1"><button type="button" onclick="drawerQty('+item.id+','+item.quantity+',-1)" class="btn btn-light btn-sm border rounded-2 d-flex align-items-center justify-content-center fw-bold" style="width:28px;height:28px;padding:0" aria-label="Decrease quantity">−</button>'
           +'<span class="fw-semibold text-center" style="min-width:24px;font-size:.875rem">'+item.quantity+'</span>'
-          +'<button onclick="drawerQty('+item.id+','+item.quantity+',1)" class="btn btn-light btn-sm border rounded-2 d-flex align-items-center justify-content-center fw-bold" style="width:28px;height:28px;padding:0">+</button></div>'
-          +'<button onclick="drawerRemove('+item.id+')" class="btn btn-link text-danger p-0" style="font-size:.75rem">Remove</button></div></div>';
+          +'<button type="button" onclick="drawerQty('+item.id+','+item.quantity+',1)" class="btn btn-light btn-sm border rounded-2 d-flex align-items-center justify-content-center fw-bold" style="width:28px;height:28px;padding:0" aria-label="Increase quantity">+</button></div>'
+          +'<button type="button" onclick="drawerRemove('+item.id+')" class="btn btn-link text-danger p-0" style="font-size:.75rem">Remove</button></div></div>';
       }).join('');
     }
 
@@ -676,6 +735,7 @@
       fetch('/cart/add/'+productId+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd})
         .then(function(r){return r.json();}).then(function(d){
           if(d.success){updateCartBadge(d.cart_count);if(btn){btn.innerHTML='✓ Added';setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1200);}setTimeout(openCart,350);}
+          else if(btn){btn.innerHTML=orig;btn.disabled=false;}
         }).catch(function(){if(btn){btn.innerHTML=orig;btn.disabled=false;}});
     }
     function drawerQty(id,cur,delta){
@@ -712,6 +772,7 @@
     async function subscribeToPush(){
       if(!IS_AUTHENTICATED||!VAPID_PUBLIC_KEY)return;
       if(!('serviceWorker'in navigator)||!('PushManager'in window))return;
+      if(!window.isSecureContext)return;
       try{
         var reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
         if(!sub){var perm=await Notification.requestPermission();if(perm!=='granted')return;sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8(VAPID_PUBLIC_KEY)});}
@@ -725,7 +786,7 @@
     if('serviceWorker'in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(r){console.log('[SW] Registered:',r.scope);}).catch(function(e){console.error('[SW] Failed:',e);});});
 
     // ── NAVBAR SHADOW ──────────────────────────────────────
-    window.addEventListener('scroll',function(){document.getElementById('main-navbar').classList.toggle('scrolled',window.scrollY>10);});
+    window.addEventListener('scroll',function(){document.getElementById('main-navbar').classList.toggle('scrolled',window.scrollY>10);},{passive:true});
   </script>
 
   {% block extra_js %}{% endblock %}
