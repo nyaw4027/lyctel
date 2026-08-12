@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 {% load static i18n %}
 {% block title %}{{ vendor.name }} — Lynctel Food{% endblock %}
@@ -126,8 +127,10 @@
   </div>
   {% endif %}
 </div>
+{% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/food.js' %}"></script>
 <script>document.addEventListener('DOMContentLoaded', Food.init);</script>
 {% endblock %}
+
