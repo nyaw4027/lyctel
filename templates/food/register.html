@@ -9,32 +9,54 @@
 <div class="container-md px-3 py-5">
   <div class="card p-4">
     <h1 class="h5 mb-3 font-display">Register your restaurant</h1>
-    <form method="post" action="{% url 'food:register' %}" enctype="multipart/form-data">
+
+    {% if messages %}
+    <div class="mb-3" role="status" aria-live="polite">
+      {% for message in messages %}
+      <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %} rounded-3">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'food:register' %}" enctype="multipart/form-data" id="register-form">
       {% csrf_token %}
       <div class="mb-3">
-        <label class="form-label">Restaurant name</label>
-        <input name="name" class="form-control" required>
+        <label for="reg-name" class="form-label">Restaurant name</label>
+        <input id="reg-name" name="name" class="form-control" required>
       </div>
       <div class="mb-3">
-        <label class="form-label">City</label>
-        <input name="city" class="form-control" required>
+        <label for="reg-city" class="form-label">City</label>
+        <input id="reg-city" name="city" class="form-control" required>
       </div>
       <div class="mb-3 row g-2">
         <div class="col-md-6">
-          <label class="form-label">Banner (optional)</label>
-          <input type="file" name="banner" class="form-control form-control-sm">
+          <label for="reg-banner" class="form-label">Banner (optional)</label>
+          <input id="reg-banner" type="file" name="banner" accept="image/*" class="form-control form-control-sm">
         </div>
         <div class="col-md-6">
-          <label class="form-label">Logo (optional)</label>
-          <input type="file" name="logo" class="form-control form-control-sm">
+          <label for="reg-logo" class="form-label">Logo (optional)</label>
+          <input id="reg-logo" type="file" name="logo" accept="image/*" class="form-control form-control-sm">
         </div>
       </div>
       <div class="mb-3">
-        <label class="form-label">Minimum order (GHS)</label>
-        <input name="min_order" type="number" min="0" class="form-control" value="0">
+        <label for="reg-min-order" class="form-label">Minimum order (GHS)</label>
+        <input id="reg-min-order" name="min_order" type="number" min="0" step="0.01" class="form-control" value="0">
       </div>
-      <button class="btn btn-navy">Register</button>
+      <button type="submit" id="reg-submit" class="btn btn-navy">Register</button>
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  var regForm = document.getElementById('register-form');
+  if (regForm) {
+    regForm.addEventListener('submit', function () {
+      var btn = document.getElementById('reg-submit');
+      btn.disabled = true;
+      btn.textContent = 'Registering…';
+    });
+  }
+</script>
 {% endblock %}

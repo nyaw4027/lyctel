@@ -4,13 +4,16 @@
   {% endif %}
     <div class="position-relative">
       {% if vendor.banner %}
-      <img src="{{ vendor.banner.url }}" alt="{{ vendor.name }}" class="card-img-top" style="height:140px;object-fit:cover;">
+      <img src="{{ vendor.banner.url }}" alt="" class="card-img-top object-fit-cover" style="height:140px;" loading="lazy">
       {% else %}
-      <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:140px;">🍽️</div>
+      <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:140px;" aria-hidden="true">🍽️</div>
       {% endif %}
       {% if vendor.logo %}
-      <div class="position-absolute start-0 bottom-0 translate-middle-y ms-3 vendor-logo-overlap">
-        <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }}" class="rounded-2" style="width:56px;height:56px;object-fit:cover;border:3px solid #fff;">
+      {# .vendor-logo-overlap may or may not be defined in food.css — this inline
+         style guarantees the logo sits above the banner and reads clearly on
+         any background regardless of whether that class exists. #}
+      <div class="position-absolute start-0 bottom-0 translate-middle-y ms-3 vendor-logo-overlap" style="z-index:2;">
+        <img src="{{ vendor.logo.url }}" alt="" class="rounded-2 object-fit-cover" style="width:56px;height:56px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.12);" loading="lazy">
       </div>
       {% endif %}
     </div>

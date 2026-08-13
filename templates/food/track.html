@@ -6,6 +6,7 @@
 <style>
 #map { width:100%; height:40vh; min-height:300px; border-radius:12px; overflow:hidden; }
 .tracking-steps .step { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; }
+.tracking-steps .step:last-child { border-bottom: none; }
 </style>
 {% endblock %}
 
@@ -13,38 +14,65 @@
 <div class="container-xl px-3 py-4">
   <div class="row g-3">
     <div class="col-lg-8">
-      <h1 class="h5 font-display mb-2">Tracking Order #{{ order.pk }}</h1>
+      <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+        <h1 class="h5 font-display mb-0">Tracking Order #{{ order.pk }}</h1>
+        {% if order.status == 'pending' %}
+        <span class="badge text-bg-warning">{{ order.get_status_display }}</span>
+        {% elif order.status == 'preparing' %}
+        <span class="badge text-bg-info">{{ order.get_status_display }}</span>
+        {% elif order.status == 'ready' %}
+        <span class="badge text-bg-primary">{{ order.get_status_display }}</span>
+        {% elif order.status == 'out_for_delivery' %}
+        <span class="badge text-bg-info">{{ order.get_status_display }}</span>
+        {% elif order.status == 'delivered' %}
+        <span class="badge text-bg-success">{{ order.get_status_display }}</span>
+        {% elif order.status == 'cancelled' %}
+        <span class="badge text-bg-danger">{{ order.get_status_display }}</span>
+        {% else %}
+        <span class="badge text-bg-secondary">{{ order.get_status_display }}</span>
+        {% endif %}
+      </div>
+
       <div id="map" class="mb-3">
         {% if order.rider and order.rider.location %}
-        <img src="{{ order.rider.map_snapshot_url }}" alt="Map" style="width:100%;height:100%;object-fit:cover">
+        <img src="{{ order.rider.map_snapshot_url }}" alt="Map showing your rider's current location" style="width:100%;height:100%;object-fit:cover">
         {% else %}
         <div class="h-100 d-flex align-items-center justify-content-center text-muted">Map unavailable</div>
         {% endif %}
       </div>
 
       <div class="card p-3 mb-3">
-        <h6 class="mb-2">Rider</h6>
+        <h2 class="h6 mb-2">Rider</h2>
         {% if order.rider %}
         <div class="d-flex align-items-center gap-3">
-          {% if order.rider.profile_pic %}<img src="{{ order.rider.profile_pic.url }}" class="rounded-circle" width="56" height="56" style="object-fit:cover">{% else %}<div class="rounded-circle bg-navy text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px">🧑</div>{% endif %}
+          {% if order.rider.profile_pic %}
+          <img src="{{ order.rider.profile_pic.url }}" alt="" class="rounded-circle object-fit-cover" width="56" height="56" loading="lazy">
+          {% else %}
+          <div class="rounded-circle bg-navy text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width:56px;height:56px" aria-hidden="true">🧑</div>
+          {% endif %}
           <div>
-            <div class="fw-semibold">{{ order.rider.get_full_name }}</div>
+            <div class="fw-semibold">{{ order.rider.get_full_name|default:"Your rider" }}</div>
             <div class="small text-muted">{{ order.rider.phone }}</div>
           </div>
+          {% if order.rider.phone %}
+          <a href="tel:{{ order.rider.phone }}" class="btn btn-sm btn-outline-navy ms-auto" aria-label="Call your rider">📞 Call</a>
+          {% endif %}
         </div>
         {% else %}
-        <div class="text-muted small">No rider assigned yet.</div>
+        <div class="text-muted small">No rider assigned yet — we'll update this as soon as one is on the way.</div>
         {% endif %}
       </div>
 
       <div class="card p-3">
-        <h6 class="mb-2">Status</h6>
+        <h2 class="h6 mb-2">Status</h2>
         <div class="tracking-steps">
           {% for step in order.status_timeline %}
           <div class="step">
             <div class="fw-semibold">{{ step.title }}</div>
             <div class="small text-muted ms-auto">{{ step.timestamp|date:"H:i" }}</div>
           </div>
+          {% empty %}
+          <p class="small text-muted mb-0">No status updates yet.</p>
           {% endfor %}
         </div>
       </div>
@@ -52,7 +80,7 @@
 
     <aside class="col-lg-4">
       <div class="card p-3">
-        <h6 class="mb-2">Order summary</h6>
+        <h2 class="h6 mb-2">Order summary</h2>
         <ul class="list-unstyled small text-muted mb-2">
           {% for item in order.items %}
           <li class="d-flex justify-content-between mb-1"><span>{{ item.name }} × {{ item.quantity }}</span><span>GHS {{ item.total_price|floatformat:2 }}</span></li>
@@ -64,4 +92,32 @@
     </aside>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Lightweight auto-refresh so the page reflects rider movement / status
+// changes without the customer having to manually reload — but only while
+// the order is still in flight. Once it's delivered or cancelled there's
+// nothing left to track, so we stop polling instead of reloading forever.
+{% if order.status != 'delivered' and order.status != 'cancelled' %}
+(function () {
+  var REFRESH_MS = 30000;
+  var timer = setInterval(function () {
+    if (document.hidden) return; // don't burn data/battery on a background tab
+    window.location.reload();
+  }, REFRESH_MS);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) {
+      // catch up immediately if the tab was hidden past a refresh interval
+      clearInterval(timer);
+      timer = setInterval(function () {
+        if (document.hidden) return;
+        window.location.reload();
+      }, REFRESH_MS);
+    }
+  });
+})();
+{% endif %}
+</script>
 {% endblock %}
