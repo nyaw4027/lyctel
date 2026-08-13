@@ -31,13 +31,13 @@
     <div id="ui-layer">
 
       <div id="top-bar">
-        <button onclick="history.back()"
+        <button onclick="history.back()" aria-label="Go back"
                 style="width:36px;height:36px;background:rgba(0,0,0,.5);border:none;border-radius:50%;color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
           ←
         </button>
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
           {% if stream.vendor.logo %}
-          <img src="{{ stream.vendor.logo.url }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.3);flex-shrink:0;"/>
+          <img src="{{ stream.vendor.logo.url }}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.3);flex-shrink:0;"/>
           {% endif %}
           <div style="min-width:0;">
             <p style="color:white;font-weight:700;font-size:13px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ stream.vendor.shop_name }}</p>
@@ -52,7 +52,7 @@
              style="background:rgba(0,0,0,.5);backdrop-filter:blur(8px);color:rgba(255,255,255,.8);font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;flex-shrink:0;">
           👁 —
         </div>
-        <button onclick="shareStream()"
+        <button onclick="shareStream()" aria-label="Share this stream"
                 style="width:36px;height:36px;background:rgba(0,0,0,.5);border:none;border-radius:50%;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           ↗
         </button>
@@ -68,42 +68,47 @@
       <div id="products-strip"></div>
 
       <div id="chat-overlay">
-        <div id="chat-messages"></div>
+        <div id="chat-messages" aria-live="polite"></div>
       </div>
 
       <div id="action-rail">
-        <button class="rail-btn" onclick="sendLike()" id="like-btn">
-          <div class="rail-icon" id="like-icon">♡</div>
+        <button class="rail-btn" onclick="sendLike()" id="like-btn" aria-label="Like this stream">
+          <div class="rail-icon" id="like-icon" aria-hidden="true">♡</div>
           <span class="rail-label" id="like-count">Like</span>
         </button>
 
         {% if user.is_authenticated %}
-        <button class="rail-btn" onclick="openGiftSheet()">
-          <div class="rail-icon">🎁</div>
+        <button class="rail-btn" onclick="openGiftSheet()" aria-label="Send a gift">
+          <div class="rail-icon" aria-hidden="true">🎁</div>
           <span class="rail-label">Gift</span>
         </button>
         {% endif %}
 
-        <button class="rail-btn" onclick="shareStream()">
-          <div class="rail-icon">↗</div>
+        <button class="rail-btn" onclick="shareStream()" aria-label="Share this stream">
+          <div class="rail-icon" aria-hidden="true">↗</div>
           <span class="rail-label">Share</span>
         </button>
 
-        <button class="rail-btn" onclick="toggleFullscreen()">
-          <div class="rail-icon" id="fs-icon">⛶</div>
+        <button class="rail-btn" onclick="toggleFullscreen()" aria-label="Toggle fullscreen">
+          <div class="rail-icon" id="fs-icon" aria-hidden="true">⛶</div>
           <span class="rail-label">Full</span>
         </button>
       </div>
 
       <div id="chat-bar">
         {% if user.is_authenticated %}
+        <label for="chat-input-field" class="visually-hidden">Chat message</label>
         <input type="text" id="chat-input-field"
                placeholder="Say something..."
                maxlength="300"
                onkeydown="if(event.key==='Enter')sendChat()"/>
-        <button onclick="sendChat()"
+        <button onclick="sendChat()" aria-label="Send message"
                 style="width:44px;height:44px;background:#F5A623;border:none;border-radius:50%;color:#0F1B2D;font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
           ↑
+        </button>
+        <button onclick="openGiftSheet()" aria-label="Send a gift"
+                style="width:44px;height:44px;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border:none;border-radius:50%;font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+          🎁
         </button>
         {% else %}
         <a href="{% url 'accounts:login' %}?next={{ request.path }}"
@@ -111,10 +116,6 @@
           Sign in to chat →
         </a>
         {% endif %}
-        <button onclick="openGiftSheet()" {% if not user.is_authenticated %}style="display:none"{% endif %}
-                style="width:44px;height:44px;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border:none;border-radius:50%;font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-          🎁
-        </button>
       </div>
     </div>
 
@@ -123,20 +124,20 @@
   </div><!-- end video-section -->
 
   <div id="desktop-side" style="display:none;">
-    <div style="padding:16px;border-bottom:1px solid #222;display:flex;align-items:center;justify-content:between;gap:10px;">
+    <div style="padding:16px;border-bottom:1px solid #222;display:flex;align-items:center;justify-content:space-between;gap:10px;">
       <span style="color:white;font-weight:700;font-size:14px;">💬 Live Chat</span>
       <span id="chat-count-badge" style="margin-left:auto;font-size:11px;color:#6b7280;background:rgba(255,255,255,.05);padding:2px 8px;border-radius:99px;">0</span>
     </div>
-    <div id="desktop-chat" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:#333 transparent;"></div>
+    <div id="desktop-chat" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:#333 transparent;" aria-live="polite"></div>
 
     {% if user.is_authenticated %}
     <div style="padding:12px;border-top:1px solid #222;">
       <p style="color:white;font-size:12px;font-weight:700;margin-bottom:8px;">🎁 Send a Gift</p>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px;">
         {% for gift in gifts %}
-        <button onclick="sendGift('{{ gift.type }}', this)"
+        <button onclick="sendGift('{{ gift.type }}', this)" aria-label="Send {{ gift.label }} gift, GHS {{ gift.value }}"
                 style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:white;transition:all .2s;">
-          <span style="font-size:20px;">{{ gift.emoji }}</span>
+          <span style="font-size:20px;" aria-hidden="true">{{ gift.emoji }}</span>
           <span style="font-size:10px;color:#9ca3af;">GHS {{ gift.value }}</span>
         </button>
         {% endfor %}
@@ -147,6 +148,7 @@
     <div style="padding:10px 12px;border-top:1px solid #222;">
       {% if user.is_authenticated %}
       <div style="display:flex;gap:8px;">
+        <label for="desktop-chat-input" class="visually-hidden">Chat message</label>
         <input type="text" id="desktop-chat-input"
                placeholder="Say something..."
                maxlength="300"
@@ -169,15 +171,15 @@
 </div><!-- end root -->
 
 <div id="gift-sheet-backdrop" onclick="closeGiftSheet()"></div>
-<div id="gift-sheet">
+<div id="gift-sheet" role="dialog" aria-label="Send a gift">
   <div style="width:40px;height:4px;background:#333;border-radius:99px;margin:0 auto 16px;"></div>
   <p style="color:white;font-weight:700;font-size:15px;margin-bottom:4px;">🎁 Send a Gift</p>
   <p style="color:#6b7280;font-size:11px;margin-bottom:16px;">Vendor earns 80% · Lynctel 20%</p>
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
     {% for gift in gifts %}
-    <button class="gift-btn" onclick="sendGift('{{ gift.type }}', this)"
+    <button class="gift-btn" onclick="sendGift('{{ gift.type }}', this)" aria-label="Send {{ gift.label }} gift, GHS {{ gift.value }}"
             style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;color:white;transition:all .2s;">
-      <span style="font-size:28px;line-height:1;">{{ gift.emoji }}</span>
+      <span style="font-size:28px;line-height:1;" aria-hidden="true">{{ gift.emoji }}</span>
       <span style="font-size:10px;font-weight:700;color:#F5A623;">GHS {{ gift.value }}</span>
       <span style="font-size:10px;color:#6b7280;">{{ gift.label }}</span>
     </button>
@@ -185,7 +187,7 @@
   </div>
 </div>
 
-<div id="share-toast"
+<div id="share-toast" role="status"
      style="display:none;position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
             background:#1f2937;color:white;font-size:13px;font-weight:600;
             padding:10px 20px;border-radius:20px;z-index:9999;
@@ -196,6 +198,9 @@
 <style>
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+}
 </style>
 {% endblock %}
 
@@ -204,10 +209,18 @@
 const STREAM_ID       = '{{ stream.id|lower }}';
 const IS_AUTH         = {{ user.is_authenticated|yesno:'true,false' }};
 const IS_LIVE         = {{ stream.is_live|yesno:'true,false' }};
-const RECORDING_URL   = {{ stream.recording_url|default:"null"|safe }}; // null if no replay saved
+{# stream.recording_url was previously injected completely unquoted:
+   `const RECORDING_URL = https://example.com/video.mp4;` — that's not
+   valid JS, it's a syntax error the moment a stream actually HAS a
+   recording (i.e. exactly the replay case this variable exists for),
+   and a syntax error in this block means NONE of the functions below —
+   chat, gifts, polls, WebRTC — get defined at all. Quoting + |escapejs
+   makes this a safe, always-valid string literal. #}
+const RECORDING_URL   = {% if stream.recording_url %}"{{ stream.recording_url|escapejs }}"{% else %}null{% endif %};
 const HEARTBEAT_URL   = `/livestream/${STREAM_ID}/heartbeat/`;
 const WS_SCHEME       = location.protocol === 'https:' ? 'wss' : 'ws';
 const wsUrl           = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
+const SHOP_NAME       = "{{ stream.vendor.shop_name|escapejs }}";
 // CSRF_TOKEN declared in base.html
 
 let ws, pc, vendorChannel = null, connectTimeout = null;
@@ -436,7 +449,7 @@ function sendLike() {
   },600);
 }
 
-// ── LIVE POLL (new) ───────────────────────────────────────
+// ── LIVE POLL ───────────────────────────────────
 function showPoll(msg) {
   myPollVote = null;
   document.getElementById('vp-question').textContent = msg.question;
@@ -546,7 +559,7 @@ function upsertProduct(p) {
   a.innerHTML=`
     ${p.is_highlighted?'<div style="background:#F5A623;color:#0F1B2D;font-size:9px;font-weight:700;text-align:center;padding:2px 0;">🔥 FEATURED</div>':''}
     <div style="position:relative;">
-      <img src="${p.image||''}" onerror="this.style.display='none'"
+      <img src="${p.image||''}" onerror="this.style.display='none'" alt=""
            style="width:100%;height:64px;object-fit:cover;"/>
       ${!p.in_stock?'<div style="position:absolute;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;"><span style="font-size:10px;color:#ef4444;font-weight:700;">Sold Out</span></div>':''}
     </div>
@@ -564,7 +577,11 @@ function removeProduct(id) {
 async function shareStream() {
   const url = location.href;
   if(navigator.share){
-    try{await navigator.share({title:'{{ stream.vendor.shop_name }} is Live',url});return;}catch{}
+    // Was `{{ stream.vendor.shop_name }}` spliced straight into a
+    // single-quoted JS string — a shop name containing an apostrophe
+    // (e.g. "Kwame's Shop") would break this call. SHOP_NAME above is
+    // already |escapejs-safe.
+    try{await navigator.share({title:`${SHOP_NAME} is Live`,url});return;}catch{}
   }
   try{
     await navigator.clipboard.writeText(url);
@@ -619,7 +636,7 @@ function showEnded() {
   overlay.innerHTML=`
     <p style="font-size:48px;margin-bottom:16px;">📺</p>
     <p style="color:white;font-weight:700;font-size:20px;margin-bottom:8px;">Stream Ended</p>
-    <p style="color:#9ca3af;font-size:14px;margin-bottom:24px;">Thanks for watching {{ stream.vendor.shop_name }}!</p>
+    <p style="color:#9ca3af;font-size:14px;margin-bottom:24px;">Thanks for watching ${esc(SHOP_NAME)}!</p>
     <div style="display:flex;flex-direction:column;gap:10px;width:220px;">
       <a href="{% url 'livestream:list' %}"
          style="background:#ef4444;color:white;font-weight:600;padding:12px;border-radius:14px;text-align:center;text-decoration:none;">
@@ -627,7 +644,7 @@ function showEnded() {
       </a>
       <a href="/shops/{{ stream.vendor.slug }}/"
          style="background:rgba(255,255,255,.1);color:white;font-weight:600;padding:12px;border-radius:14px;text-align:center;text-decoration:none;">
-        Visit {{ stream.vendor.shop_name }}
+        Visit ${esc(SHOP_NAME)}
       </a>
     </div>`;
 }

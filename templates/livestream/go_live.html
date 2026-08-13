@@ -9,7 +9,7 @@
     <!-- Header -->
     <div class="d-flex align-items-center gap-3 mb-4">
       <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 fs-4"
-           style="width:48px;height:48px;background:#dc3545">🔴</div>
+           style="width:48px;height:48px;background:#dc3545" aria-hidden="true">🔴</div>
       <div>
         <h1 class="font-display fw-bold fs-4 text-navy mb-0">Go Live</h1>
         <p class="text-muted small mb-0">
@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <form method="POST" enctype="multipart/form-data">
+    <form method="POST" enctype="multipart/form-data" id="golive-form">
       {% csrf_token %}
 
       <!-- Stream details card -->
@@ -27,8 +27,8 @@
 
           <!-- Title -->
           <div>
-            <label class="form-label fw-semibold">Stream Title *</label>
-            <input type="text" name="title" maxlength="200" required
+            <label for="stream-title" class="form-label fw-semibold">Stream Title *</label>
+            <input id="stream-title" type="text" name="title" maxlength="200" required
                    placeholder="e.g. New Arrivals Flash Sale 🔥, Electronics Unboxing..."
                    class="form-control rounded-3"/>
             <div class="form-text">
@@ -38,11 +38,11 @@
 
           <!-- Description -->
           <div>
-            <label class="form-label fw-semibold">
+            <label for="stream-description" class="form-label fw-semibold">
               Description
               <span class="text-muted fw-normal">(optional)</span>
             </label>
-            <textarea name="description" rows="3"
+            <textarea id="stream-description" name="description" rows="3"
                       placeholder="Tell viewers what to expect — products, deals, prizes..."
                       class="form-control rounded-3"
                       style="resize:none"></textarea>
@@ -50,7 +50,7 @@
 
           <!-- Cover image -->
           <div>
-            <label class="form-label fw-semibold">
+            <label class="form-label fw-semibold" for="thumb-input">
               Cover Image
               <span class="text-muted fw-normal">(optional)</span>
             </label>
@@ -62,7 +62,7 @@
                           rounded-3 border border-2 border-dashed"
                    style="height:130px;background:#f9fafb;cursor:pointer;
                           border-color:#e5e7eb!important;transition:border-color .15s">
-                <span style="font-size:2rem" class="mb-1">🖼</span>
+                <span style="font-size:2rem" class="mb-1" aria-hidden="true">🖼</span>
                 <p class="text-muted small mb-0">Tap to upload cover image</p>
               </div>
               <input type="file" id="thumb-input" name="thumbnail"
@@ -70,6 +70,7 @@
                      class="mobile-file-input"
                      onchange="previewThumb(this)"/>
             </label>
+            <p id="thumb-err" class="text-danger mt-2" role="alert" style="font-size:12px;display:none"></p>
           </div>
 
         </div>
@@ -91,13 +92,13 @@
                           bg-light rounded-3 p-2 h-100">
                 {% with product.images.first as img %}
                 {% if img %}
-                <img src="{{ img.image.url }}"
-                     class="rounded-2 object-fit-cover mb-1"
+                <img src="{{ img.image.url }}" alt=""
+                     class="rounded-2 object-fit-cover mb-1" loading="lazy"
                      style="width:40px;height:40px"/>
                 {% else %}
                 <div class="rounded-2 bg-secondary bg-opacity-25 d-flex
                             align-items-center justify-content-center mb-1"
-                     style="width:40px;height:40px;font-size:1.1rem">📦</div>
+                     style="width:40px;height:40px;font-size:1.1rem" aria-hidden="true">📦</div>
                 {% endif %}
                 {% endwith %}
                 <p class="text-navy fw-semibold mb-0"
@@ -121,25 +122,25 @@
         <p class="fw-semibold text-navy small mb-3">💡 Tips for a great stream</p>
         <div class="d-flex flex-column gap-2">
           <div class="d-flex align-items-start gap-2 small text-muted">
-            <span class="flex-shrink-0">📶</span>
+            <span class="flex-shrink-0" aria-hidden="true">📶</span>
             <span>Good lighting and a stable internet connection matter most.</span>
           </div>
           <div class="d-flex align-items-start gap-2 small text-muted">
-            <span class="flex-shrink-0">🎯</span>
+            <span class="flex-shrink-0" aria-hidden="true">🎯</span>
             <span>Show products close-up. Demonstrate how they work.</span>
           </div>
           <div class="d-flex align-items-start gap-2 small text-muted">
-            <span class="flex-shrink-0">🗣️</span>
+            <span class="flex-shrink-0" aria-hidden="true">🗣️</span>
             <span>Talk to your viewers. Answer chat questions in real time.</span>
           </div>
           <div class="d-flex align-items-start gap-2 small text-muted">
-            <span class="flex-shrink-0">🎁</span>
+            <span class="flex-shrink-0" aria-hidden="true">🎁</span>
             <span>Offer stream-only deals or giveaways to keep viewers engaged.</span>
           </div>
         </div>
       </div>
 
-      <button type="submit"
+      <button type="submit" id="golive-submit"
               class="btn btn-danger w-100 rounded-3 fw-bold py-3 d-flex
                      align-items-center justify-content-center gap-2 fs-6">
         🔴 Start Live Stream
@@ -158,13 +159,33 @@
 function previewThumb(input) {
   const file = input.files[0];
   if (!file) return;
+  const errEl = document.getElementById('thumb-err');
+  errEl.style.display = 'none';
+  if (!file.type.startsWith('image/')) {
+    errEl.textContent = '⚠ Please choose a JPG or PNG image.';
+    errEl.style.display = 'block';
+    input.value = '';
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    errEl.textContent = '⚠ File too large — max 5MB.';
+    errEl.style.display = 'block';
+    input.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = function(e) {
     const preview = document.getElementById('thumb-preview');
     preview.innerHTML = '<img src="' + e.target.result +
-      '" style="width:100%;height:100%;object-fit:cover;border-radius:12px"/>';
+      '" alt="Cover preview" style="width:100%;height:100%;object-fit:cover;border-radius:12px"/>';
   };
   reader.readAsDataURL(file);
 }
+
+document.getElementById('golive-form').addEventListener('submit', function() {
+  const btn = document.getElementById('golive-submit');
+  btn.disabled = true;
+  btn.textContent = 'Starting…';
+});
 </script>
 {% endblock %}

@@ -14,7 +14,7 @@
     <div>
       <p class="text-danger small fw-semibold text-uppercase d-flex align-items-center gap-2 mb-1"
          style="letter-spacing:.08em">
-        <span class="rounded-pill bg-danger d-inline-block" style="width:.45rem;height:.45rem"></span>
+        <span class="rounded-pill bg-danger d-inline-block" style="width:.45rem;height:.45rem" aria-hidden="true"></span>
         Live Now
       </p>
       <h1 class="font-display fw-bold fs-2 text-navy mb-0">Live Shopping</h1>
@@ -37,10 +37,10 @@
 
         {% if stream.thumbnail %}
         <img src="{{ stream.thumbnail.url }}"
-             class="stream-thumb" alt="{{ stream.title }}"/>
+             class="stream-thumb object-fit-cover" alt="{{ stream.title }}" loading="lazy"/>
         {% else %}
         <div class="stream-thumb d-flex align-items-center justify-content-center"
-             style="background:#1e293b;font-size:2.5rem">📺</div>
+             style="background:#1e293b;font-size:2.5rem" aria-hidden="true">📺</div>
         {% endif %}
 
         <!-- Gradient overlay -->
@@ -48,7 +48,7 @@
 
         <!-- Live badge -->
         <div class="live-badge">
-          <span class="live-dot"></span>
+          <span class="live-dot" aria-hidden="true"></span>
           LIVE
         </div>
 
@@ -62,8 +62,8 @@
         <div class="position-absolute bottom-0 start-0 end-0 p-2 p-md-3">
           <div class="d-flex align-items-center gap-2 mb-1">
             {% if stream.vendor.logo %}
-            <img src="{{ stream.vendor.logo.url }}"
-                 class="rounded-circle flex-shrink-0 object-fit-cover"
+            <img src="{{ stream.vendor.logo.url }}" alt=""
+                 class="rounded-circle flex-shrink-0 object-fit-cover" loading="lazy"
                  style="width:1.5rem;height:1.5rem;border:1px solid rgba(255,255,255,.3)"/>
             {% endif %}
             <p class="small fw-semibold text-white text-truncate mb-0">
@@ -82,7 +82,7 @@
   </div>
   {% else %}
   <div class="text-center py-5 mb-5">
-    <div style="font-size:3.5rem" class="mb-3">📺</div>
+    <div style="font-size:3.5rem" class="mb-3" aria-hidden="true">📺</div>
     <p class="font-display fw-bold text-navy fs-4 mb-2">No streams live right now</p>
     <p class="text-secondary small mb-4">Check back soon — vendors go live daily.</p>
     {% if user.is_authenticated and user.role == 'vendor' %}
@@ -106,10 +106,10 @@
 
           {% if stream.thumbnail %}
           <img src="{{ stream.thumbnail.url }}"
-               class="stream-thumb object-fit-cover" alt="{{ stream.title }}"/>
+               class="stream-thumb object-fit-cover" alt="{{ stream.title }}" loading="lazy"/>
           {% else %}
           <div class="stream-thumb d-flex align-items-center justify-content-center"
-               style="background:#f3f4f6;font-size:2rem">📺</div>
+               style="background:#f3f4f6;font-size:2rem" aria-hidden="true">📺</div>
           {% endif %}
 
           <div class="stream-overlay"></div>
@@ -120,7 +120,7 @@
                style="background:#2563eb;color:white;font-size:.65rem;font-weight:700">
             ▶ REPLAY
           </div>
-          <div class="stream-play position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+          <div class="stream-play position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" aria-hidden="true">
             <div class="rounded-circle bg-white text-navy d-flex align-items-center justify-content-center fw-bold"
                  style="width:2.5rem;height:2.5rem">▶</div>
           </div>
