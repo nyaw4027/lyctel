@@ -126,11 +126,46 @@
 }
 
 /* ==========================================================
-   WATCH PAGE
+   WATCH / BROADCAST FULLSCREEN TAKEOVER
+   ----------------------------------------------------------
+   Everything in this block is meant to apply ONLY to the
+   fullscreen watch.html / broadcast.html experience — not to
+   stream_list.html or go_live.html, which also load this
+   stylesheet but are ordinary scrollable pages with the normal
+   site header/footer/bottom-nav.
+
+   Both of the rules below were previously written with NO
+   scoping at all:
+
+     html, body { margin:0; padding:0; height:100%;
+                  overflow:hidden; background:#000; }
+     #mobile-nav, header#navbar { display:none !important; }
+
+   `html, body` is global by definition, so `overflow:hidden`
+   was killing page scroll on stream_list.html (a scrollable
+   grid of streams) and go_live.html (a scrollable form) too.
+   `#mobile-nav` also exists on every page via base.html, so the
+   bottom nav bar was being hidden site-wide on those two pages
+   as well — not just on the fullscreen ones.
+
+   `header#navbar` additionally never matched anything: the
+   site's actual navbar is `<nav id="main-navbar">` in
+   base.html, not a `<header>` with id="navbar". So even on
+   watch.html/broadcast.html, where hiding it WAS intended, the
+   top navbar was never actually hidden — it sat on top of the
+   custom #top-bar UI.
+
+   Fix: scope both rules with :has(#root), since #root only
+   exists in watch.html/broadcast.html's markup (nested inside
+   <main>, hence the descendant :has(#root) rather than a direct
+   child combinator), and correct the navbar selector to the id
+   base.html actually uses. If you need to support browsers
+   without :has() support, the safer alternative is adding a
+   `page-fullscreen` class to <body> in just those two templates
+   and swapping the selectors below for `body.page-fullscreen`.
 ========================================================== */
 
-html,
-body{
+body:has(#root){
     margin:0;
     padding:0;
     height:100%;
@@ -138,8 +173,8 @@ body{
     background:#000;
 }
 
-#mobile-nav,
-header#navbar{
+body:has(#root) #mobile-nav,
+body:has(#root) #main-navbar{
     display:none !important;
 }
 
@@ -148,6 +183,7 @@ header#navbar{
     inset:0;
     display:flex;
     background:#000;
+    z-index:10;
 }
 
 /* ----------------------------------------------------------
@@ -173,18 +209,52 @@ header#navbar{
     transform:scaleX(-1);
 }
 
+/* Connecting / joining spinner overlay (watch.html) */
+#connecting-overlay,
+#cam-placeholder{
+    position:absolute;
+    inset:0;
+    z-index:4;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:24px;
+    background:#000;
+}
+
+/* Replay badge defaults to hidden — watch.html's initPlayback() only
+   flips it to inline-flex for ended streams with a saved recording.
+   Without this default, "▶ REPLAY" was showing on every stream,
+   live ones included, since nothing else set its initial display. */
+#replay-badge{
+    display:none;
+    align-items:center;
+    gap:.3rem;
+    background:#2563eb;
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    padding:4px 10px;
+    border-radius:99px;
+    flex-shrink:0;
+}
+
 /* ----------------------------------------------------------
    UI
 ---------------------------------------------------------- */
 
-#ui-layer{
+#ui-layer,
+#ui{
     position:absolute;
     inset:0;
     z-index:5;
     pointer-events:none;
 }
 
-#ui-layer>*{
+#ui-layer>*,
+#ui>*{
     pointer-events:auto;
 }
 
@@ -208,11 +278,138 @@ header#navbar{
     );
 }
 
+/* Broadcaster-only status pills next to the timer/viewer count */
+#rec-badge{
+    display:flex;
+    align-items:center;
+    gap:.3rem;
+    background:rgba(220,53,69,.9);
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    padding:4px 10px;
+    border-radius:99px;
+    flex-shrink:0;
+}
+.rec-dot{
+    width:.4rem;
+    height:.4rem;
+    border-radius:50%;
+    background:#fff;
+    animation:pulse 1.2s infinite;
+}
+.stat-pill{
+    display:flex;
+    align-items:center;
+    gap:.3rem;
+    background:rgba(255,255,255,.12);
+    backdrop-filter:blur(6px);
+    color:#fff;
+    font-size:11px;
+    font-weight:600;
+    padding:4px 10px;
+    border-radius:99px;
+    flex-shrink:0;
+}
+
 /* ----------------------------------------------------------
-   Action Rail
+   Broadcaster bottom area wrapper (reactions row + chat bar)
 ---------------------------------------------------------- */
 
-#action-rail{
+#bottom-area{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    display:flex;
+    flex-direction:column;
+}
+
+/* ----------------------------------------------------------
+   Poll widgets (viewer + broadcaster)
+---------------------------------------------------------- */
+
+#viewer-poll-widget,
+#live-poll-widget{
+    position:absolute;
+    left:.75rem;
+    right:4.5rem;
+    top:5rem;
+    z-index:6;
+    background:rgba(0,0,0,.6);
+    backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:1rem;
+    padding:.75rem .9rem;
+    display:none;
+}
+#viewer-poll-widget.show,
+#live-poll-widget.show{
+    display:block;
+}
+/* live-poll-widget (broadcaster) has no JS-toggled .show class in the
+   current markup — it's shown/hidden purely via inline style from
+   livestream.js, so keep it visible by default at this same position. */
+#live-poll-widget{
+    display:block;
+}
+
+.vp-option{
+    position:relative;
+    width:100%;
+    text-align:left;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:.6rem;
+    color:#fff;
+    font-size:12px;
+    font-weight:600;
+    padding:.5rem .75rem;
+    margin-top:.5rem;
+    overflow:hidden;
+    cursor:pointer;
+}
+.vp-option.voted{
+    border-color:#f5a623;
+    cursor:default;
+}
+.vp-fill{
+    position:absolute;
+    inset:0;
+    width:0%;
+    background:rgba(245,166,35,.35);
+    transition:width .3s ease;
+    z-index:0;
+}
+.vp-option span{
+    position:relative;
+    z-index:1;
+}
+
+.poll-bar-track{
+    width:100%;
+    height:.5rem;
+    background:rgba(255,255,255,.1);
+    border-radius:99px;
+    overflow:hidden;
+    margin-top:.25rem;
+}
+.poll-bar-fill{
+    height:100%;
+    background:#f5a623;
+    width:0%;
+    transition:width .3s ease;
+}
+
+/* ----------------------------------------------------------
+   Action Rail (viewer: #action-rail/.rail-*, broadcaster:
+   #rail/.rbtn — two different naming conventions ended up in
+   the templates, so both are defined here rather than forcing
+   a markup rename)
+---------------------------------------------------------- */
+
+#action-rail,
+#rail{
     position:absolute;
     right:.75rem;
     bottom:9rem;
@@ -220,9 +417,11 @@ header#navbar{
     flex-direction:column;
     gap:1rem;
     align-items:center;
+    z-index:6;
 }
 
-.rail-btn{
+.rail-btn,
+.rbtn{
     border:none;
     background:none;
     color:#fff;
@@ -233,7 +432,8 @@ header#navbar{
     cursor:pointer;
 }
 
-.rail-icon{
+.rail-icon,
+.ricon{
     width:3rem;
     height:3rem;
     display:flex;
@@ -243,14 +443,25 @@ header#navbar{
     background:rgba(255,255,255,.15);
     backdrop-filter:blur(8px);
     transition:.2s;
+    font-size:1.3rem;
 }
 
-.rail-btn:active .rail-icon{
+.rail-btn:active .rail-icon,
+.rbtn:active .ricon{
     transform:scale(.9);
 }
 
-.rail-label{
+.rail-label,
+.rlabel{
     font-size:.7rem;
+}
+
+@media (min-width:992px){
+    #action-rail,
+    #rail{
+        right:1rem;
+        bottom:5rem;
+    }
 }
 
 /* ----------------------------------------------------------
@@ -298,7 +509,7 @@ header#navbar{
 ---------------------------------------------------------- */
 
 #chat-bar{
-    position:absolute;
+    position:relative;
     left:0;
     right:0;
     bottom:0;
@@ -313,8 +524,17 @@ header#navbar{
     );
 }
 
+/* watch.html's #chat-bar sits directly in #ui-layer and needs its own
+   absolute positioning; broadcast.html's #chat-bar sits inside
+   #bottom-area (already positioned), so it stays position:relative
+   there via the rule above and only watch.html needs the override. */
+#video-section > #ui-layer > #chat-bar{
+    position:absolute;
+}
+
 #chat-input-field,
-#chat-input{
+#chat-input,
+#desktop-chat-input{
     flex:1;
     border:1px solid rgba(255,255,255,.2);
     background:rgba(255,255,255,.15);
@@ -325,15 +545,19 @@ header#navbar{
 }
 
 #chat-input-field::placeholder,
-#chat-input::placeholder{
+#chat-input::placeholder,
+#desktop-chat-input::placeholder{
     color:rgba(255,255,255,.6);
 }
 
 /* ----------------------------------------------------------
-   Gift Sheet
+   Gift Sheet / Pin Sheet / Poll Sheet
+   (same sliding bottom-sheet pattern, three different ids)
 ---------------------------------------------------------- */
 
-#gift-sheet{
+#gift-sheet,
+#pin-sheet,
+#poll-sheet{
     position:absolute;
     left:0;
     right:0;
@@ -343,21 +567,52 @@ header#navbar{
     padding:1rem;
     transform:translateY(100%);
     transition:.35s;
+    z-index:41;
+    max-height:80vh;
+    display:flex;
+    flex-direction:column;
 }
 
-#gift-sheet.open{
+#gift-sheet.open,
+#pin-sheet.open,
+#poll-sheet.open{
     transform:translateY(0);
 }
 
-#gift-sheet-backdrop{
-    position:absolute;
+#gift-sheet-backdrop,
+#pin-backdrop,
+#poll-backdrop{
+    position:fixed;
     inset:0;
     display:none;
     background:rgba(0,0,0,.5);
+    z-index:40;
 }
 
-#gift-sheet-backdrop.open{
+#gift-sheet-backdrop.open,
+#pin-backdrop.open,
+#poll-backdrop.open{
     display:block;
+}
+
+#poll-sheet input{
+    width:100%;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:.6rem;
+    color:#fff;
+    font-size:13px;
+    padding:.6rem .8rem;
+    margin-top:.5rem;
+    outline:none;
+}
+#poll-sheet input:focus{
+    border-color:#f5a623;
+}
+
+.pin-btn:hover{
+    border-color:rgba(245,166,35,.4) !important;
+    background:rgba(245,166,35,.08) !important;
 }
 
 /* ----------------------------------------------------------
@@ -386,10 +641,54 @@ header#navbar{
     overflow:hidden;
     background:rgba(0,0,0,.65);
     border:1px solid rgba(255,255,255,.1);
+    text-decoration:none;
 }
 
 .live-product.featured{
     border-color:#f5a623;
+}
+
+/* ----------------------------------------------------------
+   Floating reactions / gift-combo popup
+   (spawned dynamically by JS with no inline styles of their own —
+   these were entirely missing, so likes/gifts/reactions floated
+   with no size, color, position or animation at all)
+---------------------------------------------------------- */
+
+.like-float,
+.gift-float{
+    position:fixed;
+    font-size:1.75rem;
+    pointer-events:none;
+    z-index:50;
+    animation:floatUp 2.6s ease-out forwards;
+}
+
+@keyframes floatUp{
+    0%   { transform:translateY(0) scale(.6);   opacity:0; }
+    15%  { transform:translateY(-20px) scale(1); opacity:1; }
+    100% { transform:translateY(-220px) scale(1); opacity:0; }
+}
+
+#gift-combo{
+    position:fixed;
+    left:50%;
+    bottom:180px;
+    transform:translateX(-50%) scale(.8);
+    background:rgba(245,166,35,.95);
+    color:#0F1B2D;
+    font-weight:800;
+    font-size:14px;
+    padding:.5rem 1.1rem;
+    border-radius:99px;
+    z-index:51;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s, transform .2s;
+}
+#gift-combo.show{
+    opacity:1;
+    transform:translateX(-50%) scale(1);
 }
 
 /* ----------------------------------------------------------
@@ -408,11 +707,6 @@ header#navbar{
         background:#111;
         border-left:1px solid #222;
         flex-direction:column;
-    }
-
-    #action-rail{
-        right:1rem;
-        bottom:5rem;
     }
 
 }
@@ -447,4 +741,14 @@ header#navbar{
 
 .heart-pop{
     animation:heartPop .3s ease;
+}
+
+@media (prefers-reduced-motion: reduce){
+    .live-dot,
+    .rec-dot,
+    .heart-pop,
+    .like-float,
+    .gift-float{
+        animation:none !important;
+    }
 }
