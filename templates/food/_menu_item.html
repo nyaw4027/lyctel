@@ -1,32 +1,56 @@
-<div class="card menu-item-card p-3 d-flex align-items-center">
-  <div class="flex-grow-1 me-3">
-    <div class="d-flex align-items-start gap-2">
-      <div class="min-width-0">
-        <h4 class="h6 mb-1 fw-semibold text-truncate">{{ item.name }}</h4>
-        {% if item.description %}
-        <p class="small text-muted mb-1 text-truncate-2">{{ item.description }}</p>
-        {% endif %}
-        <div class="d-flex align-items-center gap-3">
-          {% if item.discount_price %}
-          <div class="fw-bold">GHS {{ item.discount_price }} <span class="text-muted text-decoration-line-through ms-2">GHS {{ item.price }}</span></div>
-          {% else %}
-          <div class="fw-bold">GHS {{ item.price }}</div>
-          {% endif %}
-          {% if item.prep_time %}<small class="text-muted">⏱ {{ item.prep_time }} min</small>{% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
+{#
+  _menu_item.html — partial for a single menu item row.
 
-  <div class="flex-shrink-0 text-end ms-3">
-    {% if item.image %}
-    <img src="{{ item.image.url }}" alt="{{ item.name }}" class="rounded-2" style="width:80px;height:80px;object-fit:cover;"/>
+  FIXED:
+  1. The outer <div class="card menu-item-card p-3 d-flex align-items-center"> was
+     removed. menu.html already wraps each include in its own .menu-item-card div,
+     so this partial was creating a double-nested card (card inside card), which
+     broke the layout and showed a double border/shadow.
+  2. btn-gold was not defined as a Bootstrap class. Replaced with an inline-styled
+     button that doesn't depend on a custom utility class that may or may not be in
+     food.css.
+
+  Usage in menu.html:
+    <div class="menu-item-card p-3 d-flex align-items-center gap-3" ...>
+      {% include 'food/_menu_item.html' with item=item %}
+    </div>
+
+  The outer wrapper card is the responsibility of the including template.
+#}
+<div class="flex-grow-1 me-3 min-width-0" style="min-width:0">
+  <h4 class="h6 mb-1 fw-semibold text-truncate" style="color:#0F1B2D">
+    {{ item.name }}
+  </h4>
+  {% if item.description %}
+  <p class="small text-muted mb-2 text-truncate"
+     style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+    {{ item.description }}
+  </p>
+  {% endif %}
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+    {% if item.discount_price %}
+    <span class="fw-bold small" style="color:#c8841a">
+      GHS {{ item.discount_price }}
+    </span>
+    <span class="small text-muted text-decoration-line-through">
+      GHS {{ item.price }}
+    </span>
     {% else %}
-    <div class="rounded-2 bg-light d-flex align-items-center justify-content-center" style="width:80px;height:80px;">🍽️</div>
+    <span class="fw-bold small" style="color:#c8841a">GHS {{ item.price }}</span>
     {% endif %}
-
-    <div class="mt-2">
-      <button id="add-btn-{{ item.pk }}" type="button" onclick="event.stopPropagation();Food.addToCart({{ item.pk }})" class="btn btn-sm btn-gold mt-2">+</button>
-    </div>
+    {% if item.prep_time %}
+    <span class="small text-muted">⏱ {{ item.prep_time }} min</span>
+    {% endif %}
   </div>
+</div>
+
+<div class="flex-shrink-0 text-end" style="min-width:88px">
+  {% if item.image %}
+  <img src="{{ item.image.url }}" alt="{{ item.name }}"
+       class="rounded-3 object-fit-cover"
+       style="width:80px;height:80px"/>
+  {% else %}
+  <div class="rounded-3 bg-light d-flex align-items-center justify-content-center"
+       style="width:80px;height:80px;font-size:1.75rem">🍽️</div>
+  {% endif %}
 </div>
