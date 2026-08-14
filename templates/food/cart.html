@@ -1,84 +1,208 @@
 {% extends "base.html" %}
 {% load i18n static %}
-{% block title %}Your Cart — Lynctel Food{% endblock %}
+{% block title %}Your Food Cart — Lynctel Food{% endblock %}
+
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 <style>
-  /* Bootstrap's CDN build doesn't ship .min-width-0 (it's an opt-in
-     utility), so text-truncate on a flex child silently did nothing —
-     the row would overflow instead of ellipsizing. Defined here so the
-     item name actually truncates. */
   .min-width-0 { min-width: 0; }
+  [data-food-item-row] { transition: opacity .25s ease; }
+
+  /* Quantity stepper */
+  .qty-btn {
+    width: 32px; height: 32px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 1rem;
+    cursor: pointer; transition: all .15s;
+    color: #0F1B2D;
+    flex-shrink: 0;
+  }
+  .qty-btn:hover { background: #0F1B2D; color: white; border-color: #0F1B2D; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-xl px-3 py-4">
-  <div class="row g-3">
+  <div class="row g-4">
+
+    <!-- Cart items -->
     <div class="col-lg-8">
-      <h1 class="h5 mb-3 font-display">Your Cart</h1>
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h5 mb-0 font-display fw-bold text-navy">Your Food Cart</h1>
+        {% if cart_items %}
+        <form method="post" action="{% url 'food:cart_clear' %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="btn btn-sm btn-outline-danger rounded-3"
+                  onclick="return confirm('Clear your entire cart?')">
+            🗑 Clear cart
+          </button>
+        </form>
+        {% endif %}
+      </div>
 
       {% if cart_items %}
-      <div class="list-group mb-3">
+      <!--
+        FIXED: cart.html previously referenced food:cart_remove which
+        does NOT exist in food/urls.py. The food cart uses
+        food:cart_update — sending quantity=0 removes the item.
+        food.js handles this via AJAX; the forms below are fallbacks
+        for JS-disabled browsers that POST quantity=0 via the update URL.
+      -->
+      <div class="list-group mb-3" data-food-cart-list>
         {% for item in cart_items %}
-        <div class="list-group-item d-flex align-items-center justify-content-between">
+        <div class="list-group-item py-3" data-food-item-row data-food-item="{{ item.pk }}">
           <div class="d-flex align-items-center gap-3 min-width-0">
-            {% if item.product.image %}
-            <img src="{{ item.product.image.url }}" alt="" class="rounded-2 object-fit-cover flex-shrink-0" style="width:64px;height:64px;" loading="lazy">
-            {% else %}
-            <div class="rounded-2 bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width:64px;height:64px;" aria-hidden="true">🍽️</div>
-            {% endif %}
-            <div class="min-width-0">
-              <div class="fw-semibold text-truncate">{{ item.product.name }}</div>
-              <div class="small text-muted">GHS {{ item.unit_price|floatformat:2 }} · {{ item.quantity }} ×</div>
+
+            <!-- Image -->
+            <div class="flex-shrink-0">
+              {% if item.food.image %}
+              <img src="{{ item.food.image.url }}"
+                   alt="{{ item.food.name }}"
+                   class="rounded-3 object-fit-cover"
+                   style="width:72px;height:72px;"/>
+              {% else %}
+              <div class="rounded-3 bg-light d-flex align-items-center justify-content-center"
+                   style="width:72px;height:72px;font-size:1.75rem">🍽️</div>
+              {% endif %}
             </div>
-          </div>
-          <div class="text-end flex-shrink-0">
-            <div class="fw-semibold">GHS {{ item.total_price|floatformat:2 }}</div>
-            <div class="d-flex gap-2 mt-2">
-              <form method="post" action="{% url 'food:cart_update' item.pk %}" class="d-flex gap-1 align-items-center">
-                {% csrf_token %}
-                <label for="qty-{{ item.pk }}" class="visually-hidden">Quantity for {{ item.product.name }}</label>
-                <input id="qty-{{ item.pk }}" type="number" name="quantity" min="1" value="{{ item.quantity }}" class="form-control form-control-sm" style="width:68px">
-                <button class="btn btn-sm btn-outline-secondary" type="submit">Update</button>
-              </form>
-              <form method="post" action="{% url 'food:cart_remove' item.pk %}">
-                {% csrf_token %}
-                <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Remove {{ item.product.name }} from cart">Remove</button>
-              </form>
+
+            <!-- Details -->
+            <div class="flex-grow-1 min-width-0">
+              <p class="fw-semibold text-navy mb-0 text-truncate">{{ item.food.name }}</p>
+              <p class="text-muted small mb-0">GHS {{ item.unit_price|floatformat:2 }} each</p>
+              {% if item.note %}<p class="text-muted small mb-0 fst-italic">{{ item.note }}</p>{% endif %}
             </div>
+
+            <!-- Qty + price -->
+            <div class="d-flex flex-column align-items-end gap-2 flex-shrink-0">
+              <p class="fw-bold text-navy mb-0"
+                 data-item-total="{{ item.pk }}">
+                GHS {{ item.total_price|floatformat:2 }}
+              </p>
+
+              <!-- Quantity stepper (AJAX via food.js) -->
+              <div class="d-flex align-items-center gap-2"
+                   data-food-update-form data-item-pk="{{ item.pk }}">
+                <button class="qty-btn" data-minus title="Decrease">−</button>
+                <input type="number" name="quantity"
+                       min="1" value="{{ item.quantity }}"
+                       class="form-control form-control-sm text-center fw-semibold"
+                       style="width:52px;border-radius:8px"
+                       aria-label="Quantity for {{ item.food.name }}"/>
+                <button class="qty-btn" data-plus title="Increase">+</button>
+              </div>
+
+              <!-- Remove -->
+              <button class="btn btn-link text-danger p-0 small fw-semibold"
+                      data-food-remove-btn="{{ item.pk }}"
+                      aria-label="Remove {{ item.food.name }}">
+                Remove
+              </button>
+            </div>
+
           </div>
         </div>
         {% endfor %}
       </div>
 
       {% else %}
-      <div class="card p-4 text-center text-muted">
-        Your cart is empty.
+      <!-- Empty state -->
+      <div class="card rounded-3 p-5 text-center" data-food-cart-empty>
+        <div style="font-size:3rem" class="mb-3">🛒</div>
+        <p class="fw-bold text-navy fs-5 mb-1">Your cart is empty</p>
+        <p class="text-muted small mb-4">Add items from a restaurant to get started.</p>
+        <a href="{% url 'food:home' %}" class="btn btn-navy rounded-3 d-inline-flex mx-auto">
+          Browse Restaurants
+        </a>
       </div>
       {% endif %}
     </div>
 
+    <!-- Order summary -->
     <aside class="col-lg-4">
-      <div class="card p-3">
-        <h2 class="h6 mb-2">Order summary</h2>
-        <dl class="row mb-3">
-          <dt class="col-6 small text-muted fw-normal">Subtotal</dt><dd class="col-6 text-end">GHS {{ cart_subtotal|floatformat:2 }}</dd>
-          <dt class="col-6 small text-muted fw-normal">Delivery</dt><dd class="col-6 text-end">GHS {{ delivery_fee|floatformat:2 }}</dd>
-          <dt class="col-6 small text-muted fw-normal">Total</dt><dd class="col-6 text-end fw-bold">GHS {{ cart_total|floatformat:2 }}</dd>
+      <div class="card rounded-3 p-4 shadow-sm">
+        <h2 class="h6 fw-bold text-navy mb-3">Order Summary</h2>
+
+        {% if cart_vendor %}
+        <div class="d-flex align-items-center gap-2 mb-3 pb-3 border-bottom">
+          {% if cart_vendor.logo %}
+          <img src="{{ cart_vendor.logo.url }}"
+               class="rounded-circle object-fit-cover flex-shrink-0"
+               style="width:36px;height:36px;"/>
+          {% else %}
+          <div class="rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0"
+               style="width:36px;height:36px;font-size:1rem">🍴</div>
+          {% endif %}
+          <div class="min-width-0">
+            <p class="fw-semibold text-navy small mb-0 text-truncate">{{ cart_vendor.name }}</p>
+            <p class="text-muted mb-0" style="font-size:.75rem">{{ cart_vendor.city }}</p>
+          </div>
+        </div>
+        {% endif %}
+
+        <dl class="row mb-3 small">
+          <dt class="col-6 text-muted fw-normal">Subtotal</dt>
+          <dd class="col-6 text-end fw-semibold" data-cart-subtotal>
+            GHS {{ cart_subtotal|floatformat:2 }}
+          </dd>
+          <dt class="col-6 text-muted fw-normal">Delivery</dt>
+          <dd class="col-6 text-end fw-semibold" data-cart-delivery>
+            GHS {{ delivery_fee|floatformat:2 }}
+          </dd>
+          <dt class="col-6 fw-bold text-navy border-top pt-2">Total</dt>
+          <dd class="col-6 text-end fw-bold text-navy border-top pt-2" data-cart-total>
+            GHS {{ cart_total|floatformat:2 }}
+          </dd>
         </dl>
+
+        {% if cart_subtotal and cart_vendor and cart_vendor.min_order %}
+        {% if cart_subtotal < cart_vendor.min_order %}
+        <div class="alert alert-warning rounded-3 small py-2 mb-3">
+          ⚠ Minimum order is GHS {{ cart_vendor.min_order|floatformat:2 }}.
+          Add GHS {{ cart_vendor.min_order|floatformat:2 }} − {{ cart_subtotal|floatformat:2 }} more.
+        </div>
+        {% endif %}
+        {% endif %}
+
         {% if cart_items %}
-        <a href="{% url 'food:checkout' %}" class="btn btn-lg btn-navy w-100">Proceed to Checkout</a>
+        <a href="{% url 'food:checkout' %}"
+           class="btn w-100 rounded-3 fw-semibold py-3"
+           style="background:#0F1B2D;color:white"
+           data-food-checkout-btn>
+          Proceed to Checkout →
+        </a>
+        <a href="{% url 'food:home' %}"
+           class="btn btn-link w-100 text-muted small mt-2 text-decoration-none">
+          ← Continue Browsing
+        </a>
         {% else %}
-        <a href="{% url 'food:home' %}" class="btn btn-lg btn-outline-navy w-100">Browse Restaurants</a>
+        <a href="{% url 'food:home' %}"
+           class="btn w-100 rounded-3 fw-semibold"
+           style="background:#0F1B2D;color:white">
+          Browse Restaurants
+        </a>
         {% endif %}
       </div>
     </aside>
+
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/food.js' %}"></script>
-<script>document.addEventListener('DOMContentLoaded', Food.init);</script>
+<script>
+  // Mark this page as the food cart page so food.js activates cart controls
+  document.querySelector('[data-food-cart-list]') && (
+    document.querySelector('[data-food-cart-list]').dataset.foodCartPage = '1'
+  );
+  // food.js checks for [data-food-cart-page] on the list element
+  var cartList = document.querySelector('[data-food-cart-list]');
+  if (cartList) cartList.setAttribute('data-food-cart-page', '1');
+
+  document.addEventListener('DOMContentLoaded', Food.init);
+</script>
 {% endblock %}

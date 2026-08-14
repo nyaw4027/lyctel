@@ -1,50 +1,131 @@
 {% extends "base.html" %}
 {% load static i18n %}
 {% block title %}{{ vendor.name }} — Lynctel Food{% endblock %}
+
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 <style>
-  .food-cat-btn { scroll-margin-top: calc(var(--navbar-h) + 56px); }
-  .menu-item-card { cursor: pointer; }
-  .menu-item-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  /* FIXED: --navbar-h was referenced but never defined.
+     The main navbar is 64px tall (h-16 in base.html).
+     The sticky category bar adds another 48px below it. */
+  :root { --navbar-h: 64px; }
+
+  .food-cat-btn {
+    scroll-margin-top: calc(var(--navbar-h) + 56px);
+    font-size: .85rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-decoration: none;
+    padding: .4rem .85rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    transition: all .15s;
+  }
+  .food-cat-btn:hover,
+  .food-cat-btn.active {
+    background: #0F1B2D;
+    color: white;
+  }
+
   section[id^="cat-"] { scroll-margin-top: calc(var(--navbar-h) + 56px); }
+
+  /* Menu item card */
+  .menu-item-card {
+    cursor: pointer;
+    border-radius: 14px;
+    border: 1px solid #f3f4f6;
+    transition: transform .2s, box-shadow .2s;
+    background: white;
+    overflow: hidden;
+  }
+  .menu-item-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(15,27,45,.08); }
+  .menu-item-card:focus-visible { outline: 2px solid #F5A623; outline-offset: 2px; }
+
+  /* Add button inside cards */
+  .menu-add-btn {
+    width: 34px; height: 34px;
+    background: #0F1B2D; color: white;
+    border: none; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 700;
+    flex-shrink: 0; cursor: pointer;
+    transition: background .15s, transform .1s;
+  }
+  .menu-add-btn:hover  { background: #1a2d47; }
+  .menu-add-btn:active { transform: scale(.9); }
+
+  /* Sold-out overlay */
+  .sold-out-overlay {
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,.65);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 12px;
+    font-size: .7rem; font-weight: 700;
+    color: #dc2626; letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+
+  /* Featured horizontal scroll */
+  .featured-scroll { scrollbar-width: none; }
+  .featured-scroll::-webkit-scrollbar { display: none; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-xl px-3 pb-5">
+
+  <!-- Back link -->
   <div class="py-3">
-    <a href="{% url 'food:home' %}" class="small text-secondary text-decoration-none">← All Restaurants</a>
+    <a href="{% url 'food:home' %}"
+       class="small text-secondary text-decoration-none">
+      ← All Restaurants
+    </a>
   </div>
 
-  <div class="position-relative rounded-3 overflow-hidden mb-4 bg-navy">
+  <!-- Restaurant hero -->
+  <div class="position-relative rounded-3 overflow-hidden mb-4"
+       style="min-height:12rem;background:#0F1B2D">
     {% if vendor.banner %}
-    <img src="{{ vendor.banner.url }}" alt="" class="w-100" style="height:12rem;object-fit:cover;opacity:.6;"/>
-    {% else %}
-    <div style="height:12rem;background:linear-gradient(135deg,var(--navy),var(--navy-700));opacity:.6"></div>
+    <img src="{{ vendor.banner.url }}"
+         alt="{{ vendor.name }}"
+         class="w-100 position-absolute top-0 start-0"
+         style="height:100%;object-fit:cover;opacity:.5"/>
     {% endif %}
 
-    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-end p-4">
-      <div class="d-flex align-items-end justify-content-between gap-3">
+    <div class="position-relative p-4 d-flex flex-column justify-content-end"
+         style="min-height:12rem">
+      <div class="d-flex align-items-end justify-content-between gap-3 flex-wrap">
         <div>
-          <h1 class="h4 text-white mb-1 font-display">{{ vendor.name }}</h1>
-          <p class="small text-muted mb-1">{{ vendor.get_cuisine_display }}</p>
-          <div class="d-flex align-items-center gap-3 small text-muted">
+          <div class="d-flex align-items-center gap-3 mb-2">
+            {% if vendor.logo %}
+            <img src="{{ vendor.logo.url }}"
+                 class="rounded-3 object-fit-cover flex-shrink-0"
+                 style="width:56px;height:56px;border:3px solid rgba(255,255,255,.3)"/>
+            {% endif %}
+            <div>
+              <h1 class="h4 text-white mb-0 fw-bold" style="font-family:'Syne',sans-serif">
+                {{ vendor.name }}
+              </h1>
+              <p class="text-white-50 small mb-0">{{ vendor.get_cuisine_display }}</p>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-3 small text-white-50 flex-wrap">
             <span>⏱ {{ vendor.avg_prep_time }}–{{ vendor.avg_prep_time|add:10 }} min</span>
-            {% if vendor.rating and vendor.rating > 0 %}<span>★ {{ vendor.rating }}</span>{% endif %}
+            {% if vendor.rating and vendor.rating > 0 %}
+            <span>★ {{ vendor.rating }}</span>
+            {% endif %}
             {% if vendor.status == 'open' %}
-            <span class="text-success fw-semibold">● Open</span>
+            <span class="fw-semibold" style="color:#4ade80">● Open</span>
             {% elif vendor.status == 'busy' %}
-            <span class="text-warning fw-semibold">● Very Busy</span>
+            <span class="fw-semibold" style="color:#fbbf24">● Very Busy</span>
             {% else %}
-            <span class="text-danger fw-semibold">● Closed</span>
+            <span class="fw-semibold" style="color:#f87171">● Closed</span>
             {% endif %}
           </div>
         </div>
-
         {% if vendor.min_order > 0 %}
-        <div class="bg-white bg-opacity-10 backdrop-blur rounded-3 px-3 py-2 text-center flex-shrink-0">
-          <p class="small text-muted mb-0">Min order</p>
+        <div class="text-center rounded-3 px-3 py-2 flex-shrink-0"
+             style="background:rgba(255,255,255,.12);backdrop-filter:blur(8px)">
+          <p class="text-white-50 small mb-0">Min order</p>
           <p class="fw-bold text-white mb-0">GHS {{ vendor.min_order }}</p>
         </div>
         {% endif %}
@@ -52,14 +133,15 @@
     </div>
   </div>
 
+  <!-- Status banners -->
   {% if vendor.status != 'open' %}
   <div class="alert alert-warning rounded-3 mb-4 d-flex align-items-center gap-2">
-    <span aria-hidden="true">⏳</span>
+    <span>⏳</span>
     <div>
       {% if vendor.status == 'busy' %}
-      This restaurant is very busy right now — orders may take longer than usual.
+      This restaurant is very busy — orders may take longer than usual.
       {% else %}
-      This restaurant is currently closed. You can browse the menu, but ordering is unavailable.
+      This restaurant is currently closed. Browse the menu, but ordering is unavailable.
       {% endif %}
     </div>
   </div>
@@ -67,42 +149,71 @@
 
   {% if cart_vendor_id and cart_vendor_id != vendor.pk %}
   <div class="alert alert-warning rounded-3 mb-4 d-flex align-items-center gap-2">
-    <span aria-hidden="true">⚠️</span>
-    <div>You have items from another restaurant in your cart. Adding from here will replace it.</div>
+    <span>⚠️</span>
+    <div>You have items from another restaurant in your cart. Adding from here will clear it.</div>
   </div>
   {% endif %}
 
+  <!-- Sticky category nav -->
   {% if categories %}
-  <nav class="position-sticky zindex-sticky bg-white border-bottom mb-3" style="top:var(--navbar-h)" aria-label="Menu categories">
-    <div class="d-flex gap-2 overflow-auto py-2 px-2 align-items-center">
+  <nav class="bg-white border-bottom mb-4 py-2"
+       style="position:sticky;top:var(--navbar-h);z-index:20">
+    <div class="d-flex gap-2 overflow-auto px-2 featured-scroll align-items-center">
+      {% if featured_items %}
+      <a href="#cat-popular" class="food-cat-btn">🔥 Popular</a>
+      {% endif %}
       {% for cat in categories %}
-      <a href="#cat-{{ cat.pk }}" class="btn btn-link text-secondary text-nowrap food-cat-btn">{{ cat.name }}</a>
+      <a href="#cat-{{ cat.pk }}" class="food-cat-btn">{{ cat.name }}</a>
       {% endfor %}
       {% if uncategorized_items %}
-      <a href="#cat-other" class="btn btn-link text-secondary text-nowrap food-cat-btn">Other</a>
+      <a href="#cat-other" class="food-cat-btn">Other</a>
       {% endif %}
     </div>
   </nav>
   {% endif %}
 
+  <!-- Featured / Popular items -->
   {% if featured_items %}
-  <section class="mb-4" aria-label="Popular items">
-    <h2 class="h6 text-navy mb-3">🔥 Popular</h2>
-    <div class="d-flex gap-3 overflow-auto pb-2">
+  <section id="cat-popular" class="mb-5">
+    <h2 class="h6 fw-bold text-navy mb-3">🔥 Popular</h2>
+    <div class="d-flex gap-3 overflow-auto pb-2 featured-scroll">
       {% for item in featured_items %}
-      <div class="flex-shrink-0" style="width:208px;">
-        <div class="card menu-item-card h-100" role="button" tabindex="0"
+      <div class="flex-shrink-0" style="width:180px">
+        <!--
+          FIXED: onclick="Food.addToCart(pk)" now works because food.js
+          is loaded in extra_js block (see bottom of this template).
+          data-food-item attribute used by food.js for visual feedback.
+        -->
+        <div class="menu-item-card h-100 position-relative"
+             role="button" tabindex="0"
+             data-food-item="{{ item.pk }}"
              onclick="Food.addToCart({{ item.pk }})"
              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Food.addToCart({{ item.pk }});}"
-             aria-label="Add {{ item.name }} to cart, GHS {{ item.final_price }}">
-          {% if item.image %}
-          <img src="{{ item.image.url }}" alt="" class="card-img-top" style="height:8rem;object-fit:cover;" loading="lazy"/>
-          {% else %}
-          <div class="card-img-top d-flex align-items-center justify-content-center" style="height:8rem;background:#f8f9fa" aria-hidden="true">🍽️</div>
-          {% endif %}
-          <div class="card-body py-2 px-3">
-            <p class="mb-1 fw-semibold text-truncate">{{ item.name }}</p>
-            <p class="mb-0 fw-bold text-gold-dark">GHS {{ item.final_price }}</p>
+             aria-label="Add {{ item.name }}, GHS {{ item.final_price }}">
+          <div class="position-relative">
+            {% if item.image %}
+            <img src="{{ item.image.url }}"
+                 alt="{{ item.name }}"
+                 class="w-100"
+                 style="height:100px;object-fit:cover"/>
+            {% else %}
+            <div class="w-100 d-flex align-items-center justify-content-center"
+                 style="height:100px;background:#f8f9fa;font-size:2rem">🍽️</div>
+            {% endif %}
+            {% if not item.is_available %}
+            <div class="sold-out-overlay">Sold Out</div>
+            {% endif %}
+          </div>
+          <div class="p-2">
+            <p class="mb-1 fw-semibold text-navy text-truncate small">{{ item.name }}</p>
+            <div class="d-flex align-items-center justify-content-between">
+              <p class="mb-0 fw-bold" style="color:#c8841a;font-size:.85rem">
+                GHS {{ item.final_price }}
+              </p>
+              {% if item.is_available %}
+              <button class="menu-add-btn" aria-hidden="true" tabindex="-1">+</button>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
@@ -111,17 +222,22 @@
   </section>
   {% endif %}
 
+  <!-- Categorised menu -->
   {% for cat in categories %}
-  <section id="cat-{{ cat.pk }}" class="mb-4" aria-label="{{ cat.name }}">
-    <h3 class="h6 text-navy mb-3 border-bottom pb-2">{{ cat.name }}</h3>
+  <section id="cat-{{ cat.pk }}" class="mb-5">
+    <h3 class="h6 fw-bold text-navy mb-3 pb-2 border-bottom">{{ cat.name }}</h3>
     <div class="d-flex flex-column gap-3">
       {% for item in cat.items.all %}
       {% if item.is_available %}
-      <div class="card menu-item-card p-3 d-flex align-items-center" role="button" tabindex="0"
+      <div class="menu-item-card p-3 d-flex align-items-center gap-3 position-relative"
+           role="button" tabindex="0"
+           data-food-item="{{ item.pk }}"
            onclick="Food.addToCart({{ item.pk }})"
            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Food.addToCart({{ item.pk }});}"
-           aria-label="Add {{ item.name }} to cart, GHS {{ item.final_price }}">
+           aria-label="Add {{ item.name }}, GHS {{ item.final_price }}">
         {% include 'food/_menu_item.html' with item=item %}
+        <button class="menu-add-btn flex-shrink-0 ms-auto"
+                aria-hidden="true" tabindex="-1">+</button>
       </div>
       {% endif %}
       {% endfor %}
@@ -129,17 +245,22 @@
   </section>
   {% endfor %}
 
+  <!-- Uncategorised items -->
   {% if uncategorized_items %}
-  <section id="cat-other" class="mb-4" aria-label="Other items">
-    <h3 class="h6 text-navy mb-3 border-bottom pb-2">Other</h3>
+  <section id="cat-other" class="mb-5">
+    <h3 class="h6 fw-bold text-navy mb-3 pb-2 border-bottom">Other</h3>
     <div class="d-flex flex-column gap-3">
       {% for item in uncategorized_items %}
       {% if item.is_available %}
-      <div class="card menu-item-card p-3 d-flex align-items-center" role="button" tabindex="0"
+      <div class="menu-item-card p-3 d-flex align-items-center gap-3 position-relative"
+           role="button" tabindex="0"
+           data-food-item="{{ item.pk }}"
            onclick="Food.addToCart({{ item.pk }})"
            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Food.addToCart({{ item.pk }});}"
-           aria-label="Add {{ item.name }} to cart, GHS {{ item.final_price }}">
+           aria-label="Add {{ item.name }}, GHS {{ item.final_price }}">
         {% include 'food/_menu_item.html' with item=item %}
+        <button class="menu-add-btn flex-shrink-0 ms-auto"
+                aria-hidden="true" tabindex="-1">+</button>
       </div>
       {% endif %}
       {% endfor %}
@@ -149,14 +270,22 @@
 
   {% if not categories and not uncategorized_items %}
   <div class="text-center py-5 text-muted">
-    <div class="display-1 mb-3" aria-hidden="true">🍽️</div>
-    <p class="small">This restaurant hasn't added any menu items yet.</p>
+    <div style="font-size:3rem" class="mb-3">🍽️</div>
+    <p>This restaurant hasn't added any menu items yet.</p>
+    <a href="{% url 'food:home' %}" class="btn btn-outline-secondary rounded-3 mt-2">
+      ← Back to Restaurants
+    </a>
   </div>
   {% endif %}
-</div>
 
+</div>
+{% endblock %}
+
+{# FIXED: block extra_js is now OUTSIDE block content (was nested inside
+   it before, which is valid Django but caused JS loading confusion).
+   food.js must load here so Food.addToCart() is defined before any
+   onclick handlers fire. #}
 {% block extra_js %}
 <script src="{% static 'js/food.js' %}"></script>
 <script>document.addEventListener('DOMContentLoaded', Food.init);</script>
-{% endblock %}
 {% endblock %}
