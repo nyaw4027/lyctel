@@ -1,43 +1,54 @@
 {% extends "base.html" %}
 {% block title %}My Support Requests — Lynctel{% endblock %}
 
-{% block content %}
-<div class="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
+{% block extra_head %}
+<style>
+  .avatar-circle-light {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--gold-light); color: var(--gold-dark);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem; flex-shrink: 0;
+  }
+  .support-room-card { text-decoration: none; color: inherit; transition: background-color .15s; }
+  .support-room-card:hover { background-color: #f9fafb; }
+</style>
+{% endblock %}
 
-  <div class="mb-6 flex items-center justify-between">
+{% block content %}
+<div class="container py-4 py-md-5" style="max-width:640px">
+
+  <div class="d-flex align-items-center justify-content-between mb-4 gap-3">
     <div>
-      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Support</p>
-      <h1 class="font-display font-700 text-xl md:text-2xl text-navy">My Support Requests</h1>
+      <p class="text-gold small fw-bold text-uppercase mb-1" style="letter-spacing:.08em">Support</p>
+      <h1 class="font-display fw-bold text-navy mb-0" style="font-size:1.5rem">My Support Requests</h1>
     </div>
-    <a href="{% url 'chat:support_start' %}"
-       class="bg-navy text-white text-xs font-semibold px-4 py-2.5 rounded-xl hover:bg-navy-700 transition-colors">
+    <a href="{% url 'chat:support_start' %}" class="btn btn-navy rounded-3 fw-semibold flex-shrink-0">
       + New Request
     </a>
   </div>
 
   {% if room_data %}
-  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+  <div class="bg-white rounded-4 border">
     {% for entry in room_data %}
     <a href="{% url 'chat:support_room' entry.room.id %}"
-       class="flex items-center gap-3 px-4 md:px-5 py-4 hover:bg-gray-50 transition-colors
-              {% if not forloop.last %}border-b border-gray-50{% endif %}">
-      <div class="w-12 h-12 rounded-full bg-gold-light flex items-center justify-center text-xl flex-shrink-0">🛟</div>
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center justify-between gap-2">
-          <p class="font-semibold text-navy text-sm">{{ entry.room.get_category_display }}</p>
-          <span class="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0
-                       {% if entry.room.status == 'resolved' %}bg-green-100 text-green-700
-                       {% elif entry.room.status == 'answered' %}bg-blue-100 text-blue-700
-                       {% else %}bg-amber-100 text-amber-700{% endif %}">
+       class="support-room-card d-flex align-items-center gap-3 px-4 py-3 {% if not forloop.last %}border-bottom{% endif %}">
+      <div class="avatar-circle-light" aria-hidden="true">🛟</div>
+      <div class="flex-grow-1 min-w-0">
+        <div class="d-flex align-items-center justify-content-between gap-2">
+          <p class="fw-semibold text-navy small mb-0">{{ entry.room.get_category_display }}</p>
+          <span class="badge rounded-pill flex-shrink-0
+                       {% if entry.room.status == 'resolved' %}text-bg-success
+                       {% elif entry.room.status == 'answered' %}text-bg-primary
+                       {% else %}text-bg-warning{% endif %}">
             {{ entry.room.get_status_display }}
           </span>
         </div>
-        <p class="text-xs text-gray-400 truncate mt-0.5">
+        <p class="text-muted small text-truncate mb-0 mt-1">
           {% if entry.last %}{% if entry.last.sender == user %}You: {% endif %}{{ entry.last.content|default:"📷 Image" }}{% else %}No messages yet{% endif %}
         </p>
       </div>
       {% if entry.unread > 0 %}
-      <span class="bg-gold text-navy text-xs font-bold min-w-[20px] h-5 rounded-full flex items-center justify-center px-1.5 flex-shrink-0">
+      <span class="badge rounded-pill fw-bold flex-shrink-0" style="background:var(--gold);color:var(--navy);min-width:20px">
         {{ entry.unread }}
       </span>
       {% endif %}
@@ -45,12 +56,11 @@
     {% endfor %}
   </div>
   {% else %}
-  <div class="text-center py-16">
-    <div class="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4">🛟</div>
-    <h2 class="font-display font-700 text-lg text-navy mb-2">No support requests yet</h2>
-    <p class="text-gray-400 text-sm mb-5">Need help with an order, payment, or anything else?</p>
-    <a href="{% url 'chat:support_start' %}"
-       class="inline-flex items-center gap-2 bg-navy text-white font-semibold px-6 py-3 rounded-2xl transition-colors btn-press text-sm">
+  <div class="text-center py-5">
+    <div class="rounded-4 bg-light d-inline-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px;font-size:1.75rem" aria-hidden="true">🛟</div>
+    <h2 class="font-display fw-bold text-navy mb-2" style="font-size:1.1rem">No support requests yet</h2>
+    <p class="text-muted small mb-4">Need help with an order, payment, or anything else?</p>
+    <a href="{% url 'chat:support_start' %}" class="btn btn-navy rounded-3 px-4 py-3 fw-semibold">
       Start a Conversation →
     </a>
   </div>

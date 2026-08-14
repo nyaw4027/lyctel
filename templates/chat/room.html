@@ -5,25 +5,39 @@
 
 {% block extra_head %}
 <style>
-  .chat-page-wrap { height: calc(100vh - 64px - 64px); }
-  @media (min-width: 768px) { .chat-page-wrap { height: calc(100vh - 64px); } }
+  /* Was hardcoded as calc(100vh - 64px - 64px) on mobile, assuming the
+     navbar is 64px tall everywhere — but base.html's navbar is actually
+     ~112px on mobile (it has an extra search row under the main row),
+     which is exactly why base.html exposes --navbar-h as a CSS variable.
+     Using it here keeps the chat window sized to the real visible
+     viewport instead of leaving the input bar pushed off-screen. */
+  .chat-page-wrap { height: calc(100vh - var(--navbar-h) - 64px); display: flex; flex-direction: column; max-width: 640px; margin: 0 auto; }
+  @media (min-width: 768px) { .chat-page-wrap { height: calc(100vh - var(--navbar-h)); } }
   #messages-scroll { scroll-behavior: smooth; overscroll-behavior: contain; }
 
   .msg-bubble { max-width: 78%; word-wrap: break-word; animation: msgIn .2s ease forwards; }
   @keyframes msgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-  .msg-self  { background:#0F1B2D; color:white; border-radius:18px 18px 4px 18px; margin-left:auto; }
-  .msg-other { background:#f3f4f6; color:#0F1B2D; border-radius:18px 18px 18px 4px; }
-  html.dark .msg-other { background: var(--bg-tertiary); color: var(--text-primary); }
+  .msg-self  { background:var(--navy); color:#fff; border-radius:18px 18px 4px 18px; margin-left:auto; }
+  .msg-other { background:#f3f4f6; color:var(--navy); border-radius:18px 18px 18px 4px; }
+  /* Was `html.dark .msg-other { background: var(--bg-tertiary); ... }` —
+     dark mode here is toggled via a data-bs-theme="dark" attribute (see
+     base.html), not an `html.dark` class, and --bg-tertiary/--text-primary
+     were never defined anywhere, so this rule was both unreachable and
+     invalid. Fixed to match how dark mode actually works site-wide. */
+  [data-bs-theme="dark"] .msg-other { background:#1f2937; color:#f9fafb; }
   .msg-attachment { max-width: 220px; border-radius: 12px; display:block; cursor:pointer; }
+  .msg-time { font-size: 10px; margin-top: 4px; }
+  .msg-self .msg-time  { color: rgba(255,255,255,.6); }
+  .msg-other .msg-time { color: #9ca3af; }
 
   #typing-indicator { display:none; }
   #typing-indicator.show { display:flex; }
-  .typing-dot { animation: typingBounce 1.2s ease-in-out infinite; }
+  .typing-dot { width:6px;height:6px;border-radius:50%;background:#9ca3af;display:inline-block;animation: typingBounce 1.2s ease-in-out infinite; }
   .typing-dot:nth-child(2) { animation-delay:.15s; }
   .typing-dot:nth-child(3) { animation-delay:.3s; }
   @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-4px);opacity:1} }
 
-  #chat-input { font-size:16px !important; }
+  #chat-input { font-size:16px !important; } /* prevents iOS auto-zoom on focus */
   @media (min-width:640px) { #chat-input { font-size:14px !important; } }
 
   #connection-banner { display:none; }
@@ -40,84 +54,92 @@
   .cat-account  { background:#dcfce7; color:#15803d; }
   .cat-other    { background:#f3f4f6; color:#374151; }
 
-  #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:9999; align-items:center; justify-content:center; padding:20px; }
+  #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:9999; align-items:center; justify-content:center; padding:20px; cursor:zoom-out; }
   #lightbox.show { display:flex; }
   #lightbox img { max-width:100%; max-height:90vh; border-radius:8px; }
+
+  .chat-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy), var(--navy-700));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: .95rem; flex-shrink: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .msg-bubble, .typing-dot { animation: none !important; }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto flex flex-col chat-page-wrap">
+<div class="chat-page-wrap">
 
   <!-- Header -->
-  <div class="flex items-center gap-3 px-4 md:px-6 py-3 border-b border-gray-100 bg-white flex-shrink-0">
+  <div class="d-flex align-items-center gap-3 px-3 px-md-4 py-3 border-bottom bg-white flex-shrink-0">
     <a href="{% if room_type == 'support' %}{% if is_staff %}{% url 'chat:support_admin_inbox' %}{% else %}{% url 'chat:support_my_inbox' %}{% endif %}{% else %}{% url 'chat:inbox' %}{% endif %}"
-       class="text-gray-400 hover:text-navy transition-colors flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+       class="text-muted flex-shrink-0 d-flex align-items-center justify-content-center"
+       style="min-width:44px;min-height:44px;margin-left:-8px" aria-label="Back to conversations">
+      <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
       </svg>
     </a>
 
     {% if room_type == 'support' %}
-    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-navy to-navy-500
-                flex items-center justify-center text-white text-lg flex-shrink-0">
+    <div class="chat-avatar" aria-hidden="true">
       {% if is_staff %}{{ support_room.customer.first_name|first|upper|default:"U" }}{% else %}🛟{% endif %}
     </div>
-    <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2">
-        <p class="font-semibold text-navy text-sm truncate">
+    <div class="flex-grow-1 min-w-0">
+      <div class="d-flex align-items-center gap-2">
+        <p class="fw-semibold text-navy small text-truncate mb-0">
           {% if is_staff %}{{ support_room.customer.get_full_name|default:support_room.customer.phone }}{% else %}Lynctel Support{% endif %}
         </p>
         <span class="category-badge cat-{{ support_room.category }}">{{ support_room.get_category_display }}</span>
       </div>
-      <p id="presence-label" class="text-xs text-gray-400">Connecting…</p>
+      <p id="presence-label" class="text-muted mb-0" style="font-size:.75rem">Connecting…</p>
     </div>
     {% if is_staff and support_room.status != 'resolved' %}
-    <button onclick="resolveRoom()" class="text-xs bg-green-50 text-green-700 font-semibold px-3 py-2 rounded-xl hover:bg-green-100 transition-colors flex-shrink-0">
+    <button type="button" onclick="resolveRoom()" class="btn btn-sm rounded-3 fw-semibold flex-shrink-0" style="background:#f0fdf4;color:#15803d">
       ✓ Resolve
     </button>
     {% endif %}
     {% else %}
-    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-navy to-navy-500
-                flex items-center justify-center text-white font-display font-700 text-sm flex-shrink-0">
+    <div class="chat-avatar" aria-hidden="true">
       {% if is_vendor %}{{ chat_room.buyer.first_name|first|upper|default:"U" }}{% else %}{{ chat_room.vendor.shop_name|first|upper|default:"V" }}{% endif %}
     </div>
-    <div class="flex-1 min-w-0">
-      <p class="font-semibold text-navy text-sm truncate">
+    <div class="flex-grow-1 min-w-0">
+      <p class="fw-semibold text-navy small text-truncate mb-0">
         {% if is_vendor %}{{ chat_room.buyer.get_full_name|default:chat_room.buyer.phone }}{% else %}{{ chat_room.vendor.shop_name }}{% endif %}
       </p>
-      <p id="presence-label" class="text-xs text-gray-400">Connecting…</p>
+      <p id="presence-label" class="text-muted mb-0" style="font-size:.75rem">Connecting…</p>
     </div>
     {% if not is_vendor %}
-    <a href="{% url 'vendors:shop' chat_room.vendor.slug %}" class="text-xs text-gold-dark hover:underline flex-shrink-0">View Shop</a>
+    <a href="{% url 'vendors:shop' chat_room.vendor.slug %}" class="text-decoration-none flex-shrink-0" style="font-size:.75rem;color:var(--gold-dark)">View Shop</a>
     {% endif %}
     {% endif %}
   </div>
 
   <!-- Connection lost banner -->
-  <div id="connection-banner" class="items-center gap-2 bg-amber-50 text-amber-700 text-xs px-4 py-2 flex-shrink-0">
-    <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+  <div id="connection-banner" class="align-items-center gap-2 px-3 px-md-4 py-2 flex-shrink-0" style="background:#fffbeb;color:#b45309;font-size:.75rem">
+    <span class="rounded-circle" style="width:6px;height:6px;background:#f59e0b;animation:pulse 2s infinite" aria-hidden="true"></span>
     Reconnecting…
   </div>
 
   <!-- Messages -->
-  <div id="messages-scroll" class="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-2 bg-gray-50/50">
+  <div id="messages-scroll" class="flex-grow-1 overflow-auto px-3 px-md-4 py-3 d-flex flex-column gap-2" style="background:#fafbfc" aria-live="polite">
     {% for msg in messages %}
-    <div class="flex {% if msg.sender == user %}justify-end{% else %}justify-start{% endif %}">
-      <div class="msg-bubble {% if msg.sender == user %}msg-self{% else %}msg-other{% endif %} px-4 py-2.5">
+    <div class="d-flex {% if msg.sender == user %}justify-content-end{% else %}justify-content-start{% endif %}">
+      <div class="msg-bubble {% if msg.sender == user %}msg-self{% else %}msg-other{% endif %} px-3 py-2">
         {% if msg.attachment %}
-        <img src="{{ msg.attachment.url }}" class="msg-attachment mb-1" onclick="openLightbox('{{ msg.attachment.url }}')"/>
+        <img src="{{ msg.attachment.url }}" alt="Attachment" class="msg-attachment mb-1" onclick="openLightbox('{{ msg.attachment.url }}')"/>
         {% endif %}
-        {% if msg.content %}<p class="text-sm leading-relaxed">{{ msg.content }}</p>{% endif %}
-        <p class="text-[10px] mt-1 {% if msg.sender == user %}text-white/60{% else %}text-gray-400{% endif %}">
-          {{ msg.created_at|date:"H:i" }}
-        </p>
+        {% if msg.content %}<p class="small mb-0" style="line-height:1.5">{{ msg.content }}</p>{% endif %}
+        <p class="msg-time mb-0">{{ msg.created_at|date:"H:i" }}</p>
       </div>
     </div>
     {% empty %}
-    <div class="text-center py-10 text-gray-400">
-      <p class="text-3xl mb-2">{% if room_type == 'support' %}🛟{% else %}👋{% endif %}</p>
-      <p class="text-sm">
+    <div class="text-center py-5 text-muted">
+      <p style="font-size:1.75rem" class="mb-2" aria-hidden="true">{% if room_type == 'support' %}🛟{% else %}👋{% endif %}</p>
+      <p class="small mb-0">
         {% if room_type == 'support' %}
           {% if is_staff %}No messages yet.{% else %}Tell us what's going on — we usually reply within minutes.{% endif %}
         {% else %}
@@ -129,39 +151,40 @@
   </div>
 
   <!-- Typing indicator -->
-  <div id="typing-indicator" class="items-center gap-2 px-4 md:px-6 py-2 flex-shrink-0">
-    <div class="msg-other px-3 py-2 flex items-center gap-1">
-      <span class="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-      <span class="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-      <span class="typing-dot w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+  <div id="typing-indicator" class="align-items-center gap-2 px-3 px-md-4 py-2 flex-shrink-0">
+    <div class="msg-other px-3 py-2 d-flex align-items-center gap-1">
+      <span class="typing-dot"></span>
+      <span class="typing-dot"></span>
+      <span class="typing-dot"></span>
     </div>
   </div>
 
   <!-- Attachment preview -->
-  <div id="attach-preview" class="items-center gap-3 px-4 md:px-6 py-2 border-t border-gray-100 bg-white flex-shrink-0">
-    <img id="attach-preview-img" class="w-12 h-12 rounded-xl object-cover border border-gray-200"/>
-    <p class="text-xs text-gray-500 flex-1">Image ready to send</p>
-    <button type="button" onclick="cancelAttachment()" class="text-xs text-red-500 font-semibold">Remove</button>
+  <div id="attach-preview" class="align-items-center gap-3 px-3 px-md-4 py-2 border-top bg-white flex-shrink-0">
+    <img id="attach-preview-img" alt="Attachment preview" class="rounded-3 border object-fit-cover" style="width:48px;height:48px"/>
+    <p class="text-muted small flex-grow-1 mb-0">Image ready to send</p>
+    <button type="button" onclick="cancelAttachment()" class="btn btn-link text-danger fw-semibold small p-0">Remove</button>
   </div>
 
   <!-- Input -->
-  <form id="chat-form" class="flex items-center gap-2 px-4 md:px-6 py-3 border-t border-gray-100 bg-white flex-shrink-0">
+  <form id="chat-form" class="d-flex align-items-center gap-2 px-3 px-md-4 py-3 border-top bg-white flex-shrink-0">
     <button type="button" onclick="document.getElementById('img-input').click()"
-            class="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-navy transition-colors flex-shrink-0">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            class="text-muted flex-shrink-0 d-flex align-items-center justify-content-center border-0 bg-transparent"
+            style="width:44px;height:44px" aria-label="Attach an image">
+      <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
       </svg>
     </button>
-    <input type="file" id="img-input" accept="image/*" class="hidden" onchange="handleAttachmentSelect(this)"/>
+    <input type="file" id="img-input" accept="image/*" class="d-none" onchange="handleAttachmentSelect(this)"/>
+    <label for="chat-input" class="visually-hidden">Message</label>
     <input type="text" id="chat-input" autocomplete="off" maxlength="2000"
            placeholder="{% if room_type == 'support' %}Describe the issue…{% else %}Type a message…{% endif %}"
-           class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm
-                  focus:bg-white transition-all min-h-[44px]"/>
+           class="form-control rounded-4 flex-grow-1" style="background:#f9fafb;min-height:44px"/>
     <button type="submit" id="send-btn"
-            class="w-11 h-11 bg-navy hover:bg-navy-700 disabled:opacity-40 disabled:cursor-not-allowed
-                   text-white rounded-full flex items-center justify-center transition-colors flex-shrink-0">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            class="btn btn-navy rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+            style="width:44px;height:44px" aria-label="Send message">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M12 19l9-7-9-7v14zm0 0L3 12l9 7z" transform="rotate(90 12 12)"/>
       </svg>
@@ -171,22 +194,32 @@
 </div>
 
 <!-- Lightbox for attachments -->
-<div id="lightbox" onclick="closeLightbox()">
-  <img id="lightbox-img" src=""/>
+<div id="lightbox" onclick="closeLightbox()" role="dialog" aria-label="Image preview">
+  <img id="lightbox-img" src="" alt="Full-size attachment"/>
 </div>
 
 <!-- Notification sound -->
 <audio id="notify-sound" preload="auto">
   <source src="https://cdn.jsdelivr.net/gh/anars/blank-audio@master/250-milliseconds-of-silence.mp3" type="audio/mpeg"/>
 </audio>
+
+<style>
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
   const ROOM_TYPE  = '{{ room_type }}';
-  const CURRENT_ID = {{ user.pk }};
+  // Was `{{ user.pk }}` with no fallback — for an anonymous user, Django
+  // renders that as the literal text "None" (not the JS keyword null),
+  // producing `const CURRENT_ID = None;`, a syntax error that would have
+  // killed this entire script block the same way the unescaped
+  // recording_url did on the livestream watch page. default_if_none makes
+  // this always valid JS regardless of auth state.
+  const CURRENT_ID = {{ user.pk|default_if_none:"null" }};
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl      = `${wsProtocol}//${window.location.host}{{ ws_path }}`;
+  const wsUrl      = `${wsProtocol}//${window.location.host}{{ ws_path|escapejs }}`;
   const uploadUrl  = `/chat/upload/${ROOM_TYPE}/{% if room_type == 'support' %}{{ support_room.id }}{% else %}{{ chat_room.id }}{% endif %}/`;
   const resolveUrl = `/chat/support/{{ support_room.id }}/resolve/`;
 
@@ -250,19 +283,25 @@
   }
   connect();
 
+  function esc(str) {
+    return String(str || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   function appendMessage(data) {
     const wrap = document.createElement('div');
-    wrap.className = `flex ${data.is_self ? 'justify-end' : 'justify-start'}`;
+    wrap.className = `d-flex ${data.is_self ? 'justify-content-end' : 'justify-content-start'}`;
     const attachHtml = data.attachment_url
-      ? `<img src="${data.attachment_url}" class="msg-attachment mb-1" onclick="openLightbox('${data.attachment_url}')"/>`
+      ? `<img src="${esc(data.attachment_url)}" alt="Attachment" class="msg-attachment mb-1" onclick="openLightbox('${esc(data.attachment_url)}')"/>`
       : '';
     wrap.innerHTML = `
-      <div class="msg-bubble ${data.is_self ? 'msg-self' : 'msg-other'} px-4 py-2.5">
+      <div class="msg-bubble ${data.is_self ? 'msg-self' : 'msg-other'} px-3 py-2">
         ${attachHtml}
-        <p class="text-sm leading-relaxed"></p>
-        <p class="text-[10px] mt-1 ${data.is_self ? 'text-white/60' : 'text-gray-400'}">${data.created_at}</p>
+        <p class="small mb-0" style="line-height:1.5"></p>
+        <p class="msg-time mb-0">${esc(data.created_at)}</p>
       </div>`;
-    const textEl = wrap.querySelector('p.text-sm');
+    const textEl = wrap.querySelector('p.small');
     if (data.content) { textEl.textContent = data.content; } else { textEl.remove(); }
     scrollEl.appendChild(wrap);
   }

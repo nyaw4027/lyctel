@@ -3,35 +3,39 @@
 
 {% block extra_head %}
 <style>
-  .room-card { transition: background-color .15s ease; }
+  .room-card { transition: background-color .15s ease; text-decoration: none; color: inherit; }
   .room-card:hover { background-color: #f9fafb; }
-  html.dark .room-card:hover { background-color: var(--bg-tertiary); }
-  .unread-dot { animation: pulse-dot 2s ease-in-out infinite; }
-  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.5} }
+  [data-bs-theme="dark"] .room-card:hover { background-color: #1f2937; }
+  .unread-dot { animation: pulseDot 2s ease-in-out infinite; }
+  @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:.5} }
+  @media (prefers-reduced-motion: reduce) { .unread-dot { animation: none; } }
+  .avatar-circle {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy), var(--navy-700));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem;
+    flex-shrink: 0;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
+<div class="container py-4 py-md-5" style="max-width:640px">
 
-  <div class="mb-6">
-    <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Messages</p>
-    <h1 class="font-display font-700 text-xl md:text-2xl text-navy">
+  <div class="mb-4">
+    <p class="text-gold small fw-bold text-uppercase mb-1" style="letter-spacing:.08em">Messages</p>
+    <h1 class="font-display fw-bold text-navy" style="font-size:1.5rem">
       {% if user.vendor %}Customer Conversations{% else %}My Chats{% endif %}
     </h1>
   </div>
 
   {% if room_data %}
-  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+  <div class="bg-white rounded-4 border">
     {% for entry in room_data %}
     <a href="{% url 'chat:room' entry.room.id %}"
-       class="room-card flex items-center gap-3 px-4 md:px-5 py-4 transition-colors
-              {% if not forloop.last %}border-b border-gray-50{% endif %}">
+       class="room-card d-flex align-items-center gap-3 px-4 py-3 {% if not forloop.last %}border-bottom{% endif %}">
 
-      <!-- Avatar -->
-      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-navy to-navy-500
-                  flex items-center justify-center text-white font-display font-700 text-lg
-                  flex-shrink-0">
+      <div class="avatar-circle">
         {% if user.vendor %}
           {{ entry.room.buyer.first_name|first|upper|default:"U" }}
         {% else %}
@@ -39,10 +43,9 @@
         {% endif %}
       </div>
 
-      <!-- Info -->
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center justify-between gap-2">
-          <p class="font-semibold text-navy text-sm truncate">
+      <div class="flex-grow-1 min-w-0">
+        <div class="d-flex align-items-center justify-content-between gap-2">
+          <p class="fw-semibold text-navy small text-truncate mb-0">
             {% if user.vendor %}
               {{ entry.room.buyer.get_full_name|default:entry.room.buyer.phone }}
             {% else %}
@@ -50,11 +53,11 @@
             {% endif %}
           </p>
           {% if entry.last %}
-          <span class="text-xs text-gray-400 flex-shrink-0">{{ entry.last.created_at|timesince }} ago</span>
+          <span class="text-muted flex-shrink-0" style="font-size:.7rem">{{ entry.last.created_at|timesince }} ago</span>
           {% endif %}
         </div>
-        <div class="flex items-center justify-between gap-2 mt-0.5">
-          <p class="text-xs text-gray-400 truncate">
+        <div class="d-flex align-items-center justify-content-between gap-2 mt-1">
+          <p class="text-muted small text-truncate mb-0">
             {% if entry.last %}
               {% if entry.last.sender == user %}You: {% endif %}{{ entry.last.content }}
             {% else %}
@@ -62,8 +65,7 @@
             {% endif %}
           </p>
           {% if entry.unread > 0 %}
-          <span class="unread-dot flex-shrink-0 bg-gold text-navy text-xs font-bold
-                       min-w-[20px] h-5 rounded-full flex items-center justify-center px-1.5">
+          <span class="unread-dot flex-shrink-0 badge rounded-pill fw-bold" style="background:var(--gold);color:var(--navy);min-width:20px">
             {{ entry.unread }}
           </span>
           {% endif %}
@@ -73,10 +75,10 @@
     {% endfor %}
   </div>
   {% else %}
-  <div class="text-center py-16">
-    <div class="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4">💬</div>
-    <h2 class="font-display font-700 text-lg text-navy mb-2">No conversations yet</h2>
-    <p class="text-gray-400 text-sm mb-5">
+  <div class="text-center py-5">
+    <div class="rounded-4 bg-light d-inline-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px;font-size:1.75rem" aria-hidden="true">💬</div>
+    <h2 class="font-display fw-bold text-navy mb-2" style="font-size:1.1rem">No conversations yet</h2>
+    <p class="text-muted small mb-4">
       {% if user.vendor %}
         Messages from customers will appear here.
       {% else %}
@@ -84,9 +86,7 @@
       {% endif %}
     </p>
     {% if not user.vendor %}
-    <a href="{% url 'vendors:directory' %}"
-       class="inline-flex items-center gap-2 bg-navy text-white font-semibold
-              px-6 py-3 rounded-2xl transition-colors btn-press text-sm">
+    <a href="{% url 'vendors:directory' %}" class="btn btn-navy rounded-3 px-4 py-2 fw-semibold">
       Browse Shops →
     </a>
     {% endif %}
