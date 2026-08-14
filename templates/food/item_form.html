@@ -4,6 +4,16 @@
 
 {% block extra_head %}
 <style>
+  /* Brand CSS custom properties — needed because this template uses
+     var(--navy), var(--gold), var(--gold-light) which Bootstrap doesn't
+     define. They were set by Tailwind config previously but Bootstrap has
+     no equivalent mechanism, so we define them explicitly here. */
+  :root {
+    --navy:       #0F1B2D;
+    --gold:       #F5A623;
+    --gold-light: #FEF3D7;
+    --gold-dark:  #c8841a;
+  }
   .upload-zone {
     border: 2px dashed #e5e7eb;
     border-radius: 14px;

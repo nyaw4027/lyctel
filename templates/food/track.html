@@ -1,93 +1,238 @@
 {% extends "base.html" %}
 {% load i18n static %}
 {% block title %}Track Order — Lynctel Food{% endblock %}
+
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 <style>
-#map { width:100%; height:40vh; min-height:300px; border-radius:12px; overflow:hidden; }
-.tracking-steps .step { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; }
-.tracking-steps .step:last-child { border-bottom: none; }
+  :root { --navbar-h: 64px; }
+  #map {
+    width: 100%; height: 40vh; min-height: 280px;
+    border-radius: 14px; overflow: hidden;
+    background: #f3f4f6;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #map img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* Status timeline steps */
+  .tracking-step {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .tracking-step:last-child { border-bottom: none; }
+  .tracking-step__dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: .9rem;
+  }
+  .tracking-step__dot--done   { background: #dcfce7; color: #16a34a; }
+  .tracking-step__dot--active { background: #dbeafe; color: #2563eb; }
+  .tracking-step__dot--pending{ background: #f3f4f6; color: #9ca3af; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-xl px-3 py-4">
+
+  <div class="d-flex align-items-center gap-2 mb-1">
+    <a href="{% url 'food:order_history' %}"
+       class="small text-secondary text-decoration-none">← My Orders</a>
+  </div>
+
+  <div class="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
+    <h1 class="h5 font-display mb-0">
+      Order #{{ order.order_ref }}
+    </h1>
+    {# Status badge — inline mapping avoids the unloaded |status_badge filter bug #}
+    {% if order.status == 'pending' %}
+    <span class="badge text-bg-warning">{{ order.get_status_display }}</span>
+    {% elif order.status == 'preparing' %}
+    <span class="badge text-bg-info">{{ order.get_status_display }}</span>
+    {% elif order.status == 'ready' %}
+    <span class="badge text-bg-primary">{{ order.get_status_display }}</span>
+    {% elif order.status == 'out_for_delivery' %}
+    <span class="badge" style="background:#6366f1;color:white">{{ order.get_status_display }}</span>
+    {% elif order.status == 'delivered' %}
+    <span class="badge text-bg-success">{{ order.get_status_display }}</span>
+    {% elif order.status == 'cancelled' %}
+    <span class="badge text-bg-danger">{{ order.get_status_display }}</span>
+    {% else %}
+    <span class="badge text-bg-secondary">{{ order.get_status_display }}</span>
+    {% endif %}
+  </div>
+
   <div class="row g-3">
     <div class="col-lg-8">
-      <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
-        <h1 class="h5 font-display mb-0">Tracking Order #{{ order.pk }}</h1>
-        {% if order.status == 'pending' %}
-        <span class="badge text-bg-warning">{{ order.get_status_display }}</span>
-        {% elif order.status == 'preparing' %}
-        <span class="badge text-bg-info">{{ order.get_status_display }}</span>
-        {% elif order.status == 'ready' %}
-        <span class="badge text-bg-primary">{{ order.get_status_display }}</span>
-        {% elif order.status == 'out_for_delivery' %}
-        <span class="badge text-bg-info">{{ order.get_status_display }}</span>
-        {% elif order.status == 'delivered' %}
-        <span class="badge text-bg-success">{{ order.get_status_display }}</span>
-        {% elif order.status == 'cancelled' %}
-        <span class="badge text-bg-danger">{{ order.get_status_display }}</span>
-        {% else %}
-        <span class="badge text-bg-secondary">{{ order.get_status_display }}</span>
-        {% endif %}
-      </div>
 
+      <!-- Map -->
       <div id="map" class="mb-3">
+        <!--
+          FIXED: order.rider.map_snapshot_url was used unconditionally.
+          This is a non-standard attribute that may not exist on the rider model.
+          Guarded with an existence check; falls back to a clear "unavailable" message.
+        -->
         {% if order.rider and order.rider.location %}
-        <img src="{{ order.rider.map_snapshot_url }}" alt="Map showing your rider's current location" style="width:100%;height:100%;object-fit:cover">
+          {% if order.rider.map_snapshot_url %}
+          <img src="{{ order.rider.map_snapshot_url }}"
+               alt="Map showing your rider's current location"/>
+          {% else %}
+          <div class="text-center text-muted p-4">
+            <div style="font-size:2.5rem" class="mb-2">🗺️</div>
+            <p class="small mb-0">Live map coming soon</p>
+          </div>
+          {% endif %}
         {% else %}
-        <div class="h-100 d-flex align-items-center justify-content-center text-muted">Map unavailable</div>
+        <div class="text-center text-muted p-4">
+          <div style="font-size:2.5rem" class="mb-2">🗺️</div>
+          <p class="small mb-0">
+            {% if order.status == 'pending' or order.status == 'preparing' %}
+            Map will appear once a rider is assigned.
+            {% else %}
+            Map unavailable.
+            {% endif %}
+          </p>
+        </div>
         {% endif %}
       </div>
 
+      <!-- Rider card -->
       <div class="card p-3 mb-3">
-        <h2 class="h6 mb-2">Rider</h2>
+        <h2 class="h6 mb-3">Your Rider</h2>
         {% if order.rider %}
         <div class="d-flex align-items-center gap-3">
           {% if order.rider.profile_pic %}
-          <img src="{{ order.rider.profile_pic.url }}" alt="" class="rounded-circle object-fit-cover" width="56" height="56" loading="lazy">
+          <img src="{{ order.rider.profile_pic.url }}"
+               alt="" class="rounded-circle object-fit-cover flex-shrink-0"
+               width="56" height="56"/>
           {% else %}
-          <div class="rounded-circle bg-navy text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width:56px;height:56px" aria-hidden="true">🧑</div>
+          <div class="rounded-circle d-flex align-items-center justify-content-center
+                      flex-shrink-0 text-white fw-bold"
+               style="width:56px;height:56px;background:#0F1B2D;font-size:1.2rem">
+            🛵
+          </div>
           {% endif %}
-          <div>
-            <div class="fw-semibold">{{ order.rider.get_full_name|default:"Your rider" }}</div>
-            <div class="small text-muted">{{ order.rider.phone }}</div>
+          <div class="flex-grow-1 min-w-0">
+            <p class="fw-semibold text-navy mb-0">
+              {{ order.rider.get_full_name|default:"Your Rider" }}
+            </p>
+            {% if order.rider.phone %}
+            <p class="text-muted small mb-0">{{ order.rider.phone }}</p>
+            {% endif %}
           </div>
           {% if order.rider.phone %}
-          <a href="tel:{{ order.rider.phone }}" class="btn btn-sm btn-outline-navy ms-auto" aria-label="Call your rider">📞 Call</a>
+          <a href="tel:{{ order.rider.phone }}"
+             class="btn btn-sm rounded-3 flex-shrink-0"
+             style="background:#0F1B2D;color:white">
+            📞 Call
+          </a>
           {% endif %}
         </div>
         {% else %}
-        <div class="text-muted small">No rider assigned yet — we'll update this as soon as one is on the way.</div>
+        <p class="text-muted small mb-0">
+          No rider assigned yet — we'll notify you as soon as one is on the way.
+        </p>
         {% endif %}
       </div>
 
+      <!-- Status timeline -->
       <div class="card p-3">
-        <h2 class="h6 mb-2">Status</h2>
-        <div class="tracking-steps">
+        <h2 class="h6 mb-3">Status Updates</h2>
+        <!--
+          FIXED: order.status_timeline was iterated directly but this property
+          may not exist on the model. Wrapped in a safe check.
+          If your FoodOrder model has a status_timeline property/method,
+          this will use it. Otherwise it falls back to the built-in status display.
+        -->
+        {% if order.status_timeline %}
+        <div>
           {% for step in order.status_timeline %}
-          <div class="step">
-            <div class="fw-semibold">{{ step.title }}</div>
-            <div class="small text-muted ms-auto">{{ step.timestamp|date:"H:i" }}</div>
+          <div class="tracking-step">
+            <div class="tracking-step__dot
+                        {% if step.done %}tracking-step__dot--done
+                        {% elif step.active %}tracking-step__dot--active
+                        {% else %}tracking-step__dot--pending{% endif %}">
+              {% if step.done %}✓{% elif step.active %}●{% else %}○{% endif %}
+            </div>
+            <div class="flex-grow-1">
+              <p class="fw-semibold mb-0 small">{{ step.title }}</p>
+              {% if step.description %}<p class="text-muted mb-0" style="font-size:.75rem">{{ step.description }}</p>{% endif %}
+            </div>
+            {% if step.timestamp %}
+            <span class="text-muted flex-shrink-0" style="font-size:.75rem">
+              {{ step.timestamp|date:"H:i" }}
+            </span>
+            {% endif %}
           </div>
-          {% empty %}
-          <p class="small text-muted mb-0">No status updates yet.</p>
           {% endfor %}
         </div>
+        {% else %}
+        {# Fallback: show a simple status progression when no timeline is available #}
+        <div>
+          {% for s, label, icon in status_steps %}
+          <div class="tracking-step">
+            <div class="tracking-step__dot
+                        {% if order.status == s %}tracking-step__dot--active
+                        {% elif order.status == 'delivered' or order.status_index > forloop.counter0 %}tracking-step__dot--done
+                        {% else %}tracking-step__dot--pending{% endif %}">
+              {{ icon }}
+            </div>
+            <p class="fw-semibold mb-0 small flex-grow-1">{{ label }}</p>
+          </div>
+          {% empty %}
+          {# If no status_steps context, show a bare one-line status #}
+          <div class="tracking-step">
+            <div class="tracking-step__dot tracking-step__dot--active">●</div>
+            <p class="fw-semibold mb-0 small flex-grow-1">{{ order.get_status_display }}</p>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
+
     </div>
 
+    <!-- Order summary -->
     <aside class="col-lg-4">
       <div class="card p-3">
-        <h2 class="h6 mb-2">Order summary</h2>
-        <ul class="list-unstyled small text-muted mb-2">
-          {% for item in order.items %}
-          <li class="d-flex justify-content-between mb-1"><span>{{ item.name }} × {{ item.quantity }}</span><span>GHS {{ item.total_price|floatformat:2 }}</span></li>
+        <h2 class="h6 mb-3">Order Summary</h2>
+
+        {# FIXED: order.items is a related manager — must call .all() to iterate #}
+        <ul class="list-unstyled small mb-3">
+          {% for item in order.items.all %}
+          <li class="d-flex justify-content-between gap-2 mb-2">
+            <span class="text-muted text-truncate">
+              {{ item.food.name|default:item.name }} × {{ item.quantity }}
+            </span>
+            <span class="fw-semibold text-navy flex-shrink-0">
+              GHS {{ item.total_price|floatformat:2 }}
+            </span>
+          </li>
+          {% empty %}
+          <li class="text-muted">No items found.</li>
           {% endfor %}
         </ul>
-        <hr>
-        <div class="d-flex justify-content-between fw-semibold">Total <span>GHS {{ order.total|floatformat:2 }}</span></div>
+        <hr class="my-2"/>
+        {% if order.delivery_fee %}
+        <div class="d-flex justify-content-between small text-muted mb-1">
+          <span>Delivery fee</span>
+          <span>GHS {{ order.delivery_fee|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        <div class="d-flex justify-content-between fw-bold text-navy">
+          <span>Total</span>
+          <span>GHS {{ order.total|floatformat:2 }}</span>
+        </div>
+
+        {% if order.status == 'delivered' %}
+        <div class="mt-3 pt-3 border-top">
+          <a href="{% url 'food:home' %}"
+             class="btn w-100 rounded-3 fw-semibold"
+             style="background:#0F1B2D;color:white">
+            Order Again
+          </a>
+        </div>
+        {% endif %}
       </div>
     </aside>
   </div>
@@ -96,25 +241,27 @@
 
 {% block extra_js %}
 <script>
-// Lightweight auto-refresh so the page reflects rider movement / status
-// changes without the customer having to manually reload — but only while
-// the order is still in flight. Once it's delivered or cancelled there's
-// nothing left to track, so we stop polling instead of reloading forever.
+// Auto-refresh while order is still in flight — stops once delivered or cancelled
+// so we don't keep reloading a finished order page forever.
 {% if order.status != 'delivered' and order.status != 'cancelled' %}
 (function () {
   var REFRESH_MS = 30000;
-  var timer = setInterval(function () {
-    if (document.hidden) return; // don't burn data/battery on a background tab
-    window.location.reload();
-  }, REFRESH_MS);
+  var timer = null;
+
+  function scheduleRefresh() {
+    timer = setInterval(function () {
+      if (!document.hidden) window.location.reload();
+    }, REFRESH_MS);
+  }
+
+  scheduleRefresh();
+
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) {
-      // catch up immediately if the tab was hidden past a refresh interval
+    if (document.hidden) {
       clearInterval(timer);
-      timer = setInterval(function () {
-        if (document.hidden) return;
-        window.location.reload();
-      }, REFRESH_MS);
+    } else {
+      // Reload immediately on tab-focus to catch up, then resume polling
+      window.location.reload();
     }
   });
 })();

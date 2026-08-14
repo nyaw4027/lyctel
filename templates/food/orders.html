@@ -11,10 +11,10 @@
 
   <div class="list-group">
     {% for order in orders %}
-    <a href="{% url 'food:order_detail' order.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+    <a href="{% url 'food:order_track' order.order_ref %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
       <div>
         <div class="fw-semibold">Order #{{ order.pk }}</div>
-        <div class="small text-muted">{{ order.created_at|date:"Y-m-d H:i" }} · {{ order.items_count }} item{{ order.items_count|pluralize }}</div>
+        <div class="small text-muted">{{ order.created_at|date:"Y-m-d H:i" }} · {{ order.items.count }} item{{ order.items.count|pluralize }}</div>
       </div>
       <div class="text-end">
         {# See restaurant_dashboard.html for why |status_badge (an unloaded custom

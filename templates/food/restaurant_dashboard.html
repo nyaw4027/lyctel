@@ -20,7 +20,7 @@
         <h2 class="h6">Orders</h2>
         <div class="list-group">
           {% for order in recent_orders %}
-          <a href="{% url 'food:restaurant_order' order.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between">
+          <a href="{% url 'food:restaurant_update_order' order.order_ref %}" class="list-group-item list-group-item-action d-flex justify-content-between">
             <div>
               <div class="fw-semibold">#{{ order.pk }}</div>
               {# |naturaltime needs {% load humanize %} (django.contrib.humanize app) which

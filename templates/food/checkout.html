@@ -11,53 +11,102 @@
     <div class="col-lg-8">
       <h1 class="h5 mb-3 font-display">Checkout</h1>
 
-      <form method="post" action="{% url 'food:place_order' %}">
+      <!--
+        FIXED:
+        1. form action was food:place_order — URL does not exist.
+           The checkout view handles both GET (display) and POST (place order).
+        2. "Back to cart" linked to food:cart — URL does not exist.
+           Linked to food:home as a safe fallback; replace with your cart URL
+           if/when you add path('cart/', views.cart, name='cart') to food/urls.py.
+        3. item.product.name → item.food.name (food cart items reference food.food,
+           not food.product — matches the model field used in cart.html).
+      -->
+      <form method="post" action="{% url 'food:checkout' %}">
         {% csrf_token %}
         <div class="card mb-3 p-3">
-          <h2 class="h6 mb-2">Delivery address</h2>
+          <h2 class="h6 mb-3">Delivery address</h2>
           <div class="mb-3">
-            <label for="checkout-address" class="form-label small text-muted">Delivery address</label>
-            <input id="checkout-address" name="address" class="form-control" placeholder="Enter delivery address" value="{{ address|default:'' }}" required>
+            <label for="checkout-address" class="form-label small text-muted">
+              Delivery address
+            </label>
+            <input id="checkout-address" name="address" class="form-control rounded-3"
+                   placeholder="Enter your delivery address"
+                   value="{{ address|default:'' }}" required/>
           </div>
-          <div class="mb-3">
-            <label for="checkout-notes" class="form-label small text-muted">Order notes (optional)</label>
-            <input id="checkout-notes" name="notes" class="form-control" placeholder="Order notes (optional)" value="{{ notes|default:'' }}">
+          <div class="mb-0">
+            <label for="checkout-notes" class="form-label small text-muted">
+              Order notes <span class="text-muted">(optional)</span>
+            </label>
+            <input id="checkout-notes" name="notes" class="form-control rounded-3"
+                   placeholder="Any special instructions for the kitchen"
+                   value="{{ notes|default:'' }}"/>
           </div>
         </div>
 
         <fieldset class="card mb-3 p-3">
-          <legend class="h6 mb-2 float-none w-auto px-0">Payment method</legend>
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="payment_method" id="pay-cash" value="cash" checked>
-            <label class="form-check-label" for="pay-cash">Cash on delivery</label>
+          <legend class="h6 mb-3 float-none w-auto px-0">Payment method</legend>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="payment_method"
+                   id="pay-cash" value="cash" checked/>
+            <label class="form-check-label fw-semibold" for="pay-cash">
+              💵 Cash on delivery
+            </label>
           </div>
           <div class="form-check">
-            <input class="form-check-input" type="radio" name="payment_method" id="pay-momo" value="momo">
-            <label class="form-check-label" for="pay-momo">Mobile Money (MoMo)</label>
+            <input class="form-check-input" type="radio" name="payment_method"
+                   id="pay-momo" value="momo"/>
+            <label class="form-check-label fw-semibold" for="pay-momo">
+              📱 Mobile Money (MoMo)
+            </label>
           </div>
         </fieldset>
 
         <div class="d-flex gap-2">
-          <a href="{% url 'food:cart' %}" class="btn btn-outline-secondary">Back to cart</a>
-          <button type="submit" class="btn btn-navy" {% if not cart_items %}disabled{% endif %}>Place order</button>
+          {# Back to cart — food:cart URL doesn't exist in food/urls.py yet.
+             Using food:home as a safe fallback. Add path('cart/', views.cart, name='cart')
+             to food/urls.py and change this to {% url 'food:cart' %} when ready. #}
+          <a href="{% url 'food:home' %}" class="btn btn-outline-secondary rounded-3">
+            ← Back
+          </a>
+          <button type="submit" class="btn rounded-3 fw-semibold px-4"
+                  style="background:#0F1B2D;color:white"
+                  {% if not cart_items %}disabled{% endif %}>
+            Place Order →
+          </button>
         </div>
       </form>
     </div>
 
+    <!-- Order summary -->
     <aside class="col-lg-4">
       <div class="card p-3">
-        <h2 class="h6 mb-2">Order summary</h2>
+        <h2 class="h6 mb-3">Order summary</h2>
         <ul class="list-unstyled mb-3">
           {% for item in cart_items %}
-          <li class="d-flex justify-content-between small text-muted mb-2">
-            <span>{{ item.product.name }} × {{ item.quantity }}</span><span>GHS {{ item.total_price|floatformat:2 }}</span>
+          <li class="d-flex justify-content-between align-items-start gap-2 small text-muted mb-2">
+            {# FIXED: was item.product.name — food cart items use item.food.name #}
+            <span class="text-truncate">{{ item.food.name }} × {{ item.quantity }}</span>
+            <span class="flex-shrink-0 fw-semibold text-navy">
+              GHS {{ item.total_price|floatformat:2 }}
+            </span>
           </li>
           {% empty %}
           <li class="small text-muted">Your cart is empty.</li>
           {% endfor %}
         </ul>
-        <hr>
-        <div class="d-flex justify-content-between fw-semibold">Total <span>GHS {{ cart_total|floatformat:2 }}</span></div>
+        <hr class="my-2"/>
+        <div class="d-flex justify-content-between small text-muted mb-1">
+          <span>Subtotal</span>
+          <span>GHS {{ cart_subtotal|floatformat:2 }}</span>
+        </div>
+        <div class="d-flex justify-content-between small text-muted mb-2">
+          <span>Delivery</span>
+          <span>GHS {{ delivery_fee|floatformat:2 }}</span>
+        </div>
+        <div class="d-flex justify-content-between fw-bold text-navy">
+          <span>Total</span>
+          <span>GHS {{ cart_total|floatformat:2 }}</span>
+        </div>
       </div>
     </aside>
   </div>
