@@ -5,7 +5,7 @@
 <div class="mx-auto px-3 py-5 text-center" style="max-width: 32rem;">
 
   <div class="mx-auto bg-warning bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center mb-4" style="width:5rem;height:5rem;">
-    <svg style="width:2.5rem;height:2.5rem;" class="text-warning-emphasis" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg style="width:2.5rem;height:2.5rem;" class="text-warning-emphasis" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
     </svg>
@@ -44,8 +44,12 @@
 
   <p class="mt-4 small text-secondary">
     Need help?
-    <a href="https://wa.me/233558040216?text=Hi,+I+need+help+with+order+{{ order.order_ref }}"
-       target="_blank" class="text-gold-dark fw-semibold">
+    {# order.order_ref was spliced straight into the query string with no
+       encoding — a ref containing '&', '#', or a raw space could break or
+       truncate the wa.me link. |urlencode makes it safe regardless of
+       what characters the ref contains. #}
+    <a href="https://wa.me/233558040216?text=Hi,+I+need+help+with+order+{{ order.order_ref|urlencode }}"
+       target="_blank" rel="noopener noreferrer" class="text-gold-dark fw-semibold">
       Contact support →
     </a>
   </p>
