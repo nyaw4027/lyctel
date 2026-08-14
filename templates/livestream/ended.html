@@ -1,27 +1,37 @@
-{# ── ended.html ────────────────────────────────────────── #}
 {% extends "base.html" %}
 {% load i18n static %}
 {% block title %}Stream Ended — {{ stream.vendor.shop_name }}{% endblock %}
+
 {% block content %}
-<div class="max-w-lg mx-auto px-4 py-20 text-center">
-  <p class="text-6xl mb-5">📺</p>
-  <h1 class="font-display font-700 text-2xl text-navy mb-2">This stream has ended</h1>
-  <p class="text-gray-500 text-sm mb-2">
-    {{ stream.vendor.shop_name }} streamed for
-    {% if stream.duration_minutes %}{{ stream.duration_minutes }} minutes{% else %}a while{% endif %}.
-  </p>
-  <p class="text-gray-400 text-xs mb-8">{{ stream.total_viewers }} people watched this stream.</p>
-  <div class="flex flex-col sm:flex-row gap-3 justify-center">
-    <a href="{% url 'livestream:list' %}"
-       class="bg-navy text-white font-semibold px-6 py-3 rounded-xl
-              hover:bg-navy/90 transition-colors">
-      Browse Live Streams →
-    </a>
-    <a href="{% url 'vendors:shop' stream.vendor.slug %}"
-       class="bg-white border border-gray-200 text-navy font-semibold px-6 py-3
-              rounded-xl hover:border-navy transition-colors">
-      Visit {{ stream.vendor.shop_name }}
-    </a>
+<div class="container py-5" style="max-width:520px">
+  <div class="text-center py-5">
+
+    <div style="font-size:4rem;margin-bottom:20px">📺</div>
+
+    <h1 class="font-display fw-bold text-navy mb-2" style="font-size:1.6rem">
+      This stream has ended
+    </h1>
+    <p class="text-muted mb-1" style="font-size:14px">
+      {{ stream.vendor.shop_name }} streamed for
+      {% if stream.duration_minutes %}{{ stream.duration_minutes }} minutes{% else %}a while{% endif %}.
+    </p>
+    <p class="mb-5" style="font-size:13px;color:#9ca3af">
+      {{ stream.total_viewers }} people watched this stream.
+    </p>
+
+    <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+      <a href="{% url 'livestream:list' %}"
+         class="btn fw-semibold px-4 py-3 rounded-3"
+         style="background:#0F1B2D;color:white;border:none;font-size:14px">
+        Browse Live Streams →
+      </a>
+      <a href="{% url 'vendors:shop' stream.vendor.slug %}"
+         class="btn fw-semibold px-4 py-3 rounded-3"
+         style="background:white;color:#0F1B2D;border:1.5px solid #e5e7eb;font-size:14px">
+        Visit {{ stream.vendor.shop_name }}
+      </a>
+    </div>
+
   </div>
 </div>
 {% endblock %}
