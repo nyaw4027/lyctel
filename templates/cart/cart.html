@@ -26,9 +26,9 @@
           <a href="{% url 'products:detail' item.product.slug %}" class="flex-shrink-0">
             {% with item.product.images.first as img %}
             {% if img %}
-            <img src="{{ img.image.url }}" class="rounded-xl object-fit-cover" style="width:5rem;height:5rem;"/>
+            <img src="{{ img.image.url }}" alt="{{ item.product.name }}" class="rounded-xl object-fit-cover" style="width:5rem;height:5rem;"/>
             {% else %}
-            <div class="rounded-xl bg-light d-flex align-items-center justify-content-center fs-2" style="width:5rem;height:5rem;">📦</div>
+            <div class="rounded-xl bg-light d-flex align-items-center justify-content-center fs-2" style="width:5rem;height:5rem;" aria-hidden="true">📦</div>
             {% endif %}
             {% endwith %}
           </a>
@@ -46,11 +46,11 @@
 
           <!-- Qty controls -->
           <div class="d-flex align-items-center gap-2 flex-shrink-0">
-            <button onclick="pageUpdateQty({{ item.pk }}, -1)"
+            <button type="button" onclick="pageUpdateQty({{ item.pk }}, -1)" aria-label="Decrease quantity of {{ item.product.name }}"
                     class="btn btn-light rounded-2 d-flex align-items-center justify-content-center fw-bold text-secondary border-0"
                     style="width:2rem;height:2rem;">−</button>
             <span id="qty-{{ item.pk }}" class="text-center fw-semibold text-navy small" style="width:2rem;">{{ item.quantity }}</span>
-            <button onclick="pageUpdateQty({{ item.pk }}, 1)"
+            <button type="button" onclick="pageUpdateQty({{ item.pk }}, 1)" aria-label="Increase quantity of {{ item.product.name }}"
                     class="btn btn-light rounded-2 d-flex align-items-center justify-content-center fw-bold text-secondary border-0"
                     style="width:2rem;height:2rem;">+</button>
           </div>
@@ -58,7 +58,7 @@
           <!-- Subtotal + remove -->
           <div class="text-end flex-shrink-0" style="min-width: 80px;">
             <p id="sub-{{ item.pk }}" class="font-display fw-bold text-navy small mb-0">GHS {{ item.subtotal }}</p>
-            <button onclick="pageRemoveItem({{ item.pk }})" class="btn btn-link small text-danger p-0 mt-1 text-decoration-none">Remove</button>
+            <button type="button" onclick="pageRemoveItem({{ item.pk }})" class="btn btn-link small text-danger p-0 mt-1 text-decoration-none">Remove</button>
           </div>
         </div>
         {% endfor %}
@@ -70,7 +70,7 @@
 
       <!-- ORDER SUMMARY -->
       <div class="w-100 flex-shrink-0" style="max-width: 20rem;">
-        <div class="bg-white rounded-2xl border p-4 position-sticky" style="top:5rem;">
+        <div class="bg-white rounded-2xl border p-4 position-sticky" style="top:calc(var(--navbar-h) + 1rem);">
           <h2 class="font-display fw-bold text-navy fs-5 mb-3">Order Summary</h2>
 
           <div class="d-flex flex-column gap-2 small mb-4">
@@ -103,7 +103,7 @@
           {% endif %}
 
           <!-- Clear cart -->
-          <button onclick="clearCart()" class="btn btn-link w-100 text-center small text-danger py-1 fw-medium text-decoration-none">
+          <button type="button" onclick="clearCart()" class="btn btn-link w-100 text-center small text-danger py-1 fw-medium text-decoration-none">
             🗑 Clear Cart
           </button>
 
@@ -124,7 +124,7 @@
 
   <!-- EMPTY STATE -->
   <div id="cart-page-empty" class="{% if cart_items %}d-none{% endif %} d-flex flex-column align-items-center justify-content-center py-5 text-center">
-    <div class="bg-light rounded-3xl d-flex align-items-center justify-content-center display-4 mb-4" style="width:6rem;height:6rem;">🛒</div>
+    <div class="bg-light rounded-3xl d-flex align-items-center justify-content-center display-4 mb-4" style="width:6rem;height:6rem;" aria-hidden="true">🛒</div>
     <h2 class="font-display fw-bold fs-2 text-navy mb-2">Your cart is empty</h2>
     <p class="text-secondary small mb-4" style="max-width: 20rem;">Browse our products and add items you love.</p>
     <a href="{% url 'products:list' %}" class="btn btn-navy fw-semibold px-4 py-3 rounded-2xl btn-press">
@@ -207,20 +207,26 @@
   function clearCart() {
     if (!confirm('Remove all items from your cart?')) return;
     const items = document.querySelectorAll('[id^="row-"]');
-    items.forEach(row => {
+    // Was firing every remove request and then just guessing 400ms was
+    // "probably enough" before declaring the cart empty — on a slow
+    // connection some removes might not have landed yet, so a refresh
+    // right after could still show leftover items. Waiting on the actual
+    // fetch promises means the UI only flips to "empty" once the server
+    // has confirmed every item is gone.
+    const requests = Array.from(items).map(row => {
       const id = row.id.replace('row-', '');
       const fd = new FormData();
       fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
-      fetch(`/cart/remove/${id}/`, {
+      return fetch(`/cart/remove/${id}/`, {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         body: fd,
-      });
+      }).catch(() => null);
     });
-    setTimeout(() => {
+    Promise.all(requests).then(() => {
       updateCartBadge(0);
       showEmptyState();
-    }, 400);
+    });
   }
 
   function showEmptyState() {
