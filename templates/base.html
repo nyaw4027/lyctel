@@ -614,7 +614,7 @@
           <div class="d-flex flex-wrap gap-3 align-items-center">
             <a href="{% url 'frontend:privacy_policy' %}" class="footer-link-sm">Privacy Policy</a>
             <a href="{% url 'frontend:terms' %}" class="footer-link-sm">Terms of Service</a>
-            <a href="{% url 'frontend:cookies' %}" class="footer-link-sm">Cookies</a>
+            {% url 'frontend:cookies' as cookies_url %}{% if cookies_url %}<a href="{{ cookies_url }}" class="footer-link-sm">Cookies</a>{% endif %}
           </div>
         </div>
       </div>
