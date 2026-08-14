@@ -1,12 +1,12 @@
-const STREAM_ID  = '{{ stream.id|lower }}';
+const STREAM_ID  = window.STREAM_ID || '';
 const WS_SCHEME  = location.protocol === 'https:' ? 'wss' : 'ws';
-const WS_URL     = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
-const END_URL    = '/livestream/{{ stream.id|lower }}/end/';
-const PIN_URL    = '/livestream/{{ stream.id|lower }}/pin-product/';
-const UPLOAD_URL = '/livestream/{{ stream.id|lower }}/upload-recording/';
+const WS_URL     = window.WS_URL || `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
+const END_URL    = window.END_URL || `/livestream/${STREAM_ID}/end/`;
+const PIN_URL    = window.PIN_URL || `/livestream/${STREAM_ID}/pin-product/`;
+const UPLOAD_URL = window.UPLOAD_URL || `/livestream/${STREAM_ID}/upload-recording/`;
 // CSRF_TOKEN declared in base.html
 
-const pinnedSet = new Set({{ pinned_ids|default:"[]"|safe }});
+const pinnedSet = new Set(window.PINNED_IDS || []);
 
 let ws, localStream, facingMode = 'user';
 let peerConnections = {};
@@ -426,13 +426,13 @@ async function endStream() {
       alert(`Stream ended!\nPeak viewers: ${peakViewers}\nGifts: GHS ${data.gifts_value}\nDuration: ${data.duration||0} mins` + (recordingUrl ? '\nReplay saved ✅' : '\nReplay could not be saved.'));
     }
   } catch(e){console.error(e);}
-  window.location.href='/vendor/dashboard/';
+  window.location.href = window.VENDOR_DASHBOARD_URL || '/vendors/dashboard/';
 }
 
 // ── HELPERS ───────────────────────────────────────────────
 function floatEmoji(emoji) {
   const el  = document.createElement('div');
-  el.className = 'emoji-float';
+  el.className = 'like-float';
   el.textContent = emoji;
   el.style.left   = 5+Math.random()*30+'%';
   el.style.bottom = '120px';
@@ -462,16 +462,20 @@ function startTimer() {
   },1000);
 }
 
-// Restore pinned state
-{% for pid in pinned_ids %},
-currentPinnedId = {{ pid }};
-const _pb = document.querySelector('[data-id="{{ pid }}"]');
-if(_pb){
-  _pb.style.borderColor='#F5A623';_pb.style.background='rgba(245,166,35,.08)';
-  const _l=_pb.querySelector('.pin-label');
-  if(_l){_l.textContent='✓ Pinned';_l.style.color='#F5A623';}
-}
-{% endfor %}
+// Restore pinned state — PINNED_IDS is set by broadcast.html before this file loads
+(function() {
+  const ids = window.PINNED_IDS || [];
+  if (!ids.length) return;
+  currentPinnedId = ids[ids.length - 1]; // last pinned wins
+  ids.forEach(function(pid) {
+    const btn = document.querySelector('[data-id="' + pid + '"]');
+    if (!btn) return;
+    btn.style.borderColor = '#F5A623';
+    btn.style.background  = 'rgba(245,166,35,.08)';
+    const lbl = btn.querySelector('.pin-label');
+    if (lbl) { lbl.textContent = '✓ Pinned'; lbl.style.color = '#F5A623'; }
+  });
+})();
 
 // Prevent accidental close
 window.addEventListener('beforeunload', e=>{

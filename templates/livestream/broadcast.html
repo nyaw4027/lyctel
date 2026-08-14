@@ -302,5 +302,21 @@
 {% endblock %}
 
 {% block extra_js %}
+<!--
+  All constants that livestream.js needs are passed as window.* globals here,
+  BEFORE the script loads. This is required because livestream.js is a STATIC
+  file — Django's template engine never processes it — so {{ }} and {% %} tags
+  inside it are rendered as literal text in the browser. Passing values via
+  window.* globals defined in this inline script block is the correct pattern.
+-->
+<script>
+window.STREAM_ID          = '{{ stream.id }}';
+window.WS_URL             = '{{ ws_scheme }}://' + location.host + '/ws/stream/{{ stream.id }}/';
+window.END_URL            = '{% url "livestream:end_stream" stream.id %}';
+window.PIN_URL            = '{% url "livestream:pin_product" stream.id %}';
+window.UPLOAD_URL         = '{% url "livestream:upload_recording" stream.id %}';
+window.VENDOR_DASHBOARD_URL = '{% url "vendors:dashboard" %}';
+window.PINNED_IDS         = {{ pinned_ids|default:"[]"|safe }};
+</script>
 <script src="{% static 'js/livestream.js' %}"></script>
 {% endblock %}
