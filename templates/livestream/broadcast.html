@@ -87,7 +87,7 @@
 
       <!-- Reactions quick row -->
       <div style="display:flex;align-items:center;gap:6px;padding:8px 12px 4px;pointer-events:auto;">
-        {# Was `{% for emoji in "❤️🔥😂👏🎉" %}` — Django's {% for %} over a
+        {# Was `[% for emoji in "❤️🔥😂👏🎉" %]` — Django's [% for %] over a
            string iterates by Unicode codepoint, not by "visible emoji".
            ❤️ alone is TWO codepoints (heart + an invisible variation
            selector), so that loop rendered 6 buttons for 5 intended
