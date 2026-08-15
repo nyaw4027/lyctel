@@ -87,14 +87,12 @@
 
       <!-- Reactions quick row -->
       <div style="display:flex;align-items:center;gap:6px;padding:8px 12px 4px;pointer-events:auto;">
-        {% comment %}
-          The original code looped {% for emoji in "some string of emoji" %}.
-          Django's {% for %} over a string iterates by Unicode codepoint, not by
-          "visible emoji" — a heart emoji alone is TWO codepoints (the glyph plus
-          an invisible variation selector), so that loop rendered 6 buttons for 5
-          intended reactions, one of them a dud with no visible glyph. Explicit
-          buttons below sidestep the string-iteration issue entirely.
-        {% endcomment %}
+        {# Was `{% for emoji in "❤️🔥😂👏🎉" %}` — Django's {% for %} over a
+           string iterates by Unicode codepoint, not by "visible emoji".
+           ❤️ alone is TWO codepoints (heart + an invisible variation
+           selector), so that loop rendered 6 buttons for 5 intended
+           reactions — one of them a dud button with no visible glyph.
+           Explicit buttons sidestep the string-iteration issue entirely. #}
         <button onclick="floatEmoji('❤️')" aria-label="React with heart"
                 style="width:36px;height:36px;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);
                        border:none;border-radius:50%;font-size:18px;cursor:pointer;
@@ -304,5 +302,21 @@
 {% endblock %}
 
 {% block extra_js %}
+<!--
+  All constants livestream.js needs are defined here as window.* globals
+  BEFORE the script loads. Static files are served directly by the file
+  server — Django's template engine never touches them — so any {{ }} or
+  {% %} inside livestream.js renders as literal text in the browser.
+  Passing values via inline window.* is the correct pattern.
+-->
+<script>
+window.STREAM_ID          = '{{ stream.id }}';
+window.WS_URL             = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws/stream/{{ stream.id }}/';
+window.END_URL            = '{% url "livestream:end_stream" stream.id %}';
+window.PIN_URL            = '{% url "livestream:pin_product" stream.id %}';
+window.UPLOAD_URL         = '{% url "livestream:upload_recording" stream.id %}';
+window.VENDOR_DASHBOARD_URL = '{% url "vendors:dashboard" %}';
+window.PINNED_IDS         = {{ pinned_ids|default:"[]"|safe }};
+</script>
 <script src="{% static 'js/livestream.js' %}"></script>
 {% endblock %}

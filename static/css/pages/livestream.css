@@ -347,12 +347,9 @@ body:has(#root) #main-navbar{
 #live-poll-widget.show{
     display:block;
 }
-/* live-poll-widget (broadcaster) has no JS-toggled .show class in the
-   current markup — it's shown/hidden purely via inline style from
-   livestream.js, so keep it visible by default at this same position. */
-#live-poll-widget{
-    display:block;
-}
+/* broadcaster poll widget visibility is now controlled entirely by the
+   .show class (added/removed by startPoll() / endPoll() in livestream.js)
+   — no override needed here */
 
 .vp-option{
     position:relative;
@@ -663,15 +660,15 @@ body:has(#root) #main-navbar{
     z-index:50;
     animation:floatUp 2.6s ease-out forwards;
 }
-/* .emoji-float — alias for .like-float used by the broadcaster floatEmoji()
-   helper in livestream.js. Defined here so the broadcaster's floating
-   reactions render identically to the viewer's. */
+/* .emoji-float — broadcaster reaction floats. floatEmoji() in livestream.js
+   now correctly sets className='like-float' but this alias ensures any
+   older cached version of the script still works. */
 .emoji-float {
-    position:fixed;
-    font-size:1.75rem;
-    pointer-events:none;
-    z-index:50;
-    animation:floatUp 2.6s ease-out forwards;
+    position: fixed;
+    font-size: 1.75rem;
+    pointer-events: none;
+    z-index: 50;
+    animation: floatUp 2.6s ease-out forwards;
 }
 
 

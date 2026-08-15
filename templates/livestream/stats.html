@@ -144,7 +144,7 @@
           {% for gift in gifts %}
           <tr>
             <td class="px-4 py-3 fw-semibold text-navy" style="font-size:14px">
-              {{ gift.sender.display_name|default:"Anonymous" }}
+              {{ gift.sender.get_full_name|default:gift.sender.username|default:"Anonymous" }}
             </td>
             <td class="px-4 py-3 text-center" style="font-size:1.3rem">
               {{ gift.get_gift_type_display }}
@@ -153,7 +153,7 @@
               GHS {{ gift.total_value }}
             </td>
             <td class="px-4 py-3 text-end fw-semibold" style="font-size:14px;color:#16a34a">
-              GHS {{ gift.vendor_earnings }}
+              GHS {{ gift.vendor_earnings|default:gift.total_value|floatformat:2 }}
             </td>
             <td class="px-4 py-3 text-end d-none d-md-table-cell text-muted" style="font-size:12px">
               {{ gift.sent_at|date:"g:i A" }}

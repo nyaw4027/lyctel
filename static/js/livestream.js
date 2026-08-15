@@ -1,12 +1,12 @@
-const STREAM_ID  = window.STREAM_ID || '';
+const STREAM_ID  = window.STREAM_ID || '';          // set by broadcast.html before this file loads
 const WS_SCHEME  = location.protocol === 'https:' ? 'wss' : 'ws';
 const WS_URL     = window.WS_URL || `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
-const END_URL    = window.END_URL || `/livestream/${STREAM_ID}/end/`;
-const PIN_URL    = window.PIN_URL || `/livestream/${STREAM_ID}/pin-product/`;
+const END_URL    = window.END_URL    || `/livestream/${STREAM_ID}/end/`;
+const PIN_URL    = window.PIN_URL    || `/livestream/${STREAM_ID}/pin-product/`;
 const UPLOAD_URL = window.UPLOAD_URL || `/livestream/${STREAM_ID}/upload-recording/`;
 // CSRF_TOKEN declared in base.html
 
-const pinnedSet = new Set(window.PINNED_IDS || []);
+const pinnedSet = new Set(window.PINNED_IDS || []);  // PINNED_IDS set by broadcast.html
 
 let ws, localStream, facingMode = 'user';
 let peerConnections = {};
@@ -462,12 +462,12 @@ function startTimer() {
   },1000);
 }
 
-// Restore pinned state — PINNED_IDS is set by broadcast.html before this file loads
-(function() {
+// Restore pinned state — PINNED_IDS supplied by broadcast.html as window.PINNED_IDS
+(function () {
   const ids = window.PINNED_IDS || [];
   if (!ids.length) return;
-  currentPinnedId = ids[ids.length - 1]; // last pinned wins
-  ids.forEach(function(pid) {
+  currentPinnedId = ids[ids.length - 1];
+  ids.forEach(function (pid) {
     const btn = document.querySelector('[data-id="' + pid + '"]');
     if (!btn) return;
     btn.style.borderColor = '#F5A623';
@@ -477,7 +477,6 @@ function startTimer() {
   });
 })();
 
-// Prevent accidental close
 window.addEventListener('beforeunload', e=>{
   if(localStream){e.preventDefault();e.returnValue='Your stream is live. Leave?';}
 });
