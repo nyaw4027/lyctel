@@ -221,8 +221,8 @@ const HEARTBEAT_URL   = `/livestream/${STREAM_ID}/heartbeat/`;
 const WS_SCHEME       = location.protocol === 'https:' ? 'wss' : 'ws';
 const wsUrl           = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
 const SHOP_NAME       = "{{ stream.vendor.shop_name|escapejs }}";
-{% url "vendors:public_shop" stream.vendor.slug as _shop_url %}{% url "vendors:directory" as _dir_url %}
-const SHOP_URL        = "{{ _shop_url|default:_dir_url|escapejs }}";
+{% url "vendors:public_shop" stream.vendor.slug as shop_url %}{% url "vendors:directory" as dir_url %}
+const SHOP_URL        = "{{ shop_url|default:dir_url|escapejs }}";
 // CSRF_TOKEN declared in base.html
 
 let ws, pc, vendorChannel = null, connectTimeout = null;

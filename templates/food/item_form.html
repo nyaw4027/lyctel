@@ -4,15 +4,17 @@
 
 {% block extra_head %}
 <style>
-  /* Brand CSS custom properties — needed because this template uses
-     var(--navy), var(--gold), var(--gold-light) which Bootstrap doesn't
-     define. They were set by Tailwind config previously but Bootstrap has
-     no equivalent mechanism, so we define them explicitly here. */
+  /* Brand CSS variables — Bootstrap 5.3 doesn't define these; they must be
+     declared here since item_form.html's styles reference var(--navy),
+     var(--gold) and var(--gold-light) throughout. Without this :root block
+     every upload zone border, button color and focus ring is invisible. */
   :root {
     --navy:       #0F1B2D;
+    --navy-700:   #1a2d47;
     --gold:       #F5A623;
     --gold-light: #FEF3D7;
     --gold-dark:  #c8841a;
+    --cream:      #FFFDF7;
   }
   .upload-zone {
     border: 2px dashed #e5e7eb;
