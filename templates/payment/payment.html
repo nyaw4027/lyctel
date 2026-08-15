@@ -1,202 +1,112 @@
 {% extends "base.html" %}
-{% block title %}Payment — Lynctel{% endblock %}
-
-{% block extra_head %}
-<style>
-  .momo-option-label { border: 2px solid #f3f4f6; transition: all .2s; }
-  .momo-option-label:hover { border-color: var(--gold); }
-  .momo-option-label:has(:checked) { border-color: var(--gold); background: var(--gold-light); }
-</style>
-{% endblock %}
+{% load static %}
+{% block title %}Review & Pay — Lynctel{% endblock %}
 
 {% block content %}
-<div class="container px-3 px-md-4 py-4" style="max-width: 64rem;">
+<div class="container py-5" style="max-width:680px">
 
-  <!-- Progress steps -->
-  <div class="d-flex align-items-center gap-2 mb-4 small overflow-auto pb-1">
-    <span class="text-secondary text-nowrap d-flex align-items-center gap-2">
-      <span class="bg-success text-white rounded-circle small d-flex align-items-center justify-content-center fw-bold" style="width:1.25rem;height:1.25rem;">✓</span>
-      Delivery
-    </span>
-    <span class="text-secondary">›</span>
-    <span class="fw-semibold text-navy text-nowrap d-flex align-items-center gap-2">
-      <span class="bg-navy text-white rounded-circle small d-flex align-items-center justify-content-center fw-bold" style="width:1.25rem;height:1.25rem;">2</span>
-      Payment
-    </span>
-    <span class="text-secondary">›</span>
-    <span class="text-secondary text-nowrap d-flex align-items-center gap-2">
-      <span class="bg-light text-secondary rounded-circle small d-flex align-items-center justify-content-center fw-bold" style="width:1.25rem;height:1.25rem;">3</span>
-      Done
-    </span>
-  </div>
+  <h1 class="h4 fw-bold text-navy mb-4" style="font-family:'Syne',sans-serif">
+    Review your order
+  </h1>
 
-  <div class="d-flex flex-column flex-lg-row gap-4">
-
-    <!-- Payment form -->
-    <div class="flex-fill">
-      <form method="POST" id="payment-form" class="d-flex flex-column gap-3">
-        {% csrf_token %}
-
-        <!-- MoMo options -->
-        <div class="bg-white rounded-2xl border shadow-sm p-4">
-          <h2 class="font-display fw-bold text-navy fs-5 mb-4">Pay with Mobile Money</h2>
-
-          <div class="d-flex flex-column gap-2 mb-4" id="momo-options">
-            {% for value, label, pill_class, shortcode in momo_options %}
-            <label class="momo-option-label d-flex align-items-center gap-3 rounded-2xl p-3" style="cursor:pointer;">
-              <input type="radio" name="payment_method" value="{{ value }}"
-                     style="width:1rem;height:1rem;"
-                     onclick="showMomoField()" required/>
-              <div class="flex-fill">
-                <p class="fw-semibold text-navy small mb-1">{{ label }}</p>
-                <span class="small fw-bold px-2 py-1 rounded-pill {{ pill_class }}">{{ shortcode }}</span>
-              </div>
-              <span class="fs-3">📱</span>
-            </label>
-            {% endfor %}
-
-            <!-- Card option -->
-            <label class="momo-option-label d-flex align-items-center gap-3 rounded-2xl p-3" style="cursor:pointer;">
-              <input type="radio" name="payment_method" value="card"
-                     style="width:1rem;height:1rem;"
-                     onclick="hideMomoField()" required/>
-              <div class="flex-fill">
-                <p class="fw-semibold text-navy small mb-1">Bank Card</p>
-                <span class="small fw-bold px-2 py-1 rounded-pill bg-light text-secondary">Visa / Mastercard</span>
-              </div>
-              <span class="fs-3">💳</span>
-            </label>
-          </div>
-
-          <!-- MoMo number input (shown for MoMo, hidden for card) -->
-          <div id="momo-number-wrap" class="d-none mb-4">
-            <label class="form-label small fw-semibold text-dark">
-              MoMo Number *
-            </label>
-            <input type="tel" name="momo_number" id="momo-number"
-                   placeholder="e.g. 0558040216"
-                   class="form-control rounded-xl"/>
-            <p class="small text-secondary mt-2 mb-0">
-              📱 You will receive a MoMo prompt to approve the payment
-            </p>
-          </div>
-
-          <!-- Gateway selection (hidden — default Flutterwave, can offer Paystack) -->
-          <div class="mb-4 bg-light rounded-2xl p-3">
-            <p class="small fw-semibold text-secondary mb-2">Payment Gateway</p>
-            <div class="d-flex gap-3">
-              <label class="d-flex align-items-center gap-2" style="cursor:pointer;">
-                <input type="radio" name="payment_provider" value="flutterwave"
-                       checked style="width:1rem;height:1rem;"/>
-                <span class="small text-navy fw-medium">Flutterwave</span>
-              </label>
-              <label class="d-flex align-items-center gap-2" style="cursor:pointer;">
-                <input type="radio" name="payment_provider" value="paystack"
-                       style="width:1rem;height:1rem;"/>
-                <span class="small text-navy fw-medium">Paystack</span>
-              </label>
-            </div>
-          </div>
-
-          <button type="submit" id="pay-btn"
-                  class="btn btn-navy w-100 font-display fw-bold py-3 rounded-2xl btn-press
-                         d-flex align-items-center justify-content-center gap-2 small">
-            <span id="pay-btn-text">🔒 Pay GHS {{ pending_order.total }}</span>
-            <span id="pay-btn-loader" class="d-none">
-              <svg class="spin-anim" style="width:1rem;height:1rem;" fill="none" viewBox="0 0 24 24">
-                <circle style="opacity:.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path style="opacity:.75;" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-              </svg>
-              Processing...
-            </span>
-          </button>
-          <p class="text-center small text-secondary mt-3 mb-0">🔒 Payments are secured and encrypted</p>
-        </div>
-
-      </form>
-    </div>
-
+  <div class="row g-4">
     <!-- Order summary -->
-    <div class="w-100 flex-shrink-0" style="max-width: 20rem;">
-      <div class="bg-white rounded-2xl border shadow-sm p-4 position-sticky" style="top:5rem;">
-        <h2 class="font-display fw-bold text-navy mb-3">Order Summary</h2>
-
-        <!-- Cart items -->
-        <div class="d-flex flex-column gap-3 mb-3 pe-1" style="max-height:15rem;overflow-y:auto;">
+    <div class="col-12 col-md-7">
+      <div class="card border-0 shadow-sm rounded-3 mb-3">
+        <div class="card-body p-4">
+          <h2 class="h6 fw-bold text-navy mb-3">Items</h2>
           {% for item in cart.items.all %}
-          <div class="d-flex align-items-center gap-3">
-            {% with item.product.images.first as img %}
+          <div class="d-flex align-items-center gap-3 mb-3">
+            {% with img=item.product.images.first %}
             {% if img %}
-            <img src="{{ img.image.url }}" class="rounded-xl object-fit-cover flex-shrink-0" style="width:2.75rem;height:2.75rem;"/>
+            <img src="{{ img.image.url }}" alt="{{ item.product.name }}"
+                 class="rounded-3 object-fit-cover flex-shrink-0"
+                 style="width:52px;height:52px"/>
             {% else %}
-            <div class="rounded-xl bg-light d-flex align-items-center justify-content-center fs-5 flex-shrink-0" style="width:2.75rem;height:2.75rem;">📦</div>
+            <div class="rounded-3 bg-light d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:52px;height:52px;font-size:1.4rem">📦</div>
             {% endif %}
             {% endwith %}
-            <div class="flex-fill min-w-0">
-              <p class="small fw-semibold text-navy text-truncate mb-0">{{ item.product.name }}</p>
-              <p class="small text-secondary mb-0">× {{ item.quantity }}</p>
+            <div class="flex-grow-1 min-width-0">
+              <p class="fw-semibold text-navy mb-0 small text-truncate">{{ item.product.name }}</p>
+              <p class="text-muted mb-0" style="font-size:.75rem">× {{ item.quantity }}</p>
             </div>
-            <p class="small font-display fw-bold text-navy flex-shrink-0 mb-0">GHS {{ item.subtotal }}</p>
+            <p class="fw-bold text-navy mb-0 flex-shrink-0 small">
+              GHS {{ item.total_price|floatformat:2 }}
+            </p>
           </div>
           {% endfor %}
         </div>
+      </div>
 
-        <div class="border-top pt-3 d-flex flex-column gap-2 small">
-          <div class="d-flex justify-content-between text-secondary">
-            <span>Subtotal</span>
-            <span class="fw-semibold text-navy">GHS {{ pending_order.subtotal }}</span>
+      <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+          <h2 class="h6 fw-bold text-navy mb-3">Delivery details</h2>
+          <dl class="row small mb-0">
+            <dt class="col-5 text-muted fw-normal">Address</dt>
+            <dd class="col-7 fw-semibold">{{ pending.delivery_address }}</dd>
+            <dt class="col-5 text-muted fw-normal">City</dt>
+            <dd class="col-7 fw-semibold">{{ pending.delivery_city }}</dd>
+            <dt class="col-5 text-muted fw-normal">Phone</dt>
+            <dd class="col-7 fw-semibold">{{ pending.delivery_phone }}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pay box -->
+    <div class="col-12 col-md-5">
+      <div class="card border-0 shadow-sm rounded-3 p-4 sticky-top" style="top:80px">
+        <h2 class="h6 fw-bold text-navy mb-3">Order total</h2>
+        <dl class="row small mb-3">
+          <dt class="col-6 text-muted fw-normal">Subtotal</dt>
+          <dd class="col-6 text-end fw-semibold">GHS {{ pending.subtotal }}</dd>
+          <dt class="col-6 text-muted fw-normal">Delivery</dt>
+          <dd class="col-6 text-end fw-semibold">GHS {{ pending.delivery_fee }}</dd>
+          <dt class="col-6 fw-bold text-navy border-top pt-2">Total</dt>
+          <dd class="col-6 text-end fw-bold text-navy border-top pt-2 fs-5">
+            GHS {{ pending.total }}
+          </dd>
+        </dl>
+
+        <!-- Hubtel payment button -->
+        <!--
+          FIX: Added hidden payment_method input. payment_page() requires this
+          field — without it the view returned "Choose a payment method" error
+          on every submit, making the Pay button appear broken.
+        -->
+        <form method="POST">
+          {% csrf_token %}
+          <input type="hidden" name="payment_method" value="momo"/>
+          <input type="hidden" name="payment_provider" value="hubtel"/>
+          <button type="submit"
+                  class="btn w-100 fw-bold py-3 rounded-3 d-flex align-items-center justify-content-center gap-2"
+                  style="background:#00B050;color:white;font-size:1rem">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            Pay with Hubtel
+          </button>
+        </form>
+
+        <!-- Payment methods -->
+        <div class="mt-3 pt-3 border-top text-center">
+          <p class="text-muted mb-2" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em">Accepted payments</p>
+          <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <span class="badge rounded-pill fw-semibold px-3 py-2" style="background:#fef9c3;color:#854d0e">MTN MoMo</span>
+            <span class="badge rounded-pill fw-semibold px-3 py-2" style="background:#fee2e2;color:#991b1b">Vodafone Cash</span>
+            <span class="badge rounded-pill fw-semibold px-3 py-2" style="background:#dbeafe;color:#1e40af">AirtelTigo</span>
+            <span class="badge rounded-pill fw-semibold px-3 py-2" style="background:#f3f4f6;color:#374151">💳 Card</span>
           </div>
-          <div class="d-flex justify-content-between text-secondary">
-            <span>Delivery fee</span>
-            <span class="fw-semibold text-navy">GHS {{ pending_order.delivery_fee }}</span>
-          </div>
-          <div class="d-flex justify-content-between pt-2 border-top">
-            <span class="font-display fw-bold text-navy">Total</span>
-            <span class="font-display fw-bold text-navy fs-5">GHS {{ pending_order.total }}</span>
-          </div>
         </div>
 
-        <div class="mt-3 border-top pt-3">
-          <p class="small text-secondary mb-2">📍 Deliver to</p>
-          <p class="small fw-semibold text-navy mb-0">{{ pending_order.delivery_address }}</p>
-          <p class="small text-secondary mb-0">{{ pending_order.delivery_city }}</p>
-          <p class="small text-secondary mt-1 mb-0">📞 {{ pending_order.delivery_phone }}</p>
-        </div>
-
-        <div class="mt-3 d-flex flex-wrap justify-content-center gap-2">
-          <span class="small fw-semibold bg-warning bg-opacity-25 text-warning-emphasis px-2 py-1 rounded-pill">MTN MoMo</span>
-          <span class="small fw-semibold bg-danger bg-opacity-10 text-danger px-2 py-1 rounded-pill">Vodafone</span>
-          <span class="small fw-semibold bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-pill">AirtelTigo</span>
-          <span class="small fw-semibold bg-light text-secondary px-2 py-1 rounded-pill">💳 Card</span>
-        </div>
-
-        <div class="mt-3 bg-cream rounded-xl px-3 py-2 small text-secondary text-center">
-          🔒 Secured by Flutterwave & Paystack
-        </div>
+        <p class="text-center text-muted mt-3 mb-0" style="font-size:.75rem">
+          🔒 Payments secured by Hubtel. Lynctel never stores your card details.
+        </p>
       </div>
     </div>
 
   </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<style>.spin-anim{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>
-<script>
-  function showMomoField() {
-    document.getElementById('momo-number-wrap').classList.remove('d-none');
-    document.getElementById('momo-number').required = true;
-  }
-  function hideMomoField() {
-    document.getElementById('momo-number-wrap').classList.add('d-none');
-    document.getElementById('momo-number').required = false;
-  }
-
-  document.getElementById('payment-form').addEventListener('submit', function() {
-    const btn  = document.getElementById('pay-btn');
-    btn.disabled = true;
-    document.getElementById('pay-btn-text').classList.add('d-none');
-    document.getElementById('pay-btn-loader').classList.remove('d-none');
-  });
-</script>
 {% endblock %}

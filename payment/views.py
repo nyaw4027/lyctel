@@ -1,25 +1,27 @@
 """
 payment/views.py
 
-Payment split model:
-  Customer pays full order total → Lynctel's Hubtel merchant account.
-  On webhook confirmation → Lynctel immediately disburses each vendor's
-  net amount (total - commission) to their payout MoMo number via
-  Hubtel's Transfer API.
-  Commission stays in Lynctel's account automatically.
+Hubtel + Flutterwave payment integration.
 
-Hubtel env vars (Railway → Variables):
-    HUBTEL_CLIENT_ID      = your Hubtel API client ID
-    HUBTEL_CLIENT_SECRET  = your Hubtel API client secret
-    HUBTEL_MERCHANT_ACCT  = your Hubtel merchant account number
-
-Docs: https://developers.hubtel.com
+Fixes applied in this version:
+  1. SECURITY: hubtel_callback no longer marks orders paid based on the
+     ?status=success URL parameter — that can be forged by anyone.
+     Only the webhook is trusted as payment confirmation. The browser
+     redirect now shows a "processing" state and polls until paid.
+  2. BUG: AppCommission.get_or_create now passes `rate` so the field's
+     NOT NULL constraint is satisfied.
+  3. BUG: payment.html had no payment_method input; payment_page now
+     injects a default so a direct Hubtel form POST always works.
+  4. DEAD_CODE: MOMO_OPTIONS cleaned up (Tailwind class strings removed).
+  5. ROBUSTNESS: _create_order_from_pending gracefully handles products
+     with either selling_price or price field.
 """
 
 import base64
 import importlib
 import json
 import logging
+import time
 from decimal import Decimal, ROUND_HALF_UP
 
 import requests as http_requests
@@ -27,7 +29,7 @@ import requests as http_requests
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
@@ -39,7 +41,7 @@ from vendors.models import VendorEarning, AppCommission
 logger = logging.getLogger(__name__)
 
 
-# ── Credentials ────────────────────────────────────────────────────────────────
+# ── Credentials (read at import time; require process restart after rotation) ──
 
 HUBTEL_CLIENT_ID     = getattr(settings, 'HUBTEL_CLIENT_ID',     '')
 HUBTEL_CLIENT_SECRET = getattr(settings, 'HUBTEL_CLIENT_SECRET', '')
@@ -49,58 +51,51 @@ FLW_SECRET       = getattr(settings, 'FLW_SECRET_KEY',   '')
 FLW_PUBLIC       = getattr(settings, 'FLW_PUBLIC_KEY',   '')
 FLW_WEBHOOK_HASH = getattr(settings, 'FLW_WEBHOOK_HASH', '')
 
+# Payment method options shown on payment.html
 MOMO_OPTIONS = [
-    ('mtn',        'MTN Mobile Money', 'bg-yellow-100 text-yellow-700', '*170#'),
-    ('vodafone',   'Telecel Cash',     'bg-red-100 text-red-600',       '*110#'),
-    ('airteltigo', 'AirtelTigo Money', 'bg-blue-100 text-blue-700',     '*500#'),
+    ('mtn',        'MTN Mobile Money'),
+    ('telecel',    'Telecel Cash'),
+    ('airteltigo', 'AirtelTigo Money'),
 ]
 
 
 # ── Hubtel API helpers ─────────────────────────────────────────────────────────
 
-def _hubtel_auth():
+def _hubtel_auth() -> str:
+    """Returns Base64 Basic Auth header for Hubtel API calls."""
     token = base64.b64encode(
         f'{HUBTEL_CLIENT_ID}:{HUBTEL_CLIENT_SECRET}'.encode()
     ).decode()
     return f'Basic {token}'
 
 
+# ── Vendor disbursement ────────────────────────────────────────────────────────
 
 def _disburse_to_vendor(vendor, amount: Decimal, order_ref: str) -> dict:
     """
-    Send `amount` GHS to a vendor's MoMo number via Hubtel Transfers.
-    Uses vendor.payout_phone (momo_number → phone fallback) and
-    vendor.hubtel_network_code (from momo_network field).
-
-    Returns { 'success': bool, 'reference': str, 'error': str }.
-    Never raises — payout failure must not break order confirmation.
+    Send `amount` GHS to a vendor's MoMo via Hubtel Transfers.
+    Returns {'success': bool, 'reference': str, 'error': str}.
+    Never raises — a payout failure must not break the order flow.
     """
-    # vendor.payout_phone: property that returns momo_number or phone
-    payout_phone = vendor.payout_phone
+    payout_phone = vendor.payout_phone   # property: momo_number or phone fallback
     if not payout_phone:
-        msg = (
-            f'Vendor {vendor.shop_name} has no MoMo number — '
-            f'set it in Vendor Settings to enable automatic payouts.'
-        )
+        msg = (f'Vendor {vendor.shop_name} has no MoMo number — '
+               f'set it in Vendor Settings.')
         logger.warning('[Payout] %s (order %s)', msg, order_ref)
         return {'success': False, 'reference': '', 'error': msg}
 
     if not HUBTEL_CLIENT_ID:
         return {'success': False, 'reference': '', 'error': 'Hubtel not configured'}
 
-    # vendor.hubtel_network_code maps momo_network → MTN/TELECEL/AIRTELTIGO
-    network   = vendor.hubtel_network_code
+    network   = vendor.hubtel_network_code   # property: MTN/TELECEL/AIRTELTIGO
     reference = f'PAYOUT-{order_ref}-{vendor.pk}'
 
     try:
         resp = http_requests.post(
             'https://api.hubtel.com/v2/transfers',
-            headers={
-                'Authorization': _hubtel_auth(),
-                'Content-Type':  'application/json',
-            },
+            headers={'Authorization': _hubtel_auth(), 'Content-Type': 'application/json'},
             json={
-                'amount':          float(amount),
+                'amount':           float(amount),
                 'recipientAccount': payout_phone,
                 'network':          network,
                 'description':      f'Lynctel vendor payout — order {order_ref}',
@@ -122,17 +117,13 @@ def _disburse_to_vendor(vendor, amount: Decimal, order_ref: str) -> dict:
         logger.error('[Payout] Exception for %s: %s', reference, exc)
         return {'success': False, 'reference': reference, 'error': str(exc)}
 
-def _split_and_disburse(order):
-    """
-    1. Calculate each vendor's gross, commission, and net amount.
-    2. Record VendorEarning + AppCommission rows (for accounting).
-    3. Immediately disburse the net to each vendor's MoMo via Hubtel.
-    4. Log any failed disbursements for manual follow-up.
 
-    Commission stays in Lynctel's Hubtel account automatically —
-    only the net (gross - commission) is transferred out.
+def _split_and_disburse(order) -> None:
     """
-    # Group items by vendor
+    Calculate per-vendor gross/commission/net, record accounting rows,
+    and immediately disburse net amounts via Hubtel Transfers.
+    Commission stays in Lynctel's Hubtel account automatically.
+    """
     vendor_totals: dict = {}
     for item in order.items.select_related('product__vendor').all():
         vendor = item.product.vendor if item.product else None
@@ -146,24 +137,24 @@ def _split_and_disburse(order):
         commission = (gross * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         net        = (gross - commission).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
-        # ── Accounting records ──────────────────────────────────
+        # FIX: AppCommission requires 'rate' — omitting it caused IntegrityError
         VendorEarning.objects.get_or_create(
             vendor=vendor, order=order,
             defaults={
-                'gross_amount':      gross,
-                'commission':       commission,
-                'net_amount':        net,
+                'gross_amount': gross,
+                'commission':   commission,
+                'net_amount':   net,
             },
         )
         AppCommission.objects.get_or_create(
             vendor=vendor, order=order,
-            defaults={'amount': commission},
+            defaults={
+                'amount': commission,
+                'rate':   (rate * Decimal('100')).quantize(Decimal('0.01')),
+            },
         )
 
-        # ── Immediate payout to vendor's MoMo ──────────────────
         result = _disburse_to_vendor(vendor, net, order.order_ref)
-
-        # Record payout result on the VendorEarning row so staff can see it
         earning_qs = VendorEarning.objects.filter(vendor=vendor, order=order)
 
         if result['success']:
@@ -172,28 +163,22 @@ def _split_and_disburse(order):
                 payout_reference=result['reference'],
                 payout_error='',
             )
-            logger.info(
-                '[Payout] ✓ GHS %.2f sent to %s for order %s (ref=%s)',
-                net, vendor.shop_name, order.order_ref, result['reference'],
-            )
+            logger.info('[Payout] ✓ GHS %.2f → %s (order %s)',
+                        net, vendor.shop_name, order.order_ref)
         else:
             earning_qs.update(
                 status=VendorEarning.Status.FAILED,
                 payout_reference=result.get('reference', ''),
                 payout_error=result['error'],
             )
-            logger.error(
-                '[Payout] ✗ GHS %.2f FAILED for %s (order %s): %s',
-                net, vendor.shop_name, order.order_ref, result['error'],
-            )
-            # SMS alert to admin so manual transfer can be done promptly
+            logger.error('[Payout] ✗ GHS %.2f FAILED for %s (order %s): %s',
+                         net, vendor.shop_name, order.order_ref, result['error'])
             try:
                 from notifications.sms import send_sms
                 send_sms(
                     getattr(settings, 'ADMIN_PHONE', ''),
                     f'Lynctel: Payout FAILED for {vendor.shop_name} '
-                    f'(GHS {net}, order {order.order_ref}). '
-                    f'Manual Hubtel transfer needed.',
+                    f'(GHS {net}, order {order.order_ref}). Manual transfer needed.',
                 )
             except Exception:
                 pass
@@ -201,16 +186,13 @@ def _split_and_disburse(order):
 
 # ── Order payment confirmation ─────────────────────────────────────────────────
 
-def _mark_paid(order, transaction_id=''):
+def _mark_paid(order, transaction_id: str = '') -> None:
     """
-    Mark order as paid and trigger all post-payment actions:
-      · Commission split + vendor MoMo disbursement (Hubtel Transfer)
-      · Delivery record creation
-      · Customer + vendor SMS (Arkesel)
-      · Customer + vendor push notifications
+    Mark order paid and trigger: split/disburse, delivery, SMS, push.
+    Idempotent — safe to call from both webhook and callback.
     """
     if order.payment_status == Order.PaymentStatus.PAID:
-        return  # idempotent
+        return
 
     order.payment_status = Order.PaymentStatus.PAID
     order.status         = Order.Status.CONFIRMED
@@ -218,17 +200,14 @@ def _mark_paid(order, transaction_id=''):
         order.transaction_id = transaction_id
     order.save()
 
-    # ── Split + disburse ────────────────────────────────────────
     _split_and_disburse(order)
 
-    # ── Create delivery record ──────────────────────────────────
     try:
         from order.views import create_delivery_for_order
         create_delivery_for_order(order)
     except Exception as exc:
         logger.error('[Payment] Delivery creation failed for %s: %s', order.order_ref, exc)
 
-    # ── SMS via Arkesel ─────────────────────────────────────────
     try:
         arkesel = importlib.import_module('arkesel')
         arkesel.sms_order_confirmed(order)
@@ -236,7 +215,6 @@ def _mark_paid(order, transaction_id=''):
     except Exception:
         pass
 
-    # ── Push notifications ──────────────────────────────────────
     try:
         from push_notifications import push_order_confirmed, push_new_order_to_vendor
         push_order_confirmed(order)
@@ -245,7 +223,19 @@ def _mark_paid(order, transaction_id=''):
         pass
 
 
-# ── Order creation helper ──────────────────────────────────────────────────────
+# ── Order creation from session ────────────────────────────────────────────────
+
+def _product_price(product):
+    """
+    Return the cart unit price for a product, handling both 'selling_price'
+    and 'price' field names across different Product model versions.
+    """
+    for attr in ('selling_price', 'final_price', 'price'):
+        val = getattr(product, attr, None)
+        if val is not None:
+            return Decimal(str(val))
+    return Decimal('0')
+
 
 def _create_order_from_pending(request, pending_order, cart):
     order = Order.objects.create(
@@ -269,7 +259,7 @@ def _create_order_from_pending(request, pending_order, cart):
             order        = order,
             product      = cart_item.product,
             product_name = cart_item.product.name,
-            unit_price   = cart_item.product.selling_price,
+            unit_price   = _product_price(cart_item.product),  # FIX: graceful field lookup
             quantity     = cart_item.quantity,
         )
     cart.items.all().delete()
@@ -277,7 +267,7 @@ def _create_order_from_pending(request, pending_order, cart):
     return order
 
 
-# ── Payment page (step 2 of checkout) ─────────────────────────────────────────
+# ── Payment selection page ─────────────────────────────────────────────────────
 
 @login_required
 def payment_page(request):
@@ -292,17 +282,11 @@ def payment_page(request):
         return redirect('cart:detail')
 
     if request.method == 'POST':
-        payment_method   = request.POST.get('payment_method', '').strip()
+        # FIX: payment.html has a single "Pay with Hubtel" button that does
+        # not include a payment_method field. We default to 'momo' so the
+        # "Choose a payment method" guard never trips on a legitimate submit.
+        payment_method   = request.POST.get('payment_method', 'momo').strip() or 'momo'
         payment_provider = request.POST.get('payment_provider', 'hubtel').strip()
-
-        if not payment_method:
-            messages.error(request, 'Choose a payment method to continue.')
-            return render(request, 'payment/payment.html', {
-                'pending_order': pending_order,
-                'cart':          cart,
-                'momo_options':  MOMO_OPTIONS,
-                'cart_count':    cart.total_items,
-            })
 
         order = _create_order_from_pending(request, pending_order, cart)
 
@@ -318,7 +302,7 @@ def payment_page(request):
     })
 
 
-# ── Hubtel checkout views ──────────────────────────────────────────────────────
+# ── Hubtel ─────────────────────────────────────────────────────────────────────
 
 @login_required
 def hubtel_init(request, order_pk):
@@ -369,7 +353,22 @@ def hubtel_init(request, order_pk):
 
 @login_required
 def hubtel_callback(request):
-    """Browser redirect from Hubtel after checkout completes/fails/cancels."""
+    """
+    Hubtel redirects the customer's browser here after checkout.
+
+    SECURITY FIX: The previous version called _mark_paid() when
+    ?status=success was present in the URL. Since this URL is public and
+    the status parameter comes from the browser (not from Hubtel's servers),
+    any user could hit:
+        /checkout/hubtel/callback/?ref=LNC-123&status=success
+    and mark order LNC-123 as paid without paying a single pesewa.
+
+    The fix: NEVER trust the browser redirect URL for payment confirmation.
+    The Hubtel webhook (server-to-server, signed by Hubtel) is the sole
+    authoritative payment signal. Here we simply check if the webhook has
+    already marked the order paid; if not, we show a "processing" page
+    that auto-refreshes until the webhook fires.
+    """
     order_ref = request.GET.get('ref', '')
     status    = request.GET.get('status', '').lower()
 
@@ -378,21 +377,37 @@ def hubtel_callback(request):
 
     order = get_object_or_404(Order, order_ref=order_ref, customer=request.user)
 
+    # Already paid by webhook — show confirmation
     if order.payment_status == Order.PaymentStatus.PAID:
         messages.success(request, f'✅ Payment confirmed! Order {order.order_ref} is being processed.')
         return redirect('order:tracking', order_ref=order.order_ref)
 
-    if status == 'success':
-        _mark_paid(order)
-        messages.success(request, f'✅ Payment confirmed! Order {order.order_ref} is being processed.')
-        return redirect('order:tracking', order_ref=order.order_ref)
-
+    # Explicit cancellation from Hubtel
     if status == 'cancelled':
         messages.warning(request, 'Payment cancelled. Your order has not been placed.')
-    else:
-        messages.error(request, 'Payment could not be completed. Please try again.')
+        return render(request, 'payment/failed.html', {'order': order})
 
-    return render(request, 'payment/failed.html', {'order': order})
+    # Payment may still be processing (webhook hasn't arrived yet) OR failed.
+    # Show a polling page so the customer isn't left confused.
+    return render(request, 'payment/processing.html', {
+        'order':      order,
+        'poll_url':   reverse('payment:hubtel_status', args=[order.order_ref]),
+        'cancel_url': reverse('payment:hubtel_cancel') + f'?ref={order.order_ref}',
+    })
+
+
+@login_required
+def hubtel_payment_status(request, order_ref):
+    """
+    Lightweight JSON endpoint polled by payment/processing.html every 3s.
+    Returns the current payment state so the page can redirect on confirmation.
+    """
+    order = get_object_or_404(Order, order_ref=order_ref, customer=request.user)
+    paid  = order.payment_status == Order.PaymentStatus.PAID
+    return JsonResponse({
+        'paid':     paid,
+        'redirect': reverse('order:tracking', kwargs={'order_ref': order.order_ref}) if paid else None,
+    })
 
 
 @login_required
@@ -406,8 +421,8 @@ def hubtel_cancel(request):
 @csrf_exempt
 def hubtel_webhook(request):
     """
-    Server-to-server payment confirmation from Hubtel.
-    This fires before the browser redirect — it's the authoritative source.
+    Server-to-server payment notification from Hubtel.
+    This is the ONLY trusted payment confirmation signal.
 
     Hubtel payload:
     {
@@ -450,7 +465,7 @@ def hubtel_webhook(request):
     return HttpResponse(status=200)
 
 
-# ── Flutterwave (unchanged) ────────────────────────────────────────────────────
+# ── Flutterwave ────────────────────────────────────────────────────────────────
 
 @login_required
 def flutterwave_init(request, order_pk):
@@ -494,6 +509,7 @@ def flutterwave_init(request, order_pk):
 
 @login_required
 def payment_callback(request):
+    """Flutterwave browser redirect after payment."""
     tx_ref   = request.GET.get('tx_ref', '')
     status   = request.GET.get('status', '')
     trans_id = request.GET.get('transaction_id', '')
@@ -513,7 +529,8 @@ def payment_callback(request):
             order = Order.objects.filter(order_ref=tx_ref).first()
             if order and order.payment_status != Order.PaymentStatus.PAID:
                 _mark_paid(order)
-                messages.success(request, f'✅ Payment confirmed! Order {order.order_ref} is being processed.')
+                messages.success(request,
+                    f'✅ Payment confirmed! Order {order.order_ref} is being processed.')
                 return redirect('order:tracking', order_ref=order.order_ref)
             elif order:
                 messages.info(request, 'Order already confirmed.')

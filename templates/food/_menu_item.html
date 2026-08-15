@@ -3,7 +3,7 @@
 
   FIXES:
   1. Outer <div class="card menu-item-card"> removed — menu.html already
-     wraps each {% include %} in its own .menu-item-card div, so this
+     wraps each include tag in its own .menu-item-card div, so this
      partial was creating a double-nested card (card inside card), causing
      double borders and broken hover/transform effects.
   2. btn-gold replaced with inline-styled button — btn-gold is not defined

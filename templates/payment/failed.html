@@ -2,43 +2,42 @@
 {% block title %}Payment Failed — Lynctel{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-center bg-cream px-3" style="min-height: 100vh;">
-  <div class="bg-white rounded-3xl shadow p-4 w-100 text-center" style="max-width: 24rem;">
+<div class="container py-5 text-center" style="max-width:520px">
+  <div style="font-size:4rem" class="mb-3">❌</div>
+  <h1 class="h4 fw-bold text-navy mb-2" style="font-family:'Syne',sans-serif">
+    Payment unsuccessful
+  </h1>
+  {% if reason %}
+  <p class="text-muted mb-4">{{ reason }}</p>
+  {% else %}
+  <p class="text-muted mb-4">Something went wrong with your payment. Your order has not been placed.</p>
+  {% endif %}
 
-    <div class="bg-danger bg-opacity-10 rounded-2xl d-flex align-items-center justify-content-center mx-auto mb-4" style="width:4rem;height:4rem;">
-      <span class="fs-2">❌</span>
-    </div>
+  {% if order %}
+  <p class="small text-muted mb-4">Order reference: <strong>{{ order.order_ref }}</strong></p>
+  {% endif %}
 
-    <h1 class="font-display fw-bold text-navy fs-4 mb-2">Payment Not Completed</h1>
-
+  <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
     {% if order %}
-    <p class="text-secondary small mb-1">
-      Order <strong class="text-navy">{{ order.order_ref }}</strong>
-    </p>
-    <p class="font-display fw-bold fs-3 text-navy mb-3">GHS {{ order.total_amount }}</p>
+    <form method="POST" action="{% url 'payment:page' %}">
+      {% csrf_token %}
+      <button type="submit"
+              class="btn fw-semibold px-4 py-3 rounded-3"
+              style="background:#00B050;color:white">
+        Try Again
+      </button>
+    </form>
     {% endif %}
-
-    <div class="alert-danger rounded-2xl px-3 py-3 small mb-4">
-      Your payment was not processed. Your cart and order details have been saved —
-      you can try again below.
-    </div>
-
-    <div class="d-flex flex-column gap-2">
-      <a href="{% url 'payment:page' %}" class="btn btn-navy w-100 fw-semibold py-3 rounded-2xl btn-press small text-center">
-        🔄 Try Payment Again
-      </a>
-      <a href="{% url 'order:checkout' %}" class="btn btn-light border w-100 fw-semibold py-3 rounded-2xl small text-center text-navy">
-        ← Back to Checkout
-      </a>
-    </div>
-
-    <div class="mt-4 small text-secondary">
-      Need help? WhatsApp us at
-      <a href="https://wa.me/233558040216" class="text-gold-dark fw-semibold">
-        +233 55 804 0216
-      </a>
-    </div>
-
+    <a href="{% url 'order:history' %}"
+       class="btn fw-semibold px-4 py-3 rounded-3"
+       style="background:white;color:#0F1B2D;border:1.5px solid #e5e7eb">
+      My Orders
+    </a>
+    <a href="{% url 'chat:support_my_inbox' %}"
+       class="btn fw-semibold px-4 py-3 rounded-3"
+       style="background:#f3f4f6;color:#374151">
+      Contact Support
+    </a>
   </div>
 </div>
 {% endblock %}

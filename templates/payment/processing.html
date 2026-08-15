@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Processing Payment — Lynctel{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center" style="max-width:520px">
+
+  <!-- Spinner -->
+  <div class="mb-4" style="position:relative;width:80px;height:80px;margin:0 auto">
+    <div style="width:80px;height:80px;border:5px solid #f3f4f6;border-top-color:#F5A623;
+                border-radius:50%;animation:spin 1s linear infinite;"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                font-size:1.8rem">💳</div>
+  </div>
+
+  <h1 class="h4 fw-bold text-navy mb-2" style="font-family:'Syne',sans-serif">
+    Processing your payment
+  </h1>
+  <p class="text-muted mb-1">
+    Order <strong>{{ order.order_ref }}</strong>
+  </p>
+  <p class="text-muted small mb-4">
+    Please wait while we confirm your payment with Hubtel.<br/>
+    <strong>Do not close or refresh this page.</strong>
+  </p>
+
+  <div class="alert alert-info rounded-3 small mb-4">
+    If you paid with MoMo, check your phone for a confirmation message.
+    This page will update automatically.
+  </div>
+
+  <a href="{{ cancel_url }}" class="text-muted small text-decoration-none">
+    Cancel and return
+  </a>
+
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var pollUrl    = '{{ poll_url|escapejs }}';
+  var maxWait    = 120000;   // stop polling after 2 minutes
+  var interval   = 3000;    // check every 3 seconds
+  var elapsed    = 0;
+
+  function check() {
+    fetch(pollUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.paid && data.redirect) {
+          window.location.href = data.redirect;
+        }
+      })
+      .catch(function () {});
+
+    elapsed += interval;
+    if (elapsed < maxWait) {
+      setTimeout(check, interval);
+    } else {
+      // Timed out — tell the customer to check their orders page
+      document.querySelector('h1').textContent = 'Payment confirmation is taking longer than usual';
+      document.querySelector('.alert').innerHTML =
+        'Your payment may still be processing. ' +
+        '<a href="/order/history/" class="alert-link">Check My Orders →</a>';
+    }
+  }
+
+  setTimeout(check, interval);
+})();
+</script>
+{% endblock %}
