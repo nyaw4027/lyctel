@@ -4,17 +4,17 @@ from . import views
 app_name = 'payment'
 
 urlpatterns = [
-    # Step 2: payment method selection (redirected here from order:checkout)
-    path('',                                        views.payment_page,        name='page'),
+    # Step 2 of checkout — payment method selection
+    path('pay/',                    views.payment_page,        name='page'),
 
-    # Paystack inline flow
-    path('paystack/init/<int:order_pk>/',           views.paystack_init,       name='paystack_init'),
-    path('paystack/verify/<int:order_pk>/',         views.paystack_verify,     name='paystack_verify'),
-    path('paystack/callback/<str:tx_ref>/',         views.paystack_callback,   name='paystack-callback'),
-    path('callback/',                       views.payment_callback,   name='callback'),
-    path('flutterwave/init/<int:order_pk>/', views.flutterwave_init,   name='flutterwave_init'),
+    # Hubtel (replaces Paystack)
+    path('hubtel/init/<int:order_pk>/', views.hubtel_init,     name='hubtel_init'),
+    path('hubtel/callback/',        views.hubtel_callback,     name='hubtel_callback'),
+    path('hubtel/cancel/',          views.hubtel_cancel,       name='hubtel_cancel'),
+    path('hubtel/webhook/',         views.hubtel_webhook,      name='hubtel_webhook'),
 
-    # Webhooks
-    path('webhook/paystack/',                       views.paystack_webhook,    name='paystack-webhook'),
-    path('webhook/flutterwave/',                    views.flutterwave_webhook, name='flw-webhook'),
+    # Flutterwave (kept as second option)
+    path('flutterwave/init/<int:order_pk>/', views.flutterwave_init,  name='flutterwave_init'),
+    path('flutterwave/callback/',            views.payment_callback,  name='callback'),
+    path('flutterwave/webhook/',             views.flutterwave_webhook, name='flutterwave_webhook'),
 ]

@@ -1,113 +1,242 @@
 """
-payment/views.py — fixed
+payment/views.py
 
-Changes from the version you had:
+Payment split model:
+  Customer pays full order total → Lynctel's Hubtel merchant account.
+  On webhook confirmation → Lynctel immediately disburses each vendor's
+  net amount (total - commission) to their payout MoMo number via
+  Hubtel's Transfer API.
+  Commission stays in Lynctel's account automatically.
 
-1. payment_page() now reads request.session['pending_order'] (the key
-   checkout() actually sets) instead of the never-set 'pending_order_ref'.
-2. payment_page() now handles POST: this is where the real Order and
-   OrderItem rows get created for the first time — nothing before this
-   point in the flow ever created them. On success it clears the cart and
-   the session's pending_order, then routes to Paystack or Flutterwave.
-3. Added MOMO_OPTIONS, since payment/page.html expects a `momo_options`
-   context var that no view was providing.
-4. Added flutterwave_init(), since paystack has an init step but
-   Flutterwave never did — payment_callback() and flutterwave_webhook()
-   only verify a payment after Flutterwave redirects back; nothing
-   actually started a Flutterwave charge.
-5. Reuses order.get_or_create_cart() instead of duplicating cart lookup
-   logic.
+Hubtel env vars (Railway → Variables):
+    HUBTEL_CLIENT_ID      = your Hubtel API client ID
+    HUBTEL_CLIENT_SECRET  = your Hubtel API client secret
+    HUBTEL_MERCHANT_ACCT  = your Hubtel merchant account number
 
-You'll also need to add two lines to payment/urls.py — see the bottom of
-this file.
+Docs: https://developers.hubtel.com
 """
 
-import logging
-import hmac
-import hashlib
+import base64
+import importlib
 import json
-from decimal import Decimal
+import logging
+from decimal import Decimal, ROUND_HALF_UP
 
 import requests as http_requests
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
 
 from order.models import Order, OrderItem
 from order.views import get_or_create_cart
 from vendors.models import VendorEarning, AppCommission
-import importlib
 
 logger = logging.getLogger(__name__)
 
-PAYSTACK_SECRET  = getattr(settings, 'PAYSTACK_SECRET_KEY', '')
-PAYSTACK_PUBLIC  = getattr(settings, 'PAYSTACK_PUBLIC_KEY', '')
-FLW_SECRET       = getattr(settings, 'FLW_SECRET_KEY',      '')
-FLW_PUBLIC       = getattr(settings, 'FLW_PUBLIC_KEY',      '')
-FLW_WEBHOOK_HASH = getattr(settings, 'FLW_WEBHOOK_HASH',    '')
 
-# Displayed on payment/page.html — (value, label, badge classes, ussd shortcode)
-# Adjust codes/labels to match what you actually want shown.
+# ── Credentials ────────────────────────────────────────────────────────────────
+
+HUBTEL_CLIENT_ID     = getattr(settings, 'HUBTEL_CLIENT_ID',     '')
+HUBTEL_CLIENT_SECRET = getattr(settings, 'HUBTEL_CLIENT_SECRET', '')
+HUBTEL_MERCHANT_ACCT = getattr(settings, 'HUBTEL_MERCHANT_ACCT', '')
+
+FLW_SECRET       = getattr(settings, 'FLW_SECRET_KEY',   '')
+FLW_PUBLIC       = getattr(settings, 'FLW_PUBLIC_KEY',   '')
+FLW_WEBHOOK_HASH = getattr(settings, 'FLW_WEBHOOK_HASH', '')
+
 MOMO_OPTIONS = [
     ('mtn',        'MTN Mobile Money', 'bg-yellow-100 text-yellow-700', '*170#'),
-    ('vodafone',   'Vodafone Cash',    'bg-red-100 text-red-600',       '*110#'),
+    ('vodafone',   'Telecel Cash',     'bg-red-100 text-red-600',       '*110#'),
     ('airteltigo', 'AirtelTigo Money', 'bg-blue-100 text-blue-700',     '*500#'),
 ]
 
 
-# ── SHARED HELPERS ────────────────────────────────────────
+# ── Hubtel API helpers ─────────────────────────────────────────────────────────
 
-def _split_commissions(order):
-    """Split revenue per vendor and record Lynctel's commission."""
-    vendor_totals = {}
+def _hubtel_auth():
+    token = base64.b64encode(
+        f'{HUBTEL_CLIENT_ID}:{HUBTEL_CLIENT_SECRET}'.encode()
+    ).decode()
+    return f'Basic {token}'
+
+
+
+def _disburse_to_vendor(vendor, amount: Decimal, order_ref: str) -> dict:
+    """
+    Send `amount` GHS to a vendor's MoMo number via Hubtel Transfers.
+    Uses vendor.payout_phone (momo_number → phone fallback) and
+    vendor.hubtel_network_code (from momo_network field).
+
+    Returns { 'success': bool, 'reference': str, 'error': str }.
+    Never raises — payout failure must not break order confirmation.
+    """
+    # vendor.payout_phone: property that returns momo_number or phone
+    payout_phone = vendor.payout_phone
+    if not payout_phone:
+        msg = (
+            f'Vendor {vendor.shop_name} has no MoMo number — '
+            f'set it in Vendor Settings to enable automatic payouts.'
+        )
+        logger.warning('[Payout] %s (order %s)', msg, order_ref)
+        return {'success': False, 'reference': '', 'error': msg}
+
+    if not HUBTEL_CLIENT_ID:
+        return {'success': False, 'reference': '', 'error': 'Hubtel not configured'}
+
+    # vendor.hubtel_network_code maps momo_network → MTN/TELECEL/AIRTELTIGO
+    network   = vendor.hubtel_network_code
+    reference = f'PAYOUT-{order_ref}-{vendor.pk}'
+
+    try:
+        resp = http_requests.post(
+            'https://api.hubtel.com/v2/transfers',
+            headers={
+                'Authorization': _hubtel_auth(),
+                'Content-Type':  'application/json',
+            },
+            json={
+                'amount':          float(amount),
+                'recipientAccount': payout_phone,
+                'network':          network,
+                'description':      f'Lynctel vendor payout — order {order_ref}',
+                'clientReference':  reference,
+            },
+            timeout=20,
+        )
+        data = resp.json()
+        logger.info('[Payout] Hubtel resp for %s: %s', reference, data)
+
+        if resp.status_code in (200, 201) and data.get('responseCode') in ('0000', '00'):
+            return {'success': True, 'reference': reference, 'error': ''}
+
+        error = data.get('message', f'HTTP {resp.status_code}')
+        logger.error('[Payout] Failed for %s: %s', reference, error)
+        return {'success': False, 'reference': reference, 'error': error}
+
+    except Exception as exc:
+        logger.error('[Payout] Exception for %s: %s', reference, exc)
+        return {'success': False, 'reference': reference, 'error': str(exc)}
+
+def _split_and_disburse(order):
+    """
+    1. Calculate each vendor's gross, commission, and net amount.
+    2. Record VendorEarning + AppCommission rows (for accounting).
+    3. Immediately disburse the net to each vendor's MoMo via Hubtel.
+    4. Log any failed disbursements for manual follow-up.
+
+    Commission stays in Lynctel's Hubtel account automatically —
+    only the net (gross - commission) is transferred out.
+    """
+    # Group items by vendor
+    vendor_totals: dict = {}
     for item in order.items.select_related('product__vendor').all():
         vendor = item.product.vendor if item.product else None
-        if vendor:
-            vendor_totals[vendor] = (
-                vendor_totals.get(vendor, Decimal('0')) +
-                (item.unit_price * item.quantity)
-            )
+        if not vendor:
+            continue
+        gross = item.unit_price * item.quantity
+        vendor_totals[vendor] = vendor_totals.get(vendor, Decimal('0')) + gross
 
-    for vendor, total in vendor_totals.items():
-        rate       = Decimal(str(vendor.commission_rate or 10)) / Decimal('100')
-        commission = (total * rate).quantize(Decimal('0.01'))
-        net        = (total - commission).quantize(Decimal('0.01'))
+    for vendor, gross in vendor_totals.items():
+        rate       = Decimal(str(vendor.commission_rate or 4)) / Decimal('100')
+        commission = (gross * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        net        = (gross - commission).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
+        # ── Accounting records ──────────────────────────────────
         VendorEarning.objects.get_or_create(
             vendor=vendor, order=order,
             defaults={
-                'gross_amount':      total,
-                'commission_amount': commission,
+                'gross_amount':      gross,
+                'commission':       commission,
                 'net_amount':        net,
-            }
+            },
         )
         AppCommission.objects.get_or_create(
             vendor=vendor, order=order,
-            defaults={'amount': commission}
+            defaults={'amount': commission},
         )
 
+        # ── Immediate payout to vendor's MoMo ──────────────────
+        result = _disburse_to_vendor(vendor, net, order.order_ref)
 
-def _mark_paid(order):
-    """Mark order as paid, split commissions, send notifications."""
+        # Record payout result on the VendorEarning row so staff can see it
+        earning_qs = VendorEarning.objects.filter(vendor=vendor, order=order)
+
+        if result['success']:
+            earning_qs.update(
+                status=VendorEarning.Status.PAID,
+                payout_reference=result['reference'],
+                payout_error='',
+            )
+            logger.info(
+                '[Payout] ✓ GHS %.2f sent to %s for order %s (ref=%s)',
+                net, vendor.shop_name, order.order_ref, result['reference'],
+            )
+        else:
+            earning_qs.update(
+                status=VendorEarning.Status.FAILED,
+                payout_reference=result.get('reference', ''),
+                payout_error=result['error'],
+            )
+            logger.error(
+                '[Payout] ✗ GHS %.2f FAILED for %s (order %s): %s',
+                net, vendor.shop_name, order.order_ref, result['error'],
+            )
+            # SMS alert to admin so manual transfer can be done promptly
+            try:
+                from notifications.sms import send_sms
+                send_sms(
+                    getattr(settings, 'ADMIN_PHONE', ''),
+                    f'Lynctel: Payout FAILED for {vendor.shop_name} '
+                    f'(GHS {net}, order {order.order_ref}). '
+                    f'Manual Hubtel transfer needed.',
+                )
+            except Exception:
+                pass
+
+
+# ── Order payment confirmation ─────────────────────────────────────────────────
+
+def _mark_paid(order, transaction_id=''):
+    """
+    Mark order as paid and trigger all post-payment actions:
+      · Commission split + vendor MoMo disbursement (Hubtel Transfer)
+      · Delivery record creation
+      · Customer + vendor SMS (Arkesel)
+      · Customer + vendor push notifications
+    """
+    if order.payment_status == Order.PaymentStatus.PAID:
+        return  # idempotent
+
     order.payment_status = Order.PaymentStatus.PAID
     order.status         = Order.Status.CONFIRMED
+    if transaction_id and hasattr(order, 'transaction_id'):
+        order.transaction_id = transaction_id
     order.save()
-    _split_commissions(order)
 
+    # ── Split + disburse ────────────────────────────────────────
+    _split_and_disburse(order)
+
+    # ── Create delivery record ──────────────────────────────────
+    try:
+        from order.views import create_delivery_for_order
+        create_delivery_for_order(order)
+    except Exception as exc:
+        logger.error('[Payment] Delivery creation failed for %s: %s', order.order_ref, exc)
+
+    # ── SMS via Arkesel ─────────────────────────────────────────
     try:
         arkesel = importlib.import_module('arkesel')
-        sms_order_confirmed = getattr(arkesel, 'sms_order_confirmed')
-        sms_new_order_to_vendor = getattr(arkesel, 'sms_new_order_to_vendor')
-        sms_order_confirmed(order)
-        sms_new_order_to_vendor(order)
+        arkesel.sms_order_confirmed(order)
+        arkesel.sms_new_order_to_vendor(order)
     except Exception:
         pass
 
+    # ── Push notifications ──────────────────────────────────────
     try:
         from push_notifications import push_order_confirmed, push_new_order_to_vendor
         push_order_confirmed(order)
@@ -116,48 +245,39 @@ def _mark_paid(order):
         pass
 
 
-def _create_order_from_pending(request, pending_order, cart):
-    """
-    Turn the session's pending_order dict + the current cart into a real
-    Order + OrderItem rows. This is the step that never existed before —
-    checkout() only ever wrote to the session, it never touched the DB.
-    """
-    order = Order.objects.create(
-        customer=request.user,
-        delivery_choice=pending_order.get('delivery_choice', 'rider'),
-        delivery_address=pending_order.get('delivery_address', ''),
-        delivery_city=pending_order.get('delivery_city', ''),
-        delivery_phone=pending_order.get('delivery_phone', ''),
-        delivery_lat=pending_order.get('delivery_lat'),
-        delivery_lng=pending_order.get('delivery_lng'),
-        parcel_bus_station=pending_order.get('parcel_bus_station', ''),
-        parcel_recipient_phone=pending_order.get('parcel_recipient_phone', ''),
-        parcel_notes=pending_order.get('parcel_notes', ''),
-        customer_note=pending_order.get('order_note', ''),
-        subtotal=Decimal(pending_order.get('subtotal', '0')),
-        delivery_fee=Decimal(pending_order.get('delivery_fee', '0')),
-        total_amount=Decimal(pending_order.get('total', '0')),
-    )
+# ── Order creation helper ──────────────────────────────────────────────────────
 
+def _create_order_from_pending(request, pending_order, cart):
+    order = Order.objects.create(
+        customer               = request.user,
+        delivery_choice        = pending_order.get('delivery_choice', 'rider'),
+        delivery_address       = pending_order.get('delivery_address', ''),
+        delivery_city          = pending_order.get('delivery_city', ''),
+        delivery_phone         = pending_order.get('delivery_phone', ''),
+        delivery_lat           = pending_order.get('delivery_lat'),
+        delivery_lng           = pending_order.get('delivery_lng'),
+        parcel_bus_station     = pending_order.get('parcel_bus_station', ''),
+        parcel_recipient_phone = pending_order.get('parcel_recipient_phone', ''),
+        parcel_notes           = pending_order.get('parcel_notes', ''),
+        customer_note          = pending_order.get('order_note', ''),
+        subtotal               = Decimal(pending_order.get('subtotal',     '0')),
+        delivery_fee           = Decimal(pending_order.get('delivery_fee', '0')),
+        total_amount           = Decimal(pending_order.get('total',        '0')),
+    )
     for cart_item in cart.items.select_related('product').all():
         OrderItem.objects.create(
-            order=order,
-            product=cart_item.product,
-            product_name=cart_item.product.name,
-            unit_price=cart_item.product.selling_price,
-            quantity=cart_item.quantity,
+            order        = order,
+            product      = cart_item.product,
+            product_name = cart_item.product.name,
+            unit_price   = cart_item.product.selling_price,
+            quantity     = cart_item.quantity,
         )
-
-    # The cart is now "spent" — clear it so refreshing checkout doesn't
-    # let someone re-order the same items, and clear the session scratch
-    # data so a page refresh on /payment/ can't double-create an Order.
     cart.items.all().delete()
     del request.session['pending_order']
-
     return order
 
 
-# ── PAYMENT METHOD SELECTION (step 2 of checkout) ─────────
+# ── Payment page (step 2 of checkout) ─────────────────────────────────────────
 
 @login_required
 def payment_page(request):
@@ -173,11 +293,7 @@ def payment_page(request):
 
     if request.method == 'POST':
         payment_method   = request.POST.get('payment_method', '').strip()
-        payment_provider = request.POST.get('payment_provider', 'flutterwave').strip()
-        # momo_number isn't persisted anywhere yet — Order has no field for
-        # it. Add one (and a payment_method field) if you want it stored;
-        # for MoMo-on-delivery/inline flows the number is usually collected
-        # by the gateway itself anyway, so this may not matter in practice.
+        payment_provider = request.POST.get('payment_provider', 'hubtel').strip()
 
         if not payment_method:
             messages.error(request, 'Choose a payment method to continue.')
@@ -190,10 +306,9 @@ def payment_page(request):
 
         order = _create_order_from_pending(request, pending_order, cart)
 
-        if payment_provider == 'paystack':
-            return redirect('payment:paystack_init', order_pk=order.pk)
-
-        return redirect('payment:flutterwave_init', order_pk=order.pk)
+        if payment_provider == 'flutterwave':
+            return redirect('payment:flutterwave_init', order_pk=order.pk)
+        return redirect('payment:hubtel_init', order_pk=order.pk)
 
     return render(request, 'payment/payment.html', {
         'pending_order': pending_order,
@@ -203,16 +318,147 @@ def payment_page(request):
     })
 
 
-# ── FLUTTERWAVE INIT (new — this step never existed) ──────
+# ── Hubtel checkout views ──────────────────────────────────────────────────────
+
+@login_required
+def hubtel_init(request, order_pk):
+    order = get_object_or_404(Order, pk=order_pk, customer=request.user)
+
+    if not HUBTEL_CLIENT_ID:
+        messages.error(request, 'Payment gateway not configured. Contact support.')
+        return redirect('order:tracking', order_ref=order.order_ref)
+
+    base_url    = request.build_absolute_uri('/').rstrip('/')
+    return_url  = f'{base_url}/checkout/hubtel/callback/?ref={order.order_ref}'
+    cancel_url  = f'{base_url}/checkout/hubtel/cancel/?ref={order.order_ref}'
+    webhook_url = f'{base_url}/checkout/hubtel/webhook/'
+
+    try:
+        resp = http_requests.post(
+            'https://api.hubtel.com/v2/pos/onlinecheckout/items/initiate',
+            headers={'Authorization': _hubtel_auth(), 'Content-Type': 'application/json'},
+            json={
+                'totalAmount':           float(order.total_amount),
+                'description':           f'Lynctel order {order.order_ref}',
+                'clientReference':       order.order_ref,
+                'callbackUrl':           webhook_url,
+                'returnUrl':             return_url,
+                'cancellationUrl':       cancel_url,
+                'merchantAccountNumber': HUBTEL_MERCHANT_ACCT,
+            },
+            timeout=20,
+        )
+        data = resp.json()
+        checkout_url = data.get('paylinkUrl') or data.get('checkoutUrl')
+
+        if checkout_url:
+            paylink_id = data.get('paylinkId', '')
+            if paylink_id and hasattr(order, 'payment_reference'):
+                order.payment_reference = paylink_id
+                order.save(update_fields=['payment_reference'])
+            return redirect(checkout_url)
+
+        logger.error('[Hubtel] No checkout URL for order %s: %s', order.order_ref, data)
+
+    except Exception as exc:
+        logger.error('[Hubtel] Init error for order %s: %s', order.order_ref, exc)
+
+    messages.error(request, 'Could not reach Hubtel. Please try again.')
+    return redirect('order:tracking', order_ref=order.order_ref)
+
+
+@login_required
+def hubtel_callback(request):
+    """Browser redirect from Hubtel after checkout completes/fails/cancels."""
+    order_ref = request.GET.get('ref', '')
+    status    = request.GET.get('status', '').lower()
+
+    if not order_ref:
+        return redirect('order:history')
+
+    order = get_object_or_404(Order, order_ref=order_ref, customer=request.user)
+
+    if order.payment_status == Order.PaymentStatus.PAID:
+        messages.success(request, f'✅ Payment confirmed! Order {order.order_ref} is being processed.')
+        return redirect('order:tracking', order_ref=order.order_ref)
+
+    if status == 'success':
+        _mark_paid(order)
+        messages.success(request, f'✅ Payment confirmed! Order {order.order_ref} is being processed.')
+        return redirect('order:tracking', order_ref=order.order_ref)
+
+    if status == 'cancelled':
+        messages.warning(request, 'Payment cancelled. Your order has not been placed.')
+    else:
+        messages.error(request, 'Payment could not be completed. Please try again.')
+
+    return render(request, 'payment/failed.html', {'order': order})
+
+
+@login_required
+def hubtel_cancel(request):
+    order_ref = request.GET.get('ref', '')
+    order     = get_object_or_404(Order, order_ref=order_ref, customer=request.user)
+    messages.warning(request, 'Payment cancelled.')
+    return render(request, 'payment/failed.html', {'order': order})
+
+
+@csrf_exempt
+def hubtel_webhook(request):
+    """
+    Server-to-server payment confirmation from Hubtel.
+    This fires before the browser redirect — it's the authoritative source.
+
+    Hubtel payload:
+    {
+      "ResponseCode": "0000",
+      "Status": "Success",
+      "Data": {
+        "ClientReference": "LNC-XXXXXXXX",
+        "Amount": 100.00,
+        "TransactionId": "HBT123456"
+      }
+    }
+    """
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return HttpResponse(status=400)
+
+    response_code = body.get('ResponseCode', '')
+    data          = body.get('Data', {})
+    order_ref     = data.get('ClientReference', '')
+    txn_id        = data.get('TransactionId', '')
+
+    logger.info('[Hubtel] Webhook — ref=%s code=%s txn=%s', order_ref, response_code, txn_id)
+
+    if not order_ref:
+        return HttpResponse(status=400)
+
+    try:
+        order = Order.objects.get(order_ref=order_ref)
+    except Order.DoesNotExist:
+        logger.warning('[Hubtel] Webhook: order %s not found', order_ref)
+        return HttpResponse(status=404)
+
+    if response_code == '0000':
+        _mark_paid(order, transaction_id=txn_id)
+
+    return HttpResponse(status=200)
+
+
+# ── Flutterwave (unchanged) ────────────────────────────────────────────────────
 
 @login_required
 def flutterwave_init(request, order_pk):
-    """Start a Flutterwave Standard checkout and redirect the customer to it."""
     order = get_object_or_404(Order, pk=order_pk, customer=request.user)
 
     if not FLW_SECRET:
         messages.error(request, 'Payment gateway not configured. Please pay on delivery.')
-        return redirect('order:order_detail', pk=order.pk)
+        return redirect('order:tracking', order_ref=order.order_ref)
 
     try:
         resp = http_requests.post(
@@ -236,23 +482,15 @@ def flutterwave_init(request, order_pk):
         )
         data = resp.json()
         link = data.get('data', {}).get('link')
-
         if data.get('status') == 'success' and link:
             return redirect(link)
+        logger.error('[FLW] Init failed for order %s: %s', order.pk, data)
+    except Exception as exc:
+        logger.error('[FLW] Init error for order %s: %s', order.pk, exc)
 
-        logger.error('Flutterwave init failed for order %s: %s', order.pk, data)
+    messages.error(request, 'Could not start payment. Please try again.')
+    return redirect('order:tracking', order_ref=order.order_ref)
 
-    except Exception as e:
-        logger.error('Flutterwave init error for order %s: %s', order.pk, str(e))
-
-    messages.error(request, 'Could not start payment. Please try again or pay on delivery.')
-    return redirect(
-    "order:tracking",
-    order_ref=order.order_ref
-)
-
-
-# ── FLUTTERWAVE CALLBACK ──────────────────────────────────
 
 @login_required
 def payment_callback(request):
@@ -271,32 +509,25 @@ def payment_callback(request):
             timeout=10,
         )
         data = resp.json()
-
         if data.get('status') == 'success' and data['data']['status'] == 'successful':
             order = Order.objects.filter(order_ref=tx_ref).first()
             if order and order.payment_status != Order.PaymentStatus.PAID:
                 _mark_paid(order)
                 messages.success(request, f'✅ Payment confirmed! Order {order.order_ref} is being processed.')
-                return redirect('order:order_detail', pk=order.pk)
+                return redirect('order:tracking', order_ref=order.order_ref)
             elif order:
                 messages.info(request, 'Order already confirmed.')
-                return redirect(
-    "order:tracking",
-    order_ref=order.order_ref
-)
+                return redirect('order:tracking', order_ref=order.order_ref)
             else:
                 messages.error(request, 'Order not found.')
         else:
             messages.error(request, 'Payment verification failed.')
-
-    except Exception as e:
-        logger.error('Flutterwave callback error: %s', str(e))
+    except Exception as exc:
+        logger.error('[FLW] Callback error: %s', exc)
         messages.error(request, 'Could not verify payment. Contact support if charged.')
 
     return redirect('products:list')
 
-
-# ── FLUTTERWAVE WEBHOOK ───────────────────────────────────
 
 @csrf_exempt
 def flutterwave_webhook(request):
@@ -313,192 +544,12 @@ def flutterwave_webhook(request):
             data   = payload.get('data', {})
             tx_ref = data.get('tx_ref', '')
             status = data.get('status', '')
-
             if status == 'successful' and tx_ref:
                 order = Order.objects.filter(order_ref=tx_ref).first()
                 if order and order.payment_status != Order.PaymentStatus.PAID:
                     _mark_paid(order)
-                    logger.info('FLW webhook: order %s marked paid', tx_ref)
-    except Exception as e:
-        logger.error('FLW webhook error: %s', str(e))
-
-    return HttpResponse(status=200)
-
-
-# ── PAYSTACK INIT ─────────────────────────────────────────
-
-@login_required
-def paystack_init(request, order_pk):
-    order = get_object_or_404(Order, pk=order_pk, customer=request.user)
-
-    if not PAYSTACK_SECRET:
-        messages.error(request, 'Payment gateway not configured. Please pay on delivery.')
-        return redirect("order:tracking", order_ref=order.order_ref)
-
-    email = request.user.email or f'{request.user.phone}@lynctel.app'
-
-    # Build the per-vendor split from this order's actual items — same
-    # commission logic already used for post-payment payouts, just
-    # applied at charge time instead of after the fact.
-    vendor_totals = {}
-    for item in order.items.select_related('product__vendor').all():
-        vendor = item.product.vendor if item.product else None
-        if vendor:
-            vendor_totals[vendor] = vendor_totals.get(vendor, 0) + (item.unit_price * item.quantity)
-
-    subaccounts = []
-    for vendor, gross in vendor_totals.items():
-        if not vendor.paystack_subaccount_code:
-            # Vendor hasn't been set up for direct settlement yet — fail
-            # loudly rather than silently taking their money into Lynctel's
-            # account, which is exactly the problem we're fixing.
-            messages.error(request, f"{vendor.shop_name} isn't set up for payments yet. Please contact support.")
-            return redirect("order:tracking", order_ref=order.order_ref)
-
-        rate = float(vendor.commission_rate or 4) / 100  # your 4% commission
-        vendor_share = gross * (1 - rate)
-        subaccounts.append({
-            'subaccount': vendor.paystack_subaccount_code,
-            'share': int(vendor_share * 100),  # pesewas
-        })
-
-    payload = {
-        'email': email,
-        'amount': int(order.total_amount * 100),
-        'currency': 'GHS',
-        'reference': order.order_ref,
-        'callback_url': request.build_absolute_uri(reverse('payment:paystack-callback', args=[order.order_ref])),
-        'split': {
-            'type': 'flat',
-            'currency': 'GHS',
-            'subaccounts': subaccounts,
-            'bearer_type': 'account',  # Lynctel's main account bears the Paystack transaction fee
-        },
-    }
-
-    resp = http_requests.post(
-        'https://api.paystack.co/transaction/initialize',
-        headers={'Authorization': f'Bearer {PAYSTACK_SECRET}'},
-        json=payload,
-        timeout=10,
-    )
-    data = resp.json()
-
-    if data.get('status') and data['data'].get('authorization_url'):
-        return redirect(data['data']['authorization_url'])
-
-    messages.error(request, 'Could not start payment. Please try again or pay on delivery.')
-    return redirect("order:tracking", order_ref=order.order_ref)
-
-
-# ── PAYSTACK VERIFY ───────────────────────────────────────
-
-@login_required
-def paystack_verify(request, order_pk):
-    order     = get_object_or_404(Order, pk=order_pk, customer=request.user)
-    reference = request.GET.get('reference', '')
-
-    if not reference or not PAYSTACK_SECRET:
-        messages.error(request, 'Payment verification failed.')
-        return redirect('order:tracking', order_ref=order.order_ref)
-
-    try:
-        resp = http_requests.get(
-            f'https://api.paystack.co/transaction/verify/{reference}',
-            headers={'Authorization': f'Bearer {PAYSTACK_SECRET}'},
-            timeout=10,
-        )
-        data = resp.json()
-
-        if data.get('status') and data['data'].get('status') == 'success':
-            amount_paid = Decimal(str(data['data']['amount'])) / Decimal('100')
-            if amount_paid >= order.total_amount:
-                if order.payment_status != Order.PaymentStatus.PAID:
-                    _mark_paid(order)
-                messages.success(request, f'✅ Payment confirmed! Order {order.order_ref} is being processed.')
-            else:
-                messages.warning(request, 'Payment amount mismatch. Contact support.')
-        else:
-            messages.error(request, 'Payment was not successful. Please try again.')
-
-    except Exception as e:
-        logger.error('Paystack verify error for order %s: %s', order.pk, str(e))
-        messages.error(request, 'Could not verify payment. Contact support if charged.')
-
-    return redirect('order:tracking', order_ref=order.order_ref)
-
-
-# ── PAYSTACK CALLBACK ─────────────────────────────────────
-
-@login_required
-def paystack_callback(request, tx_ref):
-    order = Order.objects.filter(
-        order_ref=tx_ref, customer=request.user
-    ).first()
-
-    if not order:
-        messages.error(request, 'Order not found.')
-        return redirect('products:list')
-
-    reference = request.GET.get('reference', tx_ref)
-
-    try:
-        resp = http_requests.get(
-            f'https://api.paystack.co/transaction/verify/{reference}',
-            headers={'Authorization': f'Bearer {PAYSTACK_SECRET}'},
-            timeout=10,
-        )
-        data = resp.json()
-
-        if data.get('status') and data['data'].get('status') == 'success':
-            if order.payment_status != Order.PaymentStatus.PAID:
-                _mark_paid(order)
-            messages.success(request, f'✅ Payment confirmed! Order {order.order_ref} is confirmed.')
-        else:
-            messages.error(request, 'Payment was not successful.')
-
-    except Exception as e:
-        logger.error('Paystack callback error: %s', str(e))
-        messages.error(request, 'Could not verify payment. Contact support if charged.')
-
-    return redirect('order:tracking', order_ref=order.order_ref)
-
-
-# ── PAYSTACK WEBHOOK ──────────────────────────────────────
-
-@csrf_exempt
-def paystack_webhook(request):
-    if request.method != 'POST':
-        return HttpResponse(status=405)
-
-    signature = request.headers.get('x-paystack-signature', '')
-    if PAYSTACK_SECRET and signature:
-        expected = hmac.new(
-            PAYSTACK_SECRET.encode('utf-8'),
-            request.body,
-            hashlib.sha512,
-        ).hexdigest()
-        if not hmac.compare_digest(expected, signature):
-            return HttpResponse(status=401)
-
-    try:
-        payload = json.loads(request.body)
-        event   = payload.get('event', '')
-
-        if event == 'charge.success':
-            data      = payload.get('data', {})
-            reference = data.get('reference', '')
-            amount    = Decimal(str(data.get('amount', 0))) / Decimal('100')
-            meta      = data.get('metadata', {})
-            order_ref = meta.get('order_ref', reference)
-
-            order = Order.objects.filter(order_ref=order_ref).first()
-            if order and order.payment_status != Order.PaymentStatus.PAID:
-                if amount >= order.total_amount:
-                    _mark_paid(order)
-                    logger.info('Paystack webhook: order %s marked paid', order_ref)
-
-    except Exception as e:
-        logger.error('Paystack webhook error: %s', str(e))
+                    logger.info('[FLW] Webhook: order %s marked paid', tx_ref)
+    except Exception as exc:
+        logger.error('[FLW] Webhook error: %s', exc)
 
     return HttpResponse(status=200)

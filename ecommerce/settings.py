@@ -1,11 +1,13 @@
 ﻿from pathlib import Path
 import os
+
 import dj_database_url
 from decouple import config
+from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ── Security ───────────────────────────────────────────────
+# ── Security ───────────────────────────────────────────────────────────────────
 SECRET_KEY = config('SECRET_KEY')
 DEBUG      = config('DEBUG', default=False, cast=bool)
 
@@ -16,10 +18,10 @@ ALLOWED_HOSTS = [
     'lynctel.up.railway.app',
 ]
 
-# ── Custom User Model ──────────────────────────────────────
+# ── Custom user model ──────────────────────────────────────────────────────────
 AUTH_USER_MODEL = 'ecommerce.User'
 
-# ── Apps ───────────────────────────────────────────────────
+# ── Applications ───────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     'daphne',
     'channels',
@@ -29,15 +31,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Storage
     'cloudinary',
     'cloudinary_storage',
+    # Project apps
     'ecommerce',
     'products',
     'cart',
-    'order.apps.OrderConfig',  
+    'order.apps.OrderConfig',
     'payment',
     'delivery.apps.DeliveryConfig',
-
     'rider',
     'frontend',
     'accounts',
@@ -50,10 +53,9 @@ INSTALLED_APPS = [
     'livestream',
     'fraud',
     'notifications',
-  
 ]
 
-# ── Middleware ─────────────────────────────────────────────
+# ── Middleware ─────────────────────────────────────────────────────────────────
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -70,7 +72,7 @@ ROOT_URLCONF     = 'ecommerce.urls'
 WSGI_APPLICATION = 'ecommerce.wsgi.application'
 ASGI_APPLICATION = 'ecommerce.asgi.application'
 
-# ── Templates ──────────────────────────────────────────────
+# ── Templates ──────────────────────────────────────────────────────────────────
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -90,7 +92,7 @@ TEMPLATES = [
     },
 ]
 
-# ── Database ───────────────────────────────────────────────
+# ── Database ───────────────────────────────────────────────────────────────────
 # Priority:
 #   1. DATABASE_PRIVATE_URL / DATABASE_URL — Railway auto-injects
 #   2. SQLite — local dev only
@@ -114,37 +116,25 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-# ───────────────────────────────────────────────
-# CHANNEL LAYERS
-# ───────────────────────────────────────────────
 
-import os
-
-REDIS_URL = os.getenv("REDIS_URL")
+# ── Channel layers (WebSocket / live streaming) ────────────────────────────────
+REDIS_URL = os.getenv('REDIS_URL')
 
 if REDIS_URL:
-    print("✅ Redis enabled")
-
     CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [
-                    REDIS_URL,
-                ],
-            },
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG':  {'hosts': [REDIS_URL]},
         },
     }
-
 else:
-    print("⚠️ Redis disabled. Using InMemoryChannelLayer.")
-
     CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
     }
-# ── Password validation ────────────────────────────────────
+
+# ── Password validation ────────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -152,9 +142,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# ── Internationalisation ───────────────────────────────────
-from django.utils.translation import gettext_lazy as _
-
+# ── Internationalisation ───────────────────────────────────────────────────────
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE     = 'Africa/Accra'
 USE_I18N      = True
@@ -168,21 +156,14 @@ LANGUAGES = [
     ('ha', _('Hausa')),
 ]
 
-# Locale files live at <project root>/locale/
-LOCALE_PATHS = [
-    BASE_DIR / 'locale',
-]
+LOCALE_PATHS = [BASE_DIR / 'locale']
 
-# ── Static files ───────────────────────────────────────────
+# ── Static files ───────────────────────────────────────────────────────────────
 STATIC_URL       = '/static/'
 STATIC_ROOT      = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# ── Media & Storage ────────────────────────────────────────
-# Cloudinary activates when all three vars are set in Railway.
-# Falls back to Railway Volume / local filesystem when not set.
-# To disable Cloudinary: clear CLOUDINARY_CLOUD_NAME in Railway vars.
-
+# ── Media / Storage (Cloudinary or local filesystem) ──────────────────────────
 _cloud_name   = config('CLOUDINARY_CLOUD_NAME', default='').strip()
 _cloud_key    = config('CLOUDINARY_API_KEY',    default='').strip()
 _cloud_secret = config('CLOUDINARY_API_SECRET', default='').strip()
@@ -232,15 +213,15 @@ else:
     MEDIA_URL  = '/media/'
     MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 
-# ── Auth ───────────────────────────────────────────────────
+# ── Auth ───────────────────────────────────────────────────────────────────────
 LOGIN_URL           = '/accounts/login/'
 LOGIN_REDIRECT_URL  = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-# ── Misc ───────────────────────────────────────────────────
+# ── Misc ───────────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ── Cache ──────────────────────────────────────────────────
+# ── Cache ──────────────────────────────────────────────────────────────────────
 CACHES = {
     'default': {
         'BACKEND':  'django.core.cache.backends.locmem.LocMemCache',
@@ -248,44 +229,62 @@ CACHES = {
     }
 }
 
-# ── Payments ───────────────────────────────────────────────
-FLW_PUBLIC_KEY     = config('FLW_PUBLIC_KEY',     default='')
-FLW_SECRET_KEY     = config('FLW_SECRET_KEY',     default='')
-FLW_WEBHOOK_SECRET = config('FLW_WEBHOOK_SECRET', default='')
-PAYSTACK_PUBLIC_KEY = config('PAYSTACK_PUBLIC_KEY', default='')
-PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
+# ── Upload limits (mobile photos / videos) ─────────────────────────────────────
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB
 
-# ── SMS (Arkesel) ───────────────────────────────────────────
-ARKESEL_API_KEY   = config('ARKESEL_API_KEY',   default='')
-ARKESEL_SENDER_ID = config('ARKESEL_SENDER_ID', default='Lynctel')
-
-
-
-EMAIL_BACKEND       = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST          = config('EMAIL_HOST',     default='smtp.gmail.com')
-EMAIL_PORT          = config('EMAIL_PORT',     default=587, cast=int)
-EMAIL_USE_TLS       = config('EMAIL_USE_TLS',  default=True, cast=bool)
-EMAIL_HOST_USER     = config('EMAIL_HOST_USER',     default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',  default='Lynctel <noreply@lynctel.com>')
-
-# ── Maps ───────────────────────────────────────────────────
-# ── Maps ───────────────────────────────────────────────────
-LOCATIONIQ_API_KEY = config('LOCATIONIQ_API_KEY', default='')
-
-# ── CSRF ───────────────────────────────────────────────────
+# ── CSRF ───────────────────────────────────────────────────────────────────────
 CSRF_TRUSTED_ORIGINS = ['https://lynctel.up.railway.app']
 
-# ── Security headers (production only) ────────────────────
+# ── Security headers (production only) ────────────────────────────────────────
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER     = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT         = False  # Railway handles HTTPS termination
+    SECURE_SSL_REDIRECT         = False   # Railway handles HTTPS termination
     SESSION_COOKIE_SECURE       = True
     CSRF_COOKIE_SECURE          = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS             = 'DENY'
 
-# ── Logging ────────────────────────────────────────────────
+# ── Payment gateways ───────────────────────────────────────────────────────────
+
+# Hubtel — primary payment gateway (replaces Paystack)
+# Get from: merchants.hubtel.com → Settings → API
+HUBTEL_CLIENT_ID     = config('HUBTEL_CLIENT_ID',     default='')
+HUBTEL_CLIENT_SECRET = config('HUBTEL_CLIENT_SECRET', default='')
+HUBTEL_MERCHANT_ACCT = config('HUBTEL_MERCHANT_ACCT', default='')
+
+# Flutterwave — secondary gateway (kept as fallback)
+# FIXED: was FLW_WEBHOOK_SECRET but payment/views.py reads FLW_WEBHOOK_HASH
+FLW_PUBLIC_KEY   = config('FLW_PUBLIC_KEY',   default='')
+FLW_SECRET_KEY   = config('FLW_SECRET_KEY',   default='')
+FLW_WEBHOOK_HASH = config('FLW_WEBHOOK_HASH', default='')   # was FLW_WEBHOOK_SECRET
+
+# ── SMS — Arkesel ──────────────────────────────────────────────────────────────
+ARKESEL_API_KEY   = config('ARKESEL_API_KEY',   default='')
+ARKESEL_SENDER_ID = config('ARKESEL_SENDER_ID', default='Lynctel')
+
+# ── Admin alerts (payout failures etc.) ───────────────────────────────────────
+# SMS is sent to this number when a vendor MoMo disbursement fails.
+ADMIN_PHONE = config('ADMIN_PHONE', default='')
+
+# ── Email ──────────────────────────────────────────────────────────────────────
+EMAIL_BACKEND       = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST          = config('EMAIL_HOST',    default='smtp.gmail.com')
+EMAIL_PORT          = config('EMAIL_PORT',    default=587, cast=int)
+EMAIL_USE_TLS       = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER     = config('EMAIL_HOST_USER',     default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',  default='Lynctel <noreply@lynctel.com>')
+
+# ── Maps ───────────────────────────────────────────────────────────────────────
+LOCATIONIQ_API_KEY = config('LOCATIONIQ_API_KEY', default='')
+
+# ── Web Push (VAPID) ───────────────────────────────────────────────────────────
+VAPID_PUBLIC_KEY  = config('VAPID_PUBLIC_KEY',  default='')
+VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default='')
+VAPID_ADMIN_EMAIL = config('VAPID_ADMIN_EMAIL', default='admin@lynctel.com')
+
+# ── Logging ────────────────────────────────────────────────────────────────────
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -301,25 +300,18 @@ LOGGING = {
             'formatter': 'verbose',
         },
     },
-    'root': {'handlers': ['console'], 'level': 'WARNING'},
+    'root': {
+        'handlers': ['console'],
+        'level':    'WARNING',
+    },
     'loggers': {
         'django':         {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
         'django.request': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
         'accounts':       {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
         'ecommerce':      {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
+        # Payment + payout logging — shows in Railway logs so you can see
+        # every Hubtel transfer attempt and any payout failures in real time.
+        'payment':        {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
+        'notifications':  {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
     },
 }
-
-
-
-
-# ── Web Push (VAPID) ───────────────────────────────────────────────────────────
-VAPID_PUBLIC_KEY  = config('VAPID_PUBLIC_KEY',  default='')
-VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default='')
-VAPID_ADMIN_EMAIL = config('VAPID_ADMIN_EMAIL', default='admin@lynctel.com')
-
-
-# Allow larger file uploads for mobile photos/videos
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10MB
-
