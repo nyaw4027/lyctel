@@ -340,7 +340,7 @@
                   <div class="bg-white bg-opacity-10 border border-white border-opacity-25 rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 font-display fw-bold small text-gold" style="width:2.5rem;height:2.5rem;" aria-hidden="true">2</div>
                   <div>
                     <p class="text-white fw-semibold small mb-1">Pay with MoMo or Card</p>
-                    <p class="text-white-50 small mb-0" style="line-height:1.5;">Checkout securely with MTN, Vodafone, AirtelTigo or Paystack.</p>
+                    <p class="text-white-50 small mb-0" style="line-height:1.5;">Checkout securely with MTN, Vodafone, AirtelTigo or card via Hubtel.</p>
                   </div>
                 </div>
                 <div class="bg-white bg-opacity-10" style="width:1px;height:.75rem;margin-left:1.25rem;"></div>
@@ -373,11 +373,11 @@
                   <a href="{% url 'products:detail' p.slug %}"
                      class="slide-card d-block bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3 overflow-hidden text-decoration-none">
                     <div class="position-relative overflow-hidden" style="height:5rem;">
-                      {% if p.primary_image %}
-                      <img src="{{ p.primary_image }}" alt="{{ p.name }}" class="w-100 h-100 object-fit-cover" loading="lazy"/>
+                      {% with img=p.images.first %}{% if img %}
+                      <img src="{{ img.image.url }}" alt="{{ p.name }}" class="w-100 h-100 object-fit-cover" loading="lazy"/>
                       {% else %}
-                      <div class="w-100 h-100 bg-white bg-opacity-10 d-flex align-items-center justify-content-center fs-3" aria-hidden="true">📦</div>
-                      {% endif %}
+                      <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-light" style="font-size:2rem">📦</div>
+                      {% endif %}{% endwith %}
                       <span class="position-absolute top-0 start-0 m-1 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:9px;">🔥</span>
                       {% if p.has_discount %}
                       <span class="position-absolute top-0 end-0 m-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:9px;">-{{ p.discount_percent }}%</span>
@@ -553,7 +553,7 @@
           <span class="hiw-step-icon" aria-hidden="true">📱</span>
           <div class="hiw-step-num">4</div>
           <h3 class="hiw-step-title">Pay with MoMo</h3>
-          <p class="hiw-step-text">Pay securely with MTN MoMo, Vodafone Cash, AirtelTigo Money, or card via Paystack.</p>
+          <p class="hiw-step-text">Pay securely with MTN MoMo, Vodafone Cash, AirtelTigo Money, or card via Hubtel.</p>
         </div>
         <div class="hiw-step">
           <span class="hiw-step-icon" aria-hidden="true">🚪</span>
@@ -783,11 +783,11 @@
           <div class="video-card-wrap{% if first_vid %} has-video{% endif %} position-relative overflow-hidden" style="height:9rem;">
             <div class="position-absolute top-0 start-0 w-100 h-100">
               <a href="{% url 'products:detail' product.slug %}">
-                {% if product.primary_image %}
-                <img src="{{ product.primary_image }}" alt="{{ product.name }}" class="w-100 h-100 object-fit-cover" loading="lazy"/>
+                {% with img=product.images.first %}{% if img %}
+                <img src="{{ img.image.url }}" alt="{{ product.name }}" class="w-100 h-100 object-fit-cover" loading="lazy"/>
                 {% else %}
-                <div class="w-100 h-100 d-flex align-items-center justify-content-center" style="background:var(--navy-100);font-size:2rem;opacity:.3;" aria-hidden="true">📦</div>
-                {% endif %}
+                <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-light" style="font-size:2rem">📦</div>
+                {% endif %}{% endwith %}
               </a>
             </div>
             {% if first_vid %}
