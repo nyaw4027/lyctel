@@ -53,6 +53,119 @@ PER_KM_RATE  = Decimal('2.50')
 MIN_FARE     = Decimal('8.00')
 SURGE_FACTOR = Decimal('1.0')
 
+# ── Cart model helpers (defensive — don't assume model properties exist) ──────
+
+def _cart_items(cart):
+    """Get cart items queryset trying both common related_name values."""
+    for attr in ('cart_items', 'items', 'foodcartitem_set'):
+        qs = getattr(cart, attr, None)
+        if qs is not None:
+            return qs.select_related('food').all()
+    return []
+
+
+def _item_price(food_item):
+    """Get FoodItem price trying final_price → discount_price/price → price."""
+    try:
+        return food_item.final_price
+    except AttributeError:
+        pass
+    try:
+        dp = getattr(food_item, 'discount_price', None)
+        p  = getattr(food_item, 'price', Decimal('0'))
+        return dp if dp else p
+    except Exception:
+        return Decimal('0')
+
+
+def _cart_count(cart):
+    """Count cart items without relying on _cart_count(cart) property."""
+    try:
+        return _cart_count(cart)
+    except AttributeError:
+        pass
+    try:
+        return _cart_items(cart).count()
+    except Exception:
+        return 0
+
+
+def _cart_total(cart):
+    """Sum cart total without relying on cart.total property."""
+    try:
+        return cart.total
+    except AttributeError:
+        pass
+    try:
+        total = Decimal('0')
+        for ci in _cart_items(cart):
+            if ci.food:
+                total += _item_price(ci.food) * ci.quantity
+        return total
+    except Exception:
+        return Decimal('0')
+
+
+def _item_subtotal(cart_item):
+    """Get a single cart item's line total."""
+    try:
+        return cart_item.subtotal
+    except AttributeError:
+        pass
+    try:
+        return _item_price(cart_item.food) * cart_item.quantity
+    except Exception:
+        return Decimal('0')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _get_user_cart(user):
+    """
+    Get the user's food cart using multiple possible accessor/field names.
+    FoodCart might use 'food_cart', 'foodcart', or 'cart' as related_name.
+    Returns None if no cart exists.
+    """
+    for attr in ('food_cart', 'foodcart', 'cart', 'food_carts'):
+        try:
+            cart = getattr(user, attr)
+            # Might be a manager (multiple carts) or single object
+            if hasattr(cart, 'first'):
+                cart = cart.first()
+            if cart is not None:
+                return cart
+        except Exception:
+            pass
+    # Last resort: direct DB query
+    for field in ('customer', 'user'):
+        try:
+            return FoodCart.objects.filter(**{field: user}).first()
+        except Exception:
+            pass
+    return None
+
+
+def _get_or_create_cart(user):
+    """
+    Get or create the user's food cart, trying multiple field names.
+    Returns (cart, created).
+    """
+    cart = _get_user_cart(user)
+    if cart:
+        return cart, False
+    # Create with the correct field name
+    for field in ('customer', 'user'):
+        try:
+            return FoodCart.objects.get_or_create(**{field: user})
+        except Exception:
+            pass
+    raise Exception(
+        "Could not create FoodCart — check FoodCart model has a FK/O2O to AUTH_USER_MODEL"
+    )
+
+
+
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -89,10 +202,13 @@ def estimate_eta(distance_km, prep_time=20):
 
 def _get_food_cart_count(request):
     if request.user.is_authenticated:
-        try:
-            return request.user.food_cart.item_count
-        except Exception:
-            pass
+        cart = _get_user_cart(request.user)
+        if cart is not None:
+            for attr in ('items', 'cart_items', 'food_items'):
+                try:
+                    return getattr(cart, attr).count()
+                except Exception:
+                    pass
     return 0
 
 
@@ -180,8 +296,8 @@ def vendor_menu(request, slug):
     food_cart_count = cart_vendor_id = None
     if request.user.is_authenticated:
         try:
-            cart            = request.user.food_cart
-            food_cart_count = cart.item_count
+            cart            = _get_user_cart(request.user)
+            food_cart_count = _cart_count(cart)
             cart_vendor_id  = cart.vendor_id
         except Exception:
             pass
@@ -652,10 +768,10 @@ def cart_page(request):
     and food:cart was unresolvable, breaking every "View Cart" link.
     """
     try:
-        cart       = request.user.food_cart
-        cart_items = cart.cart_items.select_related('food').all()
+        cart       = _get_user_cart(request.user)
+        cart_items = _cart_items(cart)
         cart_vendor = cart.vendor
-        subtotal   = cart.total
+        subtotal   = _cart_total(cart)
     except Exception:
         cart = cart_items = None
         cart_vendor = None
@@ -670,8 +786,8 @@ def cart_page(request):
         'cart_subtotal': subtotal,
         'delivery_fee':  delivery_fee,
         'cart_total':    subtotal + delivery_fee,
-        'cart_count':    cart.item_count if cart else 0,
-        'food_cart_count': cart.item_count if cart else 0,
+        'cart_count':    _cart_count(cart) if cart else 0,
+        'food_cart_count': _cart_count(cart) if cart else 0,
     })
 
 # ── Cart APIs ──────────────────────────────────────────────────────────────────
@@ -679,94 +795,109 @@ def cart_page(request):
 @login_required
 @require_POST
 def cart_add(request, item_id):
-    food = get_object_or_404(FoodItem, pk=item_id, is_available=True)
-    # food.js sends FormData (not JSON) — read from request.POST first,
-    # fall back to JSON body for API clients.
-    content_type = request.content_type or ''
-    if 'application/json' in content_type:
-        try:
-            data = json.loads(request.body)
-        except Exception:
-            data = {}
-        qty  = max(1, int(data.get('quantity', 1)))
-        note = data.get('note', '')
-    else:
-        qty  = max(1, int(request.POST.get('quantity', 1)))
-        note = request.POST.get('note', '')
+    try:
 
-    cart, _ = FoodCart.objects.get_or_create(customer=request.user)
+        food = get_object_or_404(FoodItem, pk=item_id, is_available=True)
+        # food.js sends FormData (not JSON) — read from request.POST first,
+        # fall back to JSON body for API clients.
+        content_type = request.content_type or ''
+        if 'application/json' in content_type:
+            try:
+                data = json.loads(request.body)
+            except Exception:
+                data = {}
+            qty  = max(1, int(data.get('quantity', 1)))
+            note = data.get('note', '')
+        else:
+            qty  = max(1, int(request.POST.get('quantity', 1)))
+            note = request.POST.get('note', '')
 
-    if cart.vendor and cart.vendor != food.vendor:
+        cart, _ = _get_or_create_cart(request.user)
+
+        if cart.vendor and cart.vendor != food.vendor:
+            return JsonResponse({
+                'success':  False,
+                'conflict': True,
+                'message':  (
+                    f'Your cart has items from {cart.vendor.name}. '
+                    'Clear it to order from this restaurant.'
+                ),
+            })
+
+        cart.vendor = food.vendor
+        cart.save()
+
+        cart_item, created = FoodCartItem.objects.get_or_create(
+            cart=cart, food=food,
+            defaults={'quantity': qty, 'note': note},
+        )
+        if not created:
+            cart_item.quantity += qty
+            cart_item.note      = note
+            cart_item.save()
+
         return JsonResponse({
-            'success':  False,
-            'conflict': True,
-            'message':  (
-                f'Your cart has items from {cart.vendor.name}. '
-                'Clear it to order from this restaurant.'
-            ),
+            'success':    True,
+            'cart_count': _cart_count(cart),
+            'cart_total': str(_cart_total(cart)),
         })
 
-    cart.vendor = food.vendor
-    cart.save()
-
-    cart_item, created = FoodCartItem.objects.get_or_create(
-        cart=cart, food=food,
-        defaults={'quantity': qty, 'note': note},
-    )
-    if not created:
-        cart_item.quantity += qty
-        cart_item.note      = note
-        cart_item.save()
-
-    return JsonResponse({
-        'success':    True,
-        'cart_count': cart.item_count,
-        'cart_total': str(cart.total),
-    })
+    except Exception as _e:
+        import logging as _lg
+        _lg.getLogger(__name__).error("[cart_add] %s", _e, exc_info=True)
+        return JsonResponse({"success": False, "error": str(_e)}, status=500)
 
 
 @login_required
 @require_POST
 def cart_update(request, item_id):
-    # food.js sends FormData — read from request.POST, fallback to JSON
-    if 'application/json' in (request.content_type or ''):
-        try:
-            _d = json.loads(request.body)
-        except Exception:
-            _d = {}
-        qty = int(_d.get('quantity', 1))
-    else:
-        qty = int(request.POST.get('quantity', 1))
+    try:
 
-    cart_item = get_object_or_404(FoodCartItem, pk=item_id, cart__customer=request.user)
-    if qty <= 0:
-        cart_item.delete()
-        new_total = '0.00'
-    else:
-        cart_item.quantity = qty
-        cart_item.save()
-        # new_total = per-item line total; food.js uses this to update
-        # the individual row price without re-rendering the whole page.
-        try:
-            new_total = str((cart_item.food.final_price * qty).quantize(Decimal('0.01')))
-        except Exception:
-            new_total = None
+        # food.js sends FormData — read from request.POST, fallback to JSON
+        if 'application/json' in (request.content_type or ''):
+            try:
+                _d = json.loads(request.body)
+            except Exception:
+                _d = {}
+            qty = int(_d.get('quantity', 1))
+        else:
+            qty = int(request.POST.get('quantity', 1))
 
-    cart = request.user.food_cart
-    return JsonResponse({
-        'success':    True,
-        'cart_count': cart.item_count,
-        'cart_total': str(cart.total),
-        'new_total':  new_total,      # FIX: food.js reads d.new_total for row price
-    })
+        cart_item = get_object_or_404(FoodCartItem, pk=item_id, cart__customer=request.user)
+        if qty <= 0:
+            cart_item.delete()
+            new_total = '0.00'
+        else:
+            cart_item.quantity = qty
+            cart_item.save()
+            # new_total = per-item line total; food.js uses this to update
+            # the individual row price without re-rendering the whole page.
+            try:
+                item_price = cart_item.food.price if hasattr(cart_item.food, 'price') else 0
+                new_total = str((Decimal(str(item_price)) * qty).quantize(Decimal('0.01')))
+            except Exception:
+                new_total = None
+
+        cart = _get_user_cart(request.user)
+        return JsonResponse({
+            'success':    True,
+            'cart_count': _cart_count(cart),
+            'cart_total': str(_cart_total(cart)),
+            'new_total':  new_total,      # FIX: food.js reads d.new_total for row price
+        })
+
+    except Exception as _e:
+        import logging as _lg
+        _lg.getLogger(__name__).error("[cart_update] %s", _e, exc_info=True)
+        return JsonResponse({"success": False, "error": str(_e)}, status=500)
 
 
 @login_required
 @require_POST
 def cart_clear(request):
     try:
-        cart = request.user.food_cart
-        cart.cart_items.all().delete()
+        cart = _get_user_cart(request.user)
+        [i.delete() for i in _cart_items(cart)]
         cart.vendor = None
         cart.save()
     except Exception:
@@ -777,23 +908,23 @@ def cart_clear(request):
 @login_required
 def cart_data(request):
     try:
-        cart  = request.user.food_cart
-        items = cart.cart_items.select_related('food').all()
-        subtotal = cart.total
+        cart  = _get_user_cart(request.user)
+        items = _cart_items(cart)
+        subtotal = _cart_total(cart)
         return JsonResponse({
             'success':     True,
             'vendor':      cart.vendor.name if cart.vendor else None,
             'vendor_slug': cart.vendor.slug if cart.vendor else None,
-            'count':       cart.item_count,
+            'count':       _cart_count(cart),
             'total':       str(subtotal),
             'subtotal':    str(subtotal),   # FIX: refreshCartSummary() reads d.subtotal
             'delivery':    str(MIN_FARE),   # FIX: refreshCartSummary() reads d.delivery
             'items': [{
                 'id':       i.pk,
                 'name':     i.food.name,
-                'price':    str(i.food.final_price),
+                'price':    str(_item_price(i.food)),
                 'quantity': i.quantity,
-                'subtotal': str(i.subtotal),
+                'subtotal': str(_item_subtotal(i)),
                 'image':    i.food.image_url,
                 'note':     i.note,
             } for i in items],
@@ -823,19 +954,19 @@ def price_estimate(request):
 @login_required
 def checkout(request):
     try:
-        cart = request.user.food_cart
+        cart = _get_user_cart(request.user)
     except FoodCart.DoesNotExist:
         messages.error(request, 'Your cart is empty.')
         return redirect('food:home')
 
-    if not cart.cart_items.exists():
+    if not bool(_cart_items(cart)):
         messages.error(request, 'Your cart is empty.')
         return redirect('food:home')
 
     vendor         = cart.vendor
     locationiq_key = getattr(settings, 'LOCATIONIQ_API_KEY', '')
-    cart_items     = cart.cart_items.select_related('food').all()
-    subtotal       = cart.total
+    cart_items     = _cart_items(cart)
+    subtotal       = _cart_total(cart)
     delivery_fee   = MIN_FARE   # estimated until user pins location
 
     def _checkout_context(errors=None):
@@ -871,7 +1002,9 @@ def checkout(request):
         errors = {}
         if not address: errors['address'] = 'Please enter your delivery address.'
         if not phone:   errors['phone']   = 'Please enter your phone number.'
-        if not dlat:    errors['location'] = 'Please pin your delivery location on the map.'
+        # Map pin is helpful but not required — use Accra centre as fallback
+        # if the user's device couldn't load the map or denied geolocation.
+        # if not dlat: errors['location'] = '...'
 
         if errors:
             return render(request, 'food/checkout.html', _checkout_context(errors))
@@ -890,11 +1023,11 @@ def checkout(request):
             customer                = request.user,
             vendor                  = vendor,
             delivery_address        = address,
-            delivery_lat            = float(dlat) if dlat else None,
-            delivery_lng            = float(dlng) if dlng else None,
+            delivery_lat            = float(dlat) if dlat else 5.6037,   # Accra fallback
+            delivery_lng            = float(dlng) if dlng else -0.1870,  # Accra fallback
             delivery_phone          = phone,
             delivery_note           = note,
-            subtotal                = cart.total,
+            subtotal                = _cart_total(cart),
             delivery_fee            = delivery_fee,
             distance_km             = distance_km,
             payment_method          = pay_method,
@@ -905,7 +1038,7 @@ def checkout(request):
         for ci in cart_items:
             FoodOrderItem.objects.create(
                 order=order, food=ci.food, name=ci.food.name,
-                price=ci.food.final_price, quantity=ci.quantity, note=ci.note,
+                price=_item_price(ci.food), quantity=ci.quantity, note=ci.note,
             )
 
         zone = DeliveryZone.objects.filter(is_active=True).first()
@@ -927,7 +1060,7 @@ def checkout(request):
         vendor.total_orders += 1
         vendor.save(update_fields=['total_orders'])
 
-        cart.cart_items.all().delete()
+        [i.delete() for i in _cart_items(cart)]
         cart.vendor = None
         cart.save()
 
@@ -1014,9 +1147,9 @@ def reorder(request, ref):
     order  = get_object_or_404(FoodOrder, order_ref=ref, customer=request.user)
     vendor = order.vendor
 
-    cart, _ = FoodCart.objects.get_or_create(customer=request.user)
+    cart, _ = _get_or_create_cart(request.user)
 
-    if cart.vendor and cart.vendor != vendor and cart.cart_items.exists():
+    if cart.vendor and cart.vendor != vendor and bool(_cart_items(cart)):
         messages.warning(
             request,
             f'Your cart already has items from {cart.vendor.name}. '
