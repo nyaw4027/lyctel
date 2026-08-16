@@ -3,7 +3,7 @@
 <html lang="{{ LANGUAGE_CODE|default:'en' }}">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
   <!-- Set theme before first paint to avoid a light/dark flash -->
   <script>
@@ -324,159 +324,65 @@
     }
 
   
-    /* ╔══════════════════════════════════════════════════════════╗
-       ║  ANDROID / CROSS-DEVICE FIXES                           ║
-       ║                                                          ║
-       ║  Root causes vs iOS:                                     ║
-       ║  1. Android Chrome 100vh ≠ visual viewport (addr bar)   ║
-       ║  2. env(safe-area-inset-bottom) = 0 on Android gesture  ║
-       ║     nav — content hides behind the bar anyway           ║
-       ║  3. Touch targets <44px silently fail on Android         ║
-       ║  4. Small fonts (<12px) render blurry on Android         ║
-       ║  5. Horizontal overflow causes scroll jank               ║
-       ╚══════════════════════════════════════════════════════════╝ */
-
-    /* ── Prevent horizontal scroll on all Android browsers ───── */
-    html { overflow-x: hidden; }
-    body { overflow-x: hidden; }
-
-    /* ── Bottom nav: Android gesture bar adds ~40px below nav ── */
-    /* env(safe-area-inset-bottom) is 0 on most Android devices  */
-    /* even with gesture navigation, so we add an explicit floor  */
-    #mobile-nav {
-      /* Support both iOS safe area AND Android gesture bar */
-      padding-bottom: max(env(safe-area-inset-bottom, 0px), 10px);
-      /* Use dynamic viewport height where supported */
-      height: 64px;
-      height: calc(64px + max(env(safe-area-inset-bottom, 0px), 10px));
-    }
-
-    /* ── Body padding-bottom: match the actual nav height ─────── */
+    /* ── Navbar mobile (Pixel 4 / Android) ──────────────────── */
     @media (max-width: 767.98px) {
-      body {
-        padding-bottom: calc(74px + max(env(safe-area-inset-bottom, 0px), 10px));
-      }
-    }
 
-    /* ── Touch targets: Android requires ≥ 48×48px ────────────── */
-    @media (max-width: 767.98px) {
-      /* Bottom nav items — 5 items in 64px bar is fine height,
-         but add explicit min-width so tap area is adequate */
-      .mobile-nav-item {
-        min-height: 52px;
-        padding: 6px 4px;
-        -webkit-tap-highlight-color: rgba(245,166,35,.15);
-        tap-highlight-color: rgba(245,166,35,.15);
-      }
-
-      /* Small buttons used in product cards, nav etc */
-      .btn-sm {
-        min-height: 36px;
-        padding-top: 0.35rem;
-        padding-bottom: 0.35rem;
-      }
-
-      /* Stepper/qty buttons in cart drawer (28px → 40px) */
-      .btn[style*="width:28px"],
-      .btn[style*="height:28px"] {
-        width: 36px !important;
-        height: 36px !important;
-      }
-    }
-
-    /* ── Font sizes: Android renders <12px text blurry ────────── */
-    @media (max-width: 767.98px) {
-      /* Badge/pill font size floor */
-      .badge, [class*="rounded-pill"],
-      .mobile-nav-item { font-size: max(10px, .625rem); }
-
-      /* Ensure readable body copy */
-      .small   { font-size: max(13px, .8rem) !important; }
-      .text-sm { font-size: max(13px, .8rem) !important; }
-
-      /* Hero headings — clamp already handles this but ensure min */
-      h1 { font-size: clamp(1.6rem, 7vw, 2.5rem); }
-      h2 { font-size: clamp(1.2rem, 5vw, 1.8rem); }
-    }
-
-    /* ── 100vh fix: Android Chrome includes address bar in 100vh ─ */
-    /* Any full-height element should prefer 100dvh (dynamic vh)    */
-    @supports (height: 100dvh) {
-      .min-vh-100  { min-height: 100dvh !important; }
-      .vh-100      { height: 100dvh !important; }
-    }
-
-    /* ── Navbar: mobile has 2 rows (112px). On very small screens  */
-    /*   add a tiny extra gap to prevent content starting too high   */
-    @media (max-width: 767.98px) {
-      /* Push all sticky-top content below the double navbar row */
-      .sticky-top + * { scroll-margin-top: var(--navbar-h, 112px); }
-
-      /* Ensure the search row wraps cleanly */
-      #main-navbar .d-md-none { flex-wrap: nowrap; overflow: hidden; }
-    }
-
-    /* ── Product cards: 2-col grid on 360px phones needs more height */
-    @media (max-width: 400px) {
-      /* Give product images more room on very small Android phones */
-      .product-img-wrap,
-      [class*="position-relative"][style*="height:5rem"],
-      [class*="position-relative"][style*="height: 5rem"] {
-        height: 7rem !important;
-      }
-
-      /* Single column on truly tiny screens (<340px) */
-      @media (max-width: 340px) {
-        .row-cols-2 { --bs-columns: 1 !important; }
-      }
-    }
-
-    /* ── Scrollable rails: momentum scroll on Android ─────────── */
-    .live-scroll,
-    .category-scroll,
-    [class*="overflow-x-auto"],
-    [class*="overflow-auto"] {
-      -webkit-overflow-scrolling: touch;
-      scroll-snap-type: x mandatory;
-      overscroll-behavior-x: contain;
-    }
-
-    /* ── Tap highlight: remove default Android blue flash ────────  */
-    a, button, [role="button"] {
-      -webkit-tap-highlight-color: transparent;
-    }
-    /* Add a subtle gold flash instead for branded feel */
-    .mobile-nav-item, .btn-navy, .btn-gold {
-      -webkit-tap-highlight-color: rgba(245,166,35,.12);
-    }
-
-    /* ── Anti-jank: will-change for animated elements ────────────  */
-    @media (max-width: 767.98px) {
-      .slide, #main-navbar, #mobile-nav {
-        will-change: transform;
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
-      }
-    }
-
-    /* ── Card hover → active for Android (no :hover on touch) ─── */
-    @media (hover: none) and (pointer: coarse) {
-      .category-card:active {
+      /* Cart button — navy fill makes it unmissable */
+      .cart-btn-mobile {
         background: var(--navy) !important;
-        border-color: var(--navy) !important;
-        box-shadow: 0 8px 24px rgba(15,27,45,.15);
+        color: white !important;
+        min-width: 44px;
+        min-height: 40px;
+        padding: 6px 10px !important;
+        border-radius: 10px !important;
       }
-      .category-card:active .category-card-label { color: #fff !important; }
-      .slide-card:active { background: rgba(255,255,255,.15) !important; }
-      .btn-navy:active  { opacity: .85; }
-      .btn-gold:active  { opacity: .85; }
+      .cart-btn-mobile svg { vertical-align: middle; }
+      .cart-btn-mobile .cart-badge {
+        background: var(--gold) !important;
+        color: var(--navy) !important;
+        border: 2px solid var(--navy) !important;
+      }
+
+      /* Profile button — just the avatar, no extra padding */
+      #profile-menu-btn {
+        padding: 2px 4px !important;
+        min-width: 40px;
+        min-height: 40px;
+      }
+      /* Ensure dropdown opens downward and isn't clipped */
+      .profile-dropdown {
+        min-width: 240px !important;
+        right: 0 !important;
+        left: auto !important;
+      }
+
+      /* Navbar row — enough height, never overflow */
+      #main-navbar .d-flex.align-items-center.w-100 {
+        min-height: 52px;
+      }
+
+      /* Right nav: push cart away from the edge gesture zone */
+      .d-flex.align-items-center.gap-2.ms-auto {
+        padding-right: 4px;
+      }
+
+      /* Mobile search row */
+      #main-navbar .d-md-none {
+        padding-bottom: 8px !important;
+      }
+      #main-navbar .search-input {
+        height: 40px;
+        font-size: 15px;
+        border-radius: 10px;
+      }
     }
 
-    /* ── Drawer / overlay: Android doesn't respect 100vh reliably ─ */
-    #cart-drawer {
-      height: 100dvh;
-      height: 100vh; /* fallback */
-      max-height: 100%;
+    /* On Pixel 4 and similar narrow-but-tall phones */
+    @media (max-width: 400px) {
+      /* Give the navbar container full width with minimal padding */
+      #main-navbar .container-xl { padding-left: 10px !important; padding-right: 10px !important; }
+      /* Stack profile name never shows on tiny screens */
+      #profile-menu-btn span.d-md-inline { display: none !important; }
     }
 </style>
 
@@ -493,10 +399,11 @@
       <div class="d-flex align-items-center w-100 gap-2 py-2">
 
         <!-- Logo -->
-        <a href="{% url 'frontend:home' %}" class="navbar-brand d-flex align-items-center gap-2 me-3 flex-shrink-0">
+        <a href="{% url 'frontend:home' %}" class="navbar-brand d-flex align-items-center gap-2 me-2 flex-shrink-0">
           <img src="{% static 'logo.png' %}" alt="Lynctel" height="32" class="object-fit-contain"/>
-          <span class="brand-name">Lynctel</span>
-          <span class="brand-dot fw-bold fs-5 lh-1">·</span>
+          <!-- Hide text label on small mobile to free space for cart -->
+          <span class="brand-name d-none d-sm-inline">Lynctel</span>
+          <span class="brand-dot fw-bold fs-5 lh-1 d-none d-sm-inline">·</span>
         </a>
 
         <!-- Search (desktop) -->
@@ -509,10 +416,10 @@
         </form>
 
         <!-- Right nav -->
-        <div class="d-flex align-items-center gap-1 ms-auto">
+        <div class="d-flex align-items-center gap-2 ms-auto">
 
-          <!-- Dark mode -->
-          <button type="button" onclick="toggleTheme()" class="btn btn-light btn-sm px-2 py-1 border-0 rounded-3" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <!-- Dark mode — hide on mobile (accessible via profile dropdown) -->
+          <button type="button" onclick="toggleTheme()" class="btn btn-light btn-sm px-2 py-1 border-0 rounded-3 d-none d-md-inline-flex" aria-label="Toggle dark mode" title="Toggle dark mode">
             <span id="theme-icon" aria-hidden="true">🌙</span>
           </button>
 
@@ -620,18 +527,22 @@
 
           {% else %}
           <a href="{% url 'accounts:login' %}" class="btn btn-sm btn-light border-0 text-muted d-none d-md-inline-flex">Sign In</a>
-          <a href="{% url 'accounts:signup' %}" class="btn btn-sm btn-navy rounded-3">Sign Up</a>
+          <a href="{% url 'accounts:signup' %}" class="btn btn-sm btn-navy rounded-3 d-none d-sm-inline-flex">Sign Up</a>
           {% endif %}
 
-          <!-- Live button — next to cart -->
-          <a href="{% url 'livestream:list' %}" class="btn btn-light btn-sm border-0 rounded-3 position-relative live-btn px-2" aria-label="Live shopping" title="Live Shopping">
+          <!-- Live button — desktop only on navbar (mobile nav has bottom bar) -->
+          <a href="{% url 'livestream:list' %}" class="btn btn-light btn-sm border-0 rounded-3 position-relative live-btn px-2 d-none d-md-inline-flex" aria-label="Live shopping" title="Live Shopping">
             <span style="font-size:1.1rem" aria-hidden="true">📺</span>
             <span class="live-dot" aria-hidden="true"></span>
           </a>
 
-          <!-- Cart -->
-          <button type="button" onclick="openCart()" class="btn btn-light btn-sm border-0 rounded-3 position-relative px-2" aria-label="Open cart" aria-haspopup="dialog">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="text-muted" aria-hidden="true">
+          <!-- Cart — prominent button, safe from Android right-edge gesture zone -->
+          <button type="button" onclick="openCart()"
+                  class="btn btn-sm rounded-3 position-relative cart-btn-mobile"
+                  aria-label="Open cart" aria-haspopup="dialog"
+                  style="background:var(--navy);color:white;min-width:44px;min-height:40px;
+                         padding:6px 10px;margin-right:2px">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
             </svg>
             <span id="cart-count" class="cart-badge {% if not cart_count or cart_count == 0 %}d-none{% endif %}">{{ cart_count|default:0 }}</span>
