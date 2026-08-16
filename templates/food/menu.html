@@ -355,22 +355,151 @@
    food.js must load here so Food.addToCart() is defined before any
    onclick handlers fire. #}
 {% block extra_js %}
-<!--
-  Pass cart API URLs as window globals BEFORE food.js loads.
-  This means food.js works regardless of the URL mount path
-  and doesn't need to hardcode /food/cart/add/ etc.
--->
 <script>
-/* Cart API URLs — passed from Django so food.js works
-   regardless of the URL mount path (/food/ or otherwise). */
-window.FOOD_CART_ADD_URL      = '{% url "food:cart_add" 0 %}'.replace('/0/', '/');
-window.FOOD_CART_UPDATE_URL   = '{% url "food:cart_update" 0 %}'.replace('/0/', '/');
-window.FOOD_CART_CLEAR_URL    = '{% url "food:cart_clear" %}';
-window.FOOD_CART_DATA_URL     = '{% url "food:cart_data" %}';
-window.FOOD_CART_URL          = '{% url "food:cart" %}';
-window.FOOD_CHECKOUT_URL      = '{% url "food:checkout" %}';
-window.FOOD_VENDOR_SLUG       = '{{ vendor.slug|escapejs }}';
+/*
+ * Food cart — inline script (no static file dependency).
+ * Django template tags supply URLs, CSRF and auth state directly.
+ */
+(function () {
+  'use strict';
+
+  /* ── URLs from Django (always correct, no mount-path guessing) ── */
+  var CART_ADD_URL    = '{% url "food:cart_add" 0 %}'.replace('/0/', '/');
+  var CART_UPDATE_URL = '{% url "food:cart_update" 0 %}'.replace('/0/', '/');
+  var CART_CLEAR_URL  = '{% url "food:cart_clear" %}';
+  var CART_DATA_URL   = '{% url "food:cart_data" %}';
+  var CART_URL        = '{% url "food:cart" %}';
+  var CHECKOUT_URL    = '{% url "food:checkout" %}';
+  var LOGIN_URL       = '{% url "accounts:login" %}';
+
+  /* ── Auth + CSRF ─────────────────────────────────────────────── */
+  var IS_AUTH  = {% if user.is_authenticated %}true{% else %}false{% endif %};
+  var CSRF     = '{{ csrf_token }}';
+
+  /* ── Toast ───────────────────────────────────────────────────── */
+  var _t = null, _tt = null;
+  function toast(msg, type) {
+    if (!_t) {
+      _t = document.createElement('div');
+      Object.assign(_t.style, {
+        position:'fixed', bottom:'90px', left:'50%',
+        transform:'translateX(-50%)', zIndex:'9999',
+        padding:'12px 22px', borderRadius:'14px',
+        fontSize:'14px', fontWeight:'700', color:'white',
+        boxShadow:'0 6px 20px rgba(0,0,0,.3)',
+        transition:'opacity .25s', pointerEvents:'none',
+        whiteSpace:'nowrap', maxWidth:'90vw', textAlign:'center', opacity:'0',
+      });
+      document.body.appendChild(_t);
+    }
+    _t.style.background = {success:'#16a34a',error:'#dc2626',warning:'#d97706',info:'#0F1B2D'}[type]||'#0F1B2D';
+    _t.textContent = msg;
+    _t.style.opacity = '1';
+    clearTimeout(_tt);
+    _tt = setTimeout(function(){ _t.style.opacity='0'; }, 2600);
+  }
+
+  /* ── Cart bar ────────────────────────────────────────────────── */
+  function updateBar(count, total) {
+    count = parseInt(count)||0; total = parseFloat(total)||0;
+    var bar = document.getElementById('cart-bar');
+    var cnt = document.getElementById('cart-bar-count');
+    var tot = document.getElementById('cart-bar-total');
+    var spc = document.getElementById('cart-bar-spacer');
+    if (cnt) cnt.textContent = count;
+    if (tot) tot.textContent = total.toFixed(2);
+    if (bar) { bar.style.display = count > 0 ? '' : 'none'; bar.classList.toggle('d-none', count === 0); }
+    if (spc) { spc.style.display = count > 0 ? '' : 'none'; spc.classList.toggle('d-none', count === 0); }
+  }
+
+  /* ── POST helper ─────────────────────────────────────────────── */
+  function post(url, data, cb) {
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    Object.keys(data).forEach(function(k){ fd.append(k, data[k]); });
+    fetch(url, { method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd })
+      .then(function(r){
+        if (r.redirected || r.url.indexOf('/login')!==-1) {
+          window.location.href = LOGIN_URL + '?next=' + encodeURIComponent(location.pathname);
+          return null;
+        }
+        return r.json();
+      })
+      .then(function(d){ if (d) cb(null, d); })
+      .catch(function(e){ cb(e, null); });
+  }
+
+  /* ── Conflict modal ──────────────────────────────────────────── */
+  var _pendingId = null;
+  function showConflict(msg) {
+    _pendingId = _pendingId;
+    var m = document.getElementById('conflict-modal');
+    if (m) { document.getElementById('conflict-msg').textContent = msg||'Different restaurant in cart.'; m.classList.remove('d-none'); m.style.display='flex'; }
+    else toast('⚠ '+msg, 'warning');
+  }
+  function closeConflict() {
+    var m = document.getElementById('conflict-modal');
+    if (m) { m.classList.add('d-none'); m.style.display=''; }
+    _pendingId = null;
+  }
+  function confirmClear() {
+    var id = _pendingId; closeConflict();
+    post(CART_CLEAR_URL, {}, function(){ if(id) addToCart(id); });
+  }
+
+  /* ── Add to cart ─────────────────────────────────────────────── */
+  /* Alias so {% raw %}Food.addToCart(id){% endraw %} onclick handlers work */
+  window.Food = window.Food || {};
+  window.Food.addToCart = function(itemId) { window.addToCart(itemId); };
+  window.addToCart = function(itemId) {
+    if (!IS_AUTH) { window.location.href = LOGIN_URL+'?next='+encodeURIComponent(location.pathname); return; }
+    if (!CSRF)    { toast('Session error — refresh the page', 'error'); return; }
+
+    var cards = document.querySelectorAll('[data-food-item="'+itemId+'"]');
+    cards.forEach(function(c){ c.style.opacity='0.5'; c.style.pointerEvents='none'; });
+
+    post(CART_ADD_URL + itemId + '/', {quantity:1}, function(err, d) {
+      cards.forEach(function(c){ c.style.opacity=''; c.style.pointerEvents=''; });
+      if (err) { console.error('[cart_add]', err); toast('Connection error — try again', 'error'); return; }
+      if (!d)  { return; }
+      if (d.conflict) { _pendingId = itemId; showConflict(d.message); return; }
+      if (d.success !== false) {
+        updateBar(d.cart_count||d.count||0, d.cart_total||d.total||0);
+        toast('✓ Added to cart', 'success');
+        var btn = document.querySelector('[data-food-item="'+itemId+'"] .menu-add-btn');
+        if (btn) { var o=btn.textContent; btn.textContent='✓'; btn.style.background='#16a34a'; setTimeout(function(){ btn.textContent=o; btn.style.background=''; },800); }
+      } else {
+        console.warn('[cart_add] server error:', d.error);
+        toast(d.error||'Could not add item', 'warning');
+      }
+    });
+  };
+
+  /* ── On load: restore cart state ─────────────────────────────── */
+  document.addEventListener('DOMContentLoaded', function() {
+    /* Conflict modal buttons */
+    var keep  = document.querySelector('#conflict-modal .btn-keep');
+    var clear = document.querySelector('#conflict-modal .btn-clear');
+    if (keep)  keep.addEventListener('click', closeConflict);
+    if (clear) clear.addEventListener('click', confirmClear);
+
+    /* Restore cart bar from server */
+    if (IS_AUTH) {
+      fetch(CART_DATA_URL, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ updateBar(d.count||d.cart_count||0, d.total||d.cart_total||0); })
+        .catch(function(){});
+    }
+
+    /* Smooth category nav */
+    document.querySelectorAll('.food-cat-btn').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        var href = btn.getAttribute('href');
+        if (href && href[0]==='#') { e.preventDefault(); var t=document.getElementById(href.slice(1)); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); }
+      });
+    });
+  });
+
+})();
 </script>
-<script src="{% static 'js/food.js' %}"></script>
-<script>document.addEventListener('DOMContentLoaded', Food.init);</script>
 {% endblock %}
