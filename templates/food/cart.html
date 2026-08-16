@@ -233,12 +233,132 @@
 
 {% block extra_js %}
 <script>
-window.FOOD_CART_ADD_URL    = '{% url "food:cart_add" 0 %}'.replace('/0/', '/');
-window.FOOD_CART_UPDATE_URL = '{% url "food:cart_update" 0 %}'.replace('/0/', '/');
-window.FOOD_CART_CLEAR_URL  = '{% url "food:cart_clear" %}';
-window.FOOD_CART_DATA_URL   = '{% url "food:cart_data" %}';
-window.FOOD_CART_URL        = '{% url "food:cart" %}';
+/* Cart page inline JS — no static file dependency */
+(function(){
+  'use strict';
+  var CSRF       = '{{ csrf_token }}';
+  var UPD_URL    = '{% url "food:cart_update" 0 %}'.replace('/0/','/');;
+  var CLR_URL    = '{% url "food:cart_clear" %}';
+  var DATA_URL   = '{% url "food:cart_data" %}';
+  var SUBTOTAL   = parseFloat('{{ cart_subtotal|default:"0" }}');
+  var DELIVERY   = parseFloat('{{ delivery_fee|default:"8" }}');
+
+  function post(url, data, cb) {
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    Object.keys(data).forEach(function(k){ fd.append(k, data[k]); });
+    fetch(url, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ cb(null,d); })
+      .catch(function(e){ cb(e,null); });
+  }
+
+  function updateBar(count, total) {
+    count = parseInt(count)||0;
+    total = parseFloat(total)||0;
+    var cnt = document.querySelector('[data-cart-subtotal]');
+    var tot = document.querySelector('[data-cart-total]');
+    if (cnt) cnt.textContent = 'GHS ' + (total).toFixed(2);
+    if (tot) tot.textContent = 'GHS ' + (total + DELIVERY).toFixed(2);
+    // Update count badge in nav if present
+    document.querySelectorAll('[data-food-cart-count]').forEach(function(el){
+      el.textContent = count;
+    });
+  }
+
+  function removeRow(row) {
+    if (row) {
+      row.style.transition = 'opacity .25s, max-height .3s';
+      row.style.opacity = '0';
+      row.style.maxHeight = '0';
+      row.style.overflow = 'hidden';
+      setTimeout(function(){ row.remove(); checkEmpty(); }, 300);
+    }
+  }
+
+  function checkEmpty() {
+    var rows = document.querySelectorAll('[data-food-item-row]');
+    if (!rows.length) {
+      var list  = document.querySelector('[data-food-cart-list]');
+      var empty = document.querySelector('[data-food-cart-empty]');
+      var btn   = document.querySelector('[data-food-checkout-btn]');
+      if (list)  list.style.display  = 'none';
+      if (empty) { empty.style.display = 'block'; empty.classList.remove('d-none'); }
+      if (btn)   btn.style.display   = 'none';
+      updateBar(0, 0);
+    }
+  }
+
+  function updateItem(pk, qty, row) {
+    post(UPD_URL + pk + '/', {quantity: qty}, function(err, d) {
+      if (err || !d || !d.success) return;
+      var total = parseFloat(d.cart_total||d.total||0);
+      var count = parseInt(d.cart_count||d.count||0);
+      // Update row price
+      if (d.new_total) {
+        var priceEl = document.querySelector('[data-item-total="'+pk+'"]');
+        if (priceEl) priceEl.textContent = 'GHS ' + parseFloat(d.new_total).toFixed(2);
+      }
+      updateBar(count, total);
+    });
+  }
+
+  function removeItem(pk, row) {
+    post(UPD_URL + pk + '/', {quantity: 0}, function(err, d) {
+      if (err) return;
+      removeRow(row);
+      if (d) updateBar(parseInt(d.cart_count||d.count||0), parseFloat(d.cart_total||d.total||0));
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+
+    /* Stepper buttons */
+    document.querySelectorAll('[data-food-update-form]').forEach(function(form){
+      var input = form.querySelector('input[type="number"]');
+      var pk    = form.dataset.itemPk;
+      var row   = form.closest('[data-food-item-row]');
+      if (!input || !pk) return;
+
+      var minus = form.querySelector('[data-minus]');
+      var plus  = form.querySelector('[data-plus]');
+
+      if (minus) minus.addEventListener('click', function(){
+        var v = Math.max(0, (parseInt(input.value)||1) - 1);
+        if (v === 0) { removeItem(pk, row); }
+        else { input.value = v; updateItem(pk, v, row); }
+      });
+      if (plus) plus.addEventListener('click', function(){
+        var v = (parseInt(input.value)||0) + 1;
+        input.value = v; updateItem(pk, v, row);
+      });
+      input.addEventListener('change', function(){
+        var v = parseInt(input.value)||0;
+        if (v <= 0) removeItem(pk, row);
+        else updateItem(pk, v, row);
+      });
+    });
+
+    /* Remove buttons */
+    document.querySelectorAll('[data-food-remove-btn]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var pk  = btn.dataset.foodRemoveBtn;
+        var row = btn.closest('[data-food-item-row]');
+        removeItem(pk, row);
+      });
+    });
+
+    /* Conflict modal */
+    var keep  = document.querySelector('#conflict-modal .btn-keep');
+    var clear = document.querySelector('#conflict-modal .btn-clear');
+    if (keep)  keep.addEventListener('click',  function(){ document.getElementById('conflict-modal').classList.add('d-none'); });
+    if (clear) clear.addEventListener('click', function(){
+      var fd = new FormData(); fd.append('csrfmiddlewaretoken', CSRF);
+      fetch(CLR_URL, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd});
+      document.getElementById('conflict-modal').classList.add('d-none');
+    });
+
+  });
+})();
 </script>
-<script src="{% static 'js/food.js' %}"></script>
-<script>document.addEventListener('DOMContentLoaded', Food.init);</script>
 {% endblock %}
