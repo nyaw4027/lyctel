@@ -5,6 +5,7 @@ app_name = 'food'
 
 urlpatterns = [
     # ── Public ──────────────────────────────────────────────────────────
+    path('debug/',                                  views.food_debug,                 name='debug'),
     path('',                                        views.food_home,                  name='home'),
     path('vendor/<slug:slug>/',                     views.vendor_menu,                name='menu'),
 
