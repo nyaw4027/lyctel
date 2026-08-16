@@ -641,18 +641,58 @@ def restaurant_settings(request):
     })
 
 
+
+# ── Cart page (HTML view) ──────────────────────────────────────────────────────
+
+@login_required
+def cart_page(request):
+    """
+    Renders the HTML food cart page.
+    FIX: This view was completely missing — cart.html had no view to render it
+    and food:cart was unresolvable, breaking every "View Cart" link.
+    """
+    try:
+        cart       = request.user.food_cart
+        cart_items = cart.cart_items.select_related('food').all()
+        cart_vendor = cart.vendor
+        subtotal   = cart.total
+    except Exception:
+        cart = cart_items = None
+        cart_vendor = None
+        subtotal   = Decimal('0')
+
+    delivery_fee = MIN_FARE   # estimated until user pins location at checkout
+
+    return render(request, 'food/cart.html', {
+        'cart':          cart,
+        'cart_items':    cart_items,
+        'cart_vendor':   cart_vendor,
+        'cart_subtotal': subtotal,
+        'delivery_fee':  delivery_fee,
+        'cart_total':    subtotal + delivery_fee,
+        'cart_count':    cart.item_count if cart else 0,
+        'food_cart_count': cart.item_count if cart else 0,
+    })
+
 # ── Cart APIs ──────────────────────────────────────────────────────────────────
 
 @login_required
 @require_POST
 def cart_add(request, item_id):
     food = get_object_or_404(FoodItem, pk=item_id, is_available=True)
-    try:
-        data = json.loads(request.body)
-    except Exception:
-        data = {}
-    qty  = max(1, int(data.get('quantity', 1)))
-    note = data.get('note', '')
+    # food.js sends FormData (not JSON) — read from request.POST first,
+    # fall back to JSON body for API clients.
+    content_type = request.content_type or ''
+    if 'application/json' in content_type:
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
+        qty  = max(1, int(data.get('quantity', 1)))
+        note = data.get('note', '')
+    else:
+        qty  = max(1, int(request.POST.get('quantity', 1)))
+        note = request.POST.get('note', '')
 
     cart, _ = FoodCart.objects.get_or_create(customer=request.user)
 
@@ -688,19 +728,37 @@ def cart_add(request, item_id):
 @login_required
 @require_POST
 def cart_update(request, item_id):
-    try:
-        data = json.loads(request.body)
-    except Exception:
-        data = {}
-    qty       = int(data.get('quantity', 1))
+    # food.js sends FormData — read from request.POST, fallback to JSON
+    if 'application/json' in (request.content_type or ''):
+        try:
+            _d = json.loads(request.body)
+        except Exception:
+            _d = {}
+        qty = int(_d.get('quantity', 1))
+    else:
+        qty = int(request.POST.get('quantity', 1))
+
     cart_item = get_object_or_404(FoodCartItem, pk=item_id, cart__customer=request.user)
     if qty <= 0:
         cart_item.delete()
+        new_total = '0.00'
     else:
         cart_item.quantity = qty
         cart_item.save()
+        # new_total = per-item line total; food.js uses this to update
+        # the individual row price without re-rendering the whole page.
+        try:
+            new_total = str((cart_item.food.final_price * qty).quantize(Decimal('0.01')))
+        except Exception:
+            new_total = None
+
     cart = request.user.food_cart
-    return JsonResponse({'success': True, 'cart_count': cart.item_count, 'cart_total': str(cart.total)})
+    return JsonResponse({
+        'success':    True,
+        'cart_count': cart.item_count,
+        'cart_total': str(cart.total),
+        'new_total':  new_total,      # FIX: food.js reads d.new_total for row price
+    })
 
 
 @login_required
@@ -721,12 +779,15 @@ def cart_data(request):
     try:
         cart  = request.user.food_cart
         items = cart.cart_items.select_related('food').all()
+        subtotal = cart.total
         return JsonResponse({
             'success':     True,
             'vendor':      cart.vendor.name if cart.vendor else None,
             'vendor_slug': cart.vendor.slug if cart.vendor else None,
             'count':       cart.item_count,
-            'total':       str(cart.total),
+            'total':       str(subtotal),
+            'subtotal':    str(subtotal),   # FIX: refreshCartSummary() reads d.subtotal
+            'delivery':    str(MIN_FARE),   # FIX: refreshCartSummary() reads d.delivery
             'items': [{
                 'id':       i.pk,
                 'name':     i.food.name,
