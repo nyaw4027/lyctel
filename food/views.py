@@ -1024,8 +1024,6 @@ def reorder(request, ref):
 
 # ── Food payment ───────────────────────────────────────────────────────────────
 
-@login_required
-
 def _order_total(order):
     """
     Return the order total safely.
