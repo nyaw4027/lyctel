@@ -1,17 +1,4 @@
-{#
-  _menu_item.html — partial for a single menu item row.
 
-  FIXES:
-  1. Outer <div class="card menu-item-card"> removed — menu.html already
-     wraps each include tag in its own .menu-item-card div, so this
-     partial was creating a double-nested card (card inside card), causing
-     double borders and broken hover/transform effects.
-  2. btn-gold replaced with inline-styled button — btn-gold is not defined
-     in Bootstrap 5.3 and was silently rendering as an unstyled button on
-     every menu page.
-
-  The outer wrapper card is the responsibility of the including template.
-#}
 <div class="flex-grow-1 me-3" style="min-width:0">
   <h4 class="h6 mb-1 fw-semibold text-navy text-truncate">{{ item.name }}</h4>
   {% if item.description %}
