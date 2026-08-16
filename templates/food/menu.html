@@ -448,7 +448,7 @@
   }
 
   /* ── Add to cart ─────────────────────────────────────────────── */
-  /* Alias so {% raw %}Food.addToCart(id){% endraw %} onclick handlers work */
+  /* Alias so Food.addToCart(id) onclick handlers work */
   window.Food = window.Food || {};
   window.Food.addToCart = function(itemId) { window.addToCart(itemId); };
   window.addToCart = function(itemId) {
