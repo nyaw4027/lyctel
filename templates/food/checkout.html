@@ -1,119 +1,174 @@
 {% extends "base.html" %}
 {% load i18n static %}
-{% block title %}Checkout — Lynctel Food{% endblock %}
+{% block title %}Checkout — {{ cart_vendor.name }}{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-/* ── Map ─────────────────────────────────────────────── */
-#map-wrap {
-  position: relative;
-  width: 100%;
-  height: 52vmax;
-  min-height: 260px;
-  max-height: 460px;
-  background: #e5e7eb;
-}
-#delivery-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* full-screen Uber layout */
+body { overflow: hidden !important; }
 
-/* Uber-style fixed centre pin */
+#uber-map {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 0;
+}
+
+/* Centre pin – always fixed to screen centre */
 #map-pin {
-  position: absolute;
-  top: 50%; left: 50%;
+  position: fixed;
+  left: 50%; top: 50%;
   transform: translate(-50%, -100%);
-  z-index: 500; pointer-events: none;
+  z-index: 10;
+  pointer-events: none;
   text-align: center;
   transition: transform .15s ease;
 }
-#map-pin.lifting { transform: translate(-50%, -118%); }
-#map-pin .pi { font-size: 2.6rem; line-height: 1;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,.4)); display: block; }
-#map-pin .ps {
-  width: 10px; height: 5px; background: rgba(0,0,0,.18);
-  border-radius: 50%; margin: 3px auto 0;
+#map-pin.up { transform: translate(-50%, -118%); }
+#map-pin .pin-icon { font-size: 2.8rem; line-height:1; display:block;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.4)); }
+#map-pin .pin-dot {
+  width: 10px; height: 5px; border-radius: 50%;
+  background: rgba(0,0,0,.2); margin: 3px auto 0;
   transition: transform .15s ease;
 }
-#map-pin.lifting .ps { transform: scaleX(.7); }
+#map-pin.up .pin-dot { transform: scaleX(.55); }
 
-/* GPS + search buttons on map */
-.map-btn {
-  position: absolute; right: 12px; z-index: 500;
-  background: white; border: none; border-radius: 12px;
-  padding: 0; width: 42px; height: 42px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.22);
-  font-size: 1.15rem; cursor: pointer;
+/* GPS button floating on map */
+#gps-fab {
+  position: fixed;
+  right: 14px;
+  z-index: 20;
+  background: white; border: none; border-radius: 50%;
+  width: 50px; height: 50px;
+  box-shadow: 0 3px 12px rgba(0,0,0,.25);
+  font-size: 1.3rem; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  transition: bottom .35s ease;
+  bottom: 310px;
 }
-#gps-btn    { bottom: 16px; }
-#center-btn { bottom: 66px; }
+body.expanded #gps-fab { bottom: 65vh; }
 
-/* ── Address autocomplete bar ─────────────────────────── */
-.addr-bar {
+/* Bottom sheet */
+#sheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 100;
   background: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 16px rgba(0,0,0,.10);
-  overflow: visible;   /* let dropdown overflow */
-  position: relative;
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -4px 30px rgba(0,0,0,.14);
+  height: 295px;
+  overflow: hidden;
+  transition: height .35s cubic-bezier(.4,0,.2,1);
 }
-.addr-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px; border-bottom: 1px solid #f3f4f6;
+#sheet.expanded {
+  height: 80vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
-.addr-row:last-child { border-bottom: none; }
-.addr-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
-.addr-dot.from { background: #0F1B2D; }
-.addr-dot.to   { background: #F5A623; }
-.addr-line     { width: 2px; height: 16px; background: #e5e7eb; margin-left: 19px; }
+.handle {
+  width: 40px; height: 4px; background: #e5e7eb;
+  border-radius: 4px; margin: 12px auto 10px; cursor: grab;
+}
 
-/* Search input inside addr bar */
+/* ── Location section ─────────────────────────────── */
+.loc-wrap {
+  position: relative;
+  margin: 0 14px 0;
+  background: #f9fafb;
+  border-radius: 14px;
+  overflow: visible;
+}
+.loc-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 13px; border-bottom: 1px solid #eff0f1;
+}
+.loc-row:last-child { border-bottom: none; }
+.dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.dot-a { background: #0F1B2D; }
+.dot-b { background: #F5A623; }
+.vline { width: 2px; height: 14px; background: #d1d5db; margin-left: 18px; }
+
+/* Search input (to-location) */
 #loc-input {
-  border: none; outline: none; background: transparent;
-  font-size: .88rem; font-weight: 600; color: #0F1B2D;
-  width: 100%; padding: 0;
+  flex: 1; border: none; outline: none;
+  background: transparent; padding: 0;
+  font-size: .87rem; font-weight: 600; color: #0F1B2D;
+  caret-color: #F5A623;
 }
 #loc-input::placeholder { color: #9ca3af; font-weight: 400; }
 
-/* ── AUTOCOMPLETE DROPDOWN ────────────────────────────── */
-#suggestions {
+/* "Use current location" shortcut row */
+#use-gps-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 13px;
+  cursor: pointer; border-bottom: 1px solid #eff0f1;
+  transition: background .1s;
+}
+#use-gps-row:hover { background: rgba(0,0,0,.03); }
+#use-gps-row .gps-badge {
+  background: #dbeafe; color: #1d4ed8;
+  border-radius: 8px; padding: 3px 8px;
+  font-size: .72rem; font-weight: 700;
+}
+
+/* Autocomplete dropdown */
+#sug {
   position: absolute;
   top: 100%; left: 0; right: 0;
   background: white;
-  border-radius: 0 0 16px 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.14);
-  z-index: 1000;
-  max-height: 280px;
-  overflow-y: auto;
+  border-radius: 0 0 14px 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.13);
+  z-index: 300;
+  max-height: 260px; overflow-y: auto;
   display: none;
 }
-#suggestions.open { display: block; }
-.sug-item {
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: 13px 16px; border-bottom: 1px solid #f9fafb;
-  cursor: pointer; transition: background .1s;
+#sug.open { display: block; }
+.sug-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 11px 13px; border-bottom: 1px solid #f9fafb;
+  cursor: pointer;
 }
-.sug-item:last-child { border-bottom: none; }
-.sug-item:hover, .sug-item:active { background: #f9fafb; }
-.sug-icon { flex-shrink: 0; font-size: 1.1rem; margin-top: 1px; }
-.sug-text  { flex-grow: 1; min-width: 0; }
-.sug-main  { font-weight: 700; font-size: .85rem; color: #0F1B2D;
-             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sug-sub   { font-size: .75rem; color: #9ca3af; margin-top: 1px;
-             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sug-row:hover, .sug-row.hi { background: #f9fafb; }
+.sug-ico { font-size: 1.1rem; flex-shrink:0; margin-top:1px; }
+.sug-name { font-size:.84rem; font-weight:700; color:#0F1B2D;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sug-addr { font-size:.73rem; color:#9ca3af;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* GPS locating spinner */
-@keyframes spin { to { transform: rotate(360deg); } }
-.spinning { animation: spin .8s linear infinite; display: inline-block; }
-
-/* ── Fare strip ──────────────────────────────────────── */
-.fare-strip {
-  background: #f9fafb; border-radius: 12px; padding: 12px 16px;
-  display: flex; align-items: center; justify-content: space-between;
+/* Fare row */
+.fare-row {
+  display: flex; align-items:center; justify-content:space-between;
+  padding: 11px 14px; border-top: 1px solid #f3f4f6;
 }
-.fv { font-weight: 700; color: #0F1B2D; font-size: .95rem; }
-.fl { font-size: .67rem; text-transform: uppercase;
-      letter-spacing: .05em; color: #9ca3af; }
+.fv { font-weight:800; color:#0F1B2D; font-size:.93rem; }
+.fl { font-size:.65rem; text-transform:uppercase;
+      letter-spacing:.05em; color:#9ca3af; }
 
-/* ── Payment options ──────────────────────────────────── */
+/* Confirm / action button */
+#action-btn {
+  display: block; width: calc(100% - 28px);
+  margin: 10px 14px 4px;
+  background: #0F1B2D; color: white;
+  border: none; border-radius: 14px;
+  padding: 15px; font-weight: 800; font-size: 1rem;
+  cursor: pointer; letter-spacing: .01em;
+  transition: background .2s, opacity .2s;
+}
+#action-btn.ready   { background: #F5A623; color: #0F1B2D; }
+#action-btn.done    { background: #16a34a; color: white; }
+#action-btn:disabled { opacity: .45; cursor: default; }
+
+/* GPS state indicator */
+#gps-status {
+  font-size: .75rem; color: #9ca3af;
+  text-align: center; padding: 4px 14px 6px;
+}
+
+/* ── Expanded form ─────────────────────────────────── */
+#form-section { display:none; padding: 14px 14px 48px; }
+#form-section.show { display:block; }
+
 .pay-opt {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px; border: 1.5px solid #e5e7eb;
@@ -122,414 +177,452 @@
 }
 .pay-opt:has(input:checked) { border-color: #F5A623; background: #FFFBF0; }
 .pay-opt input { display: none; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display:inline-block; animation: spin .7s linear infinite; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- ── MAP ───────────────────────────────────────────── -->
-<div id="map-wrap">
-  <div id="delivery-map"></div>
+<!-- Full-screen map -->
+<div id="uber-map"></div>
 
-  <!-- Fixed centre pin (Uber style) -->
-  <div id="map-pin">
-    <span class="pi">📍</span>
-    <div class="ps"></div>
-  </div>
-
-  <!-- GPS locate button -->
-  <button id="gps-btn" class="map-btn" type="button" title="Use my location">📡</button>
-  <!-- Re-centre on vendor button -->
-  <button id="center-btn" class="map-btn" type="button" title="Show restaurant">🍴</button>
+<!-- Centre pin -->
+<div id="map-pin">
+  <span class="pin-icon">📍</span>
+  <div class="pin-dot"></div>
 </div>
 
-<!-- ── FORM ───────────────────────────────────────────── -->
-<div class="px-3 pt-3 pb-5" style="background:#f9fafb">
+<!-- GPS FAB -->
+<button id="gps-fab" type="button" title="Go to my location">📡</button>
 
-  <!-- ── Address autocomplete bar ── -->
-  <div class="addr-bar mb-3">
+<!-- Bottom sheet -->
+<div id="sheet">
+  <div class="handle" id="handle"></div>
+
+  <!-- Location rows -->
+  <div class="loc-wrap" id="loc-wrap">
+
     <!-- From: restaurant -->
-    <div class="addr-row">
-      <div class="addr-dot from"></div>
-      <div class="small text-truncate fw-semibold text-navy" style="min-width:0;flex:1">
+    <div class="loc-row">
+      <div class="dot dot-a"></div>
+      <span class="small fw-semibold text-navy text-truncate" style="flex:1;min-width:0">
         {{ cart_vendor.name }}{% if cart_vendor.address %} · {{ cart_vendor.address }}{% endif %}
-      </div>
-    </div>
-    <div class="addr-line"></div>
-    <!-- To: customer (live search input) -->
-    <div class="addr-row">
-      <div class="addr-dot to"></div>
-      <div style="flex:1;min-width:0;position:relative">
-        <input id="loc-input" type="text" autocomplete="off" spellcheck="false"
-               placeholder="Search your delivery location…"
-               value="{{ request.POST.delivery_address|default:'' }}"/>
-        <!-- Using-location indicator -->
-        <span id="gps-badge"
-              style="display:none;position:absolute;right:0;top:50%;transform:translateY(-50%);
-                     font-size:.72rem;color:#16a34a;font-weight:700;white-space:nowrap">
-          📍 Located
-        </span>
-      </div>
-      <button id="inline-gps" type="button"
-              style="background:none;border:none;padding:0;cursor:pointer;font-size:1.1rem;flex-shrink:0"
-              title="Use GPS">📡</button>
+      </span>
     </div>
 
-    <!-- Autocomplete dropdown (inside addr-bar for correct positioning) -->
-    <div id="suggestions"></div>
+    <div class="vline"></div>
+
+    <!-- "Use current location" shortcut -->
+    <div id="use-gps-row">
+      <span style="font-size:1.1rem">🎯</span>
+      <span class="small fw-semibold text-navy" style="flex:1">Use my current location</span>
+      <span class="gps-badge" id="gps-badge">Auto</span>
+    </div>
+
+    <div class="vline"></div>
+
+    <!-- To: search input -->
+    <div class="loc-row">
+      <div class="dot dot-b"></div>
+      <input id="loc-input" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Or search a different location…"/>
+      <button id="clr-btn" type="button"
+              style="display:none;background:none;border:none;padding:0;cursor:pointer;
+                     font-size:.85rem;color:#9ca3af;flex-shrink:0">✕</button>
+    </div>
+
+    <!-- Autocomplete dropdown -->
+    <div id="sug"></div>
   </div>
 
-  <!-- ── Fare strip ── -->
-  <div class="fare-strip mb-3">
+  <!-- GPS status line -->
+  <div id="gps-status">Detecting your location…</div>
+
+  <!-- Fare -->
+  <div class="fare-row">
     <div class="text-center">
       <div class="fl">Delivery fee</div>
-      <div class="fv" id="fare-val">GHS {{ default_fee }}</div>
+      <div class="fv" id="fv-fee">GHS {{ default_fee }}</div>
     </div>
     <div class="text-center">
       <div class="fl">Est. time</div>
-      <div class="fv" id="eta-val">— min</div>
+      <div class="fv" id="fv-eta">— min</div>
     </div>
     <div class="text-center">
       <div class="fl">Distance</div>
-      <div class="fv" id="dist-val">— km</div>
+      <div class="fv" id="fv-dist">—</div>
+    </div>
+    <div class="text-center">
+      <div class="fl">Total</div>
+      <div class="fv" id="fv-total">GHS {{ cart_total|floatformat:2 }}</div>
     </div>
   </div>
 
-  <!-- ── Order form ── -->
-  <form method="post" action="{% url 'food:checkout' %}" id="checkout-form"
-        class="card border-0 rounded-3 p-3 shadow-sm">
-    {% csrf_token %}
-    <input type="hidden" name="delivery_lat"     id="dlat" value="5.6037"/>
-    <input type="hidden" name="delivery_lng"     id="dlng" value="-0.1870"/>
-    <input type="hidden" name="delivery_fee"     id="dfee" value="{{ default_fee }}"/>
-    <input type="hidden" name="distance_km"      id="ddist" value="3"/>
-    <input type="hidden" name="delivery_address" id="daddr"/>
+  <!-- Primary action button -->
+  <button id="action-btn" type="button" disabled>
+    <span class="spin">⏳</span> Finding your location…
+  </button>
 
-    <div class="mb-3">
-      <label class="form-label small fw-bold text-navy">Phone number *</label>
-      <input name="delivery_phone" type="tel" required
-             class="form-control rounded-3{% if errors.phone %} is-invalid{% endif %}"
-             placeholder="0241234567"
-             value="{{ request.POST.delivery_phone|default:request.user.phone|default:'' }}"/>
-      {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
-    </div>
+  <!-- ── Order form (shown after location confirmed) ── -->
+  <div id="form-section">
+    <form method="post" action="{% url 'food:checkout' %}" id="order-form">
+      {% csrf_token %}
+      <input type="hidden" name="delivery_lat"     id="dlat" value="5.6037"/>
+      <input type="hidden" name="delivery_lng"     id="dlng" value="-0.1870"/>
+      <input type="hidden" name="delivery_fee"     id="dfee" value="{{ default_fee }}"/>
+      <input type="hidden" name="distance_km"      id="ddist" value="3"/>
+      <input type="hidden" name="delivery_address" id="daddr"/>
 
-    <div class="mb-3">
-      <label class="form-label small fw-bold text-navy">
-        Note <span class="text-muted fw-normal">(optional)</span>
-      </label>
-      <input name="delivery_note" class="form-control rounded-3"
-             placeholder="Instructions for the kitchen or rider"/>
-    </div>
+      <div class="mb-3 mt-1">
+        <label class="form-label small fw-bold text-navy">Phone number *</label>
+        <input name="delivery_phone" type="tel" required
+               class="form-control rounded-3{% if errors.phone %} is-invalid{% endif %}"
+               placeholder="0241234567"
+               value="{{ request.POST.delivery_phone|default:request.user.phone|default:'' }}"/>
+        {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
+      </div>
 
-    <div class="mb-3">
-      <label class="form-label small fw-bold text-navy">Payment</label>
-      <label class="pay-opt">
-        <input type="radio" name="payment_method" value="cash" checked/>
-        💵 <span class="small fw-semibold">Cash on Delivery</span>
-      </label>
-      <label class="pay-opt">
-        <input type="radio" name="payment_method" value="momo_on_delivery"/>
-        📱 <span class="small fw-semibold">MoMo on Delivery</span>
-      </label>
-      <label class="pay-opt">
-        <input type="radio" name="payment_method" value="momo_prepaid"/>
-        🔒 <span class="small fw-semibold">Pay Now (Hubtel)</span>
-      </label>
-    </div>
+      <div class="mb-3">
+        <label class="form-label small fw-bold text-navy">
+          Note <span class="text-muted fw-normal">(optional)</span>
+        </label>
+        <input name="delivery_note" class="form-control rounded-3"
+               placeholder="Instructions for kitchen or rider"/>
+      </div>
 
-    {% if errors.address %}
-    <div class="alert alert-warning rounded-3 small py-2 mb-3">{{ errors.address }}</div>
-    {% endif %}
+      <div class="mb-3">
+        <label class="form-label small fw-bold text-navy">Payment</label>
+        <label class="pay-opt">
+          <input type="radio" name="payment_method" value="cash" checked/>
+          💵 <span class="small fw-semibold">Cash on Delivery</span>
+        </label>
+        <label class="pay-opt">
+          <input type="radio" name="payment_method" value="momo_on_delivery"/>
+          📱 <span class="small fw-semibold">MoMo on Delivery</span>
+        </label>
+        <label class="pay-opt">
+          <input type="radio" name="payment_method" value="momo_prepaid"/>
+          🔒 <span class="small fw-semibold">Pay Now (Hubtel)</span>
+        </label>
+      </div>
 
-    <div class="d-flex justify-content-between small text-muted mb-1">
-      <span>Subtotal</span><span>GHS {{ cart_subtotal|floatformat:2 }}</span>
-    </div>
-    <div class="d-flex justify-content-between small text-muted mb-1">
-      <span>Delivery</span><span id="total-fee">GHS {{ delivery_fee|floatformat:2 }}</span>
-    </div>
-    <div class="d-flex justify-content-between fw-bold text-navy border-top pt-2 mb-3">
-      <span>Total</span><span id="total-val">GHS {{ cart_total|floatformat:2 }}</span>
-    </div>
+      {% if errors.address %}
+      <div class="alert alert-warning rounded-3 small py-2 mb-3">{{ errors.address }}</div>
+      {% endif %}
 
-    <button type="submit" id="submit-btn"
-            class="btn w-100 fw-bold rounded-3 py-3"
-            style="background:#0F1B2D;color:white;font-size:1rem">
-      Place Order
-    </button>
-  </form>
+      <div class="d-flex justify-content-between small text-muted mb-1">
+        <span>Subtotal</span><span>GHS {{ cart_subtotal|floatformat:2 }}</span>
+      </div>
+      <div class="d-flex justify-content-between small text-muted mb-1">
+        <span>Delivery</span><span id="form-fee">GHS {{ delivery_fee|floatformat:2 }}</span>
+      </div>
+      <div class="d-flex justify-content-between fw-bold text-navy border-top pt-2 mb-3">
+        <span>Total</span><span id="form-total">GHS {{ cart_total|floatformat:2 }}</span>
+      </div>
 
-</div>
+      <button type="submit" id="place-btn"
+              class="btn w-100 fw-bold rounded-3 py-3"
+              style="background:#0F1B2D;color:white;font-size:1rem">
+        🛵 Dispatch Rider &amp; Place Order
+      </button>
+    </form>
+  </div><!-- /form-section -->
+
+</div><!-- /sheet -->
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-var VENDOR_LAT = {{ vendor.latitude|default:"5.6037" }};
-var VENDOR_LNG = {{ vendor.longitude|default:"-0.1870" }};
-var SUBTOTAL   = parseFloat('{{ cart_subtotal|default:"0" }}');
-var PRICE_URL  = '{% url "food:price_estimate" %}';
-var LIQ_KEY    = '{{ locationiq_key|escapejs }}';
+var VLAT = {{ vendor.latitude|default:"5.6037" }};
+var VLNG = {{ vendor.longitude|default:"-0.1870" }};
+var SUB  = parseFloat('{{ cart_subtotal|default:"0" }}');
+var PURL = '{% url "food:price_estimate" %}';
+var LIQ  = '{{ locationiq_key|escapejs }}';
 
 document.addEventListener('DOMContentLoaded', function () {
 
-  /* ── Leaflet map ─────────────────────────────────────── */
-  var map = L.map('delivery-map', {
-    zoomControl: true,
-    attributionControl: false,
-  }).setView([VENDOR_LAT, VENDOR_LNG], 14);
+  /* ── Map ─────────────────────────────────────────── */
+  var map = L.map('uber-map', { zoomControl:false, attributionControl:false })
+             .setView([VLAT, VLNG], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  L.control.zoom({position:'topleft'}).addTo(map);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-
-  /* Restaurant marker */
-  L.marker([VENDOR_LAT, VENDOR_LNG], {
+  /* Restaurant pin */
+  L.marker([VLAT, VLNG], {
     icon: L.divIcon({
       className: '',
-      html: '<div style="background:#0F1B2D;color:white;width:30px;height:30px;border-radius:50%;'
-          + 'display:flex;align-items:center;justify-content:center;font-size:.85rem;'
-          + 'border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)">🍴</div>',
-      iconSize: [30, 30], iconAnchor: [15, 15],
+      html: '<div style="background:#0F1B2D;color:white;width:32px;height:32px;border-radius:50%;'
+          + 'display:flex;align-items:center;justify-content:center;font-size:.9rem;'
+          + 'border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)">🍴</div>',
+      iconSize:[32,32], iconAnchor:[16,16],
     }),
   }).addTo(map).bindPopup('{{ cart_vendor.name|escapejs }}');
 
-  setTimeout(function () { map.invalidateSize(); }, 250);
+  setTimeout(function(){ map.invalidateSize(); }, 200);
 
-  /* ── DOM refs ────────────────────────────────────────── */
-  var pin     = document.getElementById('map-pin');
-  var locInput= document.getElementById('loc-input');
-  var dlat    = document.getElementById('dlat');
-  var dlng    = document.getElementById('dlng');
-  var dfee    = document.getElementById('dfee');
-  var ddist   = document.getElementById('ddist');
-  var daddr   = document.getElementById('daddr');
-  var sugBox  = document.getElementById('suggestions');
-  var gpsBadge= document.getElementById('gps-badge');
+  /* ── Refs ────────────────────────────────────────── */
+  var pin      = document.getElementById('map-pin');
+  var sheet    = document.getElementById('sheet');
+  var locInput = document.getElementById('loc-input');
+  var sug      = document.getElementById('sug');
+  var actBtn   = document.getElementById('action-btn');
+  var gpsStatus= document.getElementById('gps-status');
+  var formSec  = document.getElementById('form-section');
+  var clrBtn   = document.getElementById('clr-btn');
+  var dlat     = document.getElementById('dlat');
+  var dlng     = document.getElementById('dlng');
+  var dfee     = document.getElementById('dfee');
+  var ddist    = document.getElementById('ddist');
+  var daddr    = document.getElementById('daddr');
 
-  /* ── Fare update ────────────────────────────────────── */
-  function updateFare(lat, lng) {
-    var url = PRICE_URL+'?vlat='+VENDOR_LAT+'&vlng='+VENDOR_LNG+'&dlat='+lat+'&dlng='+lng+'&prep=20';
-    fetch(url).then(function(r){return r.json();}).then(function(d){
-      if (!d.success) return;
-      var fee = parseFloat(d.fee);
-      document.getElementById('fare-val').textContent  = 'GHS '+fee.toFixed(2);
-      document.getElementById('eta-val').textContent   = d.eta_minutes+' min';
-      document.getElementById('dist-val').textContent  = d.distance_km+' km';
-      document.getElementById('total-fee').textContent = 'GHS '+fee.toFixed(2);
-      document.getElementById('total-val').textContent = 'GHS '+(SUBTOTAL+fee).toFixed(2);
-      dfee.value = fee.toFixed(2);
-      ddist.value = d.distance_km;
-    }).catch(function(){});
+  var curLat = VLAT, curLng = VLNG;
+  var locationSet = false;
+
+  /* ── Helpers ─────────────────────────────────────── */
+  function setStatus(msg) {
+    gpsStatus.textContent = msg;
   }
 
-  /* ── Reverse geocode → fill input ────────────────────── */
-  function reverseGeocode(lat, lng, onDone) {
-    var url = LIQ_KEY
-      ? 'https://us1.locationiq.com/v1/reverse.php?key='+LIQ_KEY+'&lat='+lat+'&lon='+lng+'&format=json'
+  function setActionReady(label) {
+    actBtn.disabled = false;
+    actBtn.innerHTML = label || 'Confirm delivery location →';
+    actBtn.className = 'ready';
+    // className setter removes old classes, reapply the id styling
+    actBtn.setAttribute('class',''); // reset
+    actBtn.style.cssText = '';
+    actBtn.id = 'action-btn';
+    actBtn.classList.add('ready');
+  }
+
+  function updateFare(lat, lng) {
+    fetch(PURL+'?vlat='+VLAT+'&vlng='+VLNG+'&dlat='+lat+'&dlng='+lng+'&prep=20')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if (!d.success) return;
+        var fee = parseFloat(d.fee);
+        var tot = (SUB+fee).toFixed(2);
+        document.getElementById('fv-fee').textContent  = 'GHS '+fee.toFixed(2);
+        document.getElementById('fv-eta').textContent  = d.eta_minutes+' min';
+        document.getElementById('fv-dist').textContent = d.distance_km+' km';
+        document.getElementById('fv-total').textContent= 'GHS '+tot;
+        document.getElementById('form-fee').textContent  = 'GHS '+fee.toFixed(2);
+        document.getElementById('form-total').textContent= 'GHS '+tot;
+        dfee.value = fee.toFixed(2);
+        ddist.value = d.distance_km;
+      }).catch(function(){});
+  }
+
+  function reverseGeocode(lat, lng, cb) {
+    var url = LIQ
+      ? 'https://us1.locationiq.com/v1/reverse.php?key='+LIQ+'&lat='+lat+'&lon='+lng+'&format=json'
       : 'https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json';
     fetch(url).then(function(r){return r.json();}).then(function(d){
-      var addr = d.display_name || '';
-      if (addr) {
-        locInput.value = addr;
-        daddr.value    = addr;
-        if (onDone) onDone(addr);
+      if (d.display_name) {
+        locInput.value = d.display_name;
+        daddr.value    = d.display_name;
+        if (cb) cb(d.display_name);
       }
     }).catch(function(){});
   }
 
-  /* ── Map pin moves with map ─────────────────────────── */
-  var moveTimer = null;
+  function applyLocation(lat, lng, source) {
+    curLat = lat; curLng = lng;
+    dlat.value = lat.toFixed(6);
+    dlng.value = lng.toFixed(6);
+    locationSet = true;
+    updateFare(lat, lng);
+    setActionReady('✓ Confirm — ' + (source||'this location'));
+    setStatus('📍 Delivery location set');
+  }
+
+  /* ── Map pin animation ───────────────────────────── */
   map.on('movestart zoomstart', function(){
-    if (pin) pin.classList.add('lifting');
-    closeSuggestions();
+    pin.classList.add('up');
+    locationSet = false;
+    actBtn.disabled = false;
+    actBtn.innerHTML = 'Confirm delivery location →';
+    actBtn.classList.remove('done');
+    actBtn.classList.add('ready');
   });
+
   map.on('moveend zoomend', function(){
-    if (pin) pin.classList.remove('lifting');
+    pin.classList.remove('up');
     var c = map.getCenter();
-    dlat.value = c.lat.toFixed(6);
-    dlng.value = c.lng.toFixed(6);
-    updateFare(c.lat, c.lng);
-    clearTimeout(moveTimer);
-    moveTimer = setTimeout(function(){
-      reverseGeocode(c.lat, c.lng, function(){
-        gpsBadge.style.display = 'none';
-      });
-    }, 600);
+    applyLocation(c.lat, c.lng, null);
+    reverseGeocode(c.lat, c.lng, function(addr){
+      setActionReady('✓ Confirm — ' + addr.split(',')[0]);
+    });
   });
 
-  /* ── GPS auto-locate (inline button & map button) ────── */
-  function gpsLocate(btn) {
-    if (!navigator.geolocation) { alert('Geolocation not supported by your browser.'); return; }
-    if (btn) btn.textContent = '⏳';
-    locInput.placeholder = 'Finding your location…';
-    gpsBadge.style.display = 'none';
+  /* ── GPS auto-locate ──────────────────────────────── */
+  function doGPS(btn) {
+    if (!navigator.geolocation) {
+      setStatus('GPS not supported — please search below');
+      return;
+    }
+    if (btn) btn.innerHTML = '<span class="spin">📡</span>';
+    setStatus('<span class="spin" style="display:inline-block">⏳</span> Finding your exact location…');
+    actBtn.disabled = true;
+    actBtn.innerHTML = '<span class="spin">⏳</span> Locating…';
 
     navigator.geolocation.getCurrentPosition(function(pos){
       var lat = pos.coords.latitude, lng = pos.coords.longitude;
-      dlat.value = lat.toFixed(6);
-      dlng.value = lng.toFixed(6);
-      map.flyTo([lat, lng], 17, { duration: 1.5 });
-      updateFare(lat, lng);
+      map.flyTo([lat, lng], 17, {duration: 1.4});
+      applyLocation(lat, lng, 'current location');
       reverseGeocode(lat, lng, function(addr){
-        locInput.placeholder = 'Search your delivery location…';
-        gpsBadge.style.display = '';
-        if (btn) btn.textContent = '📡';
+        setStatus('📍 Using: ' + addr.split(',').slice(0,2).join(','));
+        setActionReady('✓ Confirm — ' + addr.split(',')[0]);
+        document.getElementById('gps-badge').textContent = '✓ Located';
+        document.getElementById('gps-badge').style.background = '#dcfce7';
+        document.getElementById('gps-badge').style.color = '#16a34a';
       });
-    }, function(err){
-      locInput.placeholder = 'Search your delivery location…';
       if (btn) btn.textContent = '📡';
-      alert('Could not get your location. Please search manually.');
-    }, { timeout: 10000, maximumAge: 30000, enableHighAccuracy: true });
+    }, function(err){
+      setStatus('Could not get GPS — search a location below');
+      actBtn.innerHTML = 'Confirm delivery location →';
+      actBtn.disabled  = false;
+      actBtn.classList.add('ready');
+      if (btn) btn.textContent = '📡';
+    }, {timeout:10000, maximumAge:30000, enableHighAccuracy:true});
   }
 
-  document.getElementById('gps-btn').addEventListener('click', function(){ gpsLocate(this); });
-  document.getElementById('inline-gps').addEventListener('click', function(){ gpsLocate(this); });
-  document.getElementById('center-btn').addEventListener('click', function(){
-    map.flyTo([VENDOR_LAT, VENDOR_LNG], 14, { duration: 1 });
+  /* Auto-run GPS on load */
+  doGPS(null);
+
+  /* Button triggers */
+  document.getElementById('gps-fab').addEventListener('click', function(){ doGPS(this); });
+  document.getElementById('use-gps-row').addEventListener('click', function(){ doGPS(null); });
+
+  /* ── Confirm button ───────────────────────────────── */
+  actBtn.addEventListener('click', function(){
+    if (actBtn.disabled || !locationSet) return;
+    daddr.value = locInput.value;
+
+    /* Mark done */
+    actBtn.classList.remove('ready');
+    actBtn.classList.add('done');
+    actBtn.innerHTML = '✓ Location confirmed';
+    actBtn.disabled  = true;
+    setStatus('📍 ' + (locInput.value.split(',').slice(0,2).join(',') || 'Location set'));
+
+    /* Expand sheet to reveal form */
+    sheet.classList.add('expanded');
+    document.body.classList.add('expanded');
+    formSec.classList.add('show');
+    setTimeout(function(){ map.invalidateSize(); sheet.scrollTop = 999; }, 380);
   });
 
-  /* ── Auto-locate on page load ────────────────────────── */
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(function(pos){
-      var lat = pos.coords.latitude, lng = pos.coords.longitude;
-      dlat.value = lat.toFixed(6);
-      dlng.value = lng.toFixed(6);
-      map.flyTo([lat, lng], 16, { duration: 1.5 });
-      updateFare(lat, lng);
-      reverseGeocode(lat, lng, function(){
-        gpsBadge.style.display = '';
-      });
-    }, function(){}, { timeout: 8000, maximumAge: 60000 });
-  }
+  /* ── Sheet drag handle ────────────────────────────── */
+  var dragY = null;
+  document.getElementById('handle').addEventListener('touchstart', function(e){
+    dragY = e.touches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if (dragY===null) return;
+    var diff = dragY - e.changedTouches[0].clientY;
+    if (diff > 50) {
+      sheet.classList.add('expanded'); document.body.classList.add('expanded');
+      formSec.classList.add('show');
+      setTimeout(function(){ map.invalidateSize(); },380);
+    } else if (diff < -50 && !formSec.classList.contains('show')) {
+      sheet.classList.remove('expanded'); document.body.classList.remove('expanded');
+      setTimeout(function(){ map.invalidateSize(); },380);
+    }
+    dragY = null;
+  }, {passive:true});
 
-  /* ── Autocomplete ────────────────────────────────────── */
-  var searchTimer = null;
-  var lastQuery   = '';
-  var currentFocus = -1;
+  /* ── Autocomplete ─────────────────────────────────── */
+  var st = null, focused = -1;
 
   locInput.addEventListener('input', function(){
     var q = this.value.trim();
-    gpsBadge.style.display = 'none';
-    if (q === lastQuery) return;
-    lastQuery = q;
-    if (q.length < 2) { closeSuggestions(); return; }
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(function(){ fetchSuggestions(q); }, 300);
+    clrBtn.style.display = q ? '' : 'none';
+    closeSug();
+    locationSet = false;
+    if (q.length < 2) return;
+    clearTimeout(st);
+    st = setTimeout(function(){ fetchSug(q); }, 300);
   });
 
   locInput.addEventListener('keydown', function(e){
-    var items = sugBox.querySelectorAll('.sug-item');
-    if (e.key === 'ArrowDown') {
-      currentFocus = Math.min(currentFocus + 1, items.length - 1);
-      highlightItem(items);
-    } else if (e.key === 'ArrowUp') {
-      currentFocus = Math.max(currentFocus - 1, 0);
-      highlightItem(items);
-    } else if (e.key === 'Enter' && currentFocus >= 0) {
-      e.preventDefault();
-      items[currentFocus] && items[currentFocus].click();
-    } else if (e.key === 'Escape') {
-      closeSuggestions();
-    }
+    var rows = sug.querySelectorAll('.sug-row');
+    if (e.key==='ArrowDown')  { focused=Math.min(focused+1,rows.length-1); hilite(rows); }
+    else if (e.key==='ArrowUp')   { focused=Math.max(focused-1,0); hilite(rows); }
+    else if (e.key==='Enter' && focused>=0) { e.preventDefault(); rows[focused].click(); }
+    else if (e.key==='Escape')    { closeSug(); locInput.blur(); }
   });
 
-  function highlightItem(items) {
-    items.forEach(function(el, i){
-      el.style.background = i === currentFocus ? '#f9fafb' : '';
-    });
-  }
+  clrBtn.addEventListener('click', function(){
+    locInput.value=''; clrBtn.style.display='none';
+    locInput.focus(); closeSug();
+  });
 
-  function closeSuggestions() {
-    sugBox.innerHTML = '';
-    sugBox.classList.remove('open');
-    currentFocus = -1;
-  }
+  function hilite(rows){ rows.forEach(function(r,i){ r.classList.toggle('hi', i===focused); }); }
+  function closeSug()  { sug.innerHTML=''; sug.classList.remove('open'); focused=-1; }
 
   document.addEventListener('click', function(e){
-    if (!e.target.closest('.addr-bar')) closeSuggestions();
+    if (!e.target.closest('#loc-wrap')) closeSug();
   });
 
-  function fetchSuggestions(query) {
-    /* Show loading indicator */
-    sugBox.innerHTML = '<div class="sug-item"><span class="sug-icon spinning">🔄</span><div class="sug-text"><div class="sug-main">Searching…</div></div></div>';
-    sugBox.classList.add('open');
-
-    var url = LIQ_KEY
-      ? 'https://us1.locationiq.com/v1/search.php?key='+LIQ_KEY
-        +'&q='+encodeURIComponent(query+', Ghana')
-        +'&format=json&limit=7&addressdetails=1&countrycodes=gh'
-      : 'https://nominatim.openstreetmap.org/search?q='
-        +encodeURIComponent(query+', Ghana')
-        +'&format=json&limit=7&addressdetails=1&countrycodes=gh';
-
+  function fetchSug(q) {
+    sug.innerHTML='<div class="sug-row"><span class="sug-ico spin">🔄</span><div><div class="sug-name">Searching…</div></div></div>';
+    sug.classList.add('open');
+    var url = LIQ
+      ? 'https://us1.locationiq.com/v1/search.php?key='+LIQ+'&q='+encodeURIComponent(q+', Ghana')+'&format=json&limit=8&addressdetails=1&countrycodes=gh'
+      : 'https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+', Ghana')+'&format=json&limit=8&addressdetails=1&countrycodes=gh';
     fetch(url)
-      .then(function(r){ return r.json(); })
-      .then(function(results){
-        renderSuggestions(results);
-      })
+      .then(function(r){return r.json();})
+      .then(renderSug)
       .catch(function(){
-        sugBox.innerHTML = '<div class="sug-item"><span class="sug-icon">⚠</span><div class="sug-text"><div class="sug-main">Search unavailable</div></div></div>';
+        sug.innerHTML='<div class="sug-row" style="pointer-events:none"><span class="sug-ico">⚠️</span><div><div class="sug-name">Search unavailable</div></div></div>';
       });
   }
 
-  function renderSuggestions(results) {
-    sugBox.innerHTML = '';
-    currentFocus = -1;
-    if (!results || !results.length) {
-      sugBox.innerHTML = '<div class="sug-item" style="pointer-events:none"><span class="sug-icon">🔍</span><div class="sug-text"><div class="sug-main">No results — try a different search</div></div></div>';
-      sugBox.classList.add('open');
-      return;
+  function renderSug(results) {
+    sug.innerHTML=''; focused=-1;
+    if (!results||!results.length) {
+      sug.innerHTML='<div class="sug-row" style="pointer-events:none"><span class="sug-ico">🔍</span><div><div class="sug-name">No results — try a different name</div></div></div>';
+      sug.classList.add('open'); return;
     }
-
     results.forEach(function(r){
-      var el   = document.createElement('div');
-      el.className = 'sug-item';
-
-      /* Build a short main label and a longer subtitle */
-      var addr = r.address || {};
-      var main = addr.road || addr.suburb || addr.neighbourhood
-               || addr.town || addr.city || r.display_name.split(',')[0];
+      var el = document.createElement('div');
+      el.className='sug-row';
+      var a = r.address||{};
+      var main = a.road||a.suburb||a.neighbourhood||a.town||a.village||a.city||(r.display_name.split(',')[0]);
       var sub  = r.display_name;
-
-      el.innerHTML =
-        '<span class="sug-icon">📍</span>'
-        +'<div class="sug-text">'
-        +'<div class="sug-main">'+escHtml(main)+'</div>'
-        +'<div class="sug-sub">'+escHtml(sub)+'</div>'
+      el.innerHTML='<span class="sug-ico">📍</span><div style="min-width:0;flex:1">'
+        +'<div class="sug-name">'+esc(main)+'</div>'
+        +'<div class="sug-addr">'+esc(sub)+'</div>'
         +'</div>';
-
-      el.addEventListener('mousedown', function(e){ e.preventDefault(); }); // prevent blur
-      el.addEventListener('click', function(){
-        var lat = parseFloat(r.lat), lng = parseFloat(r.lon);
-        locInput.value = r.display_name;
-        daddr.value    = r.display_name;
-        dlat.value     = lat.toFixed(6);
-        dlng.value     = lng.toFixed(6);
-        gpsBadge.style.display = 'none';
-        closeSuggestions();
-        map.flyTo([lat, lng], 17, { duration: 1.2 });
-        updateFare(lat, lng);
+      el.addEventListener('mousedown',function(e){e.preventDefault();});
+      el.addEventListener('click',function(){
+        var lat=parseFloat(r.lat), lng=parseFloat(r.lon);
+        locInput.value=r.display_name;
+        clrBtn.style.display='';
+        closeSug();
+        map.flyTo([lat,lng],17,{duration:1.2});
+        applyLocation(lat, lng, main);
+        setActionReady('✓ Confirm — '+main);
+        setStatus('📍 Selected: '+main);
       });
-
-      sugBox.appendChild(el);
+      sug.appendChild(el);
     });
-    sugBox.classList.add('open');
+    sug.classList.add('open');
   }
 
-  function escHtml(s) {
-    return String(s).replace(/[&<>"']/g, function(c){
-      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
-    });
-  }
-
-  /* ── Form submit ─────────────────────────────────────── */
-  document.getElementById('checkout-form').addEventListener('submit', function(){
-    /* Sync address from input to hidden field */
-    if (locInput.value) daddr.value = locInput.value;
-    var btn = document.getElementById('submit-btn');
-    btn.disabled = true;
-    btn.textContent = 'Placing order…';
+  /* ── Form submit ──────────────────────────────────── */
+  document.getElementById('order-form').addEventListener('submit', function(){
+    if (locInput.value && !daddr.value) daddr.value=locInput.value;
+    var btn=document.getElementById('place-btn');
+    btn.disabled=true;
+    btn.textContent='🛵 Dispatching rider…';
   });
 
-}); /* end DOMContentLoaded */
+  function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+});
 </script>
 {% endblock %}
