@@ -2,47 +2,86 @@
 {% load static %}
 {% block title %}Processing Payment — Lynctel Food{% endblock %}
 
+{% block extra_head %}
+<style>
+  .spinner {
+    width: 56px; height: 56px;
+    border: 5px solid #f3f4f6;
+    border-top-color: #F5A623;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-5 text-center" style="max-width:520px">
-  <div class="mb-4 position-relative" style="width:80px;height:80px;margin:0 auto">
-    <div style="width:80px;height:80px;border:5px solid #f3f4f6;border-top-color:#F5A623;
-                border-radius:50%;animation:spin 1s linear infinite"></div>
-    <div class="position-absolute top-50 start-50 translate-middle" style="font-size:1.6rem">🍽️</div>
-  </div>
-  <h1 class="h4 fw-bold text-navy mb-2" style="font-family:'Syne',sans-serif">Confirming your payment</h1>
-  <p class="text-muted small mb-4">
-    Order <strong>{{ order.order_ref }}</strong> — please wait while Hubtel confirms your payment.
-    <br/><strong>Do not close this page.</strong>
+<div class="container py-5 text-center" style="max-width:480px;margin:0 auto">
+
+  <div class="spinner"></div>
+
+  <h1 class="h4 fw-bold text-navy mb-2" style="font-family:'Syne',sans-serif">
+    Confirming your payment…
+  </h1>
+  <p class="text-muted mb-1 small">
+    Order <strong>{{ order.order_ref }}</strong>
   </p>
-  <div class="alert alert-info rounded-3 small">
-    If you paid with MoMo, check your phone for a confirmation message.
-    This page updates automatically.
+  <p class="text-muted mb-4 small">
+    Please wait — <strong>do not close this page.</strong><br/>
+    If you paid with MoMo, check your phone for a confirmation.
+  </p>
+
+  <div class="alert alert-info rounded-3 small mb-4">
+    This page checks automatically every few seconds.
+    You'll be taken to your order tracking page as soon as payment is confirmed.
   </div>
+
+  <div id="timeout-msg" style="display:none">
+    <div class="alert alert-warning rounded-3 small mb-3">
+      This is taking longer than usual.
+    </div>
+    <a href="{% url 'food:order_history' %}" class="btn btn-outline-secondary rounded-3 me-2 small">
+      My Orders
+    </a>
+    <a href="{% url 'food:home' %}" class="btn btn-outline-secondary rounded-3 small">
+      Back to Food
+    </a>
+  </div>
+
 </div>
-<style>@keyframes spin { to { transform:rotate(360deg); } }</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 (function () {
-  const url = '{{ poll_url|escapejs }}';
-  let elapsed = 0, interval = 3000, max = 120000;
+  var POLL_URL  = '{{ poll_url|escapejs }}';
+  var MAX_WAIT  = 120000;  /* 2 minutes */
+  var INTERVAL  = 3000;
+  var elapsed   = 0;
+
   function check() {
-    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-      .then(r => r.json())
-      .then(d => {
-        if (d.paid && d.redirect) { window.location.href = d.redirect; return; }
-        elapsed += interval;
-        if (elapsed < max) setTimeout(check, interval);
-        else {
-          document.querySelector('h1').textContent = 'This is taking longer than usual…';
-          document.querySelector('.alert').innerHTML =
-            'Your payment may still be processing. ' +
-            '<a href="{% url "food:order_history" %}" class="alert-link">Check My Orders →</a>';
+    fetch(POLL_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.paid && d.redirect) {
+          window.location.href = d.redirect;
+          return;
         }
-      }).catch(() => elapsed < max && setTimeout(check, interval));
+        elapsed += INTERVAL;
+        if (elapsed >= MAX_WAIT) {
+          document.getElementById('timeout-msg').style.display = '';
+        } else {
+          setTimeout(check, INTERVAL);
+        }
+      })
+      .catch(function () {
+        elapsed += INTERVAL;
+        if (elapsed < MAX_WAIT) setTimeout(check, INTERVAL);
+      });
   }
-  setTimeout(check, interval);
+
+  setTimeout(check, INTERVAL);
 })();
 </script>
 {% endblock %}

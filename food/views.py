@@ -934,8 +934,12 @@ def checkout(request):
     except Exception:
         pass
 
-    messages.success(request, f'✅ Order {order.order_ref} placed!')
-    return redirect('food:order_track', ref=order.order_ref)
+    # Show confirmation page for cash / MoMo on delivery
+    return render(request, 'food/order_placed.html', {
+        'order':       order,
+        'order_total': str(_order_total(order)),
+        'pay_method':  pay_method,
+    })
 
 
 # ── Order views ────────────────────────────────────────────────────────────────
@@ -1013,49 +1017,110 @@ def reorder(request, ref):
 # ── Food payment ───────────────────────────────────────────────────────────────
 
 @login_required
+
+def _order_total(order):
+    """
+    Return the order total safely.
+    FoodOrder may have a total_amount field, a total property,
+    or just subtotal + delivery_fee — try all three.
+    """
+    for attr in ('total_amount', 'total'):
+        val = getattr(order, attr, None)
+        if val is not None and not callable(val):
+            return Decimal(str(val))
+        if callable(val):
+            try:
+                return Decimal(str(val()))
+            except Exception:
+                pass
+    return (
+        Decimal(str(order.subtotal      or 0)) +
+        Decimal(str(order.delivery_fee  or 0))
+    ).quantize(Decimal('0.01'))
+
 def food_payment_initiate(request, order_ref):
+    """
+    Initiate Hubtel hosted checkout for a food order.
+    Redirects customer to Hubtel's payment page.
+    After payment:
+      - Hubtel fires webhook → food_payment_webhook → _mark_food_paid
+      - Hubtel redirects browser → food_payment_callback → tracking page
+    """
     if not _HAS_FOOD_PAYMENT:
-        messages.error(request, 'Payment not configured.')
+        # No FoodPayment model — treat as cash order
+        messages.success(request, f'Order {order_ref} placed!')
         return redirect('food:order_track', ref=order_ref)
 
-    order = get_object_or_404(
-        FoodOrder, order_ref=order_ref, customer=request.user,
-        payment_status=FoodOrder.PaymentStatus.UNPAID,
-    )
+    try:
+        order = FoodOrder.objects.get(order_ref=order_ref, customer=request.user)
+    except FoodOrder.DoesNotExist:
+        messages.error(request, 'Order not found.')
+        return redirect('food:order_history')
+
+    # If already paid (e.g. double tap), go straight to tracking
+    if order.payment_status == FoodOrder.PaymentStatus.PAID:
+        return redirect('food:order_track', ref=order_ref)
+
     cid   = getattr(settings, 'HUBTEL_CLIENT_ID', '')
     merch = getattr(settings, 'HUBTEL_MERCHANT_ACCT', '')
+
     if not cid:
-        messages.error(request, 'Payment gateway not configured.')
+        # Hubtel not configured — fall back to cash flow
+        import logging
+        logging.getLogger(__name__).warning(
+            '[FoodPayment] HUBTEL_CLIENT_ID not set — order %s treated as cash', order_ref)
+        messages.success(request, f'Order {order_ref} placed! Pay the rider on delivery.')
         return redirect('food:order_track', ref=order_ref)
 
+    total  = _order_total(order)   # safe regardless of FoodOrder field names
     tx_ref = f'FOOD-{order_ref}-{uuid.uuid4().hex[:6].upper()}'
     base   = request.build_absolute_uri('/').rstrip('/')
 
-    FoodPayment.objects.get_or_create(
+    # Record payment intent
+    fp, _ = FoodPayment.objects.get_or_create(
         food_order=order,
-        defaults={'amount': order.total_amount, 'transaction_id': tx_ref,
-                  'momo_number': order.delivery_phone, 'provider': 'hubtel',
-                  'status': FoodPayment.Status.PENDING},
+        defaults={
+            'amount':         total,
+            'transaction_id': tx_ref,
+            'momo_number':    order.delivery_phone or '',
+            'provider':       'hubtel',
+            'status':         FoodPayment.Status.PENDING,
+        },
     )
+
     try:
         resp = http_requests.post(
             'https://api.hubtel.com/v2/pos/onlinecheckout/items/initiate',
             headers={'Authorization': _hubtel_auth(), 'Content-Type': 'application/json'},
-            json={'totalAmount': float(order.total_amount),
-                  'description': f'Lynctel Food {order_ref}',
-                  'clientReference': tx_ref,
-                  'callbackUrl': f'{base}/food/payment/webhook/',
-                  'returnUrl':   f'{base}/food/payment/callback/{tx_ref}/',
-                  'cancellationUrl': f'{base}/food/order/{order_ref}/',
-                  'merchantAccountNumber': merch},
+            json={
+                'totalAmount':           float(total),
+                'description':           f'{order.vendor.name} order — Lynctel',
+                'clientReference':       fp.transaction_id,
+                'callbackUrl':           f'{base}/food/payment/webhook/',
+                'returnUrl':             f'{base}/food/payment/callback/{fp.transaction_id}/',
+                'cancellationUrl':       f'{base}/food/order/{order_ref}/',
+                'merchantAccountNumber': merch,
+            },
             timeout=15,
         )
-        data = resp.json()
-        url  = data.get('paylinkUrl') or data.get('checkoutUrl')
-        if url: return redirect(url)
-        messages.error(request, f"Payment error: {data.get('message','Try again.')}")
-    except Exception:
-        messages.error(request, 'Could not connect to payment gateway.')
+        data         = resp.json()
+        checkout_url = data.get('paylinkUrl') or data.get('checkoutUrl')
+
+        if checkout_url:
+            return redirect(checkout_url)
+
+        # Hubtel returned an error
+        import logging
+        logging.getLogger(__name__).error(
+            '[FoodPayment] Hubtel initiate failed for %s: %s', order_ref, data)
+        messages.error(request, data.get('message') or 'Payment could not start. Try again.')
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error('[FoodPayment] Exception for %s: %s', order_ref, e)
+        messages.error(request, 'Could not reach payment gateway. Try again or pay on delivery.')
+
+    # If we reach here something went wrong — go to tracking so order isn't lost
     return redirect('food:order_track', ref=order_ref)
 
 
