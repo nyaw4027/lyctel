@@ -232,8 +232,13 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/food.js' %}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', Food.init);
+window.FOOD_CART_ADD_URL    = '{% url "food:cart_add" 0 %}'.replace('/0/', '/');
+window.FOOD_CART_UPDATE_URL = '{% url "food:cart_update" 0 %}'.replace('/0/', '/');
+window.FOOD_CART_CLEAR_URL  = '{% url "food:cart_clear" %}';
+window.FOOD_CART_DATA_URL   = '{% url "food:cart_data" %}';
+window.FOOD_CART_URL        = '{% url "food:cart" %}';
 </script>
+<script src="{% static 'js/food.js' %}"></script>
+<script>document.addEventListener('DOMContentLoaded', Food.init);</script>
 {% endblock %}

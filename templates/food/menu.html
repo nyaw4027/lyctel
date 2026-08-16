@@ -3,7 +3,6 @@
 {% block title %}{{ vendor.name }} — Lynctel Food{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 <style>
   /* FIXED: --navbar-h was referenced but never defined.
      The main navbar is 64px tall (h-16 in base.html).
@@ -280,6 +279,28 @@
   {% endif %}
 
 </div>
+
+<!-- Conflict modal — food.js looks for #conflict-modal -->
+<div id="conflict-modal" class="d-none"
+     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1050;
+            display:flex;align-items:center;justify-content:center;padding:16px">
+  <div class="card border-0 rounded-4 p-4 shadow-lg" style="max-width:360px;width:100%">
+    <h5 class="fw-bold text-navy mb-2">Different restaurant</h5>
+    <p class="text-muted small mb-4" id="conflict-msg">
+      You have items from another restaurant in your cart.
+    </p>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary rounded-3 flex-grow-1 btn-keep">
+        Keep current cart
+      </button>
+      <button class="btn rounded-3 flex-grow-1 fw-semibold btn-clear"
+              style="background:#ef4444;color:white">
+        Clear &amp; switch
+      </button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {# FIXED: block extra_js is now OUTSIDE block content (was nested inside
@@ -287,6 +308,18 @@
    food.js must load here so Food.addToCart() is defined before any
    onclick handlers fire. #}
 {% block extra_js %}
+<!--
+  Pass cart API URLs as window globals BEFORE food.js loads.
+  This means food.js works regardless of the URL mount path
+  and doesn't need to hardcode /food/cart/add/ etc.
+-->
+<script>
+window.FOOD_CART_ADD_URL    = '{% url "food:cart_add" 0 %}'.replace('/0/', '/');
+window.FOOD_CART_UPDATE_URL = '{% url "food:cart_update" 0 %}'.replace('/0/', '/');
+window.FOOD_CART_CLEAR_URL  = '{% url "food:cart_clear" %}';
+window.FOOD_CART_DATA_URL   = '{% url "food:cart_data" %}';
+window.FOOD_CART_URL        = '{% url "food:cart" %}';
+</script>
 <script src="{% static 'js/food.js' %}"></script>
 <script>document.addEventListener('DOMContentLoaded', Food.init);</script>
 {% endblock %}
