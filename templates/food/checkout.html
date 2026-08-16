@@ -95,19 +95,30 @@
       <input type="hidden" name="distance_km"      id="ddist" value="3"/>
       <input type="hidden" name="delivery_address" id="daddr"/>
 
-      <!-- Address search -->
+      <!-- Address -->
       <div class="mb-3">
         <label class="form-label small fw-bold text-navy">📍 Delivery address</label>
+
+        <!-- Use Current Location button -->
+        <button type="button" id="use-location-btn"
+                class="btn w-100 rounded-3 mb-2 d-flex align-items-center gap-2 fw-semibold"
+                style="background:#f0f9ff;color:#0369a1;border:1.5px solid #bae6fd;
+                       padding:11px 14px;font-size:.9rem">
+          <span id="gps-btn-icon" style="font-size:1.2rem">🎯</span>
+          <span id="gps-btn-text">Use my current location</span>
+        </button>
+
+        <!-- Or search manually -->
         <div class="addr-box">
           <span class="addr-icon">🔍</span>
           <input id="addr-input" type="text" autocomplete="off" spellcheck="false"
-                 placeholder="Search or move the map…"
+                 placeholder="Or search for a different address…"
                  value="{{ request.POST.delivery_address|default:'' }}"/>
           <button id="addr-clear" type="button">✕</button>
           <div id="sug"></div>
         </div>
         <div id="addr-status" class="text-muted mt-1" style="font-size:.75rem">
-          Move the map pin or search above
+          Move the map pin or tap the button above to detect your location
         </div>
       </div>
 
@@ -265,24 +276,61 @@ document.addEventListener('DOMContentLoaded', function () {
     reverseGeocode(c.lat,c.lng);
   });
 
-  /* GPS */
-  function doGPS(btn) {
-    if(!navigator.geolocation){ status.textContent='GPS not available'; return; }
-    if(btn) btn.innerHTML='<span class="spin">⏳</span>';
-    status.textContent='Finding your location…';
+  /* GPS — used by FAB on map AND the "Use my current location" button */
+  function doGPS(onDone) {
+    if (!navigator.geolocation) {
+      status.textContent = 'GPS not supported — please search manually';
+      return;
+    }
+    /* Update both buttons to loading state */
+    var fabBtn  = document.getElementById('gps-btn');
+    var locBtn  = document.getElementById('use-location-btn');
+    var locIcon = document.getElementById('gps-btn-icon');
+    var locText = document.getElementById('gps-btn-text');
+
+    if (fabBtn)  fabBtn.innerHTML  = '<span class="spin">⏳</span>';
+    if (locIcon) locIcon.textContent = '⏳';
+    if (locText) locText.textContent = 'Finding your location…';
+    if (locBtn)  { locBtn.disabled = true; locBtn.style.opacity = '.7'; }
+    status.textContent = 'Detecting your GPS location…';
+
     navigator.geolocation.getCurrentPosition(function(pos){
-      var lat=pos.coords.latitude,lng=pos.coords.longitude;
-      map.flyTo([lat,lng],17,{duration:1.2});
-      dlat.value=lat.toFixed(6); dlng.value=lng.toFixed(6);
-      updateFare(lat,lng); reverseGeocode(lat,lng);
-      if(btn) btn.textContent='📡';
-    },function(){
-      status.textContent='GPS unavailable — search or move the map';
-      if(btn) btn.textContent='📡';
-    },{timeout:10000, maximumAge:30000, enableHighAccuracy:true});
+      var lat = pos.coords.latitude, lng = pos.coords.longitude;
+      dlat.value = lat.toFixed(6);
+      dlng.value = lng.toFixed(6);
+      map.flyTo([lat, lng], 17, { duration: 1.2 });
+      updateFare(lat, lng);
+      reverseGeocode(lat, lng);   /* fills addr-input + daddr */
+
+      /* Reset buttons */
+      if (fabBtn)  fabBtn.textContent = '📡';
+      if (locIcon) locIcon.textContent = '✅';
+      if (locText) locText.textContent = 'Current location selected';
+      if (locBtn)  {
+        locBtn.disabled      = false;
+        locBtn.style.opacity = '1';
+        locBtn.style.background = '#f0fdf4';
+        locBtn.style.color      = '#16a34a';
+        locBtn.style.borderColor= '#86efac';
+      }
+      if (onDone) onDone(lat, lng);
+    }, function(){
+      status.textContent = 'Could not get GPS — please search or move the map';
+      if (fabBtn)  fabBtn.textContent = '📡';
+      if (locIcon) locIcon.textContent = '🎯';
+      if (locText) locText.textContent = 'Use my current location';
+      if (locBtn)  { locBtn.disabled = false; locBtn.style.opacity = '1'; }
+    }, { timeout: 10000, maximumAge: 30000, enableHighAccuracy: true });
   }
 
-  document.getElementById('gps-btn').addEventListener('click',function(){ doGPS(this); });
+  /* Map FAB button */
+  document.getElementById('gps-btn').addEventListener('click', function(){ doGPS(); });
+
+  /* "Use my current location" button */
+  var useLocBtn = document.getElementById('use-location-btn');
+  if (useLocBtn) {
+    useLocBtn.addEventListener('click', function(){ doGPS(); });
+  }
 
   /* Auto-locate on load */
   if(navigator.geolocation){
@@ -360,11 +408,34 @@ document.addEventListener('DOMContentLoaded', function () {
     sug.classList.add('open');
   }
 
-  /* Form submit */
-  document.getElementById('checkout-form').addEventListener('submit',function(){
-    if(input.value && !daddr.value) daddr.value=input.value;
-    var btn=document.getElementById('place-btn');
-    btn.disabled=true; btn.textContent='🛵 Placing order…';
+  /* Form submit — guarantee all hidden fields are populated */
+  document.getElementById('checkout-form').addEventListener('submit', function(e){
+
+    /* 1. Sync address text from visible input → hidden field */
+    if (input.value.trim()) {
+      daddr.value = input.value.trim();
+    }
+
+    /* 2. If still no address but we have coordinates, build a fallback.
+          This means the form will ALWAYS submit successfully even if the
+          user never typed an address — the coordinates are what matters. */
+    if (!daddr.value && dlat.value && dlat.value !== '5.6037') {
+      daddr.value = 'GPS location (' + parseFloat(dlat.value).toFixed(4)
+                  + ', ' + parseFloat(dlng.value).toFixed(4) + ')';
+    }
+    if (!daddr.value) {
+      daddr.value = 'Ghana';
+    }
+
+    /* 3. Ensure delivery_fee has a value */
+    if (!dfee.value || dfee.value === '0') {
+      dfee.value = '{{ default_fee }}';
+    }
+
+    /* 4. Disable button to prevent double-submit */
+    var btn = document.getElementById('place-btn');
+    btn.disabled    = true;
+    btn.textContent = '🛵 Placing order…';
   });
 
   function esc(s){ return String(s).replace(/[&<>"']/g,function(c){

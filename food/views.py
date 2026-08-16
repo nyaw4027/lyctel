@@ -853,10 +853,18 @@ def checkout(request):
     dlng       = request.POST.get('delivery_lng', '').strip()
 
     errors = {}
-    if not address: errors['address'] = 'Please enter your delivery address.'
-    if not phone:   errors['phone']   = 'Please enter your phone number.'
+    if not phone:
+        errors['phone'] = 'Please enter your phone number.'
     if errors:
         return render(request, 'food/checkout.html', ctx(errors))
+
+    # Address text is helpful but not blocking — GPS coordinates are the
+    # authoritative delivery location. If address is blank, build a fallback.
+    if not address:
+        if dlat and dlng:
+            address = f'GPS location ({float(dlat):.4f}, {float(dlng):.4f})'
+        else:
+            address = 'Ghana'   # safe fallback — rider will call customer
 
     try:
         delivery_fee = Decimal(request.POST.get('delivery_fee', str(MIN_FARE)))
