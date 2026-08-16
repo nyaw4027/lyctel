@@ -60,8 +60,11 @@ except ImportError:
 
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-FOOD_VENDOR_SHARE = Decimal('0.96')
-FOOD_APP_SHARE    = Decimal('0.04')
+FOOD_VENDOR_SHARE    = Decimal('0.96')   # vendor keeps 96% of item subtotal
+FOOD_APP_VENDOR_CUT  = Decimal('0.04')   # app earns  4% of item subtotal
+FOOD_RIDER_SHARE     = Decimal('0.95')   # rider keeps 95% of delivery fee
+FOOD_APP_RIDER_CUT   = Decimal('0.05')   # app earns  5% of delivery fee
+FOOD_APP_SHARE       = Decimal('0.04')   # kept for backward compat
 BASE_FARE         = Decimal('5.00')
 PER_KM_RATE       = Decimal('2.50')
 MIN_FARE          = Decimal('8.00')
@@ -460,6 +463,12 @@ def restaurant_update_order(request, ref):
             order.payment_status = FoodOrder.PaymentStatus.PAID
         order.save()
         messages.success(request, f'Order {ref} → {order.get_status_display()}')
+        # Trigger rider payout (95% of delivery fee) when delivery completes
+        if ns == 'delivered':
+            try:
+                _pay_rider_on_delivery(order)
+            except Exception:
+                pass
     else:
         messages.error(request, 'Invalid status.')
     return redirect(reverse('food:restaurant_dashboard') + '?tab=orders')
@@ -877,6 +886,10 @@ def checkout(request):
             price=_item_price(ci.food), quantity=ci.quantity, note=ci.note or '',
         )
 
+    # Record commission split immediately for ALL payment types
+    # (cash, MoMo on delivery, Hubtel prepaid)
+    _record_food_earnings(order)
+
     # Optional: create delivery record
     if _HAS_DELIVERY and Delivery is not None:
         try:
@@ -1100,6 +1113,207 @@ def food_payment_status(request, order_ref):
     })
 
 
+
+# ── Commission & payout helpers ────────────────────────────────────────────────
+
+def _detect_momo_network(phone):
+    """Detect Ghana MoMo network from phone prefix."""
+    phone = str(phone).replace('+233', '0').replace(' ', '').strip()
+    if phone.startswith(('024','054','055','059','025','053','058')):
+        return 'MTN'
+    if phone.startswith(('020','050')):
+        return 'TELECEL'
+    if phone.startswith(('026','056','027','057')):
+        return 'AIRTELTIGO'
+    return 'MTN'
+
+
+def _hubtel_transfer(phone, amount, reference, description):
+    """
+    Send money to a MoMo number via Hubtel Transfers API.
+    Returns True on success, False on failure.
+    """
+    import logging
+    log = logging.getLogger(__name__)
+    cid = getattr(settings, 'HUBTEL_CLIENT_ID', '')
+    if not cid or not phone or float(amount) <= 0:
+        return False
+    try:
+        resp = http_requests.post(
+            'https://api.hubtel.com/v2/transfers',
+            headers={'Authorization': _hubtel_auth(), 'Content-Type': 'application/json'},
+            json={
+                'amount':           float(amount),
+                'recipientAccount': str(phone),
+                'network':          _detect_momo_network(phone),
+                'description':      description,
+                'clientReference':  reference,
+            },
+            timeout=20,
+        )
+        data = resp.json()
+        ok   = resp.status_code in (200, 201) and data.get('responseCode') in ('0000', '00')
+        if not ok:
+            log.error('[FoodPayout] Transfer failed %s: %s', reference, data)
+        return ok
+    except Exception as e:
+        log.error('[FoodPayout] Transfer error %s: %s', reference, e)
+        return False
+
+
+def _record_food_earnings(order):
+    """
+    Record the commission split the moment an order is placed,
+    for EVERY payment type (cash, MoMo on delivery, Hubtel prepaid).
+
+    Vendor split  → 96% to vendor / 4% to app
+    Rider split   → 95% to rider  / 5% to app
+
+    For cash orders: records what is owed; disbursement happens via
+    weekly settlement (vendor pays 4% commission to Lynctel).
+    For Hubtel prepaid: actual transfers fired by _disburse_food_payouts().
+    """
+    if not order.vendor:
+        return
+
+    # ── Vendor earnings ──────────────────────────────────────────────────
+    item_gross        = Decimal(str(order.subtotal or 0))
+    vendor_commission = (item_gross * FOOD_APP_VENDOR_CUT).quantize(Decimal('0.01'))
+    vendor_payout     = (item_gross * FOOD_VENDOR_SHARE).quantize(Decimal('0.01'))
+
+    if _HAS_VENDOR_EARNING and FoodVendorEarning is not None:
+        FoodVendorEarning.objects.get_or_create(
+            food_order=order,
+            defaults={
+                'vendor':         order.vendor,
+                'gross_amount':   item_gross,
+                'app_commission': vendor_commission,   # 4%  → stays with Lynctel
+                'vendor_payout':  vendor_payout,       # 96% → goes to vendor
+                'status':         'pending',
+            },
+        )
+
+    # ── Rider / delivery earnings ────────────────────────────────────────
+    delivery_gross    = Decimal(str(order.delivery_fee or 0))
+    rider_commission  = (delivery_gross * FOOD_APP_RIDER_CUT).quantize(Decimal('0.01'))
+    rider_payout      = (delivery_gross * FOOD_RIDER_SHARE).quantize(Decimal('0.01'))
+
+    # Update Delivery record with the correct rider earnings (95%)
+    if order.delivery and _HAS_DELIVERY and Delivery is not None:
+        try:
+            order.delivery.rider_commission = rider_payout
+            order.delivery.save(update_fields=['rider_commission'])
+        except Exception:
+            pass
+
+
+def _disburse_food_payouts(order):
+    """
+    Called when Hubtel payment is confirmed (webhook).
+    Sends 96% of item subtotal to vendor's MoMo,
+    and 95% of delivery fee to rider's MoMo (if rider already assigned).
+
+    For cash / MoMo-on-delivery orders this is NOT called;
+    commissions are collected via weekly settlement instead.
+    """
+    import logging
+    log = logging.getLogger(__name__)
+
+    # ── Vendor payout (immediate on payment) ────────────────────────────
+    if order.vendor:
+        payout_phone = (
+            getattr(order.vendor, 'momo_number', None)
+            or getattr(order.vendor, 'phone', None)
+            or ''
+        )
+        earning = None
+        if _HAS_VENDOR_EARNING and FoodVendorEarning is not None:
+            earning = FoodVendorEarning.objects.filter(food_order=order).first()
+
+        vendor_amount = earning.vendor_payout if earning else (
+            Decimal(str(order.subtotal or 0)) * FOOD_VENDOR_SHARE
+        ).quantize(Decimal('0.01'))
+
+        if payout_phone and vendor_amount > 0:
+            ok = _hubtel_transfer(
+                phone       = payout_phone,
+                amount      = vendor_amount,
+                reference   = f'VENDOR-{order.order_ref}',
+                description = (f'Lynctel payout for order {order.order_ref}'
+                               f' — {order.vendor.name} (96% of GHS {order.subtotal})'),
+            )
+            if ok and earning:
+                earning.status = 'paid'
+                earning.save(update_fields=['status'])
+            elif not ok:
+                log.error('[FoodPayout] Vendor payout FAILED for %s — '
+                          'GHS %.2f to %s. Manual transfer needed.',
+                          order.order_ref, vendor_amount, payout_phone)
+                # Notify admin
+                try:
+                    admin_phone = getattr(settings, 'ADMIN_PHONE', '')
+                    if admin_phone:
+                        from notifications.sms import send_sms
+                        send_sms(admin_phone,
+                                 f'Food payout FAILED: {order.vendor.name} '
+                                 f'GHS {vendor_amount} order {order.order_ref}')
+                except Exception:
+                    pass
+
+    # ── Rider payout (on delivery completion, not payment) ───────────────
+    # Rider receives their 95% when they mark the order delivered.
+    # This is triggered by the order status being set to 'delivered'.
+    # See _pay_rider_on_delivery() below.
+
+
+def _pay_rider_on_delivery(order):
+    """
+    Called when order.status is set to 'delivered'.
+    Sends 95% of the delivery fee to the assigned rider's MoMo.
+    """
+    import logging
+    log = logging.getLogger(__name__)
+
+    if not order.delivery:
+        return
+    if not order.delivery.rider:
+        return
+
+    delivery_fee  = Decimal(str(order.delivery_fee or 0))
+    rider_payout  = (delivery_fee * FOOD_RIDER_SHARE).quantize(Decimal('0.01'))
+
+    rider     = order.delivery.rider
+    rider_obj = getattr(rider, 'rider', rider)   # handles RiderProfile → User
+
+    # Get rider's MoMo number
+    rider_phone = (
+        getattr(rider_obj, 'momo_number', None)
+        or getattr(rider_obj, 'phone', None)
+        or getattr(rider,     'phone', None)
+        or ''
+    )
+
+    if not rider_phone or rider_payout <= 0:
+        log.warning('[FoodPayout] Rider payout skipped for %s — no phone or zero amount',
+                    order.order_ref)
+        return
+
+    ok = _hubtel_transfer(
+        phone       = rider_phone,
+        amount      = rider_payout,
+        reference   = f'RIDER-{order.order_ref}',
+        description = (f'Lynctel rider payout order {order.order_ref}'
+                       f' — 95% of GHS {delivery_fee} delivery fee'),
+    )
+    if ok:
+        log.info('[FoodPayout] Rider paid GHS %.2f for order %s',
+                 rider_payout, order.order_ref)
+    else:
+        log.error('[FoodPayout] Rider payout FAILED for %s — '
+                  'GHS %.2f to %s. Manual needed.',
+                  order.order_ref, rider_payout, rider_phone)
+
+
 def _mark_food_paid(fp, order, gateway_ref, gateway_data):
     with transaction.atomic():
         fp.status = FoodPayment.Status.SUCCESS
@@ -1111,18 +1325,10 @@ def _mark_food_paid(fp, order, gateway_ref, gateway_data):
         order.status         = FoodOrder.Status.CONFIRMED
         order.confirmed_at   = timezone.now()
         order.save(update_fields=['payment_status', 'status', 'confirmed_at'])
-        if _HAS_VENDOR_EARNING and FoodVendorEarning is not None and order.vendor:
-            gross = Decimal(str(order.subtotal))
-            FoodVendorEarning.objects.get_or_create(
-                food_order=order,
-                defaults={
-                    'vendor': order.vendor,
-                    'gross_amount': gross,
-                    'app_commission': (gross * FOOD_APP_SHARE).quantize(Decimal('0.01')),
-                    'vendor_payout':  (gross * FOOD_VENDOR_SHARE).quantize(Decimal('0.01')),
-                    'status': 'pending',
-                }
-            )
+
+    # Earnings were already recorded at checkout() time.
+    # For Hubtel prepaid: send actual MoMo transfers now.
+    _disburse_food_payouts(order)
     try:
         from delivery.services import auto_assign_for_food_order
         auto_assign_for_food_order(order)
