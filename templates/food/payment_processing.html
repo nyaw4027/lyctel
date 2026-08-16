@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Processing Payment — Lynctel Food{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center" style="max-width:520px">
+  <div class="mb-4 position-relative" style="width:80px;height:80px;margin:0 auto">
+    <div style="width:80px;height:80px;border:5px solid #f3f4f6;border-top-color:#F5A623;
+                border-radius:50%;animation:spin 1s linear infinite"></div>
+    <div class="position-absolute top-50 start-50 translate-middle" style="font-size:1.6rem">🍽️</div>
+  </div>
+  <h1 class="h4 fw-bold text-navy mb-2" style="font-family:'Syne',sans-serif">Confirming your payment</h1>
+  <p class="text-muted small mb-4">
+    Order <strong>{{ order.order_ref }}</strong> — please wait while Hubtel confirms your payment.
+    <br/><strong>Do not close this page.</strong>
+  </p>
+  <div class="alert alert-info rounded-3 small">
+    If you paid with MoMo, check your phone for a confirmation message.
+    This page updates automatically.
+  </div>
+</div>
+<style>@keyframes spin { to { transform:rotate(360deg); } }</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const url = '{{ poll_url|escapejs }}';
+  let elapsed = 0, interval = 3000, max = 120000;
+  function check() {
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.paid && d.redirect) { window.location.href = d.redirect; return; }
+        elapsed += interval;
+        if (elapsed < max) setTimeout(check, interval);
+        else {
+          document.querySelector('h1').textContent = 'This is taking longer than usual…';
+          document.querySelector('.alert').innerHTML =
+            'Your payment may still be processing. ' +
+            '<a href="{% url "food:order_history" %}" class="alert-link">Check My Orders →</a>';
+        }
+      }).catch(() => elapsed < max && setTimeout(check, interval));
+  }
+  setTimeout(check, interval);
+})();
+</script>
+{% endblock %}

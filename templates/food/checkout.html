@@ -4,16 +4,13 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  .network-btn {
-    border: 2px solid #e5e7eb; border-radius: 12px; padding: 14px;
-    background: white; cursor: pointer; transition: all .15s;
-    text-align: left; width: 100%;
-  }
-  .network-btn:hover { border-color: #0F1B2D; }
-  .network-btn.selected { border-color: #F5A623; background: #FFFBF0; }
-  .network-btn input[type="radio"] { display: none; }
-  .network-logo { width: 36px; height: 36px; border-radius: 8px; object-fit: contain; }
+  #delivery-map { height:280px; border-radius:14px; border:2px solid #e5e7eb; z-index:0; }
+  .network-card { border:2px solid #e5e7eb; border-radius:12px; padding:12px 14px;
+    background:white; cursor:pointer; transition:all .15s; }
+  .network-card.selected, .network-card:has(input:checked) { border-color:#F5A623; background:#FFFBF0; }
+  .network-card input[type=radio] { display:none; }
 </style>
 {% endblock %}
 
@@ -21,177 +18,162 @@
 <div class="container-xl px-3 py-4">
   <div class="row g-4">
 
-    <!-- ── Left: form ──────────────────────────────────────── -->
+    <!-- ── Left: checkout form ──────────────────────────────── -->
     <div class="col-lg-8">
       <h1 class="h5 mb-4 font-display fw-bold text-navy">Checkout</h1>
 
-      <!--
-        FIXES:
-        1. action was food:place_order — URL does not exist.
-           The checkout view handles both GET (display) and POST (place order).
-        2. item.product.name → item.food.name (food cart items use .food FK).
-        3. food:cart back-link replaced with food:home (food:cart HTML view
-           is not a registered named URL in food/urls.py).
-        UPGRADE: MoMo network selection added so customers can specify
-           MTN / Telecel / AirtelTigo when paying by MoMo.
-      -->
       <form method="post" action="{% url 'food:checkout' %}" id="checkout-form">
         {% csrf_token %}
+        <!-- Hidden fields populated by the map -->
+        <input type="hidden" name="delivery_lat"  id="delivery-lat-input"/>
+        <input type="hidden" name="delivery_lng"  id="delivery-lng-input"/>
+        <input type="hidden" name="delivery_fee"  id="delivery-fee-input" value="{{ default_fee }}"/>
+        <input type="hidden" name="distance_km"   id="distance-km-input" value="0"/>
 
-        <!-- Delivery details -->
+        <!-- Delivery address + MAP ─────────────────────── -->
         <div class="card border-0 shadow-sm rounded-3 mb-3">
           <div class="card-body p-4">
-            <h2 class="h6 fw-bold text-navy mb-3">📍 Delivery Address</h2>
+            <h2 class="h6 fw-bold text-navy mb-3">📍 Delivery Location</h2>
+
+            <p class="small text-muted mb-3">
+              Tap anywhere on the map to drop a pin at your delivery location.
+              Your address will fill in automatically.
+            </p>
+
+            <!-- Map -->
+            <div id="delivery-map" class="mb-3"></div>
+
+            {% if errors.location %}
+            <div class="alert alert-danger small py-2 mb-3">{{ errors.location }}</div>
+            {% endif %}
+
+            <!-- Address (auto-filled from reverse geocode, editable) -->
             <div class="mb-3">
-              <label for="checkout-address" class="form-label small fw-semibold text-navy">
-                Street address *
+              <label for="delivery-address" class="form-label small fw-semibold">
+                Delivery address *
               </label>
-              <input id="checkout-address" name="address" class="form-control rounded-3"
-                     placeholder="e.g. 14 Ring Road, East Legon"
-                     value="{{ address|default:'' }}" required/>
+              <input id="delivery-address" name="delivery_address"
+                     class="form-control rounded-3{% if errors.address %} is-invalid{% endif %}"
+                     placeholder="Your delivery address (auto-filled from map)"
+                     value="{{ request.POST.delivery_address|default:'' }}" required/>
+              {% if errors.address %}
+              <div class="invalid-feedback">{{ errors.address }}</div>
+              {% endif %}
             </div>
+
             <div class="mb-0">
-              <label for="checkout-notes" class="form-label small fw-semibold text-navy">
-                Order notes <span class="text-muted fw-normal">(optional)</span>
+              <label for="delivery-phone" class="form-label small fw-semibold">
+                Phone number *
               </label>
-              <input id="checkout-notes" name="notes" class="form-control rounded-3"
-                     placeholder="Any special instructions for the kitchen or rider"
-                     value="{{ notes|default:'' }}"/>
+              <input id="delivery-phone" name="delivery_phone" type="tel"
+                     class="form-control rounded-3{% if errors.phone %} is-invalid{% endif %}"
+                     placeholder="0241234567"
+                     value="{{ request.POST.delivery_phone|default:user.phone|default:'' }}" required/>
+              {% if errors.phone %}
+              <div class="invalid-feedback">{{ errors.phone }}</div>
+              {% endif %}
             </div>
           </div>
         </div>
 
-        <!-- Payment method -->
+        <!-- Delivery fee estimate ──────────────────────── -->
+        <div class="card border-0 shadow-sm rounded-3 mb-3">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between small">
+              <span class="text-muted">📦 Estimated delivery fee</span>
+              <span class="fw-bold text-navy" id="fee-display">GHS {{ default_fee }}</span>
+            </div>
+            <p class="text-muted mb-0 mt-1" id="eta-display" style="font-size:.75rem">
+              Pin your location to get an accurate fee.
+            </p>
+          </div>
+        </div>
+
+        <!-- Order note ─────────────────────────────────── -->
+        <div class="card border-0 shadow-sm rounded-3 mb-3">
+          <div class="card-body p-4">
+            <label for="delivery-note" class="form-label small fw-semibold text-navy">
+              Order notes <span class="text-muted fw-normal">(optional)</span>
+            </label>
+            <input id="delivery-note" name="delivery_note"
+                   class="form-control rounded-3"
+                   placeholder="Any special instructions for the kitchen or rider"/>
+          </div>
+        </div>
+
+        <!-- Payment method ─────────────────────────────── -->
         <div class="card border-0 shadow-sm rounded-3 mb-4">
           <div class="card-body p-4">
-            <h2 class="h6 fw-bold text-navy mb-3">💳 Payment Method</h2>
-
-            <!-- Cash -->
-            <div class="form-check mb-3 p-3 rounded-3 border" style="background:#f9fafb">
-              <input class="form-check-input" type="radio" name="payment_method"
-                     id="pay-cash" value="cash" checked
-                     onchange="toggleMoMoFields(false)"/>
-              <label class="form-check-label fw-semibold" for="pay-cash">
-                💵 Cash on Delivery
-                <span class="d-block small text-muted fw-normal mt-1">
-                  Pay the rider when your order arrives.
-                </span>
-              </label>
-            </div>
-
-            <!-- MoMo -->
-            <div class="form-check p-3 rounded-3 border" style="background:#f9fafb">
-              <input class="form-check-input" type="radio" name="payment_method"
-                     id="pay-momo" value="momo"
-                     onchange="toggleMoMoFields(true)"/>
-              <label class="form-check-label fw-semibold" for="pay-momo">
-                📱 Mobile Money (MoMo)
-                <span class="d-block small text-muted fw-normal mt-1">
-                  Prepay via MTN, Telecel or AirtelTigo.
-                </span>
-              </label>
-            </div>
-
-            <!-- MoMo network + number (hidden until MoMo is selected) -->
-            <div id="momo-fields" class="mt-3" style="display:none">
-              <p class="small fw-semibold text-navy mb-2">Select your network:</p>
-              <div class="row g-2 mb-3">
-                <div class="col-4">
-                  <label class="network-btn d-flex align-items-center gap-2">
-                    <input type="radio" name="momo_network" value="mtn"/>
-                    <span class="fw-bold small text-navy flex-grow-1">MTN MoMo</span>
-                    <span class="flex-shrink-0" style="font-size:1.25rem">📱</span>
-                  </label>
+            <h2 class="h6 fw-bold text-navy mb-3">💳 Payment</h2>
+            <div class="d-flex flex-column gap-2">
+              <label class="network-card d-flex align-items-center gap-3">
+                <input type="radio" name="payment_method" value="cash" checked/>
+                <span style="font-size:1.5rem">💵</span>
+                <div>
+                  <p class="fw-semibold text-navy mb-0 small">Cash on Delivery</p>
+                  <p class="text-muted mb-0" style="font-size:.75rem">Pay the rider when your food arrives.</p>
                 </div>
-                <div class="col-4">
-                  <label class="network-btn d-flex align-items-center gap-2">
-                    <input type="radio" name="momo_network" value="telecel"/>
-                    <span class="fw-bold small text-navy flex-grow-1">Telecel Cash</span>
-                    <span class="flex-shrink-0" style="font-size:1.25rem">📱</span>
-                  </label>
-                </div>
-                <div class="col-4">
-                  <label class="network-btn d-flex align-items-center gap-2">
-                    <input type="radio" name="momo_network" value="airteltigo"/>
-                    <span class="fw-bold small text-navy flex-grow-1">AirtelTigo</span>
-                    <span class="flex-shrink-0" style="font-size:1.25rem">📱</span>
-                  </label>
-                </div>
-              </div>
-              <label for="momo-number" class="form-label small fw-semibold text-navy">
-                MoMo Number
               </label>
-              <input id="momo-number" type="tel" name="momo_number"
-                     class="form-control rounded-3"
-                     placeholder="0241234567"
-                     pattern="[0-9]{10}"
-                     maxlength="10"/>
-              <div class="form-text">Enter the 10-digit number linked to your MoMo wallet.</div>
+              <label class="network-card d-flex align-items-center gap-3">
+                <input type="radio" name="payment_method" value="momo_on_delivery"/>
+                <span style="font-size:1.5rem">📱</span>
+                <div>
+                  <p class="fw-semibold text-navy mb-0 small">MoMo on Delivery</p>
+                  <p class="text-muted mb-0" style="font-size:.75rem">Send MoMo to the rider at your door.</p>
+                </div>
+              </label>
+              <label class="network-card d-flex align-items-center gap-3">
+                <input type="radio" name="payment_method" value="momo_prepaid"/>
+                <span style="font-size:1.5rem">🔒</span>
+                <div>
+                  <p class="fw-semibold text-navy mb-0 small">Pay Now with Hubtel</p>
+                  <p class="text-muted mb-0" style="font-size:.75rem">Prepay securely. Rider assigned immediately after confirmation.</p>
+                </div>
+              </label>
             </div>
           </div>
         </div>
 
-        <!-- Actions -->
-        <div class="d-flex gap-2">
-          <a href="{% url 'food:home' %}" class="btn btn-outline-secondary rounded-3 px-4">
-            ← Back
-          </a>
-          <button type="submit" id="checkout-submit"
-                  class="btn fw-bold rounded-3 px-5 flex-grow-1"
-                  style="background:#0F1B2D;color:white"
-                  {% if not cart_items %}disabled{% endif %}>
-            Place Order
-          </button>
-        </div>
+        <button type="submit" id="place-order-btn"
+                class="btn w-100 fw-bold rounded-3 py-3"
+                style="background:#0F1B2D;color:white">
+          Place Order →
+        </button>
       </form>
     </div>
 
-    <!-- ── Right: order summary ─────────────────────────────── -->
+    <!-- ── Right: order summary ───────────────────────────── -->
     <aside class="col-lg-4">
       <div class="card border-0 shadow-sm rounded-3 p-4 sticky-top" style="top:80px">
-        <h2 class="h6 fw-bold text-navy mb-3">Order Summary</h2>
+        <h2 class="h6 fw-bold text-navy mb-3">
+          {% if cart_vendor %}{{ cart_vendor.name }}{% else %}Order Summary{% endif %}
+        </h2>
 
-        <ul class="list-unstyled mb-3">
+        <ul class="list-unstyled small mb-3">
           {% for item in cart_items %}
-          <li class="d-flex align-items-start gap-2 mb-2">
-            <!-- FIXED: was item.product.name — food cart uses item.food.name -->
-            {% if item.food.image %}
-            <img src="{{ item.food.image.url }}" alt=""
-                 class="rounded-2 object-fit-cover flex-shrink-0"
-                 style="width:40px;height:40px"/>
-            {% else %}
-            <div class="rounded-2 bg-light d-flex align-items-center justify-content-center flex-shrink-0"
-                 style="width:40px;height:40px;font-size:1.1rem">🍽️</div>
-            {% endif %}
-            <div class="flex-grow-1 min-w-0">
-              <p class="small fw-semibold text-navy mb-0 text-truncate">{{ item.food.name }}</p>
-              <p class="text-muted mb-0" style="font-size:.75rem">× {{ item.quantity }}</p>
-            </div>
-            <span class="small fw-bold text-navy flex-shrink-0">
-              GHS {{ item.total_price|floatformat:2 }}
+          <li class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <span class="text-muted text-truncate">{{ item.food.name }} × {{ item.quantity }}</span>
+            <span class="fw-semibold text-navy flex-shrink-0">
+              GHS {{ item.subtotal|floatformat:2 }}
             </span>
           </li>
           {% empty %}
-          <li class="small text-muted">Your cart is empty.</li>
+          <li class="text-muted small">Your cart is empty.</li>
           {% endfor %}
         </ul>
 
         <hr class="my-2"/>
         <div class="d-flex justify-content-between small text-muted mb-1">
-          <span>Subtotal</span><span>GHS {{ cart_subtotal|floatformat:2 }}</span>
+          <span>Subtotal</span>
+          <span>GHS {{ cart_subtotal|floatformat:2 }}</span>
         </div>
         <div class="d-flex justify-content-between small text-muted mb-2">
-          <span>Delivery</span><span>GHS {{ delivery_fee|floatformat:2 }}</span>
+          <span>Delivery</span>
+          <span id="sidebar-fee">GHS {{ delivery_fee|floatformat:2 }}</span>
         </div>
-        <div class="d-flex justify-content-between fw-bold text-navy fs-6">
-          <span>Total</span><span>GHS {{ cart_total|floatformat:2 }}</span>
-        </div>
-
-        <div class="mt-3 pt-3 border-top d-flex align-items-center gap-2">
-          <span style="font-size:1.1rem">🔒</span>
-          <p class="small text-muted mb-0" style="font-size:.75rem">
-            Payments secured by Hubtel. We never store card details.
-          </p>
+        <div class="d-flex justify-content-between fw-bold text-navy">
+          <span>Total</span>
+          <span id="sidebar-total">GHS {{ cart_total|floatformat:2 }}</span>
         </div>
       </div>
     </aside>
@@ -201,30 +183,111 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/food.js' %}"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', Food.init);
+const LOCATIONIQ_KEY = '{{ locationiq_key|escapejs }}';
+const VENDOR_LAT     = {{ vendor_lat|default:"5.6037" }};
+const VENDOR_LNG     = {{ vendor_lng|default:"-0.1870" }};
+const PRICE_API_URL  = '{% url "food:price_estimate" %}';
+const SUBTOTAL       = {{ cart_subtotal|default:"0" }};
 
-function toggleMoMoFields(show) {
-  var el = document.getElementById('momo-fields');
-  if (el) el.style.display = show ? 'block' : 'none';
-  var numInput = document.getElementById('momo-number');
-  if (numInput) numInput.required = show;
-}
+// ── Map initialisation ────────────────────────────────────────
+const map = L.map('delivery-map', { zoomControl: true }).setView([VENDOR_LAT, VENDOR_LNG], 14);
 
-// Network button highlight
-document.querySelectorAll('.network-btn input[type=radio]').forEach(function(r) {
-  r.addEventListener('change', function() {
-    document.querySelectorAll('.network-btn').forEach(function(b) { b.classList.remove('selected'); });
-    this.closest('.network-btn').classList.add('selected');
-  });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 19,
+}).addTo(map);
+
+// Restaurant marker
+L.marker([VENDOR_LAT, VENDOR_LNG], {
+  icon: L.divIcon({ className: '', html: '<div style="background:#F5A623;color:#0F1B2D;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)">🍴</div>', iconSize:[28,28] })
+}).addTo(map).bindPopup('Restaurant pickup');
+
+// Customer drop pin
+let dropMarker = null;
+const latIn  = document.getElementById('delivery-lat-input');
+const lngIn  = document.getElementById('delivery-lng-input');
+const feeIn  = document.getElementById('delivery-fee-input');
+const distIn = document.getElementById('distance-km-input');
+
+map.on('click', function (e) {
+  const { lat, lng } = e.latlng;
+  placeDropPin(lat, lng);
 });
 
-// Prevent double submit
-document.getElementById('checkout-form').addEventListener('submit', function() {
-  var btn = document.getElementById('checkout-submit');
+function placeDropPin(lat, lng) {
+  if (dropMarker) map.removeLayer(dropMarker);
+  dropMarker = L.marker([lat, lng], {
+    icon: L.divIcon({ className: '', html: '<div style="background:#ef4444;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)">📍</div>', iconSize:[28,28] }),
+    draggable: true,
+  }).addTo(map).bindPopup('Your delivery location').openPopup();
+
+  dropMarker.on('dragend', function (e) {
+    const p = e.target.getLatLng();
+    placeDropPin(p.lat, p.lng);
+  });
+
+  latIn.value = lat.toFixed(6);
+  lngIn.value = lng.toFixed(6);
+
+  // Reverse geocode
+  if (LOCATIONIQ_KEY) {
+    fetch(`https://us1.locationiq.com/v1/reverse.php?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.display_name) {
+          document.getElementById('delivery-address').value = d.display_name;
+        }
+      }).catch(() => {});
+  }
+
+  // Get delivery fee estimate
+  if (VENDOR_LAT && VENDOR_LNG) {
+    fetch(`${PRICE_API_URL}?vlat=${VENDOR_LAT}&vlng=${VENDOR_LNG}&dlat=${lat}&dlng=${lng}&prep=20`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          const fee   = parseFloat(d.fee);
+          const total = (SUBTOTAL + fee).toFixed(2);
+          document.getElementById('fee-display').textContent     = 'GHS ' + fee.toFixed(2);
+          document.getElementById('eta-display').textContent     = '⏱ Est. delivery: ' + d.eta_minutes + ' mins · ' + d.distance_km + ' km away';
+          document.getElementById('sidebar-fee').textContent     = 'GHS ' + fee.toFixed(2);
+          document.getElementById('sidebar-total').textContent   = 'GHS ' + total;
+          feeIn.value  = fee.toFixed(2);
+          distIn.value = d.distance_km;
+        }
+      }).catch(() => {});
+  }
+
+  // Draw line between restaurant and customer
+  if (window._routeLine) map.removeLayer(window._routeLine);
+  window._routeLine = L.polyline([[VENDOR_LAT, VENDOR_LNG], [lat, lng]], {
+    color: '#F5A623', weight: 2, dashArray: '6 4', opacity: .7,
+  }).addTo(map);
+  map.fitBounds([[VENDOR_LAT, VENDOR_LNG], [lat, lng]], { padding: [30, 30] });
+}
+
+// Try geolocation on load
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    placeDropPin(pos.coords.latitude, pos.coords.longitude);
+  }, function () {}, { timeout: 5000 });
+}
+
+// Submit guard
+document.getElementById('checkout-form').addEventListener('submit', function () {
+  const btn = document.getElementById('place-order-btn');
   btn.disabled = true;
   btn.textContent = 'Placing order…';
+});
+
+// Network card visual selection
+document.querySelectorAll('.network-card').forEach(function (card) {
+  card.addEventListener('click', function () {
+    document.querySelectorAll('.network-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+  });
 });
 </script>
 {% endblock %}

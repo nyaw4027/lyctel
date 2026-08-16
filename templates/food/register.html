@@ -1,62 +1,223 @@
 {% extends "base.html" %}
 {% load i18n static %}
 {% block title %}Register Restaurant — Lynctel Food{% endblock %}
+
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  #register-map { height:320px; border-radius:14px; border:2px solid #e5e7eb; }
+  .form-section { background:white; border-radius:16px; padding:24px;
+                  box-shadow:0 1px 4px rgba(0,0,0,.06); margin-bottom:16px; }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="container-md px-3 py-5">
-  <div class="card p-4">
-    <h1 class="h5 mb-3 font-display">Register your restaurant</h1>
+<div class="container-xl px-3 py-4" style="max-width:780px">
+  <h1 class="h4 font-display fw-bold text-navy mb-1">Register your Restaurant</h1>
+  <p class="text-muted mb-4 small">Fill in your details and drop a pin on the map to get started.</p>
 
-    {% if messages %}
-    <div class="mb-3" role="status" aria-live="polite">
-      {% for message in messages %}
-      <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %} rounded-3">{{ message }}</div>
-      {% endfor %}
+  {% if errors.general %}
+  <div class="alert alert-danger rounded-3 mb-4">{{ errors.general }}</div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" action="{% url 'food:register' %}">
+    {% csrf_token %}
+    <!-- Hidden lat/lng fields filled by the map -->
+    <input type="hidden" name="latitude"  id="lat-input"  value="{{ form_data.latitude|default:'' }}"/>
+    <input type="hidden" name="longitude" id="lng-input"  value="{{ form_data.longitude|default:'' }}"/>
+
+    <!-- Basic info -->
+    <div class="form-section">
+      <h2 class="h6 fw-bold text-navy mb-3">🍽️ Basic Information</h2>
+      <div class="row g-3">
+        <div class="col-md-7">
+          <label class="form-label small fw-semibold">Restaurant Name *</label>
+          <input name="name" class="form-control rounded-3{% if errors.name %} is-invalid{% endif %}"
+                 value="{{ form_data.name|default:'' }}" required placeholder="e.g. Mama's Kitchen"/>
+          {% if errors.name %}<div class="invalid-feedback">{{ errors.name }}</div>{% endif %}
+        </div>
+        <div class="col-md-5">
+          <label class="form-label small fw-semibold">Cuisine Type *</label>
+          <select name="cuisine" class="form-select rounded-3{% if errors.cuisine %} is-invalid{% endif %}" required>
+            <option value="">Select cuisine…</option>
+            {% for val, label in cuisines %}
+            <option value="{{ val }}" {% if form_data.cuisine == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          {% if errors.cuisine %}<div class="invalid-feedback">{{ errors.cuisine }}</div>{% endif %}
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Description</label>
+          <textarea name="description" class="form-control rounded-3" rows="2"
+                    placeholder="Tell customers what makes your food special">{{ form_data.description|default:'' }}</textarea>
+        </div>
+      </div>
     </div>
-    {% endif %}
 
-    <form method="post" action="{% url 'food:register' %}" enctype="multipart/form-data" id="register-form">
-      {% csrf_token %}
-      <div class="mb-3">
-        <label for="reg-name" class="form-label">Restaurant name</label>
-        <input id="reg-name" name="name" class="form-control" required>
+    <!-- Location + Map -->
+    <div class="form-section">
+      <h2 class="h6 fw-bold text-navy mb-2">📍 Restaurant Location</h2>
+      <p class="small text-muted mb-3">
+        Tap the map to pin your exact location. This is used to calculate delivery distances and fees.
+      </p>
+
+      <div id="register-map" class="mb-3"></div>
+
+      {% if errors.location %}
+      <div class="alert alert-danger small py-2 mb-3">{{ errors.location }}</div>
+      {% endif %}
+
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label small fw-semibold">Street Address *</label>
+          <input name="address" id="address-input"
+                 class="form-control rounded-3{% if errors.address %} is-invalid{% endif %}"
+                 value="{{ form_data.address|default:'' }}" required
+                 placeholder="e.g. 14 Ring Road, East Legon"/>
+          {% if errors.address %}<div class="invalid-feedback">{{ errors.address }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">City</label>
+          <input name="city" class="form-control rounded-3"
+                 value="{{ form_data.city|default:'Accra' }}" placeholder="Accra"/>
+        </div>
       </div>
-      <div class="mb-3">
-        <label for="reg-city" class="form-label">City</label>
-        <input id="reg-city" name="city" class="form-control" required>
-      </div>
-      <div class="mb-3 row g-2">
+    </div>
+
+    <!-- Contact -->
+    <div class="form-section">
+      <h2 class="h6 fw-bold text-navy mb-3">📞 Contact</h2>
+      <div class="row g-3">
         <div class="col-md-6">
-          <label for="reg-banner" class="form-label">Banner (optional)</label>
-          <input id="reg-banner" type="file" name="banner" accept="image/*" class="form-control form-control-sm">
+          <label class="form-label small fw-semibold">Phone *</label>
+          <input name="phone" type="tel"
+                 class="form-control rounded-3{% if errors.phone %} is-invalid{% endif %}"
+                 value="{{ form_data.phone|default:'' }}" required placeholder="0241234567"/>
+          {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
         </div>
         <div class="col-md-6">
-          <label for="reg-logo" class="form-label">Logo (optional)</label>
-          <input id="reg-logo" type="file" name="logo" accept="image/*" class="form-control form-control-sm">
+          <label class="form-label small fw-semibold">WhatsApp</label>
+          <input name="whatsapp" type="tel" class="form-control rounded-3"
+                 value="{{ form_data.whatsapp|default:'' }}" placeholder="0241234567"/>
         </div>
       </div>
-      <div class="mb-3">
-        <label for="reg-min-order" class="form-label">Minimum order (GHS)</label>
-        <input id="reg-min-order" name="min_order" type="number" min="0" step="0.01" class="form-control" value="0">
+    </div>
+
+    <!-- Hours & Pricing -->
+    <div class="form-section">
+      <h2 class="h6 fw-bold text-navy mb-3">⏰ Hours & Pricing</h2>
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <label class="form-label small fw-semibold">Opening Time</label>
+          <input name="opening_time" type="time" class="form-control rounded-3"
+                 value="{{ form_data.opening_time|default:'08:00' }}"/>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small fw-semibold">Closing Time</label>
+          <input name="closing_time" type="time" class="form-control rounded-3"
+                 value="{{ form_data.closing_time|default:'22:00' }}"/>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small fw-semibold">Min Order (GHS)</label>
+          <input name="min_order" type="number" step="0.01" min="0" class="form-control rounded-3"
+                 value="{{ form_data.min_order|default:'10' }}"/>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small fw-semibold">Avg Prep Time (min)</label>
+          <input name="avg_prep_time" type="number" min="0" class="form-control rounded-3"
+                 value="{{ form_data.avg_prep_time|default:'20' }}"/>
+        </div>
       </div>
-      <button type="submit" id="reg-submit" class="btn btn-navy">Register</button>
-    </form>
-  </div>
+    </div>
+
+    <!-- Branding -->
+    <div class="form-section">
+      <h2 class="h6 fw-bold text-navy mb-3">🖼️ Logo & Banner</h2>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Logo</label>
+          <input name="logo" type="file" class="form-control rounded-3" accept="image/*"/>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Banner</label>
+          <input name="banner" type="file" class="form-control rounded-3" accept="image/*"/>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn w-100 fw-bold rounded-3 py-3"
+            style="background:#0F1B2D;color:white">
+      Register Restaurant →
+    </button>
+  </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  var regForm = document.getElementById('register-form');
-  if (regForm) {
-    regForm.addEventListener('submit', function () {
-      var btn = document.getElementById('reg-submit');
-      btn.disabled = true;
-      btn.textContent = 'Registering…';
-    });
+const LOCATIONIQ_KEY = '{{ locationiq_key|escapejs }}';
+
+// Default to Accra, Ghana
+const map = L.map('register-map').setView([5.6037, -0.1870], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom: 19,
+}).addTo(map);
+
+const latInput  = document.getElementById('lat-input');
+const lngInput  = document.getElementById('lng-input');
+const addrInput = document.getElementById('address-input');
+let pin = null;
+
+// Restore existing pin if lat/lng already set
+const existLat = parseFloat(latInput.value);
+const existLng = parseFloat(lngInput.value);
+if (existLat && existLng) {
+  placePin(existLat, existLng);
+  map.setView([existLat, existLng], 16);
+}
+
+map.on('click', function (e) {
+  placePin(e.latlng.lat, e.latlng.lng);
+});
+
+function placePin(lat, lng) {
+  if (pin) map.removeLayer(pin);
+  pin = L.marker([lat, lng], {
+    icon: L.divIcon({ className:'', html:'<div style="background:#F5A623;color:#0F1B2D;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.3)">🍴</div>', iconSize:[32,32] }),
+    draggable: true,
+  }).addTo(map).bindPopup('Your restaurant').openPopup();
+
+  pin.on('dragend', function (e) {
+    const p = e.target.getLatLng();
+    placePin(p.lat, p.lng);
+  });
+
+  latInput.value = lat.toFixed(6);
+  lngInput.value = lng.toFixed(6);
+
+  if (LOCATIONIQ_KEY) {
+    fetch(`https://us1.locationiq.com/v1/reverse.php?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.display_name && !addrInput.value) {
+          addrInput.value = d.display_name;
+        }
+      }).catch(() => {});
   }
+}
+
+// Try geolocation on load if no existing pin
+if (!existLat || !existLng) {
+  navigator.geolocation && navigator.geolocation.getCurrentPosition(
+    function (pos) {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      placePin(lat, lng);
+      map.setView([lat, lng], 16);
+    }, function () {}, { timeout: 5000 }
+  );
+}
 </script>
 {% endblock %}

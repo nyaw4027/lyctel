@@ -26,7 +26,7 @@
       </div>
       <div class="mb-3">
         <label for="set-hours" class="form-label">Opening hours</label>
-        <input id="set-hours" name="opening_hours" class="form-control" value="{{ vendor.opening_hours }}" placeholder="e.g. Mon–Sat 9am–9pm">
+        <input id="set-hours" name="opening_hours" class="form-control" value="{{ vendor.opening_time|default:restaurant.opening_time }}" placeholder="e.g. Mon–Sat 9am–9pm">
       </div>
       <div class="mb-3">
         <label for="set-status" class="form-label">Status</label>
