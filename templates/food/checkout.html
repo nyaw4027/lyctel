@@ -5,433 +5,414 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  /* ── Uber-style location bar ─────────────────────────────── */
-  .loc-bar {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 4px 24px rgba(0,0,0,.12);
-    overflow: hidden;
-  }
-  .loc-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    border-bottom: 1px solid #f3f4f6;
-    cursor: pointer;
-  }
-  .loc-row:last-child { border-bottom: none; }
-  .loc-dot {
-    width: 12px; height: 12px; border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .loc-dot.pickup   { background: #0F1B2D; }
-  .loc-dot.dropoff  { background: #F5A623; }
-  .loc-connector {
-    width: 2px; height: 20px;
-    background: #e5e7eb; margin-left: 21px;
-  }
+/* ── Map section ─────────────────────────────────────── */
+#map-wrap {
+  position: relative;
+  width: 100%;
+  height: 55vmax;
+  min-height: 280px;
+  max-height: 480px;
+  background: #e5e7eb;
+}
+#delivery-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* Fixed centre pin (Uber style) */
+#map-pin {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -100%);
+  z-index: 500;
+  pointer-events: none;
+  text-align: center;
+  transition: transform .15s ease;
+}
+#map-pin.lifting { transform: translate(-50%, -115%); }
+#map-pin .pin-icon { font-size: 2.6rem; line-height: 1;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,.4)); display: block; }
+#map-pin .pin-dot {
+  width: 10px; height: 5px; background: rgba(0,0,0,.2);
+  border-radius: 50%; margin: 4px auto 0;
+}
+/* GPS button */
+#gps-btn {
+  position: absolute; bottom: 12px; right: 12px; z-index: 500;
+  background: white; border: none; border-radius: 50%;
+  width: 44px; height: 44px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  font-size: 1.2rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
 
-  /* ── Map ─────────────────────────────────────────────────── */
-  #delivery-map {
-    width: 100%; height: 50vh; min-height: 320px;
-    border-radius: 0; position: relative;
-  }
-  /* Fixed pin in centre of map (Uber style) */
-  #map-pin {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -100%);
-    z-index: 1000;
-    pointer-events: none;
-    transition: transform .1s;
-    text-align: center;
-  }
-  #map-pin .pin-icon {
-    font-size: 2.4rem;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,.35));
-  }
-  #map-pin .pin-shadow {
-    width: 16px; height: 6px;
-    background: rgba(0,0,0,.2);
-    border-radius: 50%;
-    margin: 2px auto 0;
-  }
-  #map-pin.lifting { transform: translate(-50%, -120%); }
+/* ── Location bar ────────────────────────────────────── */
+.loc-bar { background: white; border-radius: 16px;
+           box-shadow: 0 2px 16px rgba(0,0,0,.10); overflow: hidden; }
+.loc-row { display: flex; align-items: center; gap: 12px;
+           padding: 13px 16px; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
+.loc-row:last-child { border-bottom: none; }
+.loc-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.loc-dot.from { background: #0F1B2D; }
+.loc-dot.to   { background: #F5A623; }
+.loc-line { width: 2px; height: 18px; background: #e5e7eb; margin-left: 20px; }
 
-  /* Pickup dot on map */
-  .pickup-marker {
-    background: #0F1B2D; color: white;
-    width: 28px; height: 28px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: .85rem; border: 2px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,.3);
-  }
+/* ── Fare strip ──────────────────────────────────────── */
+.fare-strip {
+  background: #f9fafb; border-radius: 12px; padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.fare-val { font-weight: 700; color: #0F1B2D; }
+.fare-lbl { font-size: .68rem; text-transform: uppercase;
+            letter-spacing: .05em; color: #9ca3af; }
 
-  /* ── Bottom sheet ────────────────────────────────────────── */
-  .bottom-sheet {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: white; border-radius: 20px 20px 0 0;
-    box-shadow: 0 -4px 30px rgba(0,0,0,.15);
-    z-index: 900; padding: 0 0 env(safe-area-inset-bottom);
-    transition: transform .3s ease;
-  }
-  .sheet-handle {
-    width: 40px; height: 4px; background: #e5e7eb;
-    border-radius: 4px; margin: 12px auto 0;
-  }
-  .sheet-body { padding: 16px 20px 20px; }
+/* ── Search overlay ──────────────────────────────────── */
+#search-overlay {
+  position: fixed; inset: 0; background: white;
+  z-index: 2000; display: none; flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+}
+#search-overlay.open { display: flex; }
+.search-hit { padding: 13px 20px; border-bottom: 1px solid #f3f4f6;
+              cursor: pointer; display: flex; align-items: center; gap: 12px; }
+.search-hit:active { background: #f9fafb; }
 
-  /* ── Fare estimate card ──────────────────────────────────── */
-  .fare-card {
-    background: #f9fafb; border-radius: 12px;
-    padding: 12px 16px; margin-bottom: 16px;
-  }
-
-  /* ── Network select ──────────────────────────────────────── */
-  .network-btn {
-    border: 2px solid #e5e7eb; border-radius: 12px;
-    padding: 10px 12px; background: white;
-    cursor: pointer; transition: all .15s; text-align: center;
-    font-size: .8rem; font-weight: 700;
-  }
-  .network-btn.active { border-color: #F5A623; background: #FFFBF0; }
-
-  /* ── Search overlay ──────────────────────────────────────── */
-  #search-overlay {
-    position: fixed; inset: 0; background: white;
-    z-index: 1100; display: none; flex-direction: column;
-  }
-  #search-overlay.visible { display: flex; }
-  .search-result {
-    padding: 14px 20px; border-bottom: 1px solid #f3f4f6;
-    cursor: pointer; display: flex; align-items: center; gap: 12px;
-  }
-  .search-result:hover { background: #f9fafb; }
+/* ── Payment options ─────────────────────────────────── */
+.pay-opt { display: flex; align-items: center; gap: 12px;
+           padding: 13px 16px; border: 1.5px solid #e5e7eb;
+           border-radius: 12px; cursor: pointer; margin-bottom: 8px;
+           transition: border-color .15s; }
+.pay-opt:has(input:checked) { border-color: #F5A623; background: #FFFBF0; }
+.pay-opt input { display: none; }
 </style>
 {% endblock %}
 
 {% block content %}
-{% if cart_vendor %}
-<div class="d-flex align-items-center gap-2 px-3 pt-3 pb-2">
-  {% if cart_vendor.logo %}
-  <img src="{{ cart_vendor.logo.url }}" class="rounded-circle object-fit-cover"
-       style="width:32px;height:32px" alt=""/>
-  {% endif %}
-  <span class="fw-bold text-navy small">{{ cart_vendor.name }}</span>
-</div>
-{% endif %}
 
-<!-- ── Map area ─────────────────────────────────────────── -->
-<div style="position:relative">
+<!-- ── MAP ───────────────────────────────────────────── -->
+<div id="map-wrap">
   <div id="delivery-map"></div>
+
   <!-- Uber-style fixed centre pin -->
   <div id="map-pin">
-    <div class="pin-icon">📍</div>
-    <div class="pin-shadow"></div>
+    <span class="pin-icon">📍</span>
+    <div class="pin-dot"></div>
   </div>
+
+  <!-- GPS button -->
+  <button id="gps-btn" title="Use my location" type="button">📡</button>
 </div>
 
-<!-- ── Search overlay ────────────────────────────────────── -->
+<!-- ── FORM (normal document flow, scrolls below map) ─ -->
+<div class="px-3 py-3" style="background:#f9fafb; min-height:100vh">
+
+  <!-- Pickup → Dropoff bar -->
+  <div class="loc-bar mb-3">
+    <div class="loc-row">
+      <div class="loc-dot from"></div>
+      <div class="min-w-0 flex-grow-1">
+        <div class="fare-lbl">Pickup</div>
+        <div class="fw-semibold text-navy small text-truncate">
+          {{ cart_vendor.name }}{% if cart_vendor.address %} · {{ cart_vendor.address }}{% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="loc-line"></div>
+    <div class="loc-row" onclick="openSearch()">
+      <div class="loc-dot to"></div>
+      <div class="min-w-0 flex-grow-1">
+        <div class="fare-lbl">Your location</div>
+        <div class="small text-truncate" id="dropoff-label" style="color:#6b7280;font-weight:600">
+          Move map pin or tap to search…
+        </div>
+      </div>
+      <span class="text-muted flex-shrink-0" style="font-size:.9rem">🔍</span>
+    </div>
+  </div>
+
+  <!-- Fare strip -->
+  <div class="fare-strip mb-3">
+    <div class="text-center">
+      <div class="fare-lbl">Delivery fee</div>
+      <div class="fare-val" id="fare-val">GHS {{ default_fee }}</div>
+    </div>
+    <div class="text-center">
+      <div class="fare-lbl">Est. time</div>
+      <div class="fare-val" id="eta-val">— min</div>
+    </div>
+    <div class="text-center">
+      <div class="fare-lbl">Distance</div>
+      <div class="fare-val" id="dist-val">— km</div>
+    </div>
+  </div>
+
+  <!-- Order form -->
+  <form method="post" action="{% url 'food:checkout' %}" id="checkout-form"
+        class="card border-0 rounded-3 p-3 shadow-sm">
+    {% csrf_token %}
+    <input type="hidden" name="delivery_lat"     id="dlat" value="5.6037"/>
+    <input type="hidden" name="delivery_lng"     id="dlng" value="-0.1870"/>
+    <input type="hidden" name="delivery_fee"     id="dfee" value="{{ default_fee }}"/>
+    <input type="hidden" name="distance_km"      id="ddist" value="3"/>
+    <input type="hidden" name="delivery_address" id="daddr"/>
+
+    <!-- Phone -->
+    <div class="mb-3">
+      <label class="form-label small fw-bold text-navy">Phone number *</label>
+      <input name="delivery_phone" type="tel" required
+             class="form-control rounded-3{% if errors.phone %} is-invalid{% endif %}"
+             placeholder="0241234567"
+             value="{{ request.POST.delivery_phone|default:request.user.phone|default:'' }}"/>
+      {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
+    </div>
+
+    <!-- Note -->
+    <div class="mb-3">
+      <label class="form-label small fw-bold text-navy">
+        Note <span class="text-muted fw-normal">(optional)</span>
+      </label>
+      <input name="delivery_note" class="form-control rounded-3"
+             placeholder="Instructions for kitchen or rider"/>
+    </div>
+
+    <!-- Payment -->
+    <div class="mb-3">
+      <label class="form-label small fw-bold text-navy">Payment method</label>
+      <label class="pay-opt"><input type="radio" name="payment_method" value="cash" checked/>
+        💵 <span class="fw-semibold small">Cash on Delivery</span>
+      </label>
+      <label class="pay-opt"><input type="radio" name="payment_method" value="momo_on_delivery"/>
+        📱 <span class="fw-semibold small">MoMo on Delivery</span>
+      </label>
+      <label class="pay-opt"><input type="radio" name="payment_method" value="momo_prepaid"/>
+        🔒 <span class="fw-semibold small">Pay Now (Hubtel)</span>
+      </label>
+    </div>
+
+    {% if errors.address %}
+    <div class="alert alert-warning rounded-3 small py-2">{{ errors.address }}</div>
+    {% endif %}
+
+    <!-- Order total -->
+    <div class="d-flex justify-content-between small text-muted mb-1">
+      <span>Subtotal</span>
+      <span>GHS {{ cart_subtotal|floatformat:2 }}</span>
+    </div>
+    <div class="d-flex justify-content-between small text-muted mb-1">
+      <span>Delivery</span>
+      <span id="total-fee">GHS {{ delivery_fee|floatformat:2 }}</span>
+    </div>
+    <div class="d-flex justify-content-between fw-bold text-navy border-top pt-2 mb-3">
+      <span>Total</span>
+      <span id="total-val">GHS {{ cart_total|floatformat:2 }}</span>
+    </div>
+
+    <button type="submit" id="submit-btn"
+            class="btn w-100 fw-bold rounded-3 py-3"
+            style="background:#0F1B2D;color:white;font-size:1rem">
+      Place Order
+    </button>
+    <p id="pin-hint" class="text-center text-muted mt-2 mb-0 small" style="display:none">
+      ⚠ Move the map pin to your delivery location first
+    </p>
+  </form>
+
+</div>
+
+<!-- ── SEARCH OVERLAY ────────────────────────────────── -->
 <div id="search-overlay">
-  <div class="d-flex align-items-center gap-3 px-3 py-3 border-bottom">
-    <button onclick="closeSearch()" class="btn btn-sm btn-light rounded-3">✕</button>
+  <div class="d-flex align-items-center gap-3 px-3 py-3 border-bottom"
+       style="background:white">
+    <button onclick="closeSearch()" class="btn btn-sm btn-light rounded-3 px-3"
+            type="button">✕</button>
     <input id="search-input" type="text" class="form-control rounded-3"
-           placeholder="Search for your location…" autocomplete="off"/>
+           placeholder="Search your location…" autocomplete="off"/>
   </div>
-  <div id="search-results" style="overflow-y:auto;flex:1"></div>
+  <div id="search-results" style="overflow-y:auto;flex:1;background:white"></div>
 </div>
 
-<!-- ── Bottom sheet ──────────────────────────────────────── -->
-<div class="bottom-sheet" id="bottom-sheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-body">
-
-    <!-- Pickup → Dropoff bar -->
-    <div class="loc-bar mb-3">
-      <div class="loc-row" id="pickup-row">
-        <div class="loc-dot pickup"></div>
-        <div class="flex-grow-1 min-w-0">
-          <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Pickup</div>
-          <div class="fw-semibold text-navy small text-truncate" id="pickup-label">
-            {{ cart_vendor.name }}{% if cart_vendor.address %} · {{ cart_vendor.address }}{% endif %}
-          </div>
-        </div>
-      </div>
-      <div class="loc-connector"></div>
-      <div class="loc-row" id="dropoff-row" onclick="openSearch()">
-        <div class="loc-dot dropoff"></div>
-        <div class="flex-grow-1 min-w-0">
-          <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Your location</div>
-          <div class="fw-semibold small text-truncate" id="dropoff-label" style="color:#6b7280">
-            Move map or tap to search…
-          </div>
-        </div>
-        <div class="flex-shrink-0 text-muted" style="font-size:.85rem">🔍</div>
-      </div>
-    </div>
-
-    <!-- Fare estimate -->
-    <div class="fare-card d-flex align-items-center justify-content-between">
-      <div>
-        <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Delivery fee</div>
-        <div class="fw-bold text-navy fs-5" id="fare-display">GHS {{ default_fee }}</div>
-      </div>
-      <div class="text-end">
-        <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Est. time</div>
-        <div class="fw-bold text-navy" id="eta-display">— min</div>
-      </div>
-      <div class="text-end">
-        <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Distance</div>
-        <div class="fw-bold text-navy" id="dist-display">— km</div>
-      </div>
-    </div>
-
-    <!-- Order form -->
-    <form method="post" action="{% url 'food:checkout' %}" id="checkout-form">
-      {% csrf_token %}
-      <input type="hidden" name="delivery_lat"  id="dlat-input"/>
-      <input type="hidden" name="delivery_lng"  id="dlng-input"/>
-      <input type="hidden" name="delivery_fee"  id="dfee-input"  value="{{ default_fee }}"/>
-      <input type="hidden" name="distance_km"   id="ddist-input" value="3"/>
-      <input type="hidden" name="delivery_address" id="daddr-input"/>
-
-      <div class="mb-3">
-        <label class="form-label small fw-semibold text-navy">Phone number *</label>
-        <input name="delivery_phone" type="tel" required
-               class="form-control rounded-3{% if errors.phone %} is-invalid{% endif %}"
-               placeholder="0241234567"
-               value="{{ request.POST.delivery_phone|default:request.user.phone|default:'' }}"/>
-        {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
-      </div>
-
-      <!-- Payment method -->
-      <div class="mb-3">
-        <label class="form-label small fw-semibold text-navy">Payment</label>
-        <div class="d-flex flex-column gap-2">
-          <label class="d-flex align-items-center gap-3 p-3 rounded-3 border" style="cursor:pointer">
-            <input type="radio" name="payment_method" value="cash" checked class="form-check-input mt-0"/>
-            <span>💵 Cash on Delivery</span>
-          </label>
-          <label class="d-flex align-items-center gap-3 p-3 rounded-3 border" style="cursor:pointer">
-            <input type="radio" name="payment_method" value="momo_on_delivery" class="form-check-input mt-0"/>
-            <span>📱 MoMo on Delivery</span>
-          </label>
-          <label class="d-flex align-items-center gap-3 p-3 rounded-3 border" style="cursor:pointer">
-            <input type="radio" name="payment_method" value="momo_prepaid" class="form-check-input mt-0"
-                   id="prepaid-radio"/>
-            <span>🔒 Pay Now with Hubtel</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label small fw-semibold text-navy">
-          Note <span class="fw-normal text-muted">(optional)</span>
-        </label>
-        <input name="delivery_note" class="form-control rounded-3"
-               placeholder="Special instructions for kitchen or rider"/>
-      </div>
-
-      {% if errors.address %}
-      <div class="alert alert-danger small rounded-3 py-2">{{ errors.address }}</div>
-      {% endif %}
-
-      <!-- Order summary -->
-      <div class="d-flex justify-content-between small text-muted mb-1">
-        <span>Subtotal</span>
-        <span>GHS {{ cart_subtotal|floatformat:2 }}</span>
-      </div>
-      <div class="d-flex justify-content-between small text-muted mb-1">
-        <span>Delivery</span>
-        <span id="summary-fee">GHS {{ delivery_fee|floatformat:2 }}</span>
-      </div>
-      <div class="d-flex justify-content-between fw-bold text-navy mb-3">
-        <span>Total</span>
-        <span id="summary-total">GHS {{ cart_total|floatformat:2 }}</span>
-      </div>
-
-      <button type="submit" id="place-btn"
-              class="btn w-100 fw-bold rounded-3 py-3"
-              style="background:#0F1B2D;color:white;font-size:1rem"
-              disabled>
-        Confirm order
-      </button>
-      <p class="text-center text-muted mt-2 mb-0" id="pin-hint" style="font-size:.78rem">
-        ↑ Move the map to set your delivery location
-      </p>
-    </form>
-
-  </div>
-</div>
-
-<!-- Spacer so content isn't behind sheet -->
-<div style="height:72vh"></div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const VENDOR_LAT  = {{ vendor.latitude|default:"5.6037" }};
-const VENDOR_LNG  = {{ vendor.longitude|default:"-0.1870" }};
-const SUBTOTAL    = parseFloat('{{ cart_subtotal|default:"0" }}');
-const PRICE_URL   = '{% url "food:price_estimate" %}';
-const LOCATIONIQ  = '{{ locationiq_key|escapejs }}';
+/* ── Constants from Django ──────────────────────────── */
+var VENDOR_LAT = {{ vendor.latitude|default:"5.6037" }};
+var VENDOR_LNG = {{ vendor.longitude|default:"-0.1870" }};
+var SUBTOTAL   = parseFloat('{{ cart_subtotal|default:"0" }}');
+var PRICE_URL  = '{% url "food:price_estimate" %}';
+var LIQ_KEY    = '{{ locationiq_key|escapejs }}';
 
-// ── Map ─────────────────────────────────────────────────────
-const map = L.map('delivery-map', { zoomControl: false, attributionControl: false })
-             .setView([VENDOR_LAT, VENDOR_LNG], 14);
+/* ── Init map AFTER DOM ready ───────────────────────── */
+document.addEventListener('DOMContentLoaded', function () {
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+  var map = L.map('delivery-map', {
+    zoomControl: true,
+    attributionControl: false,
+  }).setView([VENDOR_LAT, VENDOR_LNG], 14);
 
-// Pickup marker
-const pickupIcon = L.divIcon({
-  className: '',
-  html: '<div class="pickup-marker">🍴</div>',
-  iconSize: [28, 28], iconAnchor: [14, 14],
-});
-L.marker([VENDOR_LAT, VENDOR_LNG], { icon: pickupIcon })
- .addTo(map)
- .bindPopup('{{ cart_vendor.name|escapejs }}');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+  }).addTo(map);
 
-// ── Pin in centre ────────────────────────────────────────────
-const pin        = document.getElementById('map-pin');
-const dlatInput  = document.getElementById('dlat-input');
-const dlngInput  = document.getElementById('dlng-input');
-const dfeeInput  = document.getElementById('dfee-input');
-const ddistInput = document.getElementById('ddist-input');
-const daddrInput = document.getElementById('daddr-input');
-const placeBtn   = document.getElementById('place-btn');
-const pinHint    = document.getElementById('pin-hint');
+  /* Pickup marker */
+  var pickupIcon = L.divIcon({
+    className: '',
+    html: '<div style="background:#0F1B2D;color:white;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)">🍴</div>',
+    iconSize: [30, 30], iconAnchor: [15, 15],
+  });
+  L.marker([VENDOR_LAT, VENDOR_LNG], { icon: pickupIcon })
+   .addTo(map)
+   .bindPopup('{{ cart_vendor.name|escapejs }}');
 
-let debounceTimer = null;
-let confirmed     = false;
+  /* Pin + form inputs */
+  var pin   = document.getElementById('map-pin');
+  var dlat  = document.getElementById('dlat');
+  var dlng  = document.getElementById('dlng');
+  var dfee  = document.getElementById('dfee');
+  var ddist = document.getElementById('ddist');
+  var daddr = document.getElementById('daddr');
+  var btn   = document.getElementById('submit-btn');
 
-function onMapMove() {
-  pin.classList.add('lifting');
-  confirmed = false;
-  placeBtn.disabled = true;
-}
-
-function onMapMoveEnd() {
-  pin.classList.remove('lifting');
-  const c = map.getCenter();
-  dlatInput.value = c.lat.toFixed(6);
-  dlngInput.value = c.lng.toFixed(6);
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(function() {
+  /* Map move handlers */
+  map.on('movestart zoomstart', function () {
+    if (pin) pin.classList.add('lifting');
+  });
+  map.on('moveend zoomend', function () {
+    if (pin) pin.classList.remove('lifting');
+    var c = map.getCenter();
+    dlat.value = c.lat.toFixed(6);
+    dlng.value = c.lng.toFixed(6);
     reverseGeocode(c.lat, c.lng);
     estimateFare(c.lat, c.lng);
-  }, 400);
-}
+  });
 
-map.on('movestart', onMapMove);
-map.on('moveend',   onMapMoveEnd);
-map.on('zoomstart', onMapMove);
-map.on('zoomend',   onMapMoveEnd);
+  /* Reverse geocode */
+  function reverseGeocode(lat, lng) {
+    var url = LIQ_KEY
+      ? 'https://us1.locationiq.com/v1/reverse.php?key='+LIQ_KEY+'&lat='+lat+'&lon='+lng+'&format=json'
+      : 'https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json';
+    fetch(url)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var a = d.display_name || '';
+        if (a) {
+          document.getElementById('dropoff-label').textContent = a;
+          document.getElementById('dropoff-label').style.color = '';
+          daddr.value = a;
+        }
+      }).catch(function(){});
+  }
 
-// ── Reverse geocode ──────────────────────────────────────────
-function reverseGeocode(lat, lng) {
-  var label = document.getElementById('dropoff-label');
-  var url = LOCATIONIQ
-    ? 'https://us1.locationiq.com/v1/reverse.php?key='+LOCATIONIQ+'&lat='+lat+'&lon='+lng+'&format=json'
-    : 'https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json';
-  fetch(url)
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var addr = d.display_name || d.address && (d.address.road||d.address.suburb||d.address.city) || '';
-      if (addr) {
-        label.textContent = addr;
-        label.style.color = '';
-        daddrInput.value  = addr;
-      }
-    }).catch(function(){});
-}
+  /* Fare estimate */
+  function estimateFare(lat, lng) {
+    var url = PRICE_URL+'?vlat='+VENDOR_LAT+'&vlng='+VENDOR_LNG+'&dlat='+lat+'&dlng='+lng+'&prep=20';
+    fetch(url)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if (!d.success) return;
+        var fee   = parseFloat(d.fee);
+        var total = (SUBTOTAL + fee).toFixed(2);
+        document.getElementById('fare-val').textContent  = 'GHS '+fee.toFixed(2);
+        document.getElementById('eta-val').textContent   = d.eta_minutes+' min';
+        document.getElementById('dist-val').textContent  = d.distance_km+' km';
+        document.getElementById('total-fee').textContent = 'GHS '+fee.toFixed(2);
+        document.getElementById('total-val').textContent = 'GHS '+total;
+        dfee.value  = fee.toFixed(2);
+        ddist.value = d.distance_km;
+      }).catch(function(){});
+  }
 
-// ── Fare estimate ─────────────────────────────────────────────
-function estimateFare(lat, lng) {
-  var url = PRICE_URL + '?vlat='+VENDOR_LAT+'&vlng='+VENDOR_LNG+'&dlat='+lat+'&dlng='+lng+'&prep=20';
-  fetch(url)
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if (!d.success) return;
-      var fee   = parseFloat(d.fee);
-      var total = (SUBTOTAL + fee).toFixed(2);
-      document.getElementById('fare-display').textContent   = 'GHS ' + fee.toFixed(2);
-      document.getElementById('eta-display').textContent    = d.eta_minutes + ' min';
-      document.getElementById('dist-display').textContent   = d.distance_km + ' km';
-      document.getElementById('summary-fee').textContent    = 'GHS ' + fee.toFixed(2);
-      document.getElementById('summary-total').textContent  = 'GHS ' + total;
-      dfeeInput.value  = fee.toFixed(2);
-      ddistInput.value = d.distance_km;
-      placeBtn.disabled = false;
-      placeBtn.textContent = 'Confirm order — GHS ' + total;
-      if (pinHint) pinHint.style.display = 'none';
-      confirmed = true;
-    }).catch(function(){});
-}
+  /* GPS button */
+  document.getElementById('gps-btn').addEventListener('click', function () {
+    if (!navigator.geolocation) return;
+    this.textContent = '⏳';
+    var self = this;
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      map.flyTo([pos.coords.latitude, pos.coords.longitude], 17, {duration:1.2});
+      self.textContent = '📡';
+    }, function () {
+      self.textContent = '📡';
+    }, {timeout:8000});
+  });
 
-// ── GPS auto-locate ───────────────────────────────────────────
-if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(function(pos) {
-    map.flyTo([pos.coords.latitude, pos.coords.longitude], 16, { duration: 1 });
-  }, function(){}, { timeout: 5000, maximumAge: 60000 });
-}
+  /* Auto-locate on load */
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      map.flyTo([pos.coords.latitude, pos.coords.longitude], 16, {duration:1.5});
+    }, function(){}, {timeout:6000, maximumAge:60000});
+  }
 
-// ── Search overlay ────────────────────────────────────────────
-function openSearch() {
-  var overlay = document.getElementById('search-overlay');
-  overlay.classList.add('visible');
-  document.getElementById('search-input').focus();
-}
-function closeSearch() {
-  document.getElementById('search-overlay').classList.remove('visible');
-}
+  /* Invalidate map size after fonts/layout settle */
+  setTimeout(function(){ map.invalidateSize(); }, 300);
 
-var searchDebounce = null;
-document.getElementById('search-input').addEventListener('input', function() {
-  clearTimeout(searchDebounce);
-  var q = this.value.trim();
-  if (q.length < 3) return;
-  searchDebounce = setTimeout(function(){ searchLocations(q); }, 350);
+  /* Form submit guard */
+  document.getElementById('checkout-form').addEventListener('submit', function(e) {
+    btn.disabled    = true;
+    btn.textContent = 'Placing order…';
+  });
 });
 
-function searchLocations(query) {
-  var base = LOCATIONIQ
-    ? 'https://us1.locationiq.com/v1/search.php?key='+LOCATIONIQ+'&q='+encodeURIComponent(query+', Ghana')+'&format=json&limit=5'
-    : 'https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(query+', Ghana')+'&format=json&limit=5';
-  fetch(base)
-    .then(function(r){ return r.json(); })
-    .then(function(results) {
+/* ── Search ─────────────────────────────────────────── */
+var _sd = null;
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('search-input').addEventListener('input', function(){
+    clearTimeout(_sd);
+    var q = this.value.trim();
+    if (q.length < 3) return;
+    _sd = setTimeout(function(){ doSearch(q); }, 350);
+  });
+});
+
+function openSearch()  { document.getElementById('search-overlay').classList.add('open'); document.getElementById('search-input').focus(); }
+function closeSearch() { document.getElementById('search-overlay').classList.remove('open'); }
+
+function doSearch(query) {
+  var url = LIQ_KEY
+    ? 'https://us1.locationiq.com/v1/search.php?key='+LIQ_KEY+'&q='+encodeURIComponent(query+', Ghana')+'&format=json&limit=6'
+    : 'https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(query+', Ghana')+'&format=json&limit=6';
+  fetch(url)
+    .then(function(r){return r.json();})
+    .then(function(results){
       var box = document.getElementById('search-results');
       box.innerHTML = '';
       if (!results.length) {
-        box.innerHTML = '<p class="text-muted small p-4">No results for "'+query+'"</p>';
+        box.innerHTML = '<p class="text-muted small p-4 mb-0">No results found</p>';
         return;
       }
-      results.forEach(function(r) {
-        var el = document.createElement('div');
-        el.className = 'search-result';
-        el.innerHTML = '<span style="font-size:1.2rem">📍</span><div><p class="fw-semibold small mb-0">'+r.display_name+'</p></div>';
-        el.addEventListener('click', function(){
-          map.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 17, { duration: 1 });
+      results.forEach(function(r){
+        var d = document.createElement('div');
+        d.className = 'search-hit';
+        d.innerHTML = '<span style="font-size:1.2rem;flex-shrink:0">📍</span><p class="small fw-semibold mb-0 text-navy">'+r.display_name+'</p>';
+        d.addEventListener('click', function(){
+          /* We need the map — trigger move via leaflet */
+          var evt = new CustomEvent('food-fly', {detail:{lat:parseFloat(r.lat),lng:parseFloat(r.lon)}});
+          document.dispatchEvent(evt);
           closeSearch();
         });
-        box.appendChild(el);
+        box.appendChild(d);
       });
     }).catch(function(){});
 }
 
-// ── Prevent submit if location not confirmed ──────────────────
-document.getElementById('checkout-form').addEventListener('submit', function(e) {
-  if (!confirmed) {
-    e.preventDefault();
-    document.getElementById('pin-hint').style.display = '';
-    document.getElementById('pin-hint').textContent = '⚠ Please move the map to your delivery location first';
-    return;
-  }
-  placeBtn.disabled = true;
-  placeBtn.textContent = 'Placing order…';
+/* Search result fly-to listener (set up inside DOMContentLoaded) */
+document.addEventListener('DOMContentLoaded', function(){
+  document.addEventListener('food-fly', function(e){
+    /* Access Leaflet map from the window scope — re-attach listener */
+    if (window._foodMap) {
+      window._foodMap.flyTo([e.detail.lat, e.detail.lng], 17, {duration:1.2});
+    }
+  });
+});
+
+/* Expose map instance for the search result handler */
+document.addEventListener('DOMContentLoaded', function(){
+  /* Re-create map reference — Leaflet stores it on the container */
+  setTimeout(function(){
+    var el = document.getElementById('delivery-map');
+    if (el && el._leaflet_map) window._foodMap = el._leaflet_map;
+  }, 500);
 });
 </script>
 {% endblock %}
