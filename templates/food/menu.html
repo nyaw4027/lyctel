@@ -301,6 +301,53 @@
   </div>
 </div>
 
+<!-- ════════════════════════════════════════════════════════════════
+     CART BAR — Fixed bottom bar. Appears when first item is added.
+     food.js calls updateCartUI() which toggles d-none on this element.
+     Defined in HTML (not injected by JS) so CSS is reliable.
+════════════════════════════════════════════════════════════════════ -->
+<div id="cart-bar"
+     class="d-none"
+     style="position:fixed;bottom:0;left:0;right:0;z-index:1000;
+            background:#0F1B2D;color:white;
+            box-shadow:0 -4px 24px rgba(0,0,0,.25);
+            transition:transform .25s ease">
+  <div class="container-xl px-3 py-3 d-flex align-items-center justify-content-between gap-3">
+
+    <!-- Count + total -->
+    <div class="d-flex align-items-center gap-3">
+      <div class="rounded-3 d-flex align-items-center justify-content-center fw-bold"
+           style="width:36px;height:36px;background:#F5A623;color:#0F1B2D;font-size:.95rem">
+        <span id="cart-bar-count">0</span>
+      </div>
+      <div>
+        <p class="fw-bold mb-0 small">Your order</p>
+        <p class="mb-0 text-white-50" style="font-size:.78rem">
+          GHS <span id="cart-bar-total">0.00</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+      <a href="{% url 'food:cart' %}"
+         class="btn btn-sm fw-semibold rounded-3"
+         style="background:rgba(255,255,255,.12);color:white;border:1px solid rgba(255,255,255,.2);font-size:.82rem">
+        View Cart
+      </a>
+      <a href="{% url 'food:checkout' %}"
+         class="btn btn-sm fw-bold rounded-3 px-4"
+         style="background:#F5A623;color:#0F1B2D;font-size:.9rem">
+        Checkout →
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bottom padding so last menu item isn't hidden behind the cart bar -->
+<div id="cart-bar-spacer" class="d-none" style="height:72px"></div>
+
 {% endblock %}
 
 {# FIXED: block extra_js is now OUTSIDE block content (was nested inside
@@ -314,11 +361,15 @@
   and doesn't need to hardcode /food/cart/add/ etc.
 -->
 <script>
-window.FOOD_CART_ADD_URL    = '{% url "food:cart_add" 0 %}'.replace('/0/', '/');
-window.FOOD_CART_UPDATE_URL = '{% url "food:cart_update" 0 %}'.replace('/0/', '/');
-window.FOOD_CART_CLEAR_URL  = '{% url "food:cart_clear" %}';
-window.FOOD_CART_DATA_URL   = '{% url "food:cart_data" %}';
-window.FOOD_CART_URL        = '{% url "food:cart" %}';
+/* Cart API URLs — passed from Django so food.js works
+   regardless of the URL mount path (/food/ or otherwise). */
+window.FOOD_CART_ADD_URL      = '{% url "food:cart_add" 0 %}'.replace('/0/', '/');
+window.FOOD_CART_UPDATE_URL   = '{% url "food:cart_update" 0 %}'.replace('/0/', '/');
+window.FOOD_CART_CLEAR_URL    = '{% url "food:cart_clear" %}';
+window.FOOD_CART_DATA_URL     = '{% url "food:cart_data" %}';
+window.FOOD_CART_URL          = '{% url "food:cart" %}';
+window.FOOD_CHECKOUT_URL      = '{% url "food:checkout" %}';
+window.FOOD_VENDOR_SLUG       = '{{ vendor.slug|escapejs }}';
 </script>
 <script src="{% static 'js/food.js' %}"></script>
 <script>document.addEventListener('DOMContentLoaded', Food.init);</script>

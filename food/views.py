@@ -202,13 +202,12 @@ def estimate_eta(distance_km, prep_time=20):
 
 def _get_food_cart_count(request):
     if request.user.is_authenticated:
-        cart = _get_user_cart(request.user)
-        if cart is not None:
-            for attr in ('items', 'cart_items', 'food_items'):
-                try:
-                    return getattr(cart, attr).count()
-                except Exception:
-                    pass
+        try:
+            cart = _get_user_cart(request.user)
+            if cart:
+                return _cart_count(cart)
+        except Exception:
+            pass
     return 0
 
 
@@ -873,8 +872,7 @@ def cart_update(request, item_id):
             # new_total = per-item line total; food.js uses this to update
             # the individual row price without re-rendering the whole page.
             try:
-                item_price = cart_item.food.price if hasattr(cart_item.food, 'price') else 0
-                new_total = str((Decimal(str(item_price)) * qty).quantize(Decimal('0.01')))
+                new_total = str((_item_price(cart_item.food) * qty).quantize(Decimal('0.01')))
             except Exception:
                 new_total = None
 
