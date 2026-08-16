@@ -286,7 +286,7 @@
           Fast Delivery Across Ghana 🇬🇭
         </div>
         <h1 class="font-display text-white mb-3 fade-up fade-up-2"
-            style="font-weight:800;font-size:clamp(2rem,6vw,3.75rem);line-height:1.1;">
+            style="font-weight:800;font-size:clamp(1.6rem,7vw,3.75rem);line-height:1.1;word-break:break-word;">
           Quality Products.<br/>
           <span class="shimmer">Delivered Fast.</span>
         </h1>
@@ -372,15 +372,15 @@
                 <div class="col">
                   <a href="{% url 'products:detail' p.slug %}"
                      class="slide-card d-block bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3 overflow-hidden text-decoration-none">
-                    <div class="position-relative overflow-hidden" style="height:5rem;">
+                    <div class="position-relative overflow-hidden" style="height:clamp(80px,22vw,120px);">
                       {% with img=p.images.first %}{% if img %}
                       <img src="{{ img.image.url }}" alt="{{ p.name }}" class="w-100 h-100 object-fit-cover" loading="lazy"/>
                       {% else %}
                       <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-light" style="font-size:2rem">📦</div>
                       {% endif %}{% endwith %}
-                      <span class="position-absolute top-0 start-0 m-1 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:9px;">🔥</span>
+                      <span class="position-absolute top-0 start-0 m-1 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:max(9px,11px);">🔥</span>
                       {% if p.has_discount %}
-                      <span class="position-absolute top-0 end-0 m-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:9px;">-{{ p.discount_percent }}%</span>
+                      <span class="position-absolute top-0 end-0 m-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:max(9px,11px);">-{{ p.discount_percent }}%</span>
                       {% endif %}
                     </div>
                     <div class="p-2">
@@ -521,7 +521,7 @@
     </div>
 
     <!-- Tab switcher -->
-    <div class="hiw-tabs" role="tablist" aria-label="How Lynctel works, by role">
+    <div class="hiw-tabs" role="tablist" style="touch-action:manipulation;" aria-label="How Lynctel works, by role">
       <button type="button" class="hiw-tab active" role="tab" aria-selected="true" aria-controls="hiw-shopping" onclick="switchHIW('shopping', this)">🛍️ Shopping</button>
       <button type="button" class="hiw-tab" role="tab" aria-selected="false" aria-controls="hiw-food" onclick="switchHIW('food', this)">🍔 Food Order</button>
       <button type="button" class="hiw-tab" role="tab" aria-selected="false" aria-controls="hiw-vendor" onclick="switchHIW('vendor', this)">🏪 Selling</button>
@@ -722,7 +722,7 @@
         {% endif %}
         <div class="position-absolute top-0 start-0 w-100 h-100" style="background:linear-gradient(to top,rgba(0,0,0,.8),rgba(0,0,0,.1) 60%,transparent);"></div>
         <div class="position-absolute top-0 start-0 m-2">
-          <span class="d-flex align-items-center gap-1 text-white fw-bold rounded-pill px-2 py-1" style="font-size:9px;background:#ef4444;">
+          <span class="d-flex align-items-center gap-1 text-white fw-bold rounded-pill px-2 py-1" style="font-size:max(9px,11px);background:#ef4444;">
             <span style="width:5px;height:5px;border-radius:50%;background:white;animation:pulse 1s infinite;display:inline-block;" aria-hidden="true"></span> LIVE
           </span>
         </div>
@@ -747,7 +747,7 @@
       <h2 class="font-display fw-bold text-navy mb-0" style="font-size:1.125rem;">Shop by Category</h2>
       <a href="{% url 'products:list' %}" class="small fw-semibold text-navy text-decoration-none">All →</a>
     </div>
-    <div class="category-scroll">
+    <div class="category-scroll" style="scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;">
       {% for category in categories %}
       <a href="{% url 'products:list' %}?category={{ category.slug }}" class="category-card">
         {% if category.icon %}
@@ -800,8 +800,8 @@
             </div>
             <span class="video-badge"><svg style="width:10px;height:10px;fill:#fff;" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Video</span>
             {% endif %}
-            {% if product.is_featured %}<span class="position-absolute top-0 end-0 m-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:9px;z-index:2;">⭐</span>{% endif %}
-            {% if product.has_discount %}<span class="position-absolute top-0 start-0 m-1 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:9px;z-index:2;">-{{ product.discount_percent }}%</span>{% endif %}
+            {% if product.is_featured %}<span class="position-absolute top-0 end-0 m-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:max(9px,11px);z-index:2;">⭐</span>{% endif %}
+            {% if product.has_discount %}<span class="position-absolute top-0 start-0 m-1 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:max(9px,11px);z-index:2;">-{{ product.discount_percent }}%</span>{% endif %}
           </div>
           <div class="p-3 d-flex flex-column flex-fill">
             <a href="{% url 'products:detail' product.slug %}" class="small fw-semibold text-navy text-truncate-2 mb-2 text-decoration-none" style="line-height:1.35;">{{ product.name }}</a>

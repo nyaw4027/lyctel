@@ -3,7 +3,7 @@
 <html lang="{{ LANGUAGE_CODE|default:'en' }}">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"/>
 
   <!-- Set theme before first paint to avoid a light/dark flash -->
   <script>
@@ -323,7 +323,162 @@
       .d-md-none.pb-2 { padding-bottom: .5rem !important; }
     }
 
-  </style>
+  
+    /* ╔══════════════════════════════════════════════════════════╗
+       ║  ANDROID / CROSS-DEVICE FIXES                           ║
+       ║                                                          ║
+       ║  Root causes vs iOS:                                     ║
+       ║  1. Android Chrome 100vh ≠ visual viewport (addr bar)   ║
+       ║  2. env(safe-area-inset-bottom) = 0 on Android gesture  ║
+       ║     nav — content hides behind the bar anyway           ║
+       ║  3. Touch targets <44px silently fail on Android         ║
+       ║  4. Small fonts (<12px) render blurry on Android         ║
+       ║  5. Horizontal overflow causes scroll jank               ║
+       ╚══════════════════════════════════════════════════════════╝ */
+
+    /* ── Prevent horizontal scroll on all Android browsers ───── */
+    html { overflow-x: hidden; }
+    body { overflow-x: hidden; }
+
+    /* ── Bottom nav: Android gesture bar adds ~40px below nav ── */
+    /* env(safe-area-inset-bottom) is 0 on most Android devices  */
+    /* even with gesture navigation, so we add an explicit floor  */
+    #mobile-nav {
+      /* Support both iOS safe area AND Android gesture bar */
+      padding-bottom: max(env(safe-area-inset-bottom, 0px), 10px);
+      /* Use dynamic viewport height where supported */
+      height: 64px;
+      height: calc(64px + max(env(safe-area-inset-bottom, 0px), 10px));
+    }
+
+    /* ── Body padding-bottom: match the actual nav height ─────── */
+    @media (max-width: 767.98px) {
+      body {
+        padding-bottom: calc(74px + max(env(safe-area-inset-bottom, 0px), 10px));
+      }
+    }
+
+    /* ── Touch targets: Android requires ≥ 48×48px ────────────── */
+    @media (max-width: 767.98px) {
+      /* Bottom nav items — 5 items in 64px bar is fine height,
+         but add explicit min-width so tap area is adequate */
+      .mobile-nav-item {
+        min-height: 52px;
+        padding: 6px 4px;
+        -webkit-tap-highlight-color: rgba(245,166,35,.15);
+        tap-highlight-color: rgba(245,166,35,.15);
+      }
+
+      /* Small buttons used in product cards, nav etc */
+      .btn-sm {
+        min-height: 36px;
+        padding-top: 0.35rem;
+        padding-bottom: 0.35rem;
+      }
+
+      /* Stepper/qty buttons in cart drawer (28px → 40px) */
+      .btn[style*="width:28px"],
+      .btn[style*="height:28px"] {
+        width: 36px !important;
+        height: 36px !important;
+      }
+    }
+
+    /* ── Font sizes: Android renders <12px text blurry ────────── */
+    @media (max-width: 767.98px) {
+      /* Badge/pill font size floor */
+      .badge, [class*="rounded-pill"],
+      .mobile-nav-item { font-size: max(10px, .625rem); }
+
+      /* Ensure readable body copy */
+      .small   { font-size: max(13px, .8rem) !important; }
+      .text-sm { font-size: max(13px, .8rem) !important; }
+
+      /* Hero headings — clamp already handles this but ensure min */
+      h1 { font-size: clamp(1.6rem, 7vw, 2.5rem); }
+      h2 { font-size: clamp(1.2rem, 5vw, 1.8rem); }
+    }
+
+    /* ── 100vh fix: Android Chrome includes address bar in 100vh ─ */
+    /* Any full-height element should prefer 100dvh (dynamic vh)    */
+    @supports (height: 100dvh) {
+      .min-vh-100  { min-height: 100dvh !important; }
+      .vh-100      { height: 100dvh !important; }
+    }
+
+    /* ── Navbar: mobile has 2 rows (112px). On very small screens  */
+    /*   add a tiny extra gap to prevent content starting too high   */
+    @media (max-width: 767.98px) {
+      /* Push all sticky-top content below the double navbar row */
+      .sticky-top + * { scroll-margin-top: var(--navbar-h, 112px); }
+
+      /* Ensure the search row wraps cleanly */
+      #main-navbar .d-md-none { flex-wrap: nowrap; overflow: hidden; }
+    }
+
+    /* ── Product cards: 2-col grid on 360px phones needs more height */
+    @media (max-width: 400px) {
+      /* Give product images more room on very small Android phones */
+      .product-img-wrap,
+      [class*="position-relative"][style*="height:5rem"],
+      [class*="position-relative"][style*="height: 5rem"] {
+        height: 7rem !important;
+      }
+
+      /* Single column on truly tiny screens (<340px) */
+      @media (max-width: 340px) {
+        .row-cols-2 { --bs-columns: 1 !important; }
+      }
+    }
+
+    /* ── Scrollable rails: momentum scroll on Android ─────────── */
+    .live-scroll,
+    .category-scroll,
+    [class*="overflow-x-auto"],
+    [class*="overflow-auto"] {
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x mandatory;
+      overscroll-behavior-x: contain;
+    }
+
+    /* ── Tap highlight: remove default Android blue flash ────────  */
+    a, button, [role="button"] {
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Add a subtle gold flash instead for branded feel */
+    .mobile-nav-item, .btn-navy, .btn-gold {
+      -webkit-tap-highlight-color: rgba(245,166,35,.12);
+    }
+
+    /* ── Anti-jank: will-change for animated elements ────────────  */
+    @media (max-width: 767.98px) {
+      .slide, #main-navbar, #mobile-nav {
+        will-change: transform;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+      }
+    }
+
+    /* ── Card hover → active for Android (no :hover on touch) ─── */
+    @media (hover: none) and (pointer: coarse) {
+      .category-card:active {
+        background: var(--navy) !important;
+        border-color: var(--navy) !important;
+        box-shadow: 0 8px 24px rgba(15,27,45,.15);
+      }
+      .category-card:active .category-card-label { color: #fff !important; }
+      .slide-card:active { background: rgba(255,255,255,.15) !important; }
+      .btn-navy:active  { opacity: .85; }
+      .btn-gold:active  { opacity: .85; }
+    }
+
+    /* ── Drawer / overlay: Android doesn't respect 100vh reliably ─ */
+    #cart-drawer {
+      height: 100dvh;
+      height: 100vh; /* fallback */
+      max-height: 100%;
+    }
+</style>
 
   {% block extra_head %}{% endblock %}
 </head>

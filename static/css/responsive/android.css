@@ -1,0 +1,116 @@
+/*
+ * android.css — Lynctel cross-device fixes
+ * Import last in main.css: @import "responsive/android.css";
+ */
+
+/* ── 1. Prevent horizontal scroll ───────────────────────── */
+html, body { overflow-x: hidden; }
+
+/* ── 2. Use dynamic viewport height where supported ──────── */
+@supports (height: 100dvh) {
+  .min-vh-100 { min-height: 100dvh !important; }
+  .vh-100     { height: 100dvh !important; }
+  #cart-drawer { height: 100dvh; }
+}
+
+/* ── 3. Bottom nav + body padding (Android gesture bar) ──── */
+/*
+ * env(safe-area-inset-bottom) returns 0 on Android even with
+ * gesture nav. Content hides behind the ~40px gesture strip.
+ * Floor it at 10px so the nav stays clear.
+ */
+@media (max-width: 767.98px) {
+  #mobile-nav {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 10px);
+    height: calc(64px + max(env(safe-area-inset-bottom, 0px), 10px));
+  }
+  body {
+    padding-bottom: calc(74px + max(env(safe-area-inset-bottom, 0px), 10px));
+  }
+}
+
+/* ── 4. Touch targets (Android min = 48px) ───────────────── */
+@media (max-width: 767.98px) {
+  .mobile-nav-item { min-height: 52px; padding: 6px 4px; }
+  .btn-sm          { min-height: 38px; padding-top: .4rem; padding-bottom: .4rem; }
+}
+
+/* ── 5. Tap highlight ────────────────────────────────────── */
+* { -webkit-tap-highlight-color: transparent; }
+.mobile-nav-item, .btn-navy, .btn-gold, .category-card {
+  -webkit-tap-highlight-color: rgba(245,166,35,.12);
+}
+
+/* ── 6. Active states (touch devices have no :hover) ─────── */
+@media (hover: none) and (pointer: coarse) {
+  .category-card:active {
+    background: var(--navy) !important;
+    border-color: var(--navy) !important;
+    transform: scale(.98);
+  }
+  .category-card:active .category-card-label { color: #fff !important; }
+  .btn-navy:active, .btn-gold:active { filter: brightness(.9); transform: scale(.98); }
+  .quick-add-btn:active { background: var(--gold); color: var(--navy); }
+  .slide-card:active    { background: rgba(255,255,255,.18) !important; }
+}
+
+/* ── 7. Typography ───────────────────────────────────────── */
+@media (max-width: 767.98px) {
+  body {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Badge / nav label floor */
+  .badge, .mobile-nav-item span:last-child {
+    font-size: max(10px, .625rem);
+  }
+  /* Body copy floor */
+  .small, small { font-size: max(12px, .75rem) !important; }
+  /* Headlines */
+  h1 { font-size: clamp(1.6rem, 7vw, 3.75rem); word-break: break-word; overflow-wrap: break-word; }
+  h2 { font-size: clamp(1.2rem, 5.5vw, 2rem); }
+  h3 { font-size: clamp(1rem, 4.5vw, 1.5rem); }
+}
+
+/* ── 8. Forms: prevent zoom on focus (font < 16px triggers zoom) */
+@media (max-width: 767.98px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ── 9. Product images on tiny phones (<400px) ───────────── */
+@media (max-width: 400px) {
+  [style*="height:5rem"], [style*="height: 5rem"] {
+    height: clamp(80px, 22vw, 120px) !important;
+  }
+}
+@media (max-width: 340px) {
+  .row-cols-2 { --bs-columns: 1; }
+}
+
+/* ── 10. Scroll momentum on Android ──────────────────────── */
+.live-scroll, .category-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+/* ── 11. GPU compositing for animated elements ───────────── */
+@media (max-width: 767.98px) {
+  #main-navbar, #mobile-nav, #cart-drawer {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+}
+
+/* ── 12. Cart drawer transition ──────────────────────────── */
+@media (max-width: 767.98px) {
+  #cart-drawer {
+    transform: translateX(100%) translateZ(0);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    will-change: transform;
+  }
+  #cart-drawer.open { transform: translateX(0) translateZ(0); }
+}
