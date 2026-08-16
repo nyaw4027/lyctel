@@ -181,7 +181,7 @@
               {{ item.name|default:item.food.name }} × {{ item.quantity }}
             </span>
             <span class="fw-semibold text-navy flex-shrink-0">
-              GHS {{ item.subtotal|default:item.total_price|floatformat:2 }}
+              GHS {% if item.subtotal %}{{ item.subtotal|floatformat:2 }}{% elif item.price and item.quantity %}{{ item.price|floatformat:2 }}{% else %}0.00{% endif %}
             </span>
           </li>
           {% empty %}
@@ -197,7 +197,7 @@
         {% endif %}
         <div class="d-flex justify-content-between fw-bold text-navy">
           <span>Total</span>
-          <span>GHS {{ order.total_amount|floatformat:2 }}</span>
+          <span>GHS {{ order.total_amount|default:order.total|default:"0.00"|floatformat:2 }}</span>
         </div>
 
         {% if order.status == 'delivered' %}
