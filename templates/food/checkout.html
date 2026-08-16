@@ -5,268 +5,297 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-/* full-screen Uber layout */
 body { overflow: hidden !important; }
 
-#uber-map {
+/* ── Two screens: location picker & order form ─────── */
+#screen-location,
+#screen-order {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 0;
+  inset: 0;
+  z-index: 1;
+  transition: transform .4s cubic-bezier(.4,0,.2,1),
+              opacity   .4s ease;
 }
 
-/* Centre pin – always fixed to screen centre */
-#map-pin {
-  position: fixed;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -100%);
-  z-index: 10;
-  pointer-events: none;
-  text-align: center;
-  transition: transform .15s ease;
-}
-#map-pin.up { transform: translate(-50%, -118%); }
-#map-pin .pin-icon { font-size: 2.8rem; line-height:1; display:block;
-  filter: drop-shadow(0 6px 10px rgba(0,0,0,.4)); }
-#map-pin .pin-dot {
-  width: 10px; height: 5px; border-radius: 50%;
-  background: rgba(0,0,0,.2); margin: 3px auto 0;
-  transition: transform .15s ease;
-}
-#map-pin.up .pin-dot { transform: scaleX(.55); }
+/* Location screen: map fills everything */
+#screen-location { transform: translateX(0); opacity: 1; }
+#screen-location.slide-out { transform: translateX(-100%); opacity: 0; }
 
-/* GPS button floating on map */
-#gps-fab {
-  position: fixed;
-  right: 14px;
-  z-index: 20;
-  background: white; border: none; border-radius: 50%;
-  width: 50px; height: 50px;
-  box-shadow: 0 3px 12px rgba(0,0,0,.25);
-  font-size: 1.3rem; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: bottom .35s ease;
-  bottom: 310px;
-}
-body.expanded #gps-fab { bottom: 65vh; }
-
-/* Bottom sheet */
-#sheet {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 100;
+/* Order screen: slides in from right */
+#screen-order {
   background: white;
-  border-radius: 22px 22px 0 0;
-  box-shadow: 0 -4px 30px rgba(0,0,0,.14);
-  height: 295px;
-  overflow: hidden;
-  transition: height .35s cubic-bezier(.4,0,.2,1);
-}
-#sheet.expanded {
-  height: 80vh;
+  transform: translateX(100%);
+  opacity: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
-.handle {
-  width: 40px; height: 4px; background: #e5e7eb;
-  border-radius: 4px; margin: 12px auto 10px; cursor: grab;
+#screen-order.slide-in { transform: translateX(0); opacity: 1; }
+
+/* ── Map ─────────────────────────────────────────────── */
+#uber-map { position: absolute; inset: 0; }
+
+/* Centre pin */
+#map-pin {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -100%);
+  z-index: 10; pointer-events: none; text-align: center;
+  transition: transform .15s ease;
+}
+#map-pin.up { transform: translate(-50%, -118%); }
+#map-pin .pi { font-size: 2.8rem; line-height:1; display:block;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.4)); }
+#map-pin .ps { width:10px; height:5px; border-radius:50%;
+  background:rgba(0,0,0,.2); margin:3px auto 0;
+  transition: transform .15s ease; }
+#map-pin.up .ps { transform: scaleX(.55); }
+
+/* GPS FAB */
+#gps-fab {
+  position: absolute; right:14px; bottom:310px; z-index:20;
+  background:white; border:none; border-radius:50%;
+  width:48px; height:48px;
+  box-shadow:0 3px 12px rgba(0,0,0,.25);
+  font-size:1.3rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
 }
 
-/* ── Location section ─────────────────────────────── */
-.loc-wrap {
-  position: relative;
-  margin: 0 14px 0;
-  background: #f9fafb;
-  border-radius: 14px;
-  overflow: visible;
+/* ── Bottom sheet ─────────────────────────────────────── */
+#bottom-sheet {
+  position: absolute;
+  bottom:0; left:0; right:0; z-index:100;
+  background: white;
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -4px 30px rgba(0,0,0,.14);
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+.handle {
+  width:40px; height:4px; background:#e5e7eb;
+  border-radius:4px; margin:12px auto 10px;
+}
+
+/* Address rows */
+.loc-card {
+  margin:0 14px 10px;
+  background:#f9fafb; border-radius:14px;
+  overflow:visible; position:relative;
 }
 .loc-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 11px 13px; border-bottom: 1px solid #eff0f1;
+  display:flex; align-items:center; gap:10px;
+  padding:11px 13px; border-bottom:1px solid #eff0f1;
 }
-.loc-row:last-child { border-bottom: none; }
-.dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
-.dot-a { background: #0F1B2D; }
-.dot-b { background: #F5A623; }
-.vline { width: 2px; height: 14px; background: #d1d5db; margin-left: 18px; }
+.loc-row:last-child { border-bottom:none; }
+.dot  { width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+.dA   { background:#0F1B2D; }
+.dB   { background:#F5A623; }
+.vln  { width:2px; height:14px; background:#d1d5db; margin-left:18px; }
 
-/* Search input (to-location) */
+/* Search input */
 #loc-input {
-  flex: 1; border: none; outline: none;
-  background: transparent; padding: 0;
-  font-size: .87rem; font-weight: 600; color: #0F1B2D;
-  caret-color: #F5A623;
+  flex:1; border:none; outline:none; background:transparent;
+  font-size:.87rem; font-weight:600; color:#0F1B2D;
+  padding:0; caret-color:#F5A623;
 }
-#loc-input::placeholder { color: #9ca3af; font-weight: 400; }
+#loc-input::placeholder { color:#9ca3af; font-weight:400; }
 
-/* "Use current location" shortcut row */
+/* Use GPS row */
 #use-gps-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 11px 13px;
-  cursor: pointer; border-bottom: 1px solid #eff0f1;
-  transition: background .1s;
-}
-#use-gps-row:hover { background: rgba(0,0,0,.03); }
-#use-gps-row .gps-badge {
-  background: #dbeafe; color: #1d4ed8;
-  border-radius: 8px; padding: 3px 8px;
-  font-size: .72rem; font-weight: 700;
+  display:flex; align-items:center; gap:10px;
+  padding:11px 13px; cursor:pointer;
+  border-bottom:1px solid #eff0f1;
 }
 
-/* Autocomplete dropdown */
+/* Autocomplete */
 #sug {
-  position: absolute;
-  top: 100%; left: 0; right: 0;
-  background: white;
-  border-radius: 0 0 14px 14px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.13);
-  z-index: 300;
-  max-height: 260px; overflow-y: auto;
-  display: none;
+  position:absolute; top:100%; left:0; right:0;
+  background:white; border-radius:0 0 14px 14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.13);
+  z-index:300; max-height:220px; overflow-y:auto; display:none;
 }
-#sug.open { display: block; }
-.sug-row {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 11px 13px; border-bottom: 1px solid #f9fafb;
-  cursor: pointer;
+#sug.open { display:block; }
+.sr {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:11px 13px; border-bottom:1px solid #f9fafb; cursor:pointer;
 }
-.sug-row:hover, .sug-row.hi { background: #f9fafb; }
-.sug-ico { font-size: 1.1rem; flex-shrink:0; margin-top:1px; }
-.sug-name { font-size:.84rem; font-weight:700; color:#0F1B2D;
+.sr:hover,.sr.hi { background:#f9fafb; }
+.sn { font-size:.84rem; font-weight:700; color:#0F1B2D;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sug-addr { font-size:.73rem; color:#9ca3af;
+.sa { font-size:.73rem; color:#9ca3af;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* Fare row */
-.fare-row {
-  display: flex; align-items:center; justify-content:space-between;
-  padding: 11px 14px; border-top: 1px solid #f3f4f6;
+/* Fare strip */
+.fare-strip {
+  display:flex; justify-content:space-between;
+  padding:10px 14px; border-top:1px solid #f3f4f6;
 }
 .fv { font-weight:800; color:#0F1B2D; font-size:.93rem; }
 .fl { font-size:.65rem; text-transform:uppercase;
       letter-spacing:.05em; color:#9ca3af; }
 
-/* Confirm / action button */
-#action-btn {
-  display: block; width: calc(100% - 28px);
-  margin: 10px 14px 4px;
-  background: #0F1B2D; color: white;
-  border: none; border-radius: 14px;
-  padding: 15px; font-weight: 800; font-size: 1rem;
-  cursor: pointer; letter-spacing: .01em;
-  transition: background .2s, opacity .2s;
+/* Confirm button */
+#confirm-btn {
+  display:block; width:calc(100% - 28px); margin:10px 14px 6px;
+  padding:15px; border:none; border-radius:14px;
+  background:#e5e7eb; color:#9ca3af;
+  font-weight:800; font-size:1rem; cursor:pointer;
+  transition:background .2s, color .2s;
 }
-#action-btn.ready   { background: #F5A623; color: #0F1B2D; }
-#action-btn.done    { background: #16a34a; color: white; }
-#action-btn:disabled { opacity: .45; cursor: default; }
+#confirm-btn.ready {
+  background:#F5A623; color:#0F1B2D; cursor:pointer;
+}
+#confirm-btn.loading {
+  background:#f9fafb; color:#9ca3af;
+}
 
-/* GPS state indicator */
+/* GPS status */
 #gps-status {
-  font-size: .75rem; color: #9ca3af;
-  text-align: center; padding: 4px 14px 6px;
+  text-align:center; font-size:.75rem; color:#9ca3af;
+  padding:3px 14px 6px;
 }
 
-/* ── Expanded form ─────────────────────────────────── */
-#form-section { display:none; padding: 14px 14px 48px; }
-#form-section.show { display:block; }
-
+/* ── Order form screen ────────────────────────────────── */
+.order-header {
+  background:#0F1B2D; color:white;
+  padding:16px 16px 14px;
+  display:flex; align-items:center; gap:12px;
+}
+.back-btn {
+  background:rgba(255,255,255,.15); border:none;
+  border-radius:10px; padding:8px 12px;
+  color:white; font-size:.85rem; cursor:pointer;
+}
+.confirmed-address {
+  background:#f9fafb; border-radius:12px;
+  padding:12px 14px; margin:14px 14px 0;
+  display:flex; align-items:flex-start; gap:10px;
+}
 .pay-opt {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px; border: 1.5px solid #e5e7eb;
-  border-radius: 12px; cursor: pointer; margin-bottom: 8px;
-  transition: border-color .12s;
+  display:flex; align-items:center; gap:12px;
+  padding:12px 14px; border:1.5px solid #e5e7eb;
+  border-radius:12px; cursor:pointer; margin-bottom:8px;
+  transition:border-color .12s;
 }
-.pay-opt:has(input:checked) { border-color: #F5A623; background: #FFFBF0; }
-.pay-opt input { display: none; }
-
-@keyframes spin { to { transform: rotate(360deg); } }
-.spin { display:inline-block; animation: spin .7s linear infinite; }
+.pay-opt:has(input:checked) { border-color:#F5A623; background:#FFFBF0; }
+.pay-opt input { display:none; }
+.order-body { padding:0 14px 120px; }
+.total-bar {
+  position:fixed; bottom:0; left:0; right:0; z-index:50;
+  background:white; border-top:1px solid #f3f4f6;
+  padding:12px 14px env(safe-area-inset-bottom,12px);
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.spin { display:inline-block; animation:spin .7s linear infinite; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Full-screen map -->
-<div id="uber-map"></div>
+<!-- ════════════════════════════════════════════════════
+     SCREEN 1: Location picker
+════════════════════════════════════════════════════ -->
+<div id="screen-location">
+  <div id="uber-map"></div>
 
-<!-- Centre pin -->
-<div id="map-pin">
-  <span class="pin-icon">📍</span>
-  <div class="pin-dot"></div>
-</div>
-
-<!-- GPS FAB -->
-<button id="gps-fab" type="button" title="Go to my location">📡</button>
-
-<!-- Bottom sheet -->
-<div id="sheet">
-  <div class="handle" id="handle"></div>
-
-  <!-- Location rows -->
-  <div class="loc-wrap" id="loc-wrap">
-
-    <!-- From: restaurant -->
-    <div class="loc-row">
-      <div class="dot dot-a"></div>
-      <span class="small fw-semibold text-navy text-truncate" style="flex:1;min-width:0">
-        {{ cart_vendor.name }}{% if cart_vendor.address %} · {{ cart_vendor.address }}{% endif %}
-      </span>
-    </div>
-
-    <div class="vline"></div>
-
-    <!-- "Use current location" shortcut -->
-    <div id="use-gps-row">
-      <span style="font-size:1.1rem">🎯</span>
-      <span class="small fw-semibold text-navy" style="flex:1">Use my current location</span>
-      <span class="gps-badge" id="gps-badge">Auto</span>
-    </div>
-
-    <div class="vline"></div>
-
-    <!-- To: search input -->
-    <div class="loc-row">
-      <div class="dot dot-b"></div>
-      <input id="loc-input" type="text" autocomplete="off" spellcheck="false"
-             placeholder="Or search a different location…"/>
-      <button id="clr-btn" type="button"
-              style="display:none;background:none;border:none;padding:0;cursor:pointer;
-                     font-size:.85rem;color:#9ca3af;flex-shrink:0">✕</button>
-    </div>
-
-    <!-- Autocomplete dropdown -->
-    <div id="sug"></div>
+  <div id="map-pin">
+    <span class="pi">📍</span>
+    <div class="ps"></div>
   </div>
 
-  <!-- GPS status line -->
-  <div id="gps-status">Detecting your location…</div>
+  <button id="gps-fab" type="button" title="My location">📡</button>
 
-  <!-- Fare -->
-  <div class="fare-row">
-    <div class="text-center">
-      <div class="fl">Delivery fee</div>
-      <div class="fv" id="fv-fee">GHS {{ default_fee }}</div>
+  <div id="bottom-sheet">
+    <div class="handle"></div>
+
+    <div class="loc-card" id="loc-card">
+      <!-- Restaurant (from) -->
+      <div class="loc-row">
+        <div class="dot dA"></div>
+        <span class="small fw-semibold text-navy text-truncate" style="flex:1;min-width:0">
+          {{ cart_vendor.name }}{% if cart_vendor.address %} · {{ cart_vendor.address }}{% endif %}
+        </span>
+      </div>
+      <div class="vln"></div>
+
+      <!-- Use GPS shortcut -->
+      <div id="use-gps-row">
+        <span style="font-size:1.1rem">🎯</span>
+        <span class="small fw-semibold text-navy" style="flex:1">Use my current location</span>
+        <span id="gps-badge"
+              style="background:#dbeafe;color:#1d4ed8;border-radius:8px;
+                     padding:3px 8px;font-size:.72rem;font-weight:700">Auto</span>
+      </div>
+      <div class="vln"></div>
+
+      <!-- Search (to) -->
+      <div class="loc-row">
+        <div class="dot dB"></div>
+        <input id="loc-input" type="text" autocomplete="off" spellcheck="false"
+               placeholder="Search a different location…"/>
+        <button id="clr-btn" type="button"
+                style="display:none;background:none;border:none;padding:0;
+                       cursor:pointer;font-size:.85rem;color:#9ca3af">✕</button>
+      </div>
+
+      <div id="sug"></div>
     </div>
-    <div class="text-center">
-      <div class="fl">Est. time</div>
-      <div class="fv" id="fv-eta">— min</div>
+
+    <div id="gps-status">Detecting your location…</div>
+
+    <div class="fare-strip">
+      <div class="text-center">
+        <div class="fl">Fee</div>
+        <div class="fv" id="fv-fee">GHS {{ default_fee }}</div>
+      </div>
+      <div class="text-center">
+        <div class="fl">Time</div>
+        <div class="fv" id="fv-eta">— min</div>
+      </div>
+      <div class="text-center">
+        <div class="fl">Dist.</div>
+        <div class="fv" id="fv-dist">—</div>
+      </div>
+      <div class="text-center">
+        <div class="fl">Total</div>
+        <div class="fv" id="fv-total">GHS {{ cart_total|floatformat:2 }}</div>
+      </div>
     </div>
-    <div class="text-center">
-      <div class="fl">Distance</div>
-      <div class="fv" id="fv-dist">—</div>
-    </div>
-    <div class="text-center">
-      <div class="fl">Total</div>
-      <div class="fv" id="fv-total">GHS {{ cart_total|floatformat:2 }}</div>
+
+    <!-- CONFIRM → goes to Screen 2 -->
+    <button id="confirm-btn" type="button" disabled class="loading">
+      <span class="spin">⏳</span> Finding your location…
+    </button>
+  </div>
+</div><!-- /screen-location -->
+
+
+<!-- ════════════════════════════════════════════════════
+     SCREEN 2: Order form
+════════════════════════════════════════════════════ -->
+<div id="screen-order">
+
+  <!-- Header with back button -->
+  <div class="order-header">
+    <button class="back-btn" id="back-btn" type="button">← Back</button>
+    <div>
+      <div class="fw-bold" style="font-size:.95rem">Confirm Order</div>
+      <div style="font-size:.75rem;opacity:.7">{{ cart_vendor.name }}</div>
     </div>
   </div>
 
-  <!-- Primary action button -->
-  <button id="action-btn" type="button" disabled>
-    <span class="spin">⏳</span> Finding your location…
-  </button>
+  <!-- Confirmed address display -->
+  <div class="confirmed-address">
+    <span style="font-size:1.3rem;flex-shrink:0">📍</span>
+    <div>
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">
+        Delivering to
+      </div>
+      <div class="fw-semibold text-navy small" id="confirmed-addr-label">
+        —
+      </div>
+    </div>
+  </div>
 
-  <!-- ── Order form (shown after location confirmed) ── -->
-  <div id="form-section">
+  <div class="order-body">
     <form method="post" action="{% url 'food:checkout' %}" id="order-form">
       {% csrf_token %}
       <input type="hidden" name="delivery_lat"     id="dlat" value="5.6037"/>
@@ -275,7 +304,17 @@ body.expanded #gps-fab { bottom: 65vh; }
       <input type="hidden" name="distance_km"      id="ddist" value="3"/>
       <input type="hidden" name="delivery_address" id="daddr"/>
 
-      <div class="mb-3 mt-1">
+      <!-- Items summary -->
+      <div class="mt-3 mb-3 p-3 rounded-3" style="background:#f9fafb">
+        {% for item in cart_items %}
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="text-navy fw-semibold">{{ item.food.name }} × {{ item.quantity }}</span>
+          <span class="text-muted">GHS {{ item.subtotal|default:"0"|floatformat:2 }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="mb-3">
         <label class="form-label small fw-bold text-navy">Phone number *</label>
         <input name="delivery_phone" type="tel" required
                class="form-control rounded-3{% if errors.phone %} is-invalid{% endif %}"
@@ -289,7 +328,7 @@ body.expanded #gps-fab { bottom: 65vh; }
           Note <span class="text-muted fw-normal">(optional)</span>
         </label>
         <input name="delivery_note" class="form-control rounded-3"
-               placeholder="Instructions for kitchen or rider"/>
+               placeholder="E.g. Call me when at the gate"/>
       </div>
 
       <div class="mb-3">
@@ -309,28 +348,27 @@ body.expanded #gps-fab { bottom: 65vh; }
       </div>
 
       {% if errors.address %}
-      <div class="alert alert-warning rounded-3 small py-2 mb-3">{{ errors.address }}</div>
+      <div class="alert alert-warning rounded-3 small py-2">{{ errors.address }}</div>
       {% endif %}
-
-      <div class="d-flex justify-content-between small text-muted mb-1">
-        <span>Subtotal</span><span>GHS {{ cart_subtotal|floatformat:2 }}</span>
-      </div>
-      <div class="d-flex justify-content-between small text-muted mb-1">
-        <span>Delivery</span><span id="form-fee">GHS {{ delivery_fee|floatformat:2 }}</span>
-      </div>
-      <div class="d-flex justify-content-between fw-bold text-navy border-top pt-2 mb-3">
-        <span>Total</span><span id="form-total">GHS {{ cart_total|floatformat:2 }}</span>
-      </div>
-
-      <button type="submit" id="place-btn"
-              class="btn w-100 fw-bold rounded-3 py-3"
-              style="background:#0F1B2D;color:white;font-size:1rem">
-        🛵 Dispatch Rider &amp; Place Order
-      </button>
     </form>
-  </div><!-- /form-section -->
+  </div>
 
-</div><!-- /sheet -->
+  <!-- Sticky total + place order bar -->
+  <div class="total-bar">
+    <div class="d-flex justify-content-between small text-muted mb-1">
+      <span>Subtotal</span><span>GHS {{ cart_subtotal|floatformat:2 }}</span>
+    </div>
+    <div class="d-flex justify-content-between small text-muted mb-2">
+      <span>Delivery</span><span id="order-fee">GHS {{ delivery_fee|floatformat:2 }}</span>
+    </div>
+    <button type="submit" form="order-form" id="place-btn"
+            class="btn w-100 fw-bold rounded-3 py-3"
+            style="background:#0F1B2D;color:white;font-size:1.05rem">
+      🛵 Place Order — GHS <span id="order-total">{{ cart_total|floatformat:2 }}</span>
+    </button>
+  </div>
+
+</div><!-- /screen-order -->
 {% endblock %}
 
 {% block extra_js %}
@@ -345,284 +383,235 @@ var LIQ  = '{{ locationiq_key|escapejs }}';
 document.addEventListener('DOMContentLoaded', function () {
 
   /* ── Map ─────────────────────────────────────────── */
-  var map = L.map('uber-map', { zoomControl:false, attributionControl:false })
+  var map = L.map('uber-map', {zoomControl:false, attributionControl:false})
              .setView([VLAT, VLNG], 14);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(map);
   L.control.zoom({position:'topleft'}).addTo(map);
 
-  /* Restaurant pin */
-  L.marker([VLAT, VLNG], {
+  L.marker([VLAT,VLNG], {
     icon: L.divIcon({
-      className: '',
-      html: '<div style="background:#0F1B2D;color:white;width:32px;height:32px;border-radius:50%;'
-          + 'display:flex;align-items:center;justify-content:center;font-size:.9rem;'
-          + 'border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)">🍴</div>',
+      className:'',
+      html:'<div style="background:#0F1B2D;color:white;width:32px;height:32px;border-radius:50%;'
+          +'display:flex;align-items:center;justify-content:center;font-size:.9rem;'
+          +'border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)">🍴</div>',
       iconSize:[32,32], iconAnchor:[16,16],
     }),
   }).addTo(map).bindPopup('{{ cart_vendor.name|escapejs }}');
 
   setTimeout(function(){ map.invalidateSize(); }, 200);
 
-  /* ── Refs ────────────────────────────────────────── */
-  var pin      = document.getElementById('map-pin');
-  var sheet    = document.getElementById('sheet');
-  var locInput = document.getElementById('loc-input');
-  var sug      = document.getElementById('sug');
-  var actBtn   = document.getElementById('action-btn');
-  var gpsStatus= document.getElementById('gps-status');
-  var formSec  = document.getElementById('form-section');
-  var clrBtn   = document.getElementById('clr-btn');
-  var dlat     = document.getElementById('dlat');
-  var dlng     = document.getElementById('dlng');
-  var dfee     = document.getElementById('dfee');
-  var ddist    = document.getElementById('ddist');
-  var daddr    = document.getElementById('daddr');
+  /* ── DOM refs ────────────────────────────────────── */
+  var pin       = document.getElementById('map-pin');
+  var locInput  = document.getElementById('loc-input');
+  var sugBox    = document.getElementById('sug');
+  var confirmBtn= document.getElementById('confirm-btn');
+  var statusEl  = document.getElementById('gps-status');
+  var clrBtn    = document.getElementById('clr-btn');
+  var dlat      = document.getElementById('dlat');
+  var dlng      = document.getElementById('dlng');
+  var dfee      = document.getElementById('dfee');
+  var ddist     = document.getElementById('ddist');
+  var daddr     = document.getElementById('daddr');
+  var screenLoc = document.getElementById('screen-location');
+  var screenOrd = document.getElementById('screen-order');
+  var addrLabel = document.getElementById('confirmed-addr-label');
 
-  var curLat = VLAT, curLng = VLNG;
-  var locationSet = false;
+  var curLat = VLAT, curLng = VLNG, locSet = false;
 
-  /* ── Helpers ─────────────────────────────────────── */
-  function setStatus(msg) {
-    gpsStatus.textContent = msg;
+  /* ── Screen transition ───────────────────────────── */
+  function goToOrderForm() {
+    daddr.value = locInput.value;
+    addrLabel.textContent = locInput.value || 'Location selected';
+
+    screenLoc.classList.add('slide-out');
+    screenOrd.classList.add('slide-in');
+    document.body.style.overflow = 'auto';
+    /* Focus phone input */
+    setTimeout(function(){
+      var phone = document.querySelector('[name="delivery_phone"]');
+      if (phone) phone.focus();
+    }, 420);
   }
 
-  function setActionReady(label) {
-    actBtn.disabled = false;
-    actBtn.innerHTML = label || 'Confirm delivery location →';
-    actBtn.className = 'ready';
-    // className setter removes old classes, reapply the id styling
-    actBtn.setAttribute('class',''); // reset
-    actBtn.style.cssText = '';
-    actBtn.id = 'action-btn';
-    actBtn.classList.add('ready');
-  }
+  document.getElementById('back-btn').addEventListener('click', function(){
+    screenOrd.classList.remove('slide-in');
+    screenLoc.classList.remove('slide-out');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function(){ map.invalidateSize(); }, 200);
+  });
 
+  /* ── Fare ────────────────────────────────────────── */
   function updateFare(lat, lng) {
     fetch(PURL+'?vlat='+VLAT+'&vlng='+VLNG+'&dlat='+lat+'&dlng='+lng+'&prep=20')
       .then(function(r){return r.json();})
       .then(function(d){
         if (!d.success) return;
-        var fee = parseFloat(d.fee);
-        var tot = (SUB+fee).toFixed(2);
-        document.getElementById('fv-fee').textContent  = 'GHS '+fee.toFixed(2);
-        document.getElementById('fv-eta').textContent  = d.eta_minutes+' min';
-        document.getElementById('fv-dist').textContent = d.distance_km+' km';
-        document.getElementById('fv-total').textContent= 'GHS '+tot;
-        document.getElementById('form-fee').textContent  = 'GHS '+fee.toFixed(2);
-        document.getElementById('form-total').textContent= 'GHS '+tot;
-        dfee.value = fee.toFixed(2);
-        ddist.value = d.distance_km;
+        var fee=parseFloat(d.fee), tot=(SUB+fee).toFixed(2);
+        document.getElementById('fv-fee').textContent   = 'GHS '+fee.toFixed(2);
+        document.getElementById('fv-eta').textContent   = d.eta_minutes+' min';
+        document.getElementById('fv-dist').textContent  = d.distance_km+' km';
+        document.getElementById('fv-total').textContent = 'GHS '+tot;
+        document.getElementById('order-fee').textContent= 'GHS '+fee.toFixed(2);
+        document.getElementById('order-total').textContent= tot;
+        dfee.value=fee.toFixed(2); ddist.value=d.distance_km;
       }).catch(function(){});
   }
 
+  /* ── Reverse geocode ─────────────────────────────── */
   function reverseGeocode(lat, lng, cb) {
     var url = LIQ
       ? 'https://us1.locationiq.com/v1/reverse.php?key='+LIQ+'&lat='+lat+'&lon='+lng+'&format=json'
       : 'https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json';
-    fetch(url).then(function(r){return r.json();}).then(function(d){
-      if (d.display_name) {
-        locInput.value = d.display_name;
-        daddr.value    = d.display_name;
-        if (cb) cb(d.display_name);
-      }
-    }).catch(function(){});
+    fetch(url).then(function(r){return r.json();})
+      .then(function(d){ if(d.display_name && cb) cb(d.display_name); })
+      .catch(function(){});
   }
 
-  function applyLocation(lat, lng, source) {
-    curLat = lat; curLng = lng;
-    dlat.value = lat.toFixed(6);
-    dlng.value = lng.toFixed(6);
-    locationSet = true;
+  /* ── Set location ────────────────────────────────── */
+  function setLocation(lat, lng, address) {
+    curLat=lat; curLng=lng;
+    dlat.value=lat.toFixed(6); dlng.value=lng.toFixed(6);
+    locSet=true;
+    if (address) { locInput.value=address; daddr.value=address; }
     updateFare(lat, lng);
-    setActionReady('✓ Confirm — ' + (source||'this location'));
-    setStatus('📍 Delivery location set');
+    confirmBtn.disabled=false;
+    confirmBtn.className='ready';
+    confirmBtn.innerHTML='✓ Confirm location →';
   }
 
-  /* ── Map pin animation ───────────────────────────── */
+  /* ── Map pin moves ───────────────────────────────── */
   map.on('movestart zoomstart', function(){
     pin.classList.add('up');
-    locationSet = false;
-    actBtn.disabled = false;
-    actBtn.innerHTML = 'Confirm delivery location →';
-    actBtn.classList.remove('done');
-    actBtn.classList.add('ready');
+    locSet=false;
+    confirmBtn.disabled=true;
+    confirmBtn.className='loading';
+    confirmBtn.textContent='Release to confirm…';
   });
-
   map.on('moveend zoomend', function(){
     pin.classList.remove('up');
-    var c = map.getCenter();
-    applyLocation(c.lat, c.lng, null);
+    var c=map.getCenter();
+    statusEl.textContent='Getting address…';
+    updateFare(c.lat, c.lng);
     reverseGeocode(c.lat, c.lng, function(addr){
-      setActionReady('✓ Confirm — ' + addr.split(',')[0]);
+      setLocation(c.lat, c.lng, addr);
+      statusEl.textContent='📍 '+addr.split(',').slice(0,2).join(',');
     });
   });
 
-  /* ── GPS auto-locate ──────────────────────────────── */
+  /* ── GPS ─────────────────────────────────────────── */
   function doGPS(btn) {
     if (!navigator.geolocation) {
-      setStatus('GPS not supported — please search below');
-      return;
+      statusEl.textContent='GPS not available — search below'; return;
     }
-    if (btn) btn.innerHTML = '<span class="spin">📡</span>';
-    setStatus('<span class="spin" style="display:inline-block">⏳</span> Finding your exact location…');
-    actBtn.disabled = true;
-    actBtn.innerHTML = '<span class="spin">⏳</span> Locating…';
+    if (btn) btn.innerHTML='<span class="spin">📡</span>';
+    statusEl.textContent='Finding your exact location…';
+    confirmBtn.disabled=true;
+    confirmBtn.className='loading';
+    confirmBtn.innerHTML='<span class="spin">⏳</span> Locating…';
 
     navigator.geolocation.getCurrentPosition(function(pos){
-      var lat = pos.coords.latitude, lng = pos.coords.longitude;
-      map.flyTo([lat, lng], 17, {duration: 1.4});
-      applyLocation(lat, lng, 'current location');
+      var lat=pos.coords.latitude, lng=pos.coords.longitude;
+      map.flyTo([lat,lng], 17, {duration:1.3});
       reverseGeocode(lat, lng, function(addr){
-        setStatus('📍 Using: ' + addr.split(',').slice(0,2).join(','));
-        setActionReady('✓ Confirm — ' + addr.split(',')[0]);
-        document.getElementById('gps-badge').textContent = '✓ Located';
-        document.getElementById('gps-badge').style.background = '#dcfce7';
-        document.getElementById('gps-badge').style.color = '#16a34a';
+        setLocation(lat, lng, addr);
+        statusEl.textContent='📍 Found: '+addr.split(',').slice(0,2).join(',');
+        var badge=document.getElementById('gps-badge');
+        badge.textContent='✓ GPS'; badge.style.background='#dcfce7'; badge.style.color='#16a34a';
       });
-      if (btn) btn.textContent = '📡';
-    }, function(err){
-      setStatus('Could not get GPS — search a location below');
-      actBtn.innerHTML = 'Confirm delivery location →';
-      actBtn.disabled  = false;
-      actBtn.classList.add('ready');
-      if (btn) btn.textContent = '📡';
+      if(btn) btn.textContent='📡';
+    }, function(){
+      statusEl.textContent='GPS failed — search or move the map';
+      confirmBtn.disabled=false; confirmBtn.className='ready';
+      confirmBtn.textContent='Confirm location →';
+      if(btn) btn.textContent='📡';
     }, {timeout:10000, maximumAge:30000, enableHighAccuracy:true});
   }
 
-  /* Auto-run GPS on load */
+  /* Auto-GPS on load */
   doGPS(null);
 
-  /* Button triggers */
   document.getElementById('gps-fab').addEventListener('click', function(){ doGPS(this); });
   document.getElementById('use-gps-row').addEventListener('click', function(){ doGPS(null); });
 
-  /* ── Confirm button ───────────────────────────────── */
-  actBtn.addEventListener('click', function(){
-    if (actBtn.disabled || !locationSet) return;
-    daddr.value = locInput.value;
-
-    /* Mark done */
-    actBtn.classList.remove('ready');
-    actBtn.classList.add('done');
-    actBtn.innerHTML = '✓ Location confirmed';
-    actBtn.disabled  = true;
-    setStatus('📍 ' + (locInput.value.split(',').slice(0,2).join(',') || 'Location set'));
-
-    /* Expand sheet to reveal form */
-    sheet.classList.add('expanded');
-    document.body.classList.add('expanded');
-    formSec.classList.add('show');
-    setTimeout(function(){ map.invalidateSize(); sheet.scrollTop = 999; }, 380);
+  /* ── Confirm button → Screen 2 ───────────────────── */
+  confirmBtn.addEventListener('click', function(){
+    if (!locSet || confirmBtn.disabled) return;
+    goToOrderForm();
   });
 
-  /* ── Sheet drag handle ────────────────────────────── */
-  var dragY = null;
-  document.getElementById('handle').addEventListener('touchstart', function(e){
-    dragY = e.touches[0].clientY;
-  }, {passive:true});
-  document.addEventListener('touchend', function(e){
-    if (dragY===null) return;
-    var diff = dragY - e.changedTouches[0].clientY;
-    if (diff > 50) {
-      sheet.classList.add('expanded'); document.body.classList.add('expanded');
-      formSec.classList.add('show');
-      setTimeout(function(){ map.invalidateSize(); },380);
-    } else if (diff < -50 && !formSec.classList.contains('show')) {
-      sheet.classList.remove('expanded'); document.body.classList.remove('expanded');
-      setTimeout(function(){ map.invalidateSize(); },380);
-    }
-    dragY = null;
-  }, {passive:true});
-
-  /* ── Autocomplete ─────────────────────────────────── */
-  var st = null, focused = -1;
-
-  locInput.addEventListener('input', function(){
-    var q = this.value.trim();
-    clrBtn.style.display = q ? '' : 'none';
-    closeSug();
-    locationSet = false;
-    if (q.length < 2) return;
-    clearTimeout(st);
-    st = setTimeout(function(){ fetchSug(q); }, 300);
-  });
-
-  locInput.addEventListener('keydown', function(e){
-    var rows = sug.querySelectorAll('.sug-row');
-    if (e.key==='ArrowDown')  { focused=Math.min(focused+1,rows.length-1); hilite(rows); }
-    else if (e.key==='ArrowUp')   { focused=Math.max(focused-1,0); hilite(rows); }
-    else if (e.key==='Enter' && focused>=0) { e.preventDefault(); rows[focused].click(); }
-    else if (e.key==='Escape')    { closeSug(); locInput.blur(); }
-  });
-
-  clrBtn.addEventListener('click', function(){
-    locInput.value=''; clrBtn.style.display='none';
-    locInput.focus(); closeSug();
-  });
-
-  function hilite(rows){ rows.forEach(function(r,i){ r.classList.toggle('hi', i===focused); }); }
-  function closeSug()  { sug.innerHTML=''; sug.classList.remove('open'); focused=-1; }
-
-  document.addEventListener('click', function(e){
-    if (!e.target.closest('#loc-wrap')) closeSug();
-  });
-
-  function fetchSug(q) {
-    sug.innerHTML='<div class="sug-row"><span class="sug-ico spin">🔄</span><div><div class="sug-name">Searching…</div></div></div>';
-    sug.classList.add('open');
-    var url = LIQ
-      ? 'https://us1.locationiq.com/v1/search.php?key='+LIQ+'&q='+encodeURIComponent(q+', Ghana')+'&format=json&limit=8&addressdetails=1&countrycodes=gh'
-      : 'https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+', Ghana')+'&format=json&limit=8&addressdetails=1&countrycodes=gh';
-    fetch(url)
-      .then(function(r){return r.json();})
-      .then(renderSug)
-      .catch(function(){
-        sug.innerHTML='<div class="sug-row" style="pointer-events:none"><span class="sug-ico">⚠️</span><div><div class="sug-name">Search unavailable</div></div></div>';
-      });
-  }
-
-  function renderSug(results) {
-    sug.innerHTML=''; focused=-1;
-    if (!results||!results.length) {
-      sug.innerHTML='<div class="sug-row" style="pointer-events:none"><span class="sug-ico">🔍</span><div><div class="sug-name">No results — try a different name</div></div></div>';
-      sug.classList.add('open'); return;
-    }
-    results.forEach(function(r){
-      var el = document.createElement('div');
-      el.className='sug-row';
-      var a = r.address||{};
-      var main = a.road||a.suburb||a.neighbourhood||a.town||a.village||a.city||(r.display_name.split(',')[0]);
-      var sub  = r.display_name;
-      el.innerHTML='<span class="sug-ico">📍</span><div style="min-width:0;flex:1">'
-        +'<div class="sug-name">'+esc(main)+'</div>'
-        +'<div class="sug-addr">'+esc(sub)+'</div>'
-        +'</div>';
-      el.addEventListener('mousedown',function(e){e.preventDefault();});
-      el.addEventListener('click',function(){
-        var lat=parseFloat(r.lat), lng=parseFloat(r.lon);
-        locInput.value=r.display_name;
-        clrBtn.style.display='';
-        closeSug();
-        map.flyTo([lat,lng],17,{duration:1.2});
-        applyLocation(lat, lng, main);
-        setActionReady('✓ Confirm — '+main);
-        setStatus('📍 Selected: '+main);
-      });
-      sug.appendChild(el);
-    });
-    sug.classList.add('open');
-  }
-
-  /* ── Form submit ──────────────────────────────────── */
+  /* ── Form submit ─────────────────────────────────── */
   document.getElementById('order-form').addEventListener('submit', function(){
-    if (locInput.value && !daddr.value) daddr.value=locInput.value;
     var btn=document.getElementById('place-btn');
     btn.disabled=true;
-    btn.textContent='🛵 Dispatching rider…';
+    btn.innerHTML='🛵 Placing order…';
   });
 
-  function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  /* ── Autocomplete ─────────────────────────────────── */
+  var st=null, fi=-1;
 
+  locInput.addEventListener('input', function(){
+    var q=this.value.trim();
+    clrBtn.style.display=q?'':'none';
+    closeSug(); locSet=false;
+    if(q.length<2) return;
+    clearTimeout(st);
+    st=setTimeout(function(){ fetchSug(q); }, 300);
+  });
+  locInput.addEventListener('keydown', function(e){
+    var rows=sugBox.querySelectorAll('.sr');
+    if(e.key==='ArrowDown'){fi=Math.min(fi+1,rows.length-1); hi(rows);}
+    else if(e.key==='ArrowUp'){fi=Math.max(fi-1,0); hi(rows);}
+    else if(e.key==='Enter'&&fi>=0){e.preventDefault();rows[fi].click();}
+    else if(e.key==='Escape') closeSug();
+  });
+  clrBtn.addEventListener('click',function(){
+    locInput.value=''; clrBtn.style.display='none'; locInput.focus(); closeSug();
+  });
+  document.addEventListener('click',function(e){
+    if(!e.target.closest('#loc-card')) closeSug();
+  });
+
+  function hi(rows){ rows.forEach(function(r,i){ r.classList.toggle('hi',i===fi); }); }
+  function closeSug(){ sugBox.innerHTML=''; sugBox.classList.remove('open'); fi=-1; }
+
+  function fetchSug(q){
+    sugBox.innerHTML='<div class="sr"><span class="spin" style="font-size:1.1rem">🔄</span>'
+      +'<div><div class="sn">Searching…</div></div></div>';
+    sugBox.classList.add('open');
+    var url=LIQ
+      ?'https://us1.locationiq.com/v1/search.php?key='+LIQ+'&q='+encodeURIComponent(q+', Ghana')+'&format=json&limit=8&addressdetails=1&countrycodes=gh'
+      :'https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+', Ghana')+'&format=json&limit=8&addressdetails=1&countrycodes=gh';
+    fetch(url).then(function(r){return r.json();}).then(renderSug)
+      .catch(function(){ sugBox.innerHTML='<div class="sr" style="pointer-events:none"><span>⚠️</span><div><div class="sn">Search unavailable</div></div></div>'; });
+  }
+
+  function renderSug(results){
+    sugBox.innerHTML=''; fi=-1;
+    if(!results||!results.length){
+      sugBox.innerHTML='<div class="sr" style="pointer-events:none"><span>🔍</span><div><div class="sn">No results</div></div></div>';
+      sugBox.classList.add('open'); return;
+    }
+    results.forEach(function(r){
+      var el=document.createElement('div'); el.className='sr';
+      var a=r.address||{};
+      var main=a.road||a.suburb||a.neighbourhood||a.town||a.village||a.city||(r.display_name.split(',')[0]);
+      el.innerHTML='<span class="sug-ico">📍</span><div style="min-width:0;flex:1">'
+        +'<div class="sn">'+esc(main)+'</div>'
+        +'<div class="sa">'+esc(r.display_name)+'</div></div>';
+      el.addEventListener('mousedown',function(e){e.preventDefault();});
+      el.addEventListener('click',function(){
+        var lat=parseFloat(r.lat),lng=parseFloat(r.lon);
+        map.flyTo([lat,lng],17,{duration:1.1});
+        setLocation(lat,lng,r.display_name);
+        closeSug();
+        statusEl.textContent='📍 '+main;
+      });
+      sugBox.appendChild(el);
+    });
+    sugBox.classList.add('open');
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 });
 </script>
 {% endblock %}
