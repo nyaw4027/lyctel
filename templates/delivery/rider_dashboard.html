@@ -1,62 +1,61 @@
-<h2>🚴 My Deliveries</h2>
+{% extends "base.html" %}
+{% block title %}My Deliveries — Lynctel Rider{% endblock %}
+{% block content %}
+<div class="container-xl px-3 py-4" style="max-width:700px">
+  <h1 class="h5 fw-bold text-navy mb-4">🛵 My Deliveries</h1>
 
-{% for d in deliveries %}
-  <div style="
-      border:1px solid #ddd;
-      padding:15px;
-      margin-bottom:15px;
-      border-radius:10px;
-      background:#fafafa;
-  ">
-
-    <!-- ORDER INFO -->
-    <p><strong>Order Ref:</strong> {{ d.order.order_ref|default:"Ride Booking" }}</p>
-
-    <!-- STATUS -->
-    <p>
-      <strong>Status:</strong>
-      <span style="
-        padding:4px 8px;
-        border-radius:5px;
-        background:#eee;
-      ">
-        {{ d.status|title }}
+  {% for d in deliveries %}
+  <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+      <div>
+        <div class="fw-bold text-navy">{{ d.order.order_ref|default:"Ride Booking" }}</div>
+        <div class="text-muted small">
+          {% if d.pickup_location %}{{ d.pickup_location }} → {{ d.dropoff_location }}{% endif %}
+        </div>
+      </div>
+      <span class="badge rounded-pill
+        {% if d.status == 'assigned'  %}bg-primary
+        {% elif d.status == 'picked_up' %}bg-info text-dark
+        {% elif d.status == 'en_route'  %}bg-info text-dark
+        {% elif d.status == 'delivered' %}bg-success
+        {% else %}bg-secondary{% endif %}">
+        {{ d.get_status_display }}
       </span>
-    </p>
+    </div>
 
-    <!-- LOCATION INFO -->
-    {% if d.is_customer_ride %}
-      <p><strong>Pickup:</strong> {{ d.pickup_location }}</p>
-      <p><strong>Dropoff:</strong> {{ d.dropoff_location }}</p>
-    {% endif %}
+    <div class="d-flex gap-2 small text-muted mb-3">
+      <span>💰 GHS {{ d.delivery_fee }}</span>
+      <span>·</span>
+      <span>Your cut: <strong class="text-success">GHS {{ d.rider_commission }}</strong></span>
+    </div>
 
-    <!-- DELIVERY FEES -->
-    <p><strong>Fee:</strong> GHS {{ d.delivery_fee }}</p>
-
-    <hr>
-
-    <!-- ACTIONS (SAFE POST BUTTONS) -->
-    <form method="post" action="{% url 'delivery:update_status' d.id 'picked_up' %}" style="display:inline;">
-      {% csrf_token %}
-      <button type="submit" style="padding:5px 10px;">
-        📦 Picked Up
-      </button>
-    </form>
-
-    <form method="post" action="{% url 'delivery:update_status' d.id 'delivered' %}" style="display:inline;">
-      {% csrf_token %}
-      <button type="submit" style="padding:5px 10px;">
-        ✅ Delivered
-      </button>
-    </form>
-
-    <!-- TRACK BUTTON -->
-    <a href="{% url 'delivery:track' d.id %}" style="margin-left:10px;">
-      📍 Track
-    </a>
-
+    <div class="d-flex flex-wrap gap-2">
+      {% if d.status == 'assigned' %}
+      <form method="post" action="{% url 'delivery:update_status' d.id 'picked_up' %}">
+        {% csrf_token %}
+        <button class="btn btn-primary btn-sm rounded-3">📦 Mark Picked Up</button>
+      </form>
+      {% elif d.status == 'picked_up' %}
+      <form method="post" action="{% url 'delivery:update_status' d.id 'en_route' %}">
+        {% csrf_token %}
+        <button class="btn btn-sm rounded-3 text-white" style="background:#7c3aed">🛵 En Route</button>
+      </form>
+      {% elif d.status == 'en_route' %}
+      <form method="post" action="{% url 'delivery:update_status' d.id 'delivered' %}">
+        {% csrf_token %}
+        <button class="btn btn-success btn-sm rounded-3">✅ Mark Delivered</button>
+      </form>
+      {% endif %}
+      <a href="{% url 'delivery:track_delivery' d.order.order_ref %}"
+         class="btn btn-outline-secondary btn-sm rounded-3">📍 Track</a>
+    </div>
   </div>
-
-{% empty %}
-  <p>No deliveries assigned yet.</p>
-{% endfor %}
+  {% empty %}
+  <div class="text-center py-5 text-muted">
+    <div class="fs-1 mb-2">🛵</div>
+    <p class="fw-semibold">No deliveries assigned yet.</p>
+    <p class="small">Go online in your <a href="{% url 'rider:dashboard' %}">rider dashboard</a> to start receiving orders.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

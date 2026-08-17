@@ -3,59 +3,61 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-  #pickup-map, #dropoff-map { height: 220px; border-radius: 16px; z-index: 1; }
+  #pickup-map, #dropoff-map {
+    height:220px; border-radius:12px; z-index:1;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto px-4 md:px-6 py-10">
+<div class="container-xl px-3 py-4" style="max-width:680px">
 
-  <div class="mb-8">
-    <h1 class="font-display font-700 text-3xl text-navy">Book a Ride</h1>
-    <p class="text-gray-500 mt-1">Schedule a pickup — we'll find the nearest available rider.</p>
+  <div class="mb-4">
+    <h1 class="h4 fw-bold text-navy">Book a Ride</h1>
+    <p class="text-muted small">Schedule a pickup — we'll find the nearest available rider.</p>
   </div>
 
-  <form method="POST" class="space-y-6">
+  <form method="POST">
     {% csrf_token %}
 
     <!-- PICKUP -->
-    <div class="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-      <h2 class="font-display font-700 text-navy flex items-center gap-2">
-        <span class="w-6 h-6 bg-green-500 rounded-full text-white text-xs flex items-center justify-center font-bold">A</span>
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+      <h2 class="h6 fw-bold text-navy d-flex align-items-center gap-2 mb-3">
+        <span class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+              style="width:24px;height:24px;background:#22c55e;font-size:.75rem">A</span>
         Pickup Location
       </h2>
       <input type="text" id="pickup-search" placeholder="Type address or click the map…"
-             class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-gold"/>
-      <div id="pickup-map"></div>
+             class="form-control rounded-3 mb-3"/>
+      <div id="pickup-map" class="mb-2"></div>
       <input type="hidden" name="pickup_location" id="pickup_location"/>
       <input type="hidden" name="pickup_lat"      id="pickup_lat"/>
       <input type="hidden" name="pickup_lng"      id="pickup_lng"/>
-      <p id="pickup-label" class="text-xs text-gray-400 min-h-[1rem]"></p>
+      <p id="pickup-label" class="text-muted small mb-0"></p>
     </div>
 
     <!-- DROPOFF -->
-    <div class="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-      <h2 class="font-display font-700 text-navy flex items-center gap-2">
-        <span class="w-6 h-6 bg-red-500 rounded-full text-white text-xs flex items-center justify-center font-bold">B</span>
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+      <h2 class="h6 fw-bold text-navy d-flex align-items-center gap-2 mb-3">
+        <span class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+              style="width:24px;height:24px;background:#ef4444;font-size:.75rem">B</span>
         Dropoff Location
       </h2>
       <input type="text" id="dropoff-search" placeholder="Type address or click the map…"
-             class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-gold"/>
-      <div id="dropoff-map"></div>
+             class="form-control rounded-3 mb-3"/>
+      <div id="dropoff-map" class="mb-2"></div>
       <input type="hidden" name="dropoff_location" id="dropoff_location"/>
       <input type="hidden" name="dropoff_lat"      id="dropoff_lat"/>
       <input type="hidden" name="dropoff_lng"      id="dropoff_lng"/>
-      <p id="dropoff-label" class="text-xs text-gray-400 min-h-[1rem]"></p>
+      <p id="dropoff-label" class="text-muted small mb-0"></p>
     </div>
 
     <!-- ZONE + NOTE -->
-    <div class="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-      <div>
-        <label class="block text-sm font-semibold text-navy mb-2">Delivery Zone</label>
-        <select name="zone_id"
-                class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white">
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Delivery Zone</label>
+        <select name="zone_id" class="form-select rounded-3">
           <option value="">— No specific zone (express rate applies) —</option>
           {% for zone in zones %}
           <option value="{{ zone.pk }}">{{ zone.name }} — GHS {{ zone.delivery_fee }}</option>
@@ -63,15 +65,16 @@
         </select>
       </div>
       <div>
-        <label class="block text-sm font-semibold text-navy mb-2">Note for rider <span class="font-normal text-gray-400">(optional)</span></label>
+        <label class="form-label small fw-semibold">
+          Note for rider <span class="text-muted fw-normal">(optional)</span>
+        </label>
         <textarea name="note" rows="2" placeholder="E.g. fragile item, call on arrival…"
-                  class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none"></textarea>
+                  class="form-control rounded-3"></textarea>
       </div>
     </div>
 
     <button type="submit" id="submit-btn"
-            class="w-full bg-navy hover:bg-navy-700 text-white font-display font-700
-                   text-lg py-4 rounded-2xl transition-colors btn-press disabled:opacity-50">
+            class="btn btn-navy w-100 rounded-3 fw-bold py-3 fs-5">
       🛵 Book Ride Now
     </button>
   </form>
@@ -79,74 +82,60 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const DEFAULT_LAT = 5.6037, DEFAULT_LNG = -0.1870; // Accra
+var DEFAULT_LAT = 5.6037, DEFAULT_LNG = -0.1870;
 
-  function initMap(mapId, searchId, latId, lngId, locId, labelId, color) {
-    const map = L.map(mapId).setView([DEFAULT_LAT, DEFAULT_LNG], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+function initMap(mapId, searchId, latId, lngId, locId, labelId, color) {
+  var map = L.map(mapId).setView([DEFAULT_LAT, DEFAULT_LNG], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    const icon = L.divIcon({
-      html: `<div style="background:${color};width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>`,
-      iconSize: [16, 16], iconAnchor: [8, 8], className: ''
-    });
+  var icon = L.divIcon({className:'',
+    html:'<div style="background:'+color+';width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>',
+    iconSize:[16,16], iconAnchor:[8,8]});
 
-    let marker = null;
+  var marker = null;
 
-    function setLocation(lat, lng, label) {
-      document.getElementById(latId).value = lat;
-      document.getElementById(lngId).value = lng;
-      document.getElementById(locId).value = label;
-      document.getElementById(labelId).textContent = '📍 ' + label;
-      if (marker) marker.setLatLng([lat, lng]);
-      else marker = L.marker([lat, lng], {icon}).addTo(map);
-      map.setView([lat, lng], 15);
-    }
-
-    // Click on map to pick location
-    map.on('click', async e => {
-      const {lat, lng} = e.latlng;
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-        {headers: {'Accept-Language': 'en'}}
-      );
-      const data = await res.json();
-      const label = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      setLocation(lat, lng, label);
-    });
-
-    // Search box — geocode on Enter
-    document.getElementById(searchId).addEventListener('keydown', async e => {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      const q = e.target.value.trim();
-      if (!q) return;
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=gh`,
-        {headers: {'Accept-Language': 'en'}}
-      );
-      const data = await res.json();
-      if (data.length) {
-        setLocation(parseFloat(data[0].lat), parseFloat(data[0].lon), data[0].display_name);
-        e.target.value = '';
-      } else {
-        alert('Address not found. Try clicking on the map.');
-      }
-    });
+  function setLoc(lat, lng, label) {
+    document.getElementById(latId).value  = lat;
+    document.getElementById(lngId).value  = lng;
+    document.getElementById(locId).value  = label;
+    document.getElementById(labelId).textContent = '📍 ' + label;
+    if (marker) marker.setLatLng([lat,lng]);
+    else marker = L.marker([lat,lng],{icon:icon}).addTo(map);
+    map.setView([lat,lng], 15);
   }
 
-  initMap('pickup-map',  'pickup-search',  'pickup_lat',  'pickup_lng',  'pickup_location',  'pickup-label',  '#22c55e');
-  initMap('dropoff-map', 'dropoff-search', 'dropoff_lat', 'dropoff_lng', 'dropoff_location', 'dropoff-label', '#ef4444');
-
-  document.querySelector('form').addEventListener('submit', e => {
-    const pickup  = document.getElementById('pickup_location').value;
-    const dropoff = document.getElementById('dropoff_location').value;
-    if (!pickup || !dropoff) {
-      e.preventDefault();
-      alert('Please select both pickup and dropoff locations on the maps.');
-    }
+  map.on('click', function(e) {
+    fetch('https://nominatim.openstreetmap.org/reverse?lat='+e.latlng.lat+'&lon='+e.latlng.lng+'&format=json',
+          {headers:{'Accept-Language':'en'}})
+      .then(function(r){return r.json();})
+      .then(function(d){ setLoc(e.latlng.lat, e.latlng.lng, d.display_name||'Selected location'); });
   });
+
+  document.getElementById(searchId).addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    var q = e.target.value.trim(); if (!q) return;
+    fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=json&limit=1&countrycodes=gh',
+          {headers:{'Accept-Language':'en'}})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if (d.length) { setLoc(parseFloat(d[0].lat), parseFloat(d[0].lon), d[0].display_name); e.target.value=''; }
+        else alert('Address not found. Try clicking on the map.');
+      });
+  });
+}
+
+initMap('pickup-map',  'pickup-search',  'pickup_lat',  'pickup_lng',  'pickup_location',  'pickup-label',  '#22c55e');
+initMap('dropoff-map', 'dropoff-search', 'dropoff_lat', 'dropoff_lng', 'dropoff_location', 'dropoff-label', '#ef4444');
+
+document.querySelector('form').addEventListener('submit', function(e) {
+  if (!document.getElementById('pickup_location').value ||
+      !document.getElementById('dropoff_location').value) {
+    e.preventDefault();
+    alert('Please select both pickup and dropoff locations on the maps.');
+  }
+});
 </script>
 {% endblock %}

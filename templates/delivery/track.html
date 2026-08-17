@@ -1,288 +1,211 @@
 {% extends "base.html" %}
-{% block title %}Track Ride #{{ delivery.pk }} — Lynctel{% endblock %}
+{% block title %}Track Order {{ delivery.order.order_ref|default:delivery.pk }} — Lynctel{% endblock %}
 
 {% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  #live-map { height: 55vh; min-height: 320px; width: 100%; border-radius: 20px; }
-  @keyframes pulse-ring {
-    0%   { transform: scale(.9); opacity: .8; }
-    70%  { transform: scale(1.6); opacity: 0; }
-    100% { transform: scale(.9); opacity: 0; }
-  }
-  .pulse-ring {
-    position: absolute; inset: -6px; border-radius: 50%;
-    background: rgba(15,27,45,.25);
-    animation: pulse-ring 1.8s ease-out infinite;
-  }
+  #live-map { height: 55vh; min-height: 300px; border-radius: 16px; z-index: 1; }
+  .ws-dot { width:8px; height:8px; border-radius:50%; background:#22c55e;
+             display:inline-block; animation:pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto px-4 md:px-6 py-8">
+<div class="container-xl px-3 py-4" style="max-width:680px">
 
   <!-- Header -->
-  <div class="mb-6 flex items-center justify-between flex-wrap gap-3">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
     <div>
-      <p class="text-gold text-xs font-semibold uppercase tracking-widest mb-1">Live Tracking</p>
-      <h1 class="font-display font-700 text-2xl text-navy">Ride #{{ delivery.pk }}</h1>
+      <div class="text-gold small fw-semibold text-uppercase" style="letter-spacing:.05em">Live Tracking</div>
+      <h1 class="h4 fw-bold text-navy mb-0">
+        {% if delivery.order %}Order {{ delivery.order.order_ref }}
+        {% else %}Ride #{{ delivery.pk }}{% endif %}
+      </h1>
     </div>
-    <span id="status-badge"
-          class="text-sm font-semibold px-4 py-1.5 rounded-full
-                 {% if delivery.status == 'pending' %}bg-yellow-100 text-yellow-700
-                 {% elif delivery.status == 'assigned' %}bg-blue-100 text-blue-700
-                 {% elif delivery.status == 'picked_up' %}bg-purple-100 text-purple-700
-                 {% elif delivery.status == 'en_route' %}bg-indigo-100 text-indigo-700
-                 {% elif delivery.status == 'delivered' %}bg-green-100 text-green-700
-                 {% else %}bg-gray-100 text-gray-500{% endif %}">
-      {% if delivery.status == 'pending' %}⏳ Finding rider
-      {% elif delivery.status == 'assigned' %}🛵 Rider assigned
+    <span id="status-badge" class="badge rounded-pill fs-6 px-3 py-2
+      {% if delivery.status == 'pending' %}bg-warning text-dark
+      {% elif delivery.status == 'assigned' %}bg-primary
+      {% elif delivery.status == 'picked_up' %}bg-info text-dark
+      {% elif delivery.status == 'en_route' %}bg-info text-dark
+      {% elif delivery.status == 'delivered' %}bg-success
+      {% else %}bg-secondary{% endif %}">
+      {% if delivery.status == 'pending'   %}⏳ Finding rider
+      {% elif delivery.status == 'assigned'  %}🛵 Rider assigned
       {% elif delivery.status == 'picked_up' %}📦 Picked up
-      {% elif delivery.status == 'en_route' %}🚀 En route
+      {% elif delivery.status == 'en_route'  %}🚀 En route
       {% elif delivery.status == 'delivered' %}✅ Delivered
       {% else %}{{ delivery.get_status_display }}{% endif %}
     </span>
   </div>
 
   <!-- Map -->
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
     <div id="live-map"></div>
-    <div class="px-4 py-2.5 border-t border-gray-50 flex items-center gap-2 text-xs text-gray-400">
-      <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+    <div class="px-3 py-2 border-top d-flex align-items-center gap-2 small text-muted"
+         style="font-size:.78rem">
+      <span class="ws-dot"></span>
       <span id="ws-status">Connecting to live tracking…</span>
     </div>
   </div>
 
   <!-- Pickup / Dropoff -->
-  <div class="grid grid-cols-2 gap-4 mb-5">
-    <div class="bg-white rounded-2xl border border-gray-100 p-4">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">📦 Pickup</p>
-      <p class="text-sm font-semibold text-navy leading-snug">{{ delivery.pickup_location|default:"—" }}</p>
+  <div class="row g-3 mb-4">
+    <div class="col-6">
+      <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+        <div class="text-muted mb-1" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">📦 Pickup</div>
+        <div class="fw-semibold text-navy small">{{ delivery.pickup_location|default:"—" }}</div>
+      </div>
     </div>
-    <div class="bg-white rounded-2xl border border-gray-100 p-4">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">📍 Dropoff</p>
-      <p class="text-sm font-semibold text-navy leading-snug">{{ delivery.dropoff_location|default:"—" }}</p>
+    <div class="col-6">
+      <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+        <div class="text-muted mb-1" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">📍 Dropoff</div>
+        <div class="fw-semibold text-navy small">{{ delivery.dropoff_location|default:"—" }}</div>
+      </div>
     </div>
   </div>
 
   <!-- Rider info -->
   {% if delivery.rider %}
-  <div class="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 mb-5">
-    <div class="w-12 h-12 bg-navy rounded-2xl flex items-center justify-center
-                text-white font-display font-700 text-lg flex-shrink-0">
+  <div class="card border-0 shadow-sm rounded-4 p-3 d-flex flex-row align-items-center gap-3 mb-4">
+    <div class="rounded-3 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+         style="width:48px;height:48px;background:var(--navy);font-size:1.1rem">
       {{ delivery.rider.rider.first_name|first|upper|default:"R" }}
     </div>
-    <div class="flex-1 min-w-0">
-      <p class="font-semibold text-navy">{{ delivery.rider.rider.get_full_name|default:delivery.rider.rider.phone }}</p>
-      <p class="text-xs text-gray-400 mt-0.5">
+    <div class="flex-grow-1 min-w-0">
+      <div class="fw-semibold text-navy text-truncate">
+        {{ delivery.rider.rider.get_full_name|default:delivery.rider.rider.phone }}
+      </div>
+      <div class="text-muted small">
         {{ delivery.rider.vehicle_type|default:"Rider" }}
         {% if delivery.rider.vehicle_plate %}· {{ delivery.rider.vehicle_plate }}{% endif %}
-      </p>
-      <p id="rider-distance" class="text-xs text-gold-dark font-semibold mt-1"></p>
+      </div>
+      <div id="rider-distance" class="small fw-semibold" style="color:var(--gold-dark)"></div>
     </div>
-    <div class="flex gap-2 flex-shrink-0">
+    <div class="d-flex gap-2 flex-shrink-0">
       <a href="tel:{{ delivery.rider.rider.phone }}"
-         class="w-10 h-10 bg-navy hover:bg-navy-700 text-white rounded-xl flex items-center justify-center transition-colors text-base">
-        📞
-      </a>
+         class="btn btn-navy btn-sm rounded-3 d-flex align-items-center justify-content-center"
+         style="width:38px;height:38px">📞</a>
       <a href="https://wa.me/233{{ delivery.rider.rider.phone|slice:'1:' }}?text=Hi,+I'm+tracking+my+Lynctel+delivery"
          target="_blank"
-         class="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center transition-colors text-base">
-        💬
-      </a>
+         class="btn btn-success btn-sm rounded-3 d-flex align-items-center justify-content-center"
+         style="width:38px;height:38px">💬</a>
     </div>
   </div>
   {% else %}
-  <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-5 text-center">
-    <p class="text-sm font-semibold text-amber-800">⏳ Searching for a rider nearby…</p>
-    <p class="text-xs text-amber-600 mt-1">This page updates automatically every 15 seconds.</p>
+  <div class="alert rounded-4 mb-4" style="background:#fffbeb;border:1px solid #fde68a">
+    <p class="fw-semibold mb-1" style="color:#92400e">⏳ Searching for a rider nearby…</p>
+    <p class="small mb-0" style="color:#b45309">This page updates automatically every 15 seconds.</p>
   </div>
   {% endif %}
 
-  <!-- Delivery info -->
-  <div class="bg-white rounded-2xl border border-gray-100 p-5 text-sm space-y-2 mb-5">
-    <div class="flex justify-between">
-      <span class="text-gray-400">Delivery fee</span>
-      <span class="font-semibold text-navy">GHS {{ delivery.delivery_fee }}</span>
+  <!-- Delivery details -->
+  <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 small">
+    <div class="d-flex justify-content-between mb-2">
+      <span class="text-muted">Delivery fee</span>
+      <span class="fw-semibold text-navy">GHS {{ delivery.delivery_fee }}</span>
     </div>
     {% if delivery.estimated_duration %}
-    <div class="flex justify-between">
-      <span class="text-gray-400">Estimated time</span>
-      <span class="font-semibold text-navy">{{ delivery.estimated_duration }} mins</span>
+    <div class="d-flex justify-content-between mb-2">
+      <span class="text-muted">Estimated time</span>
+      <span class="fw-semibold text-navy">{{ delivery.estimated_duration }} mins</span>
     </div>
     {% endif %}
-    <div class="flex justify-between">
-      <span class="text-gray-400">Delivery code</span>
-      <span class="font-display font-700 text-navy tracking-widest">{{ delivery.delivery_code|default:"—" }}</span>
+    <div class="d-flex justify-content-between">
+      <span class="text-muted">Delivery code</span>
+      <span class="fw-bold text-navy" style="letter-spacing:.1em">{{ delivery.delivery_code|default:"—" }}</span>
     </div>
   </div>
 
-  <a href="{% url 'order:history' %}"
-     class="text-sm text-navy font-medium hover:text-gold transition-colors">← My Orders</a>
+  <a href="{% url 'order:history' %}" class="text-muted small text-decoration-none">← My Orders</a>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const DELIVERY_ID = {{ delivery.pk }};
-  const PICKUP_LAT  = {{ delivery.pickup_lat|default:"null" }};
-  const PICKUP_LNG  = {{ delivery.pickup_lng|default:"null" }};
-  const DROPOFF_LAT = {{ delivery.dropoff_lat|default:"null" }};
-  const DROPOFF_LNG = {{ delivery.dropoff_lng|default:"null" }};
-  const GMAPS_KEY   = "{{ GOOGLE_MAPS_API_KEY }}";
-  const DEFAULT_LAT = 5.6037;
-  const DEFAULT_LNG = -0.1870;
+var DELIVERY_ID = {{ delivery.pk }};
+var PICKUP_LAT  = {{ delivery.pickup_lat|default:"null" }};
+var PICKUP_LNG  = {{ delivery.pickup_lng|default:"null" }};
+var DROPOFF_LAT = {{ delivery.dropoff_lat|default:"null" }};
+var DROPOFF_LNG = {{ delivery.dropoff_lng|default:"null" }};
+var DEFAULT     = [5.6037, -0.1870];
 
-  let map, riderMarker, directionsRenderer;
+var centre = (PICKUP_LAT && PICKUP_LNG) ? [PICKUP_LAT, PICKUP_LNG] : DEFAULT;
+var map    = L.map('live-map').setView(centre, 14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors'
+}).addTo(map);
 
-  function initMap() {
-    const center = (PICKUP_LAT && PICKUP_LNG)
-      ? { lat: PICKUP_LAT, lng: PICKUP_LNG }
-      : { lat: DEFAULT_LAT, lng: DEFAULT_LNG };
+function dot(color) {
+  return L.divIcon({
+    className: '',
+    html: '<div style="background:' + color + ';width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>',
+    iconSize: [14,14], iconAnchor: [7,7]
+  });
+}
 
-    map = new google.maps.Map(document.getElementById('live-map'), {
-      center,
-      zoom: 14,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: true,
-      styles: [
-        { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-      ],
-    });
+if (PICKUP_LAT && PICKUP_LNG)
+  L.marker([PICKUP_LAT, PICKUP_LNG], {icon: dot('#22c55e')}).addTo(map).bindPopup('Pickup');
+if (DROPOFF_LAT && DROPOFF_LNG)
+  L.marker([DROPOFF_LAT, DROPOFF_LNG], {icon: dot('#ef4444')}).addTo(map).bindPopup('Dropoff');
+if (PICKUP_LAT && DROPOFF_LAT) {
+  var b = L.latLngBounds([[PICKUP_LAT,PICKUP_LNG],[DROPOFF_LAT,DROPOFF_LNG]]);
+  map.fitBounds(b, {padding:[40,40]});
+}
 
-    directionsRenderer = new google.maps.DirectionsRenderer({
-      suppressMarkers: true,
-      polylineOptions: { strokeColor: '#0F1B2D', strokeWeight: 4, strokeOpacity: 0.7 },
-    });
-    directionsRenderer.setMap(map);
+var riderMarker = null;
+var riderIcon   = L.divIcon({
+  className: '',
+  html: '<div style="background:#0F1B2D;width:20px;height:20px;border-radius:50%;border:3px solid #F5A623;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:10px">🛵</div>',
+  iconSize:[20,20], iconAnchor:[10,10]
+});
 
-    // Pickup marker
-    if (PICKUP_LAT && PICKUP_LNG) {
-      new google.maps.Marker({
-        position: { lat: PICKUP_LAT, lng: PICKUP_LNG },
-        map,
-        icon: {
-          url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
-          scaledSize: new google.maps.Size(40, 40),
-        },
-        title: 'Pickup',
-      });
-    }
+function moveRider(lat, lng) {
+  if (riderMarker) riderMarker.setLatLng([lat, lng]);
+  else riderMarker = L.marker([lat,lng], {icon:riderIcon}).addTo(map).bindPopup('Rider');
+  map.panTo([lat,lng]);
+}
 
-    // Dropoff marker
-    if (DROPOFF_LAT && DROPOFF_LNG) {
-      new google.maps.Marker({
-        position: { lat: DROPOFF_LAT, lng: DROPOFF_LNG },
-        map,
-        icon: {
-          url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-          scaledSize: new google.maps.Size(40, 40),
-        },
-        title: 'Dropoff',
-      });
-    }
+var STATUS = {
+  pending:   ['⏳ Finding rider',  'bg-warning text-dark'],
+  assigned:  ['🛵 Rider assigned', 'bg-primary text-white'],
+  picked_up: ['📦 Picked up',      'bg-info text-dark'],
+  en_route:  ['🚀 En route',       'bg-info text-dark'],
+  delivered: ['✅ Delivered',       'bg-success text-white'],
+  failed:    ['❌ Failed',          'bg-secondary text-white'],
+};
 
-    // Fit bounds if both coords exist
-    if (PICKUP_LAT && PICKUP_LNG && DROPOFF_LAT && DROPOFF_LNG) {
-      const bounds = new google.maps.LatLngBounds();
-      bounds.extend({ lat: PICKUP_LAT, lng: PICKUP_LNG });
-      bounds.extend({ lat: DROPOFF_LAT, lng: DROPOFF_LNG });
-      map.fitBounds(bounds, { padding: 60 });
-    }
-
-    connectWS();
+function updateBadge(status) {
+  var badge = document.getElementById('status-badge');
+  if (!badge || !STATUS[status]) return;
+  badge.textContent = STATUS[status][0];
+  badge.className   = 'badge rounded-pill fs-6 px-3 py-2 ' + STATUS[status][1];
+  if (status === 'delivered') {
+    document.getElementById('ws-status').textContent = '✅ Delivery complete!';
   }
+}
 
-  function moveRider(lat, lng) {
-    const pos = { lat, lng };
-    if (!riderMarker) {
-      riderMarker = new google.maps.Marker({
-        position: pos,
-        map,
-        icon: {
-          url: 'https://maps.google.com/mapfiles/ms/icons/motorcycling.png',
-          scaledSize: new google.maps.Size(36, 36),
-        },
-        title: 'Rider',
-        zIndex: 10,
-      });
-    } else {
-      riderMarker.setPosition(pos);
-    }
+function connectWS() {
+  var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  var ws    = new WebSocket(proto + '://' + location.host + '/ws/delivery/' + DELIVERY_ID + '/');
 
-    // Draw route to dropoff
-    if (DROPOFF_LAT && DROPOFF_LNG) {
-      const ds = new google.maps.DirectionsService();
-      ds.route({
-        origin:      pos,
-        destination: { lat: DROPOFF_LAT, lng: DROPOFF_LNG },
-        travelMode:  google.maps.TravelMode.DRIVING,
-      }, (result, status) => {
-        if (status === 'OK') {
-          directionsRenderer.setDirections(result);
-          const leg = result.routes[0].legs[0];
-          const dist = document.getElementById('rider-distance');
-          if (dist) dist.textContent = `${leg.distance.text} · ETA ${leg.duration.text}`;
-        }
-      });
-    }
-  }
-
-  const STATUS_LABELS = {
-    pending:   '⏳ Finding rider',
-    assigned:  '🛵 Rider assigned',
-    picked_up: '📦 Picked up',
-    en_route:  '🚀 En route',
-    delivered: '✅ Delivered',
-    failed:    '❌ Failed',
+  ws.onopen  = function() { document.getElementById('ws-status').textContent = '🟢 Live tracking active'; };
+  ws.onclose = function() {
+    document.getElementById('ws-status').textContent = '🔴 Reconnecting…';
+    setTimeout(connectWS, 4000);
   };
-  const STATUS_COLORS = {
-    pending:   'bg-yellow-100 text-yellow-700',
-    assigned:  'bg-blue-100 text-blue-700',
-    picked_up: 'bg-purple-100 text-purple-700',
-    en_route:  'bg-indigo-100 text-indigo-700',
-    delivered: 'bg-green-100 text-green-700',
-    failed:    'bg-gray-100 text-gray-500',
-  };
-
-  function updateStatus(status) {
-    const badge = document.getElementById('status-badge');
-    if (!badge) return;
-    badge.textContent = STATUS_LABELS[status] || status;
-    badge.className = `text-sm font-semibold px-4 py-1.5 rounded-full ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-500'}`;
-    if (status === 'delivered') {
-      document.getElementById('ws-status').textContent = '✅ Delivery complete!';
+  ws.onmessage = function(e) {
+    var msg = JSON.parse(e.data);
+    if (msg.type === 'location') {
+      moveRider(parseFloat(msg.lat), parseFloat(msg.lng));
+      if (msg.status) updateBadge(msg.status);
+    } else if (msg.type === 'status') {
+      updateBadge(msg.status);
+      if (msg.status === 'delivered') setTimeout(function(){ location.reload(); }, 3000);
     }
-  }
-
-  function connectWS() {
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}/ws/delivery/${DELIVERY_ID}/`);
-
-    ws.onopen  = () => {
-      document.getElementById('ws-status').textContent = '🟢 Live tracking active';
-    };
-    ws.onclose = () => {
-      document.getElementById('ws-status').textContent = '🔴 Reconnecting…';
-      setTimeout(connectWS, 4000);
-    };
-    ws.onmessage = e => {
-      const msg = JSON.parse(e.data);
-      if (msg.type === 'location') {
-        moveRider(parseFloat(msg.lat), parseFloat(msg.lng));
-        if (msg.status) updateStatus(msg.status);
-      } else if (msg.type === 'status') {
-        updateStatus(msg.status);
-        if (msg.status === 'delivered') setTimeout(() => location.reload(), 3000);
-      }
-    };
-  }
-
-  // Load Google Maps
-  const script = document.createElement('script');
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&callback=initMap`;
-  script.async = true;
-  script.defer = true;
-  document.head.appendChild(script);
+  };
+}
+connectWS();
 </script>
 {% endblock %}
