@@ -27,7 +27,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 
 # ── Core food models (required) ───────────────────────────────────────────────
 from .models import (
@@ -1420,5 +1420,117 @@ def _mark_food_paid(fp, order, gateway_ref, gateway_data):
     try:
         from delivery.services import auto_assign_for_food_order
         auto_assign_for_food_order(order)
+    except Exception:
+        pass
+
+# ── Saved delivery addresses (item 8) ─────────────────────────────────────────
+
+import json as _json
+
+@require_GET
+@login_required
+def saved_address_list(request):
+    """GET /food/addresses/ — returns user's saved addresses as JSON."""
+    try:
+        from food.models import SavedAddress
+        addrs = SavedAddress.objects.filter(customer=request.user).order_by('-is_default', '-created_at')[:5]
+        return JsonResponse({'addresses': [
+            {
+                'id':         a.pk,
+                'label':      a.label,
+                'address':    a.address,
+                'lat':        a.latitude,
+                'lng':        a.longitude,
+                'is_default': a.is_default,
+            }
+            for a in addrs
+        ]})
+    except Exception as e:
+        return JsonResponse({'addresses': [], 'error': str(e)})
+
+
+@require_POST
+@login_required
+def saved_address_save(request):
+    """POST /food/addresses/save/ — save current checkout address."""
+    try:
+        from food.models import SavedAddress
+        d       = _json.loads(request.body)
+        label   = d.get('label', 'Home').strip() or 'Home'
+        address = d.get('address', '').strip()
+        lat     = float(d.get('lat', 0))
+        lng     = float(d.get('lng', 0))
+
+        if not address or not lat or not lng:
+            return JsonResponse({'success': False, 'error': 'Missing fields'})
+
+        existing = SavedAddress.objects.filter(customer=request.user)
+        if existing.count() >= 5:
+            existing.order_by('created_at').first().delete()
+
+        addr = SavedAddress.objects.create(
+            customer=request.user, label=label,
+            address=address, latitude=lat, longitude=lng,
+        )
+        return JsonResponse({'success': True, 'id': addr.pk})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@require_POST
+@login_required
+def saved_address_delete(request, pk):
+    """POST /food/addresses/<pk>/delete/ — remove a saved address."""
+    try:
+        from food.models import SavedAddress
+        SavedAddress.objects.filter(pk=pk, customer=request.user).delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+# ── Food item ratings (item 9) ─────────────────────────────────────────────────
+
+@login_required
+def rate_food_order(request, order_ref):
+    """
+    GET/POST /food/rate/<order_ref>/
+    Customer rates each item in a delivered food order.
+    Triggered via SMS link sent after delivery.
+    """
+    try:
+        from food.models import FoodOrder
+        order = get_object_or_404(FoodOrder, order_ref=order_ref, customer=request.user)
+    except Exception:
+        messages.error(request, 'Order not found.')
+        return redirect('food:order_history')
+
+    if request.method == 'POST':
+        _save_food_ratings(request, order)
+        messages.success(request, 'Thank you for your rating! 🌟')
+        return redirect('food:order_history')
+
+    return render(request, 'food/rate_order.html', {
+        'order':      order,
+        'cart_count': 0,
+    })
+
+
+def _save_food_ratings(request, order):
+    """Save star ratings for each item in the order."""
+    try:
+        from food.models import FoodReview
+        for item in order.items.select_related('food').all():
+            rating = int(request.POST.get(f'rating_{item.pk}', 0))
+            if 1 <= rating <= 5:
+                FoodReview.objects.update_or_create(
+                    food_order=order,
+                    food_item=item.food,
+                    customer=request.user,
+                    defaults={
+                        'rating':  rating,
+                        'comment': request.POST.get(f'comment_{item.pk}', '').strip(),
+                    },
+                )
     except Exception:
         pass

@@ -1,22 +1,25 @@
 import os
+import uuid
 from datetime import timedelta
+from decimal import Decimal
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Sum, Count, Q, F
-from django.db.models.functions import TruncDay
+from django.core.cache import cache
+from django.db.models import Sum, Count, Avg, Q, F
+from django.db.models.functions import TruncDay, TruncDate, TruncHour
+from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.text import slugify
+from django.urls import reverse
 
 from products.models import Product, Category, ProductImage, ProductVideo
 from order.models import Order, OrderItem
 from .models import Vendor, VendorEarning
-# ... your existing imports and decorators remain unchanged ...
-from django.urls import reverse
 
 
-# ── GUARD DECORATOR ───────────────────────────────────────
+# ── GUARD DECORATOR ─────────────────────────────────────────────────────────
 
 def vendor_required(view_func):
     @login_required
@@ -32,13 +35,13 @@ def vendor_required(view_func):
             messages.info(request, 'Apply to become a vendor first.')
             return redirect('vendors:apply')
         return view_func(request, *args, **kwargs)
+    wrapper.__name__ = view_func.__name__
     return wrapper
 
 
-# ── PUBLIC: VENDOR DIRECTORY ──────────────────────────────
+# ── PUBLIC: VENDOR DIRECTORY ─────────────────────────────────────────────────
 
 def directory(request):
-    # Changed annotation alias to 'total_products' to avoid potential property clashes
     vendors = Vendor.objects.filter(
         status=Vendor.Status.ACTIVE
     ).annotate(total_products=Count('products')).order_by('-joined_at')
@@ -58,16 +61,13 @@ def directory(request):
     })
 
 
-# ── PUBLIC: VENDOR SHOP PAGE ──────────────────────────────
+# ── PUBLIC: VENDOR SHOP PAGE ─────────────────────────────────────────────────
 
 def shop_page(request, slug):
-    # Using select_related to optimize fetching profile data
     vendor = get_object_or_404(
         Vendor.objects.select_related('owner'),
-        slug=slug,
-        status=Vendor.Status.ACTIVE
+        slug=slug, status=Vendor.Status.ACTIVE,
     )
-
     products = (
         vendor.products
         .filter(status='active')
@@ -75,9 +75,9 @@ def shop_page(request, slug):
         .prefetch_related('images')
     )
 
-    search = request.GET.get('q', '').strip()
+    search     = request.GET.get('q', '').strip()
     filter_cat = request.GET.get('category', '').strip()
-    sort = request.GET.get('sort', 'newest')
+    sort       = request.GET.get('sort', 'newest')
 
     if search:
         products = products.filter(
@@ -87,18 +87,13 @@ def shop_page(request, slug):
         products = products.filter(category__slug=filter_cat)
 
     sort_map = {
-        'newest': '-created_at',
-        'price_low': 'selling_price',
+        'newest':     '-created_at',
+        'price_low':  'selling_price',
         'price_high': '-selling_price',
-        'name': 'name',
+        'name':       'name',
     }
     products = products.order_by(sort_map.get(sort, '-created_at'))
 
-    # FIXED: previously chained .filter(products__vendor=vendor, products__status='active')
-    # then .annotate(Count('products')) on the SAME relation, which caused Django to
-    # build a multi-row join and count ALL of the category's products (every vendor),
-    # not just this vendor's active ones. Using a conditional Count avoids the
-    # double-join and gives the correct per-vendor count.
     categories = (
         Category.objects
         .filter(is_active=True)
@@ -112,18 +107,19 @@ def shop_page(request, slug):
     )
 
     return render(request, 'vendors/shop.html', {
-        'vendor': vendor,
-        'products': products,
-        'categories': categories,
+        'vendor':         vendor,
+        'products':       products,
+        'categories':     categories,
         'total_products': vendor.products.filter(status='active').count(),
-        'search': search,
-        'filter_cat': filter_cat,
-        'sort': sort,
-        'cart_count': _get_cart_count(request),
+        'search':         search,
+        'filter_cat':     filter_cat,
+        'sort':           sort,
+        'cart_count':     _get_cart_count(request),
     })
 
 
-# ── APPLY TO BECOME A VENDOR ──────────────────────────────
+# ── APPLY TO BECOME A VENDOR ─────────────────────────────────────────────────
+
 def apply(request):
     if request.user.is_authenticated:
         try:
@@ -170,31 +166,26 @@ def apply(request):
             from ecommerce.models import User
             from django.contrib.auth import login as auth_login
             user = User.objects.create_user(
-                phone=phone,
-                password=password,
-                first_name=first_name,
-                last_name=last_name,
-                role='vendor',
+                phone=phone, password=password,
+                first_name=first_name, last_name=last_name, role='vendor',
             )
             auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         else:
             user = request.user
-            # Update role to vendor if they were a customer
             if user.role == 'customer':
                 user.role = 'vendor'
                 user.save(update_fields=['role'])
 
         vendor = Vendor.objects.create(
-            owner        = user,
-            shop_name    = shop_name,
-            description  = description,
-            phone        = phone,
-            location     = location,
-            momo_number  = momo_number,
-            momo_network = momo_network,
-            logo         = request.FILES.get('logo') or None,
-            status       = Vendor.Status.PENDING,
+            owner=user, shop_name=shop_name, description=description,
+            phone=phone, location=location, momo_number=momo_number,
+            momo_network=momo_network,
+            logo=request.FILES.get('logo') or None,
+            status=Vendor.Status.PENDING,
         )
+
+        # Credit referrer if signup came via referral link
+        _apply_referral_on_signup(user, request)
 
         messages.success(request, f'Application submitted! We\'ll review "{shop_name}" shortly.')
         return redirect('vendors:pending')
@@ -211,132 +202,92 @@ def pending(request):
     return render(request, 'vendors/pending.html', {'vendor': vendor})
 
 
-# DASHBOARD VIEWS
+# ── DASHBOARD ────────────────────────────────────────────────────────────────
+
 @vendor_required
 def dashboard(request):
-    vendor = request.vendor
+    vendor      = request.vendor
+    current_tab = request.GET.get('tab', 'products')
+    pane        = request.GET.get('pane', '')
 
-    # 1. Determine which tab or sub-pane the user wants to look at
-    current_tab = request.GET.get('tab', 'products')  # defaults to products list
-    pane = request.GET.get('pane', '')               # detects sub-panels like social configuration
-
-    # ═══════════════════════════════════════════════════
-    #  SUB-PANE: RENDER & SAVE STANDALONE SOCIALS FORM
-    # ═══════════════════════════════════════════════════
+    # ── Social settings sub-pane ─────────────────────────────────────────────
     if current_tab == 'settings' and pane == 'social':
         if request.method == 'POST':
-            # Extract and update ALL 6 input values matching socials_form.html exactly
             vendor.whatsapp  = request.POST.get('whatsapp', '').strip()
             vendor.instagram = request.POST.get('instagram', '').strip()
             vendor.facebook  = request.POST.get('facebook', '').strip()
             vendor.tiktok    = request.POST.get('tiktok', '').strip()
-            vendor.twitter   = request.POST.get('twitter', '').strip()   # Fixed: Was missing
-            vendor.youtube   = request.POST.get('youtube', '').strip()   # Fixed: Was missing
-
+            vendor.twitter   = request.POST.get('twitter', '').strip()
+            vendor.youtube   = request.POST.get('youtube', '').strip()
             vendor.save()
-            messages.success(request, "Social configurations updated successfully.")
-            # Bounces them clean back onto the core settings panel view context
+            messages.success(request, 'Social configurations updated successfully.')
             return redirect(f"{reverse('vendors:dashboard')}?tab=settings")
-
-        # If GET request, render your dedicated standalone form file with clear vendor context
         return render(request, 'vendors/socials_form.html', {
-            'vendor': vendor,
-            'cart_count': 0,
-            'current_tab': current_tab,
-            'pane': pane
+            'vendor': vendor, 'cart_count': 0,
+            'current_tab': current_tab, 'pane': pane,
         })
 
-    # ═══════════════════════════════════════════════════
-    #  STANDARD SETTINGS TAB SUBMISSION (Shop Profile)
-    # ═══════════════════════════════════════════════════
+    # ── Standard settings tab ─────────────────────────────────────────────────
     if current_tab == 'settings' and request.method == 'POST':
-        vendor.shop_name    = request.POST.get('shop_name', vendor.shop_name).strip()
-        vendor.description  = request.POST.get('description', '').strip()
-        vendor.phone        = request.POST.get('phone', vendor.phone).strip()
-        vendor.location     = request.POST.get('location', '').strip()
-        vendor.momo_number  = request.POST.get('momo_number', vendor.momo_number).strip()
-        vendor.momo_network = request.POST.get('momo_network', vendor.momo_network)
-
-        if 'logo' in request.FILES:
-            vendor.logo = request.FILES['logo']
-        if 'banner' in request.FILES:
-            vendor.banner = request.FILES['banner']
-
+        vendor.shop_name    = request.POST.get('shop_name',    vendor.shop_name).strip()
+        vendor.description  = request.POST.get('description',  '').strip()
+        vendor.phone        = request.POST.get('phone',         vendor.phone).strip()
+        vendor.location     = request.POST.get('location',      '').strip()
+        vendor.momo_number  = request.POST.get('momo_number',   vendor.momo_number).strip()
+        vendor.momo_network = request.POST.get('momo_network',  vendor.momo_network)
+        if 'logo'   in request.FILES: vendor.logo   = request.FILES['logo']
+        if 'banner' in request.FILES: vendor.banner = request.FILES['banner']
         vendor.save()
         messages.success(request, 'Shop settings saved!')
         return redirect(f"{reverse('vendors:dashboard')}?tab=settings")
 
-    # 3. Base Dashboard Querysets
+    # ── Querysets ─────────────────────────────────────────────────────────────
     products = (
         vendor.products
         .prefetch_related('images')
         .select_related('category')
         .order_by('-created_at')
     )
-    earnings = VendorEarning.objects.filter(vendor=vendor).select_related('order')
+    earnings_qs = VendorEarning.objects.filter(vendor=vendor).select_related('order')
 
-    # Core statistical aggregates
-    total_revenue   = earnings.aggregate(t=Sum('net_amount'))['t'] or 0
-    pending_payout  = earnings.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
-    # NEW: earnings held by fraud.services.run_fraud_checks() when an order
-    # trips a fraud rule — surfaced separately so a vendor can see WHY money
-    # they expected isn't showing up in pending_payout yet.
-    held_payout     = earnings.filter(status='held').aggregate(t=Sum('net_amount'))['t'] or 0
-    paid_out        = earnings.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
-    total_orders    = earnings.count()
+    total_revenue  = earnings_qs.aggregate(t=Sum('net_amount'))['t'] or 0
+    pending_payout = earnings_qs.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
+    held_payout    = earnings_qs.filter(status='held').aggregate(t=Sum('net_amount'))['t'] or 0
+    paid_out       = earnings_qs.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
+    total_orders   = earnings_qs.count()
 
-    # FIXED: previously hardcoded stock_qty__lte=5, ignoring each product's own
-    # low_stock_alert threshold (the field that already exists on the model and
-    # backs Product.is_low_stock). Now uses F() to compare against that field.
     low_stock_count = products.filter(
         status='active', stock_qty__lte=F('low_stock_alert')
     ).count()
 
-    # Timezone-Aware range extraction for "Today" analytics
-    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = today_start + timedelta(days=1)
-
-    orders_today = OrderItem.objects.filter(
+    today_start   = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end     = today_start + timedelta(days=1)
+    orders_today  = OrderItem.objects.filter(
         product__vendor=vendor,
         order__created_at__range=(today_start, today_end),
         order__payment_status='paid',
     ).count()
-
-    revenue_today = earnings.filter(
+    revenue_today = earnings_qs.filter(
         created_at__range=(today_start, today_end)
     ).aggregate(t=Sum('net_amount'))['t'] or 0
 
-    # Weekly timeline charting data serialization
-    seven_days_ago = timezone.now() - timedelta(days=7)
-    daily_sales_qs = (
-        earnings.filter(created_at__gte=seven_days_ago)
+    seven_days_ago  = timezone.now() - timedelta(days=7)
+    daily_sales_qs  = (
+        earnings_qs.filter(created_at__gte=seven_days_ago)
         .annotate(day=TruncDay('created_at'))
         .values('day')
         .annotate(total=Sum('net_amount'))
         .order_by('day')
     )
-
     daily_sales_list = [
-        {
-            'day': item['day'].strftime('%Y-%m-%d') if item['day'] else '',
-            'total': float(item['total'] or 0)
-        }
+        {'day': item['day'].strftime('%Y-%m-%d') if item['day'] else '', 'total': float(item['total'] or 0)}
         for item in daily_sales_qs
     ]
 
-    # Product insights
-    # FIXED: previously summed orderitem__quantity across ALL order items regardless
-    # of payment status, which could rank an unpaid/cancelled order's product as
-    # "top product." Now restricted to paid orders, consistent with orders_today /
-    # revenue_today / recent_orders below.
     top_product = vendor.products.annotate(
-        total_sold=Sum(
-            'orderitem__quantity',
-            filter=Q(orderitem__order__payment_status='paid')
-        )
+        total_sold=Sum('orderitem__quantity', filter=Q(orderitem__order__payment_status='paid'))
     ).order_by('-total_sold').first()
 
-    # FIXED: same low_stock_alert issue as low_stock_count above.
     low_stock_products = vendor.products.filter(
         status='active', stock_qty__lte=F('low_stock_alert')
     )[:5]
@@ -348,61 +299,46 @@ def dashboard(request):
         .order_by('-order__created_at')[:20]
     )
 
-    tabs = [
-        ('products', 'Products'),
-        ('orders',   'Orders'),
-        ('videos',   'Videos'),
-        ('earnings', 'Earnings'),
-        ('settings', 'Settings'),
-    ]
-
     return render(request, 'vendors/dashboard.html', {
-        'vendor':              vendor,
-        'products':            products,
-        'earnings':            earnings.order_by('-created_at'),
-        'recent_orders':       recent_orders,
-        'tabs':                tabs,
-        'current_tab':         current_tab,
-
-        # Numeric Stats
-        'total_revenue':       total_revenue,
-        'pending_payout':      pending_payout,
-        'held_payout':         held_payout,
-        'paid_out':            paid_out,
-        'total_orders':        total_orders,
-        'low_stock_count':     low_stock_count,
-
-        # Periodic Metrics
-        'orders_today':        orders_today,
-        'revenue_today':       revenue_today,
-        'daily_sales':         daily_sales_list,
-
-        # Product insights
-        'top_product':         top_product,
-        'low_stock_products':  low_stock_products,
-        'cart_count':          0,
+        'vendor':             vendor,
+        'products':           products,
+        'earnings':           earnings_qs.order_by('-created_at'),
+        'recent_orders':      recent_orders,
+        'tabs':               [('products','Products'),('orders','Orders'),
+                               ('videos','Videos'),('earnings','Earnings'),('settings','Settings')],
+        'current_tab':        current_tab,
+        'total_revenue':      total_revenue,
+        'pending_payout':     pending_payout,
+        'held_payout':        held_payout,
+        'paid_out':           paid_out,
+        'total_orders':       total_orders,
+        'low_stock_count':    low_stock_count,
+        'orders_today':       orders_today,
+        'revenue_today':      revenue_today,
+        'daily_sales':        daily_sales_list,
+        'top_product':        top_product,
+        'low_stock_products': low_stock_products,
+        'cart_count':         0,
     })
 
 
-# ── VENDOR PRODUCT MANAGEMENT ─────────────────────────────
+# ── PRODUCT MANAGEMENT ───────────────────────────────────────────────────────
 
 ALLOWED_VIDEO_EXTENSIONS = ('.mp4', '.mov', '.webm')
-MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024  # 50MB
+MAX_VIDEO_SIZE_BYTES      = 50 * 1024 * 1024   # 50 MB
 
 
 def _validate_video_upload(video_file, errors):
-    """Shared validation for product video uploads. Mutates `errors` in place."""
     if not video_file:
         return
     ext = os.path.splitext(video_file.name)[1].lower()
     if ext not in ALLOWED_VIDEO_EXTENSIONS:
         errors['video'] = 'Unsupported video format. Use MP4, MOV, or WebM.'
     elif video_file.size > MAX_VIDEO_SIZE_BYTES:
-        errors['video'] = 'Video file is too large. Maximum size is 50MB.'
+        errors['video'] = 'Video file is too large. Maximum size is 50 MB.'
 
 
 def _validate_discount_price(discount_price, selling_price, errors):
-    """Shared validation for the discount/deal price field. Mutates `errors` in place."""
     if not discount_price:
         return
     try:
@@ -425,20 +361,13 @@ def product_add(request):
         discount_price = request.POST.get('discount_price', '').strip()
         stock_qty      = request.POST.get('stock_qty', 0)
         status         = request.POST.get('status', 'active')
-
-        # FIXED: video upload fields were read nowhere in this view, so the
-        # ProductVideo row was never created even though the form/template
-        # already supported uploading one.
-        video_file  = request.FILES.get('video')
-        video_title = request.POST.get('video_title', '').strip()
-        video_thumb = request.FILES.get('video_thumbnail')
+        video_file     = request.FILES.get('video')
+        video_title    = request.POST.get('video_title', '').strip()
+        video_thumb    = request.FILES.get('video_thumbnail')
 
         errors = {}
         if not name:          errors['name']          = 'Product name is required.'
         if not selling_price: errors['selling_price'] = 'Selling price is required.'
-
-        # FIXED: discount_price was accepted by the template but never read/validated
-        # here, so deal pricing could never actually be set from this form.
         _validate_discount_price(discount_price, selling_price, errors)
         _validate_video_upload(video_file, errors)
 
@@ -449,9 +378,9 @@ def product_add(request):
             })
 
         base_slug = slugify(name)
-        slug, n = base_slug, 1
+        slug, n   = base_slug, 1
         while Product.objects.filter(slug=slug).exists():
-            slug = f"{base_slug}-{n}"; n += 1
+            slug = f'{base_slug}-{n}'; n += 1
 
         product = Product.objects.create(
             vendor=vendor, name=name, slug=slug, description=description,
@@ -460,16 +389,10 @@ def product_add(request):
             cost_price=selling_price, stock_qty=stock_qty, status=status,
         )
         for i, img in enumerate(request.FILES.getlist('images')):
-            ProductImage.objects.create(
-                product=product, image=img, is_primary=(i == 0), order=i
-            )
-
+            ProductImage.objects.create(product=product, image=img, is_primary=(i == 0), order=i)
         if video_file:
             ProductVideo.objects.create(
-                product=product,
-                video=video_file,
-                thumbnail=video_thumb,
-                title=video_title,
+                product=product, video=video_file, thumbnail=video_thumb, title=video_title,
             )
 
         messages.success(request, f'"{product.name}" added to your shop!')
@@ -487,12 +410,6 @@ def product_edit(request, pk):
     categories = Category.objects.filter(is_active=True)
 
     if request.method == 'POST':
-        # FIXED: the dashboard's Videos tab posts only csrf + delete_videos
-        # to this exact view (no name/description/category_id/etc). Letting
-        # that fall through into the full save logic below silently wiped
-        # the product's description (defaulted to '') and unset its
-        # category (defaulted to None) as a side effect of removing a video.
-        # Handle it as its own action and return immediately.
         delete_video_ids = request.POST.getlist('delete_videos')
         if delete_video_ids and 'name' not in request.POST:
             ProductVideo.objects.filter(product=product, pk__in=delete_video_ids).delete()
@@ -502,15 +419,10 @@ def product_edit(request, pk):
         name           = request.POST.get('name', product.name).strip()
         selling_price  = request.POST.get('selling_price', product.selling_price)
         discount_price = request.POST.get('discount_price', '').strip()
+        video_file     = request.FILES.get('video')
+        video_title    = request.POST.get('video_title', '').strip()
+        video_thumb    = request.FILES.get('video_thumbnail')
 
-        video_file  = request.FILES.get('video')
-        video_title = request.POST.get('video_title', '').strip()
-        video_thumb = request.FILES.get('video_thumbnail')
-
-        # FIXED: product_edit previously had NO required-field checks at all
-        # (product_add does). If name or selling_price ever came through
-        # blank, product.save() would raise an unhandled exception instead
-        # of re-rendering the form with a friendly error.
         errors = {}
         if not name:          errors['name']          = 'Product name is required.'
         if not selling_price: errors['selling_price'] = 'Selling price is required.'
@@ -523,27 +435,23 @@ def product_edit(request, pk):
                 'errors': errors, 'form_data': request.POST, 'action': 'Edit',
             })
 
-        product.name           = name
-        product.description    = request.POST.get('description', '').strip()
-        product.category_id    = request.POST.get('category_id') or None
-        product.selling_price  = selling_price
+        product.name          = name
+        product.description   = request.POST.get('description', '').strip()
+        product.category_id   = request.POST.get('category_id') or None
+        product.selling_price = selling_price
         product.discount_price = discount_price or None
-        product.cost_price     = product.selling_price
-        product.stock_qty      = request.POST.get('stock_qty', product.stock_qty)
-        product.status         = request.POST.get('status', product.status)
+        product.cost_price    = product.selling_price
+        product.stock_qty     = request.POST.get('stock_qty', product.stock_qty)
+        product.status        = request.POST.get('status', product.status)
         product.save()
 
         for i, img in enumerate(request.FILES.getlist('images')):
             ProductImage.objects.create(
                 product=product, image=img, order=product.images.count() + i
             )
-
         if video_file:
             ProductVideo.objects.create(
-                product=product,
-                video=video_file,
-                thumbnail=video_thumb,
-                title=video_title,
+                product=product, video=video_file, thumbnail=video_thumb, title=video_title,
             )
 
         messages.success(request, f'"{product.name}" updated!')
@@ -565,23 +473,23 @@ def product_delete(request, pk):
     return redirect('vendors:dashboard')
 
 
-# ── VENDOR EARNINGS ───────────────────────────────────────
+# ── VENDOR EARNINGS ──────────────────────────────────────────────────────────
 
 @vendor_required
 def earnings(request):
-    vendor   = request.vendor
-    earnings = VendorEarning.objects.filter(
+    vendor      = request.vendor
+    earnings_qs = VendorEarning.objects.filter(
         vendor=vendor
     ).select_related('order').order_by('-created_at')
 
-    total    = earnings.aggregate(t=Sum('net_amount'))['t'] or 0
-    pending  = earnings.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
-    held     = earnings.filter(status='held').aggregate(t=Sum('net_amount'))['t'] or 0
-    paid_out = earnings.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
+    total    = earnings_qs.aggregate(t=Sum('net_amount'))['t'] or 0
+    pending  = earnings_qs.filter(status='pending').aggregate(t=Sum('net_amount'))['t'] or 0
+    held     = earnings_qs.filter(status='held').aggregate(t=Sum('net_amount'))['t'] or 0
+    paid_out = earnings_qs.filter(status='paid').aggregate(t=Sum('net_amount'))['t'] or 0
 
     return render(request, 'vendors/earnings.html', {
         'vendor':   vendor,
-        'earnings': earnings,
+        'earnings': earnings_qs,
         'total':    total,
         'pending':  pending,
         'held':     held,
@@ -589,18 +497,164 @@ def earnings(request):
     })
 
 
-# ── HELPER ────────────────────────────────────────────────
+# ── ANALYTICS DASHBOARD (item 11 from session) ───────────────────────────────
 
-def _get_cart_count(request):
-    if request.user.is_authenticated:
-        try:
-            return request.user.cart.total_items
-        except Exception:
-            return 0
-    return 0
+@vendor_required
+def vendor_analytics(request):
+    """
+    Sales analytics dashboard.
+    GET /vendors/vendor/dashboard/analytics/
+    Cached 5 minutes per vendor to reduce DB load.
+    """
+    vendor    = request.vendor
+    cache_key = f'vendor_analytics_{vendor.pk}'
+    data      = cache.get(cache_key)
+
+    if not data:
+        now         = timezone.now()
+        thirty_ago  = now - timedelta(days=30)
+        seven_ago   = now - timedelta(days=7)
+
+        paid_items = OrderItem.objects.filter(
+            product__vendor=vendor,
+            order__payment_status='paid',
+        ).select_related('order', 'product')
+
+        # Revenue by day — last 30 days
+        daily = list(
+            paid_items
+            .filter(order__created_at__gte=thirty_ago)
+            .annotate(day=TruncDate('order__created_at'))
+            .values('day')
+            .annotate(revenue=Sum('subtotal'), orders=Count('order', distinct=True))
+            .order_by('day')
+        )
+
+        # Top 5 products by revenue
+        top_products = list(
+            paid_items
+            .filter(order__created_at__gte=thirty_ago)
+            .values('product__name', 'product__pk')
+            .annotate(revenue=Sum('subtotal'), qty=Sum('quantity'))
+            .order_by('-revenue')[:5]
+        )
+
+        # Peak order hours — last 7 days
+        peak_hours = list(
+            paid_items
+            .filter(order__created_at__gte=seven_ago)
+            .annotate(hour=TruncHour('order__created_at'))
+            .values('hour')
+            .annotate(count=Count('order', distinct=True))
+            .order_by('hour')
+        )
+
+        # Totals
+        total_revenue  = float(paid_items.aggregate(t=Sum('subtotal'))['t'] or 0)
+        total_orders   = paid_items.values('order').distinct().count()
+        avg_order_val  = float(
+            paid_items
+            .filter(order__created_at__gte=thirty_ago)
+            .values('order')
+            .annotate(ov=Sum('subtotal'))
+            .aggregate(avg=Avg('ov'))['avg'] or 0
+        )
+        commission_paid = float(
+            VendorEarning.objects
+            .filter(vendor=vendor)
+            .aggregate(t=Sum('commission_amount'))['t'] or 0
+        )
+
+        data = {
+            'daily':           [
+                {'day': str(d['day']), 'revenue': float(d['revenue'] or 0), 'orders': d['orders']}
+                for d in daily
+            ],
+            'top_products':    [
+                {'name': p['product__name'], 'revenue': float(p['revenue'] or 0), 'qty': p['qty']}
+                for p in top_products
+            ],
+            'peak_hours':      [
+                {'hour': str(h['hour']), 'count': h['count']}
+                for h in peak_hours
+            ],
+            'total_revenue':   total_revenue,
+            'total_orders':    total_orders,
+            'avg_order_value': avg_order_val,
+            'commission_paid': commission_paid,
+            'net_revenue':     total_revenue - commission_paid,
+        }
+        cache.set(cache_key, data, 300)   # cache 5 minutes
+
+    return render(request, 'vendors/analytics.html', {
+        'vendor':     vendor,
+        'data':       data,
+        'cart_count': 0,
+    })
 
 
-# ── VENDOR DISPATCH (manual rider assignment) ──────────────
+# ── REFERRAL SYSTEM (item 12) ────────────────────────────────────────────────
+
+def referral_landing(request, code):
+    """
+    /ref/<code>/ — Public. Records click, sets cookie, redirects to home.
+    The cookie is read by _apply_referral_on_signup() when a new user registers.
+    """
+    try:
+        from .models import Referral
+        ref        = Referral.objects.get(code=code)
+        ref.clicks = (ref.clicks or 0) + 1
+        ref.save(update_fields=['clicks'])
+    except Exception:
+        pass
+    response = redirect('frontend:home')
+    response.set_cookie('ref_code', code, max_age=30 * 24 * 3600)  # 30 days
+    return response
+
+
+@login_required
+def referral_stats(request):
+    """GET /vendors/vendor/referrals/ — vendor sees their link + click/conversion counts."""
+    from .models import Referral
+    ref, _ = Referral.objects.get_or_create(
+        referrer=request.user,
+        defaults={'code': uuid.uuid4().hex[:8].upper()},
+    )
+    link = request.build_absolute_uri(reverse('vendors:referral_landing', args=[ref.code]))
+    return render(request, 'vendors/referral.html', {
+        'ref':        ref,
+        'link':       link,
+        'cart_count': 0,
+    })
+
+
+@login_required
+def generate_referral(request):
+    """POST /vendors/vendor/referrals/generate/ — returns JSON with link."""
+    from .models import Referral
+    ref, _ = Referral.objects.get_or_create(
+        referrer=request.user,
+        defaults={'code': uuid.uuid4().hex[:8].upper()},
+    )
+    link = request.build_absolute_uri(reverse('vendors:referral_landing', args=[ref.code]))
+    return JsonResponse({'link': link, 'code': ref.code, 'clicks': ref.clicks or 0})
+
+
+def _apply_referral_on_signup(user, request):
+    """Called after vendor (or customer) registers — credits referrer if cookie present."""
+    code = request.COOKIES.get('ref_code', '')
+    if not code:
+        return
+    try:
+        from .models import Referral
+        ref              = Referral.objects.get(code=code)
+        ref.conversions  = (ref.conversions or 0) + 1
+        ref.save(update_fields=['conversions'])
+    except Exception:
+        pass
+
+
+# ── VENDOR DISPATCH (manual rider assignment) ────────────────────────────────
 
 @vendor_required
 def dispatch_ride(request):
@@ -613,30 +667,23 @@ def dispatch_ride(request):
 
     pending_deliveries = (
         Delivery.objects
-        .filter(
-            order__items__product__vendor=vendor,
-            status=Delivery.Status.PENDING,
-        )
-        .select_related("order", "zone")
+        .filter(order__items__product__vendor=vendor, status=Delivery.Status.PENDING)
+        .select_related('order', 'zone')
         .distinct()
     )
-
     available_riders = (
         RiderProfile.objects
         .filter(status=RiderProfile.Status.AVAILABLE)
-        .select_related("rider", "zone")
+        .select_related('rider', 'zone')
     )
 
-    if request.method == "POST":
-        delivery_id = request.POST.get("delivery_id")
-        rider_id    = request.POST.get("rider_id")
-
-        delivery = get_object_or_404(Delivery, pk=delivery_id)
-        rider    = get_object_or_404(RiderProfile, pk=rider_id)
+    if request.method == 'POST':
+        delivery = get_object_or_404(Delivery, pk=request.POST.get('delivery_id'))
+        rider    = get_object_or_404(RiderProfile, pk=request.POST.get('rider_id'))
 
         acceptance, created = DeliveryAcceptance.objects.get_or_create(
             delivery=delivery,
-            defaults={"rider": rider, "status": DeliveryAcceptance.Status.PENDING},
+            defaults={'rider': rider, 'status': DeliveryAcceptance.Status.PENDING},
         )
         if not created:
             acceptance.rider        = rider
@@ -645,23 +692,29 @@ def dispatch_ride(request):
             acceptance.save()
 
         _push_prompt_to_rider(rider, delivery, acceptance)
-
         notify_rider(
-            rider.rider,
-            "New Delivery Request",
-            f"Vendor dispatch — Pickup: {delivery.pickup_location or delivery.order.delivery_address}",
-            notif_type="new_delivery",
-            link="/rider/",
+            rider.rider, 'New Delivery Request',
+            f'Vendor dispatch — Pickup: {delivery.pickup_location or delivery.order.delivery_address}',
+            notif_type='new_delivery', link='/rider/',
         )
 
-        messages.success(
-            request,
-            f"Request sent to {rider.rider.get_full_name() or rider.rider.phone}. "
-            "They'll accept or reject shortly."
-        )
-        return redirect("vendors:dispatch")
+        messages.success(request,
+            f'Request sent to {rider.rider.get_full_name() or rider.rider.phone}. '
+            'They\'ll accept or reject shortly.')
+        return redirect('vendors:dispatch')
 
-    return render(request, "vendors/dispatch.html", {
-        "pending_deliveries": pending_deliveries,
-        "available_riders":   available_riders,
+    return render(request, 'vendors/dispatch.html', {
+        'pending_deliveries': pending_deliveries,
+        'available_riders':   available_riders,
     })
+
+
+# ── HELPER ───────────────────────────────────────────────────────────────────
+
+def _get_cart_count(request):
+    if request.user.is_authenticated:
+        try:
+            return request.user.cart.total_items
+        except Exception:
+            return 0
+    return 0

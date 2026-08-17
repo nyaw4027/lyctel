@@ -1,31 +1,41 @@
 from django.urls import path
 from . import views
-from . import apply_views
+from order.pdf import vendor_invoice_pdf
 
 app_name = 'vendors'
 
 urlpatterns = [
-    # Public
-    path('shops/',                                     views.directory,                    name='directory'),
-    path('shop/<slug:slug>/',                          views.shop_page,                    name='shop'),
+    # ── Public ────────────────────────────────────────────────────────────────
+    path('shops/',                              views.directory,        name='list'),
+    path('shops/<slug:slug>/',                  views.shop_page,        name='detail'),
 
-    # Vendor application (with GHS 100 fee)
-    path('vendor/apply/',                              apply_views.apply,                  name='apply'),
-    path('vendor/apply/payment/callback/',             apply_views.apply_payment_callback, name='apply_callback'),
-    path('vendor/pending/',                            apply_views.pending,                name='pending'),
+    # ── Referral landing (public — no login) ──────────────────────────────────
+    path('ref/<str:code>/',                     views.referral_landing, name='referral_landing'),
 
-    # Vendor dashboard
-    path('vendor/dashboard/',                          views.dashboard,                    name='dashboard'),
-    path('vendor/dashboard/earnings/',                 views.earnings,                     name='earnings'),
-    
-    # FIX: Pointing settings path directly to views.dashboard to eliminate the AttributeError
-    path('vendor/dashboard/settings/',                 views.dashboard,                    name='settings'),
+    # ── Vendor onboarding ────────────────────────────────────────────────────
+    path('vendor/apply/',                       views.apply,            name='apply'),
+    path('vendor/pending/',                     views.pending,          name='pending'),
 
-    # Vendor product management
-    path('vendor/dashboard/products/add/',             views.product_add,                  name='product_add'),
-    path('vendor/dashboard/products/<int:pk>/edit/',   views.product_edit,                 name='product_edit'),
-    path('vendor/dashboard/products/<int:pk>/delete/', views.product_delete,               name='product_delete'),
+    # ── Vendor dashboard ─────────────────────────────────────────────────────
+    path('vendor/dashboard/',                   views.dashboard,        name='dashboard'),
+    path('vendor/dispatch/',                    views.dispatch_ride,    name='dispatch'),
 
-    # Vendor dispatch (manual rider assignment when none auto-accepted)
-    path('vendor/dashboard/dispatch/',                 views.dispatch_ride,                name='dispatch'),
+    # ── Products ──────────────────────────────────────────────────────────────
+    path('vendor/products/add/',                views.product_add,      name='product_add'),
+    path('vendor/products/<int:pk>/edit/',      views.product_edit,     name='product_edit'),
+    path('vendor/products/<int:pk>/delete/',    views.product_delete,   name='product_delete'),
+
+    # ── Earnings ──────────────────────────────────────────────────────────────
+    path('vendor/earnings/',                    views.earnings,         name='earnings'),
+
+    # ── Analytics ─────────────────────────────────────────────────────────────
+    path('vendor/analytics/',                   views.vendor_analytics, name='analytics'),
+
+    # ── Referral management ───────────────────────────────────────────────────
+    path('vendor/referrals/',                   views.referral_stats,   name='referral_stats'),
+    path('vendor/referrals/generate/',          views.generate_referral,name='generate_referral'),
+
+    # ── Monthly invoice PDF ───────────────────────────────────────────────────
+    path('vendor/invoice/<int:year>/<int:month>/',
+                                                vendor_invoice_pdf,     name='invoice_pdf'),
 ]

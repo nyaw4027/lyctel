@@ -1,23 +1,16 @@
-from django.db import models
-
-# Create your models here.
 import uuid
 from decimal import Decimal
 from django.db import models
 from django.conf import settings
 from django.utils.text import slugify
 from django.utils import timezone
+from django.db.models import Q, Avg
 
 
 # ─────────────────────────────
-# FOOD VENDOR (extends existing Vendor concept)
+# FOOD VENDOR
 # ─────────────────────────────
 class FoodVendor(models.Model):
-    """
-    A restaurant or food vendor on Lynctel Food.
-    Linked to the existing Vendor model so the same
-    user/shop can sell both products and food.
-    """
 
     class CuisineType(models.TextChoices):
         GHANAIAN    = 'ghanaian',    'Ghanaian'
@@ -38,15 +31,12 @@ class FoodVendor(models.Model):
         BUSY      = 'busy',      'Very Busy'
         SUSPENDED = 'suspended', 'Suspended'
 
-    # Link to existing vendor (optional — can also be standalone)
     vendor = models.OneToOneField(
         'vendors.Vendor',
         on_delete=models.CASCADE,
         related_name='food_profile',
-        null=True,
-        blank=True,
+        null=True, blank=True,
     )
-
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -57,15 +47,12 @@ class FoodVendor(models.Model):
     slug        = models.SlugField(unique=True, blank=True)
     description = models.TextField(blank=True)
     cuisine     = models.CharField(
-        max_length=20,
-        choices=CuisineType.choices,
-        default=CuisineType.GHANAIAN,
+        max_length=20, choices=CuisineType.choices, default=CuisineType.GHANAIAN,
     )
 
     logo   = models.ImageField(upload_to='food/logos/',   blank=True, null=True)
     banner = models.ImageField(upload_to='food/banners/', blank=True, null=True)
 
-    # Location
     address   = models.CharField(max_length=255)
     city      = models.CharField(max_length=100, default='Accra')
     latitude  = models.FloatField(null=True, blank=True)
@@ -73,23 +60,21 @@ class FoodVendor(models.Model):
 
     phone    = models.CharField(max_length=15)
     whatsapp = models.CharField(max_length=15, blank=True)
+    # MoMo number for vendor payouts
+    momo_number = models.CharField(max_length=15, blank=True,
+                                    help_text='MoMo number for receiving payouts')
 
-    # Operating hours (simple text for now)
     opening_time = models.TimeField(default='08:00')
     closing_time = models.TimeField(default='22:00')
 
     status = models.CharField(
-        max_length=15,
-        choices=Status.choices,
-        default=Status.OPEN,
+        max_length=15, choices=Status.choices, default=Status.OPEN,
     )
 
-    # Delivery settings
     min_order      = models.DecimalField(max_digits=8, decimal_places=2, default=10)
     avg_prep_time  = models.PositiveIntegerField(default=20, help_text='Minutes')
     delivery_range = models.FloatField(default=10.0, help_text='Max delivery radius in km')
 
-    # Stats
     total_orders = models.PositiveIntegerField(default=0)
     rating       = models.DecimalField(max_digits=3, decimal_places=1, default=0.0)
 
@@ -108,6 +93,14 @@ class FoodVendor(models.Model):
             self.slug = slug
         super().save(*args, **kwargs)
 
+    def update_rating(self):
+        """Recalculate vendor rating from all food reviews."""
+        avg = FoodReview.objects.filter(
+            food_order__vendor=self
+        ).aggregate(a=Avg('rating'))['a']
+        self.rating = round(avg or 0, 1)
+        self.save(update_fields=['rating'])
+
     @property
     def is_open(self):
         if self.status != self.Status.OPEN:
@@ -117,15 +110,11 @@ class FoodVendor(models.Model):
 
     @property
     def logo_url(self):
-        if self.logo:
-            return self.logo.url
-        return '/static/images/food-placeholder.png'
+        return self.logo.url if self.logo else '/static/images/food-placeholder.png'
 
     @property
     def banner_url(self):
-        if self.banner:
-            return self.banner.url
-        return '/static/images/food-banner-placeholder.png'
+        return self.banner.url if self.banner else '/static/images/food-banner-placeholder.png'
 
     def __str__(self):
         return self.name
@@ -135,10 +124,8 @@ class FoodVendor(models.Model):
 # FOOD CATEGORY
 # ─────────────────────────────
 class FoodCategory(models.Model):
-    vendor = models.ForeignKey(
-        FoodVendor,
-        on_delete=models.CASCADE,
-        related_name='food_categories',
+    vendor     = models.ForeignKey(
+        FoodVendor, on_delete=models.CASCADE, related_name='food_categories',
     )
     name       = models.CharField(max_length=100)
     sort_order = models.PositiveSmallIntegerField(default=0)
@@ -155,23 +142,19 @@ class FoodCategory(models.Model):
 # ─────────────────────────────
 class FoodItem(models.Model):
     vendor   = models.ForeignKey(
-        FoodVendor,
-        on_delete=models.CASCADE,
-        related_name='food_items',
+        FoodVendor, on_delete=models.CASCADE, related_name='food_items',
     )
     category = models.ForeignKey(
-        FoodCategory,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='items',
+        FoodCategory, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='items',
     )
 
-    name        = models.CharField(max_length=150)
-    slug        = models.SlugField(blank=True)
-    description = models.TextField(blank=True)
-    image       = models.ImageField(upload_to='food/items/', blank=True, null=True)
+    name          = models.CharField(max_length=150)
+    slug          = models.SlugField(blank=True)
+    description   = models.TextField(blank=True)
+    image         = models.ImageField(upload_to='food/items/', blank=True, null=True)
 
-    price         = models.DecimalField(max_digits=8, decimal_places=2)
+    price          = models.DecimalField(max_digits=8, decimal_places=2)
     discount_price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
 
     is_available = models.BooleanField(default=True)
@@ -181,7 +164,6 @@ class FoodItem(models.Model):
 
     prep_time  = models.PositiveIntegerField(default=15, help_text='Minutes')
     sort_order = models.PositiveSmallIntegerField(default=0)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -206,9 +188,15 @@ class FoodItem(models.Model):
 
     @property
     def image_url(self):
-        if self.image:
-            return self.image.url
-        return '/static/images/food-placeholder.png'
+        return self.image.url if self.image else '/static/images/food-placeholder.png'
+
+    @property
+    def avg_rating(self):
+        return self.reviews.aggregate(a=Avg('rating'))['a'] or 0
+
+    @property
+    def review_count(self):
+        return self.reviews.count()
 
     def __str__(self):
         return f'{self.name} — GHS {self.final_price}'
@@ -220,17 +208,17 @@ class FoodItem(models.Model):
 class FoodOrder(models.Model):
 
     class Status(models.TextChoices):
-        PENDING    = 'pending',    'Pending'
-        CONFIRMED  = 'confirmed',  'Confirmed'
-        PREPARING  = 'preparing',  'Preparing'
-        READY      = 'ready',      'Ready for Pickup'
-        PICKED_UP  = 'picked_up',  'Picked Up'
-        EN_ROUTE   = 'en_route',   'On the Way'
-        DELIVERED  = 'delivered',  'Delivered'
-        CANCELLED  = 'cancelled',  'Cancelled'
+        PENDING   = 'pending',   'Pending'
+        CONFIRMED = 'confirmed', 'Confirmed'
+        PREPARING = 'preparing', 'Preparing'
+        READY     = 'ready',     'Ready for Pickup'
+        PICKED_UP = 'picked_up', 'Picked Up'
+        EN_ROUTE  = 'en_route',  'On the Way'
+        DELIVERED = 'delivered', 'Delivered'
+        CANCELLED = 'cancelled', 'Cancelled'
 
     class PaymentMethod(models.TextChoices):
-        CASH_ON_DELIVERY = 'cash',  'Cash on Delivery'
+        CASH_ON_DELIVERY = 'cash',             'Cash on Delivery'
         MOMO_ON_DELIVERY = 'momo_on_delivery', 'MoMo on Delivery'
         MOMO_PREPAID     = 'momo_prepaid',     'MoMo (Pay Now)'
 
@@ -241,61 +229,44 @@ class FoodOrder(models.Model):
     order_ref = models.CharField(max_length=20, unique=True, editable=False, db_index=True)
 
     customer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='food_orders',
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='food_orders',
     )
     vendor = models.ForeignKey(
-        FoodVendor,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='orders',
+        FoodVendor, on_delete=models.SET_NULL,
+        null=True, related_name='orders',
     )
 
-    # Delivery details
     delivery_address = models.TextField()
     delivery_lat     = models.FloatField(null=True, blank=True)
     delivery_lng     = models.FloatField(null=True, blank=True)
     delivery_phone   = models.CharField(max_length=20)
     delivery_note    = models.TextField(blank=True)
 
-    # Pricing
     subtotal     = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     distance_km  = models.FloatField(null=True, blank=True)
 
-    # Payment
     payment_method = models.CharField(
-        max_length=20,
-        choices=PaymentMethod.choices,
+        max_length=20, choices=PaymentMethod.choices,
         default=PaymentMethod.CASH_ON_DELIVERY,
     )
     payment_status = models.CharField(
-        max_length=10,
-        choices=PaymentStatus.choices,
+        max_length=10, choices=PaymentStatus.choices,
         default=PaymentStatus.UNPAID,
     )
-
-    # Status
     status = models.CharField(
-        max_length=15,
-        choices=Status.choices,
-        default=Status.PENDING,
+        max_length=15, choices=Status.choices, default=Status.PENDING,
     )
 
-    # Rider (linked to existing Delivery model)
     delivery = models.OneToOneField(
-        'delivery.Delivery',
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='food_order',
+        'delivery.Delivery', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='food_order',
     )
 
     estimated_delivery_time = models.PositiveIntegerField(
-        null=True, blank=True,
-        help_text='Estimated minutes to deliver',
+        null=True, blank=True, help_text='Estimated minutes to deliver',
     )
 
     created_at   = models.DateTimeField(auto_now_add=True)
@@ -304,12 +275,21 @@ class FoodOrder(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes  = [
+            models.Index(fields=['customer', '-created_at']),
+            models.Index(fields=['vendor',   '-created_at']),
+            models.Index(fields=['status']),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.order_ref:
             self.order_ref = f'FOOD-{uuid.uuid4().hex[:6].upper()}'
-        self.total_amount = Decimal(self.subtotal) + Decimal(self.delivery_fee)
+        self.total_amount = Decimal(str(self.subtotal)) + Decimal(str(self.delivery_fee))
         super().save(*args, **kwargs)
+
+    @property
+    def is_rated(self):
+        return self.reviews.exists()
 
     def __str__(self):
         return f'{self.order_ref} — {self.status}'
@@ -320,7 +300,7 @@ class FoodOrder(models.Model):
 # ─────────────────────────────
 class FoodOrderItem(models.Model):
     order    = models.ForeignKey(FoodOrder, on_delete=models.CASCADE, related_name='items')
-    food     = models.ForeignKey(FoodItem, on_delete=models.SET_NULL, null=True)
+    food     = models.ForeignKey(FoodItem,  on_delete=models.SET_NULL, null=True)
     name     = models.CharField(max_length=150)
     price    = models.DecimalField(max_digits=8, decimal_places=2)
     quantity = models.PositiveIntegerField(default=1)
@@ -341,18 +321,14 @@ class FoodOrderItem(models.Model):
 
 
 # ─────────────────────────────
-# FOOD CART (session-based, stored in DB per user)
+# FOOD CART
 # ─────────────────────────────
 class FoodCart(models.Model):
     customer   = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='food_cart',
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='food_cart',
     )
     vendor     = models.ForeignKey(
-        FoodVendor,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
+        FoodVendor, on_delete=models.SET_NULL, null=True, blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -386,11 +362,10 @@ class FoodCartItem(models.Model):
         return f'{self.quantity}x {self.food.name}'
 
 
-# ── Add these models to food/models.py ──────────────────────────────────────
-# Paste at the bottom of food/models.py, after FoodCartItem
-
+# ─────────────────────────────
+# FOOD PAYMENT
+# ─────────────────────────────
 class FoodPayment(models.Model):
-    """Tracks payment for a FoodOrder — mirrors Payment model for product orders."""
 
     class Status(models.TextChoices):
         PENDING   = 'pending',   'Pending'
@@ -398,46 +373,108 @@ class FoodPayment(models.Model):
         FAILED    = 'failed',    'Failed'
         CANCELLED = 'cancelled', 'Cancelled'
 
-    food_order     = models.OneToOneField(
-        FoodOrder, on_delete=models.CASCADE, related_name='payment'
-    )
-    amount         = models.DecimalField(max_digits=10, decimal_places=2)
-    transaction_id = models.CharField(max_length=100, unique=True)
-    gateway_ref    = models.CharField(max_length=100, blank=True)
+    food_order       = models.OneToOneField(FoodOrder, on_delete=models.CASCADE, related_name='payment')
+    amount           = models.DecimalField(max_digits=10, decimal_places=2)
+    transaction_id   = models.CharField(max_length=100, unique=True)
+    gateway_ref      = models.CharField(max_length=100, blank=True)
     gateway_response = models.JSONField(default=dict, blank=True)
-    momo_number    = models.CharField(max_length=20, blank=True)
-    provider       = models.CharField(max_length=20, default='paystack')
-    status         = models.CharField(
-        max_length=15, choices=Status.choices, default=Status.PENDING
-    )
-    paid_at        = models.DateTimeField(null=True, blank=True)
-    created_at     = models.DateTimeField(auto_now_add=True)
+    momo_number      = models.CharField(max_length=20, blank=True)
+    provider         = models.CharField(max_length=20, default='hubtel')
+    status           = models.CharField(max_length=15, choices=Status.choices, default=Status.PENDING)
+    paid_at          = models.DateTimeField(null=True, blank=True)
+    created_at       = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.food_order.order_ref} — {self.status} — GHS {self.amount}'
 
 
+# ─────────────────────────────
+# FOOD VENDOR EARNING
+# ─────────────────────────────
 class FoodVendorEarning(models.Model):
-    """96/4 commission split for food orders."""
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
         PAID    = 'paid',    'Paid Out'
 
-    food_order    = models.OneToOneField(
-        FoodOrder, on_delete=models.CASCADE, related_name='vendor_earning'
-    )
-    vendor        = models.ForeignKey(
-        FoodVendor, on_delete=models.CASCADE, related_name='food_earnings'
-    )
-    gross_amount  = models.DecimalField(max_digits=10, decimal_places=2)  # full subtotal
-    app_commission = models.DecimalField(max_digits=10, decimal_places=2)  # 4%
-    vendor_payout = models.DecimalField(max_digits=10, decimal_places=2)  # 96%
-    status        = models.CharField(
-        max_length=10, choices=Status.choices, default=Status.PENDING
-    )
+    food_order      = models.OneToOneField(FoodOrder, on_delete=models.CASCADE, related_name='vendor_earning')
+    vendor          = models.ForeignKey(FoodVendor, on_delete=models.CASCADE, related_name='food_earnings')
+    gross_amount    = models.DecimalField(max_digits=10, decimal_places=2)
+    app_commission  = models.DecimalField(max_digits=10, decimal_places=2)  # 4%
+    vendor_payout   = models.DecimalField(max_digits=10, decimal_places=2)  # 96%
+    payout_reference = models.CharField(max_length=100, blank=True,
+                                         help_text='Hubtel transfer reference — idempotency key')
+    status     = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     paid_at    = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.vendor.name} — GHS {self.vendor_payout} ({self.status})'
+
+
+# ─────────────────────────────
+# SAVED DELIVERY ADDRESS (item 8)
+# ─────────────────────────────
+class SavedAddress(models.Model):
+    customer   = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='saved_addresses',
+    )
+    label      = models.CharField(max_length=60, default='Home')
+    address    = models.TextField()
+    latitude   = models.FloatField()
+    longitude  = models.FloatField()
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_default', '-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['customer'],
+                condition=Q(is_default=True),
+                name='unique_default_saved_address',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.label} — {self.customer}'
+
+
+# ─────────────────────────────
+# FOOD REVIEW / RATINGS (item 9)
+# ─────────────────────────────
+class FoodReview(models.Model):
+    """
+    Customer rates each food item after delivery.
+    Triggered via SMS link: lynctel.app/food/rate/FOOD-001/
+    Vendor rating is recalculated via FoodVendor.update_rating()
+    after each review is saved.
+    """
+    STARS = [(i, f'{i} Star{"s" if i > 1 else ""}') for i in range(1, 6)]
+
+    food_order = models.ForeignKey(
+        FoodOrder, on_delete=models.CASCADE, related_name='reviews',
+    )
+    food_item  = models.ForeignKey(
+        FoodItem, on_delete=models.SET_NULL,
+        null=True, related_name='reviews',
+    )
+    customer   = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+    )
+    rating     = models.PositiveSmallIntegerField(choices=STARS)
+    comment    = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('food_order', 'food_item', 'customer')]
+        ordering        = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Recalculate vendor rating after every review
+        if self.food_order and self.food_order.vendor:
+            self.food_order.vendor.update_rating()
+
+    def __str__(self):
+        return f'{self.customer} — {self.food_item} ({self.rating}★)'

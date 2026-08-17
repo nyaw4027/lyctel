@@ -452,3 +452,44 @@ def _pay_rider_for_delivery(delivery):
             log.error('[Delivery] Rider Hubtel payout FAILED for %s — manual needed', order_ref)
     except ImportError:
         log.warning('[Delivery] _hubtel_transfer not available — payout skipped')
+
+# ── ACCEPTANCE TIMEOUT CRON (item 5) ──────────────────────────────────────────
+# Railway Cron: every minute → GET /delivery/timeout/
+# Header: X-Cron-Token: <CRON_TOKEN env var>
+
+def acceptance_timeout(request):
+    """
+    Reassigns any DeliveryAcceptance that has been pending for > 60s
+    without a rider response. Called by Railway Cron every minute.
+    """
+    from django.conf import settings as _s
+    token = request.headers.get('X-Cron-Token', '')
+    if token != getattr(_s, 'CRON_TOKEN', ''):
+        from django.http import HttpResponse
+        return HttpResponse(status=401)
+
+    from datetime import timedelta
+    from rider.models import DeliveryAcceptance
+    from delivery.services import assign_rider_to_delivery
+
+    cutoff = timezone.now() - timedelta(seconds=60)
+    stale  = DeliveryAcceptance.objects.filter(
+        status=DeliveryAcceptance.Status.PENDING,
+        created_at__lt=cutoff,
+    ).select_related('delivery', 'rider')
+
+    reassigned = 0
+    for acc in stale:
+        acc.status       = DeliveryAcceptance.Status.REJECTED
+        acc.responded_at = timezone.now()
+        acc.save(update_fields=['status', 'responded_at'])
+        try:
+            assign_rider_to_delivery(acc.delivery, notify=True)
+            reassigned += 1
+            log.info('[Timeout] Delivery %d reassigned after rider %s timed out',
+                     acc.delivery.pk, acc.rider)
+        except Exception as exc:
+            log.error('[Timeout] Reassignment failed for delivery %d: %s',
+                      acc.delivery.pk, exc)
+
+    return JsonResponse({'checked': stale.count(), 'reassigned': reassigned})

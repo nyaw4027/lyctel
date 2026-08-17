@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Rate Your Order — Lynctel Food{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:540px">
+  <div class="text-center mb-4">
+    <div class="fs-1 mb-2">🌟</div>
+    <h1 class="h4 fw-bold text-navy">How was your food?</h1>
+    <p class="text-muted small">Your feedback helps improve {{ order.vendor.name }}</p>
+  </div>
+  <form method="POST">
+    {% csrf_token %}
+    {% for item in order.items.all %}
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+      <div class="fw-bold text-navy mb-3">{{ item.food.name }}</div>
+      <!-- Star rating -->
+      <div class="d-flex gap-2 mb-3" id="stars-{{ item.pk }}">
+        {% for i in "12345" %}
+        <input type="radio" name="rating_{{ item.pk }}" value="{{ i }}"
+               id="star-{{ item.pk }}-{{ i }}" class="d-none" required/>
+        <label for="star-{{ item.pk }}-{{ i }}"
+               class="fs-2 cursor-pointer" style="cursor:pointer;filter:grayscale(1);transition:.15s"
+               onmouseover="highlightStars('{{ item.pk }}', {{ i }})"
+               onmouseout="resetStars('{{ item.pk }}')"
+               onclick="setStars('{{ item.pk }}', {{ i }})">⭐</label>
+        {% endfor %}
+      </div>
+      <textarea name="comment_{{ item.pk }}" class="form-control rounded-3"
+                rows="2" placeholder="Any comments? (optional)"></textarea>
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-navy w-100 rounded-3 py-3 fw-bold">
+      Submit Rating →
+    </button>
+  </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+var selected = {};
+function highlightStars(itemId, n) {
+  for (var i=1; i<=5; i++) {
+    var lbl = document.querySelector('#star-'+itemId+'-'+i).nextElementSibling;
+    lbl.style.filter = i<=n ? 'grayscale(0)' : 'grayscale(1)';
+  }
+}
+function resetStars(itemId) {
+  for (var i=1; i<=5; i++) {
+    var lbl = document.querySelector('#star-'+itemId+'-'+i).nextElementSibling;
+    lbl.style.filter = i<=(selected[itemId]||0) ? 'grayscale(0)' : 'grayscale(1)';
+  }
+}
+function setStars(itemId, n) {
+  selected[itemId] = n;
+  document.querySelector('input[name="rating_'+itemId+'"][value="'+n+'"]').checked = true;
+}
+</script>
+{% endblock %}
