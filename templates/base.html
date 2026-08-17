@@ -3,7 +3,7 @@
 <html lang="{{ LANGUAGE_CODE|default:'en' }}">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"/>
 
   <!-- Set theme before first paint to avoid a light/dark flash -->
   <script>
@@ -370,6 +370,26 @@
         display: none !important;       /* frees 40px; accessible via bottom nav */
       }
     }
+
+    /* ── Search autocomplete dropdown ──────────────────────────── */
+    .autocomplete-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: white; border-radius: 0 0 12px 12px;
+      box-shadow: 0 8px 24px rgba(15,27,45,.12);
+      z-index: 1060; max-height: 300px; overflow-y: auto;
+      border: 1px solid #f3f4f6; border-top: none;
+    }
+    .ac-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; cursor: pointer; font-size: .875rem;
+      border-bottom: 1px solid #f9fafb; text-decoration: none;
+      color: var(--navy); transition: background .1s;
+    }
+    .ac-item:hover, .ac-item.focused { background: #fffbf0; }
+    .ac-item:last-child { border-bottom: none; border-radius: 0 0 12px 12px; }
+    .ac-type-product::before { content: '🛍️'; font-size: .9rem; }
+    .ac-type-category::before { content: '📂'; font-size: .9rem; }
+    .ac-price { margin-left: auto; color: var(--gold-dark); font-weight: 700; font-size: .8rem; flex-shrink: 0; }
 </style>
 
   {% block extra_head %}{% endblock %}
@@ -397,7 +417,8 @@
           <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
           </svg>
-          <input id="desktop-search" type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products, shops, vendors..." class="search-input w-100"/>
+          <input id="desktop-search" type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products, shops, vendors..." class="search-input w-100" autocomplete="off"/>
+          <div id="desktop-autocomplete" class="autocomplete-dropdown d-none"></div>
         </form>
 
         <!-- Right nav -->
@@ -538,7 +559,8 @@
           <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
           </svg>
-          <input id="mobile-search" type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products..." class="search-input w-100"/>
+          <input id="mobile-search" type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products..." class="search-input w-100" autocomplete="off"/>
+          <div id="mobile-autocomplete" class="autocomplete-dropdown d-none"></div>
         </form>
       </div>
     </div>
@@ -840,18 +862,18 @@
       var fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF_TOKEN);fd.append('quantity',1);
       fetch('/cart/add/'+productId+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd})
         .then(function(r){return r.json();}).then(function(d){
-          if(d.success){updateCartBadge(d.cart_count);if(btn){btn.innerHTML='✓ Added';setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1200);}setTimeout(openCart,350);}
+          if(d.success){updateCartBadge(d.cart_count);if(d.cart_count===1&&window._showPWAAfterCart)window._showPWAAfterCart();if(btn){btn.innerHTML='✓ Added';setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1200);}setTimeout(openCart,350);}
           else if(btn){btn.innerHTML=orig;btn.disabled=false;}
         }).catch(function(){if(btn){btn.innerHTML=orig;btn.disabled=false;}});
     }
     function drawerQty(id,cur,delta){
       var fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF_TOKEN);fd.append('quantity',Math.max(1,cur+delta));
-      fetch('/cart/update/'+id+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd}).then(function(r){return r.json();}).then(function(d){if(d.success){updateCartBadge(d.cart_count);refreshDrawer();}});
+      fetch('/cart/update/'+id+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd}).then(function(r){return r.json();}).then(function(d){if(d.success){updateCartBadge(d.cart_count);if(d.cart_count===1&&window._showPWAAfterCart)window._showPWAAfterCart();refreshDrawer();}});
     }
     function drawerRemove(id){
       var fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF_TOKEN);
       fetch('/cart/remove/'+id+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd}).then(function(r){return r.json();}).then(function(d){
-        if(d.success){updateCartBadge(d.cart_count);var row=document.getElementById('ditem-'+id);if(row){row.style.opacity='0';setTimeout(refreshDrawer,300);}}
+        if(d.success){updateCartBadge(d.cart_count);if(d.cart_count===1&&window._showPWAAfterCart)window._showPWAAfterCart();var row=document.getElementById('ditem-'+id);if(row){row.style.opacity='0';setTimeout(refreshDrawer,300);}}
       });
     }
     function updateCartBadge(count){
@@ -893,6 +915,67 @@
 
     // ── NAVBAR SHADOW ──────────────────────────────────────
     window.addEventListener('scroll',function(){document.getElementById('main-navbar').classList.toggle('scrolled',window.scrollY>10);},{passive:true});
+  
+    // ── SEARCH AUTOCOMPLETE ──────────────────────────────────────
+    (function () {
+      var AC_URL = '/products/autocomplete/';
+      var _timers = {};
+
+      function wireInput(inputEl, dropEl) {
+        if (!inputEl || !dropEl) return;
+        var fi = -1;
+
+        inputEl.addEventListener('input', function () {
+          var q = this.value.trim(); fi = -1;
+          clearTimeout(_timers[inputEl.id]);
+          if (q.length < 2) { dropEl.innerHTML = ''; dropEl.classList.add('d-none'); return; }
+          _timers[inputEl.id] = setTimeout(function () { fetchAC(q, dropEl, inputEl); }, 300);
+        });
+
+        inputEl.addEventListener('keydown', function (e) {
+          var items = dropEl.querySelectorAll('.ac-item');
+          if (e.key === 'ArrowDown') { fi = Math.min(fi+1, items.length-1); hl(items); e.preventDefault(); }
+          else if (e.key === 'ArrowUp') { fi = Math.max(fi-1, 0); hl(items); e.preventDefault(); }
+          else if (e.key === 'Enter' && fi >= 0) { items[fi] && (window.location.href = items[fi].href); e.preventDefault(); }
+          else if (e.key === 'Escape') { dropEl.innerHTML = ''; dropEl.classList.add('d-none'); }
+        });
+
+        document.addEventListener('click', function (e) {
+          if (!inputEl.closest('form').contains(e.target)) { dropEl.innerHTML = ''; dropEl.classList.add('d-none'); }
+        });
+      }
+
+      function hl(items) { items.forEach(function(el,i){ el.classList.toggle('focused', i===fi); }); }
+
+      function fetchAC(q, drop, input) {
+        fetch(AC_URL + '?q=' + encodeURIComponent(q), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            if (!d.results || !d.results.length) { drop.innerHTML = ''; drop.classList.add('d-none'); return; }
+            drop.innerHTML = d.results.map(function(r){
+              return '<a href="'+r.url+'" class="ac-item ac-type-'+r.type+'">'
+                + '<span>'+r.label+'</span>'
+                + (r.price ? '<span class="ac-price">'+r.price+'</span>' : '')
+                + '</a>';
+            }).join('');
+            drop.classList.remove('d-none');
+          }).catch(function(){});
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        wireInput(document.getElementById('desktop-search'), document.getElementById('desktop-autocomplete'));
+        wireInput(document.getElementById('mobile-search'),  document.getElementById('mobile-autocomplete'));
+      });
+    })();
+
+    // ── PWA INSTALL PROMPT: show after first cart add (not on page load) ──────
+    window._showPWAAfterCart = function () {
+      var banner = document.getElementById('pwa-banner');
+      if (banner && !localStorage.getItem('pwa-dismissed')) {
+        banner.classList.add('show');
+      }
+    };
+
   </script>
 
   {% block extra_js %}{% endblock %}

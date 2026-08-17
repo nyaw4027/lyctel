@@ -114,3 +114,25 @@ html, body { overflow-x: hidden; }
   }
   #cart-drawer.open { transform: translateX(0) translateZ(0); }
 }
+
+/* ── Skeleton loading screens ────────────────────────────────
+   Use class="skeleton" on placeholder elements while content loads.
+   Gives the feel of speed even on slow Ghana networks.          */
+.skeleton {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: skeleton-wave 1.4s ease-in-out infinite;
+  border-radius: 8px;
+  color: transparent !important;
+  pointer-events: none;
+}
+.skeleton * { visibility: hidden; }
+@keyframes skeleton-wave {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+/* Product card skeleton */
+.skeleton-card { height: 280px; border-radius: 16px; }
+.skeleton-img  { height: 160px; border-radius: 12px; }
+.skeleton-text { height: 14px; margin-bottom: 8px; border-radius: 4px; }
+.skeleton-text.short { width: 60%; }
