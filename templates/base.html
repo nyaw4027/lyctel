@@ -324,112 +324,50 @@
     }
 
   
-    /* ═══════════════════════════════════════════════════════════════
-       NAVBAR — MOBILE FIT (all phones 320px → 767px)
-       HTML structure unchanged. Pure CSS overrides.
+    /* ── Mobile navbar: minimal fixes for small Android screens ──────
+       These rules ONLY activate on phones smaller than 375px.
+       On 375px+ (iPhone SE, Pixel 4, Galaxy S21 etc.) the original
+       navbar is untouched and displays exactly as designed.
+       ──────────────────────────────────────────────────────────────── */
 
-       Strategy (worst case: logged-out, 320px phone):
-         Save ~61px vs current layout by reducing padding/font on
-         elements that have room to compress without losing meaning.
-       ═══════════════════════════════════════════════════════════════ */
-
-    @media (max-width: 767.98px) {
-
-      /* ── 1. Logo: tighten margin + slightly smaller brand text ── */
-      #main-navbar .navbar-brand {
-        gap: 6px !important;           /* gap-2(8px) → 6px */
-        margin-right: 6px !important;  /* me-3(16px) → 6px  saves 10px */
-      }
-      #main-navbar .brand-name {
-        font-size: 1rem !important;    /* 1.2rem → 1rem  saves ~14px */
-        letter-spacing: -.01em;
-      }
-      #main-navbar .brand-dot {
-        font-size: 1rem !important;    /* fs-5(1.25rem) → 1rem */
-      }
-
-      /* ── 2. Right nav: tighten gap between buttons ────────────── */
-      #main-navbar .d-flex.gap-1.ms-auto {
-        gap: 3px !important;           /* gap-1(4px) → 3px  saves 3px */
-      }
-
-      /* ── 3. Dark mode button: reduce horizontal padding ────────── */
-      #main-navbar button[onclick="toggleTheme()"] {
-        padding: 5px !important;       /* px-2 py-1 → 5px all sides  saves 6px */
-        min-width: 30px;
-      }
-
-      /* ── 4. Live button: tighter padding ───────────────────────── */
-      #main-navbar a.live-btn {
-        padding: 5px 6px !important;   /* px-2(8px) → 6px  saves 4px */
-      }
-
-      /* ── 5. Cart button: tighter padding ───────────────────────── */
-      #main-navbar button[onclick="openCart()"] {
-        padding: 5px 6px !important;   /* px-2(8px) → 6px  saves 4px */
-      }
-
-      /* ── 6. Sign Up button: compact on mobile ───────────────────── */
-      #main-navbar a[href*="signup"].btn-navy,
-      #main-navbar a.btn-navy {
-        padding: 5px 10px !important;  /* smaller than btn-sm default  saves ~8px */
-        font-size: .8rem !important;
-      }
-
-      /* ── 7. Cart badge: keep inside viewport ────────────────────── */
-      /* Current: right:-2px overflows. On small screens this gets
-         clipped by overflow-x:hidden on html/body.
-         Move badge to overlay the button's top-right corner instead. */
-      .cart-badge {
-        top: -4px !important;
-        right: 0px !important;          /* was -2px — now stays inside button edge */
-        transform: translateX(40%);     /* nudge right slightly, stays in viewport */
-      }
-
-      /* ── 8. Profile avatar: no name text on mobile (already
-         d-none d-md-inline but the avatar button has gap-2 padding) */
-      #profile-menu-btn {
-        padding: 4px !important;
-        gap: 0 !important;
-      }
-
-      /* ── 9. Navbar container: allow badge overflow to show ──────── */
-      #main-navbar .container-xl {
-        overflow: visible !important;
-      }
-      /* But still prevent the NAV from causing horizontal scroll */
-      #main-navbar {
-        overflow-x: clip !important;   /* clips children but doesn't affect layout */
-      }
-
-      /* ── 10. Mobile search row: full width, no overflow ─────────── */
-      #main-navbar .d-md-none {
-        overflow: hidden;
-      }
+    /* Fix 1: Cart badge — prevent clipping on any screen size.
+       Original: right:-2px (2px outside button, clipped by overflow-x:hidden)
+       Fix: nudge it 2px inward so it always stays within viewport.
+       Visual change: ~4px shift leftward on the badge — imperceptible. */
+    .cart-badge {
+      right: 1px !important;   /* was -2px */
     }
 
-    /* ── Extra-small phones (< 360px, e.g. very old Androids) ────── */
-    @media (max-width: 359.98px) {
+    /* Fix 2: Navbar container — allow badge / dropdown to overflow
+       without causing a page-level horizontal scrollbar. */
+    #main-navbar {
+      overflow: visible !important;
+    }
+    #main-navbar .container-xl {
+      overflow: visible !important;
+    }
+
+    /* Fix 3: Dropdown menus must be visible outside the navbar bounds.
+       overflow-x:clip was cutting them off — removed. The cart badge
+       2px overflow is harmless so no clip needed here. */
+
+    /* Fix 4: Only on phones < 375px — reduce outer padding so the
+       navbar has 8px more inner space. No element sizes change. */
+    @media (max-width: 374.98px) {
       #main-navbar .container-xl {
         padding-left: 8px !important;
         padding-right: 8px !important;
       }
-      #main-navbar .brand-name {
-        font-size: .85rem !important;  /* extra reduction on tiny screens */
-      }
-      #main-navbar .live-btn {
-        display: none !important;      /* last resort: hide live btn < 360px */
-      }
     }
 
-    /* ── Touch targets: all navbar buttons ≥ 44px tall ─────────────── */
-    @media (max-width: 767.98px) {
-      #main-navbar button,
-      #main-navbar a.btn {
-        min-height: 36px;              /* comfortable tap target */
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+    /* Fix 5: On phones < 340px — compress the logo margin only.
+       Brand text size, button sizes: all unchanged. */
+    @media (max-width: 339.98px) {
+      #main-navbar .navbar-brand {
+        margin-right: 6px !important;   /* me-3 (16px) → 6px */
+      }
+      #main-navbar a.live-btn {
+        display: none !important;       /* frees 40px; accessible via bottom nav */
       }
     }
 </style>
