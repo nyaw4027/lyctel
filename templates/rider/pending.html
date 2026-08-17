@@ -1,52 +1,44 @@
 {% extends "base.html" %}
 {% block title %}Application Pending — Lynctel{% endblock %}
-
 {% block content %}
-<div class="max-w-md mx-auto px-4 py-20 text-center">
-  <div class="w-20 h-20 bg-yellow-50 border border-yellow-100 rounded-3xl
-              flex items-center justify-center text-4xl mx-auto mb-6">
-    ⏳
+<div class="container py-5" style="max-width:480px">
+  <div class="text-center mb-4">
+    <div class="rounded-4 d-inline-flex align-items-center justify-content-center mb-3"
+         style="width:72px;height:72px;background:#fff8e1;font-size:2.2rem">⏳</div>
+    <h1 class="h4 fw-bold text-navy">Application Under Review</h1>
+    <p class="text-muted small mt-2 mb-0">
+      Thanks for applying to be a Lynctel rider!<br>
+      We'll notify you once approved — usually within 24 hours.
+    </p>
   </div>
-  <h1 class="font-display font-700 text-2xl text-navy mb-3">
-    Application Under Review
-  </h1>
-  <p class="text-gray-500 text-sm leading-relaxed mb-8 max-w-sm mx-auto">
-    Thanks for applying to be a Lynctel rider! Our team is reviewing your application.
-    You'll receive a notification once you're approved — usually within 24 hours.
-  </p>
 
-  <div class="bg-white border border-gray-100 rounded-2xl p-5 text-left mb-8">
-    <h2 class="font-semibold text-navy text-sm mb-3">What happens next?</h2>
-    <div class="space-y-3">
-      <div class="flex items-start gap-3">
-        <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center
-                    text-green-600 text-xs font-bold flex-shrink-0 mt-0.5">✓</div>
-        <p class="text-sm text-gray-600">Application submitted successfully</p>
+  <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+    <h2 class="h6 fw-bold text-navy mb-3">What happens next?</h2>
+    <div class="d-flex flex-column gap-3">
+      <div class="d-flex align-items-start gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+             style="width:28px;height:28px;background:#16a34a;font-size:.8rem">✓</div>
+        <p class="mb-0 small text-muted">Application submitted successfully</p>
       </div>
-      <div class="flex items-start gap-3">
-        <div class="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center
-                    text-yellow-600 text-xs font-bold flex-shrink-0 mt-0.5">2</div>
-        <p class="text-sm text-gray-600">Our team reviews your details & ID</p>
+      <div class="d-flex align-items-start gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+             style="width:28px;height:28px;background:#F5A623;font-size:.8rem">2</div>
+        <p class="mb-0 small text-muted">Our team reviews your details &amp; ID</p>
       </div>
-      <div class="flex items-start gap-3">
-        <div class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center
-                    text-gray-400 text-xs font-bold flex-shrink-0 mt-0.5">3</div>
-        <p class="text-sm text-gray-400">You'll be notified and can start delivering</p>
+      <div class="d-flex align-items-start gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+             style="width:28px;height:28px;background:#e5e7eb;color:#9ca3af;font-size:.8rem">3</div>
+        <p class="mb-0 small text-muted">You'll be notified and can start delivering</p>
       </div>
     </div>
   </div>
 
-  <a href="https://wa.me/233558040216?text=Hi!+I+applied+to+be+a+Lynctel+rider.+Can+you+check+my+status?"
-     target="_blank"
-     class="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white
-            font-semibold px-6 py-3 rounded-2xl transition-colors btn-press text-sm">
+  <a href="https://wa.me/233558040216?text=Hi!+I+applied+to+be+a+Lynctel+rider.+Please+check+my+status."
+     target="_blank" class="btn btn-success w-100 rounded-3 fw-semibold py-3 mb-3">
     💬 Message Us on WhatsApp
   </a>
-
-  <p class="mt-6 text-xs text-gray-400">
-    <a href="{% url 'frontend:home' %}" class="hover:text-navy transition-colors">
-      ← Back to homepage
-    </a>
-  </p>
+  <div class="text-center">
+    <a href="{% url 'frontend:home' %}" class="text-muted small text-decoration-none">← Back to homepage</a>
+  </div>
 </div>
 {% endblock %}

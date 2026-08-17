@@ -1,583 +1,449 @@
-from django.conf import settings
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.http import JsonResponse
-from django.db.models import Sum
-from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
-from datetime import timedelta
+"""
+rider/views.py — complete rewrite
 
-from delivery.models import Delivery
-from rider.models import RiderProfile, RiderEarning, RiderLocation, DeliveryAcceptance
-from .notification_model import RiderNotification
-from ecommerce.models import User
-
-
+Covers every URL in rider/urls.py:
+  apply, pending, dashboard, toggle_status,
+  accept_delivery, reject_delivery, live_map,
+  update_delivery, update_location, rider_location_api,
+  eta_api, notification_read, notification_read_all,
+  notification_count, rider_earnings
+"""
 import json
-import urllib.request
-import urllib.parse
-from rider.utils import get_google_eta
+import logging
+from datetime import timedelta
+from decimal import Decimal
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+from .models import DeliveryAcceptance, RiderEarning, RiderLocation, RiderProfile
+from delivery.models import Delivery
+
+log = logging.getLogger(__name__)
 
 
-# ─────────────────────────────
-# AUTH GUARD
-# ─────────────────────────────
+# ── DECORATORS ─────────────────────────────────────────────────────────────────
+
 def rider_required(view_func):
+    """Guard: user must be an active, verified rider."""
     @login_required
     def wrapper(request, *args, **kwargs):
-        if request.user.role != 'rider':
-            messages.error(request, 'Access denied. Rider account required.')
-            return redirect('frontend:home')
-        # Auto-create the profile if it was never created
-        profile, _ = RiderProfile.objects.get_or_create(rider=request.user)
-        request.rider_profile = profile
+        try:
+            profile = request.user.rider_profile
+        except RiderProfile.DoesNotExist:
+            messages.info(request, 'Apply to become a rider first.')
+            return redirect('rider:apply')
+        if not profile.is_verified:
+            return redirect('rider:pending')
+        request.rider = profile
         return view_func(request, *args, **kwargs)
     wrapper.__name__ = view_func.__name__
     return wrapper
 
 
-# ─────────────────────────────
-# APPLY TO BECOME A RIDER
-# ─────────────────────────────
+# ── APPLY ──────────────────────────────────────────────────────────────────────
+
 def apply(request):
-    """
-    Public page — anyone can apply.
-    If already logged in with rider role, redirect to dashboard.
-    If already applied (profile exists), redirect to pending.
-    """
-    if request.user.is_authenticated and request.user.role == 'rider':
-        return redirect('rider:dashboard')
+    if request.user.is_authenticated:
+        try:
+            profile = request.user.rider_profile
+            if profile.is_verified:
+                return redirect('rider:dashboard')
+            return redirect('rider:pending')
+        except RiderProfile.DoesNotExist:
+            pass
+
+    errors    = {}
+    form_data = {}
 
     if request.method == 'POST':
+        form_data = request.POST.dict()
+
         vehicle_type  = request.POST.get('vehicle_type', '').strip()
         vehicle_plate = request.POST.get('vehicle_plate', '').strip()
-        errors = {}
 
         if not vehicle_type:
-            errors['vehicle_type'] = 'Please select a vehicle type.'
+            errors['vehicle_type'] = 'Vehicle type is required.'
 
-        # If not logged in, create an account first
         if not request.user.is_authenticated:
             first_name = request.POST.get('first_name', '').strip()
-            last_name  = request.POST.get('last_name', '').strip()
             phone      = request.POST.get('phone', '').strip()
-            password   = request.POST.get('password', '')
-
+            password   = request.POST.get('password', '').strip()
             if not first_name: errors['first_name'] = 'First name is required.'
-            if not phone:      errors['phone']      = 'Phone number is required.'
+            if not phone:       errors['phone']      = 'Phone number is required.'
             if not password or len(password) < 6:
                 errors['password'] = 'Password must be at least 6 characters.'
-            if phone and User.objects.filter(phone=phone).exists():
-                errors['phone'] = 'An account with this number already exists. Sign in first.'
 
-            if errors:
-                return render(request, 'rider/apply.html', {
-                    'errors': errors, 'form_data': request.POST,
-                })
-
-            from django.contrib.auth import login as auth_login
-            user = User.objects.create_user(
-                phone      = phone,
-                username   = phone,
-                password   = password,
-                first_name = first_name,
-                last_name  = last_name,
-                role       = 'rider',
-            )
-            auth_login(request, user)
-        else:
-            # Update existing user's role to rider
+        if not errors:
             user = request.user
-            user.role = 'rider'
-            user.save()
+            if not user.is_authenticated:
+                from django.contrib.auth import get_user_model, login
+                User = get_user_model()
+                if User.objects.filter(phone=phone).exists():
+                    errors['phone'] = 'An account with this phone already exists.'
+                else:
+                    user = User.objects.create_user(
+                        phone=phone, password=password,
+                        first_name=first_name,
+                        last_name=request.POST.get('last_name', '').strip(),
+                        role='rider',
+                    )
+                    login(request, user)
 
-        if errors:
-            return render(request, 'rider/apply.html', {
-                'errors': errors, 'form_data': request.POST,
-            })
+            if not errors:
+                profile, _ = RiderProfile.objects.get_or_create(rider=user)
+                profile.vehicle_type  = vehicle_type
+                profile.vehicle_plate = vehicle_plate
+                profile.status        = RiderProfile.Status.OFFLINE
+                if 'id_card' in request.FILES:
+                    profile.id_card = request.FILES['id_card']
+                profile.save()
+                messages.success(request, 'Application submitted! We will review within 24 hours.')
+                return redirect('rider:pending')
 
-        # Create or update the rider profile
-        profile, _ = RiderProfile.objects.get_or_create(rider=user)
-        profile.vehicle_type  = vehicle_type
-        profile.vehicle_plate = vehicle_plate
-        profile.status        = RiderProfile.Status.OFFLINE
-        if 'id_card' in request.FILES:
-            profile.id_card = request.FILES['id_card']
-        profile.save()
-
-        messages.success(request, "Application submitted! We'll review your details and notify you shortly.")
-        return redirect('rider:pending')
-
-    return render(request, 'rider/apply.html', {})
+    return render(request, 'rider/apply.html', {
+        'errors':    errors,
+        'form_data': form_data,
+        'cart_count': 0,
+    })
 
 
-# ─────────────────────────────
-# PENDING APPROVAL PAGE
-# ─────────────────────────────
+# ── PENDING ────────────────────────────────────────────────────────────────────
+
 @login_required
 def pending(request):
-    """
-    Shown while the rider's application is being reviewed (is_verified=False).
-    If already verified, redirect to dashboard.
-    """
-    if request.user.role != 'rider':
-        return redirect('frontend:home')
     try:
         profile = request.user.rider_profile
         if profile.is_verified:
             return redirect('rider:dashboard')
     except RiderProfile.DoesNotExist:
         return redirect('rider:apply')
+    return render(request, 'rider/pending.html', {'cart_count': 0})
 
-    return render(request, 'rider/pending.html', {'profile': profile})
 
+# ── DASHBOARD ──────────────────────────────────────────────────────────────────
 
-# ─────────────────────────────
-# DASHBOARD
-# ─────────────────────────────
 @rider_required
 def dashboard(request):
-    profile = request.rider_profile
+    profile = request.rider
 
-    active_deliveries = (
-        Delivery.objects
-        .filter(rider=profile)
-        .exclude(status__in=['delivered', 'failed'])
-        .select_related('order', 'zone')
-        .prefetch_related('order__items')
-        .order_by('-assigned_at')
-    )
+    # Active deliveries
+    active = Delivery.objects.filter(
+        rider=profile,
+        status__in=[
+            Delivery.Status.ASSIGNED,
+            Delivery.Status.PICKED_UP,
+            Delivery.Status.EN_ROUTE,
+        ],
+    ).select_related('order').order_by('-assigned_at')
 
-    pending_requests = (
-        DeliveryAcceptance.objects
-        .filter(rider=profile, status=DeliveryAcceptance.Status.PENDING)
-        .select_related('delivery__order', 'delivery__zone')
-        .order_by('-created_at')
-    )
+    # Pending acceptance requests
+    pending_requests = DeliveryAcceptance.objects.filter(
+        rider=profile,
+        status=DeliveryAcceptance.Status.PENDING,
+    ).select_related('delivery').order_by('-created_at')
 
-    recent_earnings = (
-        RiderEarning.objects
-        .filter(rider=profile)
-        .select_related('delivery__order', 'delivery__zone')
-        .order_by('-created_at')[:10]
-    )
-
-    total_deliveries = Delivery.objects.filter(
-        rider=profile, status='delivered'
+    # Completed today
+    today = timezone.now().date()
+    completed_today = Delivery.objects.filter(
+        rider=profile,
+        status=Delivery.Status.DELIVERED,
+        delivered_at__date=today,
     ).count()
 
-    total_earnings = (
-        RiderEarning.objects.filter(rider=profile)
-        .aggregate(t=Sum('amount'))['t'] or 0
-    )
+    # Unread notification count
+    notif_count = _unread_count(request.user)
 
-    pending_payout = (
-        RiderEarning.objects.filter(rider=profile, status='pending')
-        .aggregate(t=Sum('amount'))['t'] or 0
-    )
-
-    notifications = (
-        RiderNotification.objects
-        .filter(rider=request.user)
-        .order_by('-created_at')[:15]
-    )
-
-    unread_count = RiderNotification.objects.filter(
-        rider=request.user, is_read=False
-    ).count()
+    # Earnings today
+    earnings_today = Delivery.objects.filter(
+        rider=profile,
+        status=Delivery.Status.DELIVERED,
+        delivered_at__date=today,
+    ).aggregate(t=Sum('rider_commission'))['t'] or 0
 
     return render(request, 'rider/dashboard.html', {
-        'profile':           profile,
-        'active_deliveries': active_deliveries,
-        'pending_requests':  pending_requests,
-        'recent_earnings':   recent_earnings,
-        'total_deliveries':  total_deliveries,
-        'total_earnings':    total_earnings,
-        'pending_payout':    pending_payout,
-        'notifications':     notifications,
-        'unread_count':      unread_count,
-        'cart_count':        0,
+        'profile':         profile,
+        'active':          active,
+        'pending_requests': pending_requests,
+        'completed_today': completed_today,
+        'earnings_today':  earnings_today,
+        'notif_count':     notif_count,
+        'cart_count':      0,
     })
 
 
-# ─────────────────────────────
-# ACCEPT DELIVERY
-# ─────────────────────────────
-@rider_required
-def accept_delivery(request, pk):
-    if request.method != 'POST':
-        return redirect('rider:dashboard')
+# ── TOGGLE ONLINE/OFFLINE STATUS ───────────────────────────────────────────────
 
-    profile    = request.rider_profile
+@rider_required
+@require_POST
+def toggle_status(request):
+    profile = request.rider
+    if profile.status == RiderProfile.Status.OFFLINE:
+        profile.status = RiderProfile.Status.AVAILABLE
+    elif profile.status == RiderProfile.Status.AVAILABLE:
+        profile.status = RiderProfile.Status.OFFLINE
+    # Do NOT toggle if ON_DELIVERY — let delivery completion handle that
+    profile.save(update_fields=['status'])
+    return JsonResponse({'status': profile.status, 'label': profile.get_status_display()})
+
+
+# ── ACCEPT DELIVERY ────────────────────────────────────────────────────────────
+
+@rider_required
+@require_POST
+def accept_delivery(request, pk):
     acceptance = get_object_or_404(
         DeliveryAcceptance,
         pk=pk,
-        rider=profile,
+        rider=request.rider,
         status=DeliveryAcceptance.Status.PENDING,
     )
     delivery = acceptance.delivery
 
-    acceptance.status      = DeliveryAcceptance.Status.ACCEPTED
+    acceptance.status       = DeliveryAcceptance.Status.ACCEPTED
     acceptance.responded_at = timezone.now()
     acceptance.save()
 
-    delivery.status = 'assigned'
-    delivery.save()
+    delivery.rider       = request.rider
+    delivery.status      = Delivery.Status.ASSIGNED
+    delivery.assigned_at = timezone.now()
+    delivery.save(update_fields=['rider', 'status', 'assigned_at'])
 
-    profile.status = 'on_delivery'
-    profile.save()
+    request.rider.status = RiderProfile.Status.ON_DELIVERY
+    request.rider.save(update_fields=['status'])
 
-    RiderNotification.objects.filter(
-        rider=request.user, is_read=False, notif_type='new_delivery'
-    ).update(is_read=True)
-
-    messages.success(request, 'Delivery accepted! Check your map.')
+    messages.success(request, 'Delivery accepted! Head to the pickup location.')
     return redirect('rider:live_map', pk=delivery.pk)
 
 
-# ─────────────────────────────
-# REJECT DELIVERY
-# ─────────────────────────────
-@rider_required
-def reject_delivery(request, pk):
-    if request.method != 'POST':
-        return redirect('rider:dashboard')
+# ── REJECT DELIVERY ────────────────────────────────────────────────────────────
 
-    profile    = request.rider_profile
+@rider_required
+@require_POST
+def reject_delivery(request, pk):
     acceptance = get_object_or_404(
         DeliveryAcceptance,
         pk=pk,
-        rider=profile,
+        rider=request.rider,
         status=DeliveryAcceptance.Status.PENDING,
     )
     acceptance.status       = DeliveryAcceptance.Status.REJECTED
     acceptance.responded_at = timezone.now()
     acceptance.save()
 
-    messages.info(request, 'Delivery rejected.')
+    # Auto-reassign to next nearest rider
+    try:
+        from delivery.services import assign_rider_to_delivery
+        assign_rider_to_delivery(acceptance.delivery, notify=True)
+        log.info('[Rider] Delivery %d rejected by %s — reassigned',
+                 acceptance.delivery.pk, request.user)
+    except Exception as exc:
+        log.error('[Rider] Reassignment after rejection failed: %s', exc)
+
+    messages.info(request, 'Delivery rejected. We will find another rider.')
     return redirect('rider:dashboard')
 
-# ─────────────────────────────
-# LIVE MAP (fixed — LocationIQ geocoding, food order support)
-# ─────────────────────────────
+
+# ── LIVE MAP ───────────────────────────────────────────────────────────────────
+
 @rider_required
 def live_map(request, pk):
-    profile  = request.rider_profile
     delivery = get_object_or_404(
-        Delivery.objects.select_related('order', 'zone'),
-        pk=pk,
-        rider=profile,
+        Delivery.objects.select_related('order', 'rider__rider'),
+        pk=pk, rider=request.rider,
     )
+    # Safely get customer coordinates
+    customer_lat = (
+        getattr(delivery, 'dropoff_lat', None)
+        or (getattr(delivery.order, 'delivery_lat', None) if delivery.order else None)
+        or 5.6037
+    )
+    customer_lng = (
+        getattr(delivery, 'dropoff_lng', None)
+        or (getattr(delivery.order, 'delivery_lng', None) if delivery.order else None)
+        or -0.1870
+    )
+    customer_address = ''
+    customer_phone   = ''
+    if delivery.order:
+        customer_address = delivery.order.delivery_address or ''
+        customer_phone   = delivery.order.delivery_phone   or ''
 
-    # Prefer stored coordinates — only geocode if missing
-    customer_lat = delivery.dropoff_lat or 5.6037   # Accra fallback
-    customer_lng = delivery.dropoff_lng or -0.1870
-
-    # If dropoff coords aren't stored, try LocationIQ geocoding (not Nominatim)
-    if not delivery.dropoff_lat and settings.LOCATIONIQ_API_KEY:
-        try:
-            address = ''
-            if delivery.order:
-                address = (
-                    f"{delivery.order.delivery_address}, "
-                    f"{getattr(delivery.order, 'delivery_city', '')}, Ghana"
-                )
-            elif delivery.dropoff_location:
-                address = f"{delivery.dropoff_location}, Ghana"
-
-            if address:
-                import urllib.request, urllib.parse, json
-                encoded = urllib.parse.quote(address)
-                url = (
-                    f"https://us1.locationiq.com/v1/search"
-                    f"?key={settings.LOCATIONIQ_API_KEY}"
-                    f"&q={encoded}&format=json&limit=1&countrycodes=gh"
-                )
-                req = urllib.request.Request(url, headers={'Accept': 'application/json'})
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    data = json.loads(resp.read())
-                    if data:
-                        customer_lat = float(data[0]['lat'])
-                        customer_lng = float(data[0]['lon'])
-                        # Cache for future requests
-                        delivery.dropoff_lat = customer_lat
-                        delivery.dropoff_lng = customer_lng
-                        delivery.save(update_fields=['dropoff_lat', 'dropoff_lng'])
-        except Exception:
-            pass  # Keep Accra fallback — never crash the rider's map
-
-    return render(request, 'rider/live_map.html', {
-        'delivery':       delivery,
-        'profile':        profile,
-        'customer_lat':   customer_lat,
-        'customer_lng':   customer_lng,
-        'cart_count':     0,
-        'locationiq_key': settings.LOCATIONIQ_API_KEY,
+    return render(request, 'rider/delivery_detail.html', {
+        'delivery':         delivery,
+        'customer_lat':     customer_lat,
+        'customer_lng':     customer_lng,
+        'customer_address': customer_address,
+        'customer_phone':   customer_phone,
+        'cart_count':       0,
     })
 
-# ─────────────────────────────
-# GPS: UPDATE LOCATION
-# ─────────────────────────────
-@csrf_exempt
+
+# ── UPDATE DELIVERY STATUS ─────────────────────────────────────────────────────
+
 @rider_required
+@require_POST
+def update_delivery(request, pk):
+    delivery = get_object_or_404(Delivery, pk=pk, rider=request.rider)
+    new_status = request.POST.get('status', '').strip()
+    valid = [s[0] for s in Delivery.Status.choices]
+    if new_status not in valid:
+        messages.error(request, 'Invalid status.')
+        return redirect('rider:live_map', pk=pk)
+
+    delivery.set_status(new_status)
+
+    if new_status == Delivery.Status.DELIVERED:
+        request.rider.status = RiderProfile.Status.AVAILABLE
+        request.rider.save(update_fields=['status'])
+        # Trigger payout via delivery views
+        try:
+            from delivery.views import _pay_rider_for_delivery, _notify_customer_status_change
+            _pay_rider_for_delivery(delivery)
+            if delivery.order:
+                _notify_customer_status_change(delivery, delivery.order.customer, new_status)
+        except Exception as exc:
+            log.error('[Rider] Post-delivery actions failed: %s', exc)
+
+    return redirect('rider:dashboard')
+
+
+# ── GPS UPDATE ─────────────────────────────────────────────────────────────────
+
+@login_required
+@require_POST
 def update_location(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST required'}, status=405)
+    """Rider sends GPS coordinates. Used while on delivery."""
+    try:
+        profile = request.user.rider_profile
+    except RiderProfile.DoesNotExist:
+        return JsonResponse({'error': 'Not a rider'}, status=403)
+
     try:
         data = json.loads(request.body)
-        lat  = float(data.get('latitude'))
-        lng  = float(data.get('longitude'))
-    except Exception:
-        return JsonResponse({'error': 'Invalid coordinates'}, status=400)
+        lat  = float(data['lat'])
+        lng  = float(data['lng'])
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
+    # Update profile
+    profile.current_lat = lat
+    profile.current_lng = lng
+    profile.save(update_fields=['current_lat', 'current_lng'])
+
+    # Update location table
     RiderLocation.objects.update_or_create(
         rider=request.user,
         defaults={'latitude': lat, 'longitude': lng, 'is_active': True},
     )
+
+    # Push to active delivery's WebSocket group
+    active_delivery = Delivery.objects.filter(
+        rider=profile,
+        status__in=[Delivery.Status.ASSIGNED, Delivery.Status.PICKED_UP, Delivery.Status.EN_ROUTE],
+    ).first()
+
+    if active_delivery:
+        try:
+            from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'delivery_{active_delivery.pk}',
+                {'type': 'send_location', 'lat': lat, 'lng': lng,
+                 'status': active_delivery.status},
+            )
+        except Exception:
+            pass
+
     return JsonResponse({'success': True})
 
 
-# ─────────────────────────────
-# CUSTOMER TRACKING API
-# ─────────────────────────────
-def rider_location_api(request, order_ref):
-    """
-    Called by the customer's tracking page to get the rider's live position.
-    URL: /rider/location/<order_ref>/
-    """
-    try:
-        delivery = Delivery.objects.select_related('rider__rider').get(
-            order__order_ref=order_ref
-        )
-        loc = RiderLocation.objects.get(
-            rider=delivery.rider.rider, is_active=True
-        )
-        return JsonResponse({
-            'success': True,
-            'lat':     float(loc.latitude),
-            'lng':     float(loc.longitude),
-            'updated': loc.updated_at.strftime('%H:%M:%S'),
-            'status':  delivery.status,
-            'rider':   delivery.rider.rider.get_full_name(),
-            'phone':   delivery.rider.rider.phone,
-        })
-    except (Delivery.DoesNotExist, RiderLocation.DoesNotExist):
-        return JsonResponse({'success': False})
+# ── RIDER LOCATION API (customer polls this) ───────────────────────────────────
 
-
-# ─────────────────────────────
-# DELIVERY STATUS UPDATE
-# ─────────────────────────────
-@rider_required
-def update_delivery(request, pk):
-    if request.method != 'POST':
-        return redirect('rider:dashboard')
-
-    profile  = request.rider_profile
-    delivery = get_object_or_404(Delivery, pk=pk, rider=profile)
-
-    new_status = request.POST.get('status')
-    valid_transitions = {
-        'assigned':  ['picked_up', 'failed'],
-        'picked_up': ['en_route', 'failed'],
-        'en_route':  ['delivered', 'failed'],
-    }
-
-    if new_status not in valid_transitions.get(delivery.status, []):
-        messages.error(request, 'Invalid status transition.')
-        return redirect('rider:dashboard')
-
-    delivery.status = new_status
-
-    if new_status == 'picked_up':
-        delivery.picked_up_at = timezone.now()
-
-    elif new_status == 'delivered':
-        delivery.delivered_at      = timezone.now()
-        delivery.order.status      = 'delivered'
-        delivery.order.delivered_at = timezone.now()
-        delivery.order.save()
-
-        RiderEarning.objects.get_or_create(
-            rider=profile,
-            delivery=delivery,
-            defaults={'amount': delivery.rider_commission, 'status': 'pending'},
-        )
-
-        profile.status = 'available'
-        profile.save()
-
-        RiderLocation.objects.filter(rider=request.user).update(is_active=False)
-
-        delivery.save()
-        messages.success(
-            request,
-            f'Delivered! GHS {delivery.rider_commission} earned.',
-        )
-        return redirect('rider:dashboard')
-
-    elif new_status == 'failed':
-        profile.status = 'available'
-        profile.save()
-        RiderLocation.objects.filter(rider=request.user).update(is_active=False)
-        delivery.save()
-        messages.warning(request, 'Delivery marked as failed.')
-        return redirect('rider:dashboard')
-
-    delivery.save()
-    return redirect('rider:live_map', pk=delivery.pk)
-
-
-# ─────────────────────────────
-# TOGGLE ONLINE / OFFLINE
-# ─────────────────────────────
-@rider_required
-def toggle_status(request):
-    if request.method != 'POST':
-        return redirect('rider:dashboard')
-
-    profile = request.rider_profile
-
-    if profile.status == 'on_delivery':
-        messages.warning(request, 'Finish your current delivery first.')
-        return redirect('rider:dashboard')
-
-    if profile.status == 'available':
-        profile.status = 'offline'
-        RiderLocation.objects.filter(rider=request.user).update(is_active=False)
-        messages.info(request, 'You are now offline.')
-    else:
-        profile.status = 'available'
-        messages.success(request, 'You are now online and ready for deliveries!')
-
-    profile.save()
-    return redirect('rider:dashboard')
-
-
-# ─────────────────────────────
-# NOTIFICATIONS
-# ─────────────────────────────
-@rider_required
-def notification_read(request, pk):
-    notif = get_object_or_404(RiderNotification, pk=pk, rider=request.user)
-    notif.is_read = True
-    notif.save()
-    unread = RiderNotification.objects.filter(
-        rider=request.user, is_read=False
-    ).count()
-    return JsonResponse({'success': True, 'unread_count': unread})
-
-
-@rider_required
-def notification_read_all(request):
-    RiderNotification.objects.filter(
-        rider=request.user, is_read=False
-    ).update(is_read=True)
-    return JsonResponse({'success': True, 'unread_count': 0})
-
-
-@rider_required
-def notification_count(request):
-    unread = RiderNotification.objects.filter(
-        rider=request.user, is_read=False
-    ).count()
-    has_new = RiderNotification.objects.filter(
-        rider=request.user, is_read=False, notif_type='new_delivery'
-    ).exists()
-    return JsonResponse({'count': unread, 'has_new_delivery': has_new})
-
-
-# ─────────────────────────────
-# HELPER — notify a rider
-# ─────────────────────────────
-def notify_rider(rider_user, title, message, notif_type='new_delivery', link=''):
-    RiderNotification.objects.create(
-        rider=rider_user,
-        title=title,
-        message=message,
-        notif_type=notif_type,
-        link=link,
-        is_read=False,
-    )
-
-
-# ─────────────────────────────
-# ETA API
-# ─────────────────────────────
-def eta_api(request):
-    try:
-        lat  = request.GET.get('lat')
-        lng  = request.GET.get('lng')
-        dlat = request.GET.get('dest_lat')
-        dlng = request.GET.get('dest_lng')
-
-        if not all([lat, lng, dlat, dlng]):
-            return JsonResponse({'success': False, 'error': 'Missing coordinates'})
-
-        eta = get_google_eta(float(lat), float(lng), float(dlat), float(dlng))
-        if eta is None:
-            eta = 10  # safe fallback
-
-        return JsonResponse({'success': True, 'eta': eta})
-
-    except ValueError:
-        return JsonResponse({'success': False, 'error': 'Invalid coordinate format'})
-    except Exception:
-        return JsonResponse({'success': False, 'error': 'Server error'})
-
-
-
- 
 @login_required
-def rider_earnings(request):
+def rider_location_api(request, order_ref):
+    from order.models import Order as ProductOrder
+    delivery = None
+    # Try product order
     try:
-        profile = request.user.rider_profile
+        order    = ProductOrder.objects.get(order_ref=order_ref, customer=request.user)
+        delivery = order.delivery
     except Exception:
-        return redirect('rider:apply')
- 
-    deliveries = profile.deliveries.select_related(
-        'order', 'order__customer'
-    ).order_by('-assigned_at')
- 
-    # ── Stats ──────────────────────────────────────────────────────────────────
-    total_earnings = deliveries.filter(
-        status='delivered'
-    ).aggregate(t=Sum('rider_commission'))['t'] or 0
- 
-    total_deliveries = deliveries.filter(status='delivered').count()
- 
-    # This week
-    week_start = timezone.now() - timedelta(days=7)
-    week_earnings = deliveries.filter(
-        status='delivered',
-        delivered_at__gte=week_start,
-    ).aggregate(t=Sum('rider_commission'))['t'] or 0
- 
-    week_deliveries = deliveries.filter(
-        status='delivered',
-        delivered_at__gte=week_start,
-    ).count()
- 
-    # This month
-    month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0)
-    month_earnings = deliveries.filter(
-        status='delivered',
-        delivered_at__gte=month_start,
-    ).aggregate(t=Sum('rider_commission'))['t'] or 0
- 
-    # Pending payout (delivered but not yet paid out)
-    pending_payout = profile.earnings.filter(
-        status='pending'
+        pass
+    # Try food order
+    if not delivery:
+        try:
+            from food.models import FoodOrder
+            food_order = FoodOrder.objects.get(order_ref=order_ref, customer=request.user)
+            delivery   = food_order.delivery
+        except Exception:
+            pass
+
+    if not delivery or not delivery.rider:
+        return JsonResponse({'available': False})
+
+    try:
+        loc = RiderLocation.objects.get(rider=delivery.rider.rider, is_active=True)
+        return JsonResponse({
+            'available': True,
+            'lat':       float(loc.latitude),
+            'lng':       float(loc.longitude),
+            'status':    delivery.status,
+        })
+    except RiderLocation.DoesNotExist:
+        return JsonResponse({'available': False, 'status': delivery.status})
+
+
+# ── ETA API ────────────────────────────────────────────────────────────────────
+
+@login_required
+def eta_api(request):
+    from delivery.utils import haversine_distance, estimate_eta_minutes
+    try:
+        rlat = float(request.GET['rlat'])
+        rlng = float(request.GET['rlng'])
+        dlat = float(request.GET['dlat'])
+        dlng = float(request.GET['dlng'])
+        dist = haversine_distance(rlat, rlng, dlat, dlng)
+        return JsonResponse({'eta_minutes': estimate_eta_minutes(dist),
+                             'distance_km': round(dist, 2)})
+    except (KeyError, TypeError, ValueError) as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+# ── EARNINGS ───────────────────────────────────────────────────────────────────
+
+@rider_required
+def rider_earnings(request):
+    profile = request.rider
+    now     = timezone.now()
+    week_start  = now - timedelta(days=7)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    base_qs = Delivery.objects.filter(rider=profile, status=Delivery.Status.DELIVERED)
+
+    total_earnings  = base_qs.aggregate(t=Sum('rider_commission'))['t'] or 0
+    total_deliveries= base_qs.count()
+    week_earnings   = base_qs.filter(delivered_at__gte=week_start).aggregate(t=Sum('rider_commission'))['t'] or 0
+    week_deliveries = base_qs.filter(delivered_at__gte=week_start).count()
+    month_earnings  = base_qs.filter(delivered_at__gte=month_start).aggregate(t=Sum('rider_commission'))['t'] or 0
+
+    pending_payout = RiderEarning.objects.filter(
+        rider=profile, status=RiderEarning.Status.PENDING
     ).aggregate(t=Sum('amount'))['t'] or 0
- 
-    paid_out = profile.earnings.filter(
-        status='paid'
+
+    paid_out = RiderEarning.objects.filter(
+        rider=profile, status=RiderEarning.Status.PAID
     ).aggregate(t=Sum('amount'))['t'] or 0
- 
-    # Recent completed deliveries
-    recent = deliveries.filter(status='delivered')[:20]
- 
+
+    recent = base_qs.order_by('-delivered_at')[:20]
+
     return render(request, 'rider/earnings.html', {
         'profile':          profile,
         'total_earnings':   total_earnings,
@@ -590,3 +456,55 @@ def rider_earnings(request):
         'recent':           recent,
         'cart_count':       0,
     })
+
+
+# ── NOTIFICATIONS ──────────────────────────────────────────────────────────────
+
+def notify_rider(rider_user, title, message, notif_type='info', link='/rider/'):
+    """
+    Create an in-app notification for a rider.
+    Tries the chat.Notification model; silently skips if it doesn't exist.
+    """
+    try:
+        from chat.models import Notification
+        Notification.objects.create(
+            user=rider_user, title=title, body=message,
+            notif_type=notif_type, link=link,
+        )
+    except Exception:
+        pass
+
+
+@login_required
+def notification_read(request, pk):
+    try:
+        from chat.models import Notification
+        notif = get_object_or_404(Notification, pk=pk, user=request.user)
+        notif.is_read = True
+        notif.save(update_fields=['is_read'])
+    except Exception:
+        pass
+    return JsonResponse({'success': True})
+
+
+@login_required
+def notification_read_all(request):
+    try:
+        from chat.models import Notification
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    except Exception:
+        pass
+    return JsonResponse({'success': True})
+
+
+@login_required
+def notification_count(request):
+    return JsonResponse({'count': _unread_count(request.user)})
+
+
+def _unread_count(user):
+    try:
+        from chat.models import Notification
+        return Notification.objects.filter(user=user, is_read=False).count()
+    except Exception:
+        return 0

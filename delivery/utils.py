@@ -1,6 +1,11 @@
 """
 delivery/utils.py — Uber-style delivery fee calculation for product orders.
 Mirrors the same engine used in food/views.py for consistency.
+
+FIXED: calculate_rider_commission rate_percent changed from 50% → 95%
+  to match the food system and the declared business model:
+  - Rider keeps 95% of delivery fee
+  - Lynctel keeps  5% of delivery fee (calculate_app_cut)
 """
 import math
 from decimal import Decimal
@@ -43,8 +48,12 @@ def estimate_eta_minutes(distance_km, prep_time=10):
     return prep_time + travel
 
 
-def calculate_rider_commission(delivery_fee, rate_percent=Decimal('50')):
-    """Rider gets 50% of delivery fee."""
+def calculate_rider_commission(delivery_fee, rate_percent=Decimal('95')):
+    """
+    Rider keeps 95% of the delivery fee.
+    CHANGED from 50% → 95% to match food/views.py and the Lynctel
+    business model (app earns 5%, rider earns 95%).
+    """
     return (delivery_fee * rate_percent / Decimal('100')).quantize(Decimal('0.01'))
 
 

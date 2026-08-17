@@ -1,244 +1,166 @@
 {% extends "base.html" %}
-{% block title %}Delivery {{ delivery.order.order_ref }} — Lynctel{% endblock %}
+{% block title %}Delivery {{ delivery.pk }} — Lynctel Rider{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-
 <style>
-  body { background: #0b1220; }
+  body { overflow: hidden; }
+  #map { position:fixed; inset:0; z-index:0; }
 
-  /* MAP FULLSCREEN */
-  #map {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1;
-  }
-
-  /* TOP STATUS BAR */
   .top-bar {
-    position: fixed;
-    top: 12px;
-    left: 12px;
-    right: 12px;
-    z-index: 50;
-    background: rgba(255,255,255,0.95);
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    padding: 10px 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    position:fixed; top:10px; left:10px; right:10px; z-index:50;
+    background:rgba(255,255,255,.95); backdrop-filter:blur(12px);
+    border-radius:16px; padding:10px 14px;
+    display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 4px 20px rgba(0,0,0,.12);
   }
 
-  .status-pill {
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-weight: 600;
-  }
-
-  /* BOTTOM SHEET (UBER STYLE) */
   .bottom-sheet {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 60;
-    background: white;
-    border-radius: 22px 22px 0 0;
-    padding: 16px;
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.25);
+    position:fixed; bottom:0; left:0; right:0; z-index:60;
+    background:white; border-radius:22px 22px 0 0;
+    padding:12px 16px 32px;
+    box-shadow:0 -6px 30px rgba(0,0,0,.15);
   }
+  .handle { width:40px; height:4px; background:#e5e7eb; border-radius:4px; margin:0 auto 12px; }
 
-  .drag-handle {
-    width: 40px;
-    height: 4px;
-    background: #ddd;
-    border-radius: 999px;
-    margin: 0 auto 12px;
-  }
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .info-card { background:#f9fafb; border-radius:12px; padding:10px 12px; }
+  .info-label { font-size:.7rem; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; }
+  .info-val   { font-weight:700; color:#0F1B2D; font-size:.88rem; }
 
-  .btn {
-    padding: 14px;
-    border-radius: 14px;
-    font-weight: 700;
-    font-size: 14px;
-    text-align: center;
-  }
-
-  .btn-primary { background: #2563eb; color: white; }
-  .btn-green { background: #16a34a; color: white; }
-  .btn-purple { background: #7c3aed; color: white; }
-
-  .btn-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    font-size: 13px;
-    margin-bottom: 10px;
-  }
-
-  .card {
-    background: #f8fafc;
-    border-radius: 14px;
-    padding: 10px;
-  }
-
-  /* floating quick actions */
   .fab {
-    position: fixed;
-    right: 16px;
-    z-index: 70;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    color: white;
-    font-size: 20px;
+    position:fixed; right:14px; z-index:70;
+    width:50px; height:50px; border-radius:50%;
+    display:flex; justify-content:center; align-items:center;
+    box-shadow:0 4px 16px rgba(0,0,0,.2); color:white;
+    font-size:1.3rem; text-decoration:none; border:none;
   }
-
-  .fab.call { bottom: 180px; background: #0ea5e9; }
-  .fab.wa { bottom: 120px; background: #22c55e; }
-  .fab.nav { bottom: 60px; background: #111827; }
+  .fab-call { bottom:200px; background:#0ea5e9; }
+  .fab-wa   { bottom:140px; background:#22c55e; }
+  .fab-nav  { bottom:80px;  background:#0F1B2D; }
 </style>
 {% endblock %}
 
 {% block content %}
-
-<!-- MAP -->
 <div id="map"></div>
 
-<!-- TOP BAR -->
+<!-- Top bar -->
 <div class="top-bar">
   <div>
-    <div style="font-weight:700; font-size:14px;">{{ delivery.order.order_ref }}</div>
-    <div style="font-size:12px; color:#666;">
-      {{ delivery.order.delivery_city }}
+    <div class="fw-bold" style="font-size:.9rem">
+      {% if delivery.order %}{{ delivery.order.order_ref }}{% else %}Ride #{{ delivery.pk }}{% endif %}
+    </div>
+    <div class="text-muted" style="font-size:.75rem">
+      {% if delivery.order %}{{ delivery.order.delivery_city }}{% else %}Delivery{% endif %}
     </div>
   </div>
-
-  <div class="status-pill
-      {% if delivery.status == 'assigned' %}bg-yellow-100 text-yellow-700
-      {% elif delivery.status == 'picked_up' %}bg-blue-100 text-blue-700
-      {% elif delivery.status == 'en_route' %}bg-purple-100 text-purple-700
-      {% elif delivery.status == 'delivered' %}bg-green-100 text-green-700
-      {% endif %}">
+  <span class="badge rounded-pill
+    {% if delivery.status == 'assigned'  %}bg-warning text-dark
+    {% elif delivery.status == 'picked_up' %}bg-primary
+    {% elif delivery.status == 'en_route'  %}bg-info text-dark
+    {% elif delivery.status == 'delivered' %}bg-success
+    {% else %}bg-secondary{% endif %}">
     {{ delivery.get_status_display }}
-  </div>
+  </span>
 </div>
 
-<!-- FLOATING ACTIONS -->
-<a class="fab call" href="tel:{{ delivery.order.delivery_phone }}">📞</a>
-<a class="fab wa"
-   href="https://wa.me/233{{ delivery.order.delivery_phone|slice:'1:' }}?text=Hi! I'm your Lynctel rider for {{ delivery.order.order_ref }}"
-   target="_blank">💬</a>
-<a class="fab nav"
-   href="https://www.google.com/maps?q={{ delivery.order.delivery_address|urlencode }}"
-   target="_blank">🧭</a>
+<!-- FABs -->
+{% if customer_phone %}
+<a href="tel:{{ customer_phone }}" class="fab fab-call" title="Call customer">📞</a>
+<a href="https://wa.me/233{{ customer_phone|slice:'1:' }}?text=Hi!+I'm+your+Lynctel+rider"
+   class="fab fab-wa" target="_blank" title="WhatsApp customer">💬</a>
+{% endif %}
+{% if customer_address %}
+<a href="https://www.google.com/maps?q={{ customer_address|urlencode }}"
+   class="fab fab-nav" target="_blank" title="Navigate">🧭</a>
+{% endif %}
 
-<!-- BOTTOM SHEET -->
+<!-- Bottom sheet -->
 <div class="bottom-sheet">
+  <div class="handle"></div>
 
-  <div class="drag-handle"></div>
-
-  <!-- INFO -->
   <div class="info-grid">
-    <div class="card">
-      <div style="color:#666;">Customer</div>
-      <div style="font-weight:700;">{{ delivery.order.delivery_phone }}</div>
+    <div class="info-card">
+      <div class="info-label">Customer</div>
+      <div class="info-val">{{ customer_phone|default:"—" }}</div>
     </div>
-
-    <div class="card">
-      <div style="color:#666;">Earnings</div>
-      <div style="font-weight:700; color:#16a34a;">
-        GHS {{ delivery.rider_commission }}
-      </div>
+    <div class="info-card">
+      <div class="info-label">Your Earnings</div>
+      <div class="info-val" style="color:#16a34a">GHS {{ delivery.rider_commission|floatformat:2 }}</div>
     </div>
-
-    <div class="card">
-      <div style="color:#666;">Address</div>
-      <div style="font-weight:700;">
-        {{ delivery.order.delivery_address }}
-      </div>
-    </div>
-
-    <div class="card">
-      <div style="color:#666;">Zone</div>
-      <div style="font-weight:700;">
-        {{ delivery.zone.name }}
-      </div>
+    <div class="info-card" style="grid-column:1/-1">
+      <div class="info-label">Delivery Address</div>
+      <div class="info-val">{{ customer_address|default:delivery.dropoff_location|default:"—" }}</div>
     </div>
   </div>
 
-  <!-- MAIN ACTION -->
-  <div style="margin-top:10px;">
+  {% if delivery.status == 'assigned' %}
+  <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+    {% csrf_token %}<input type="hidden" name="status" value="picked_up">
+    <button class="btn btn-primary w-100 rounded-3 py-3 fw-bold">📦 Mark as Picked Up</button>
+  </form>
 
-    {% if delivery.status == 'assigned' %}
-    <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
-      {% csrf_token %}
-      <input type="hidden" name="status" value="picked_up">
-      <button class="btn btn-primary w-full">📦 Picked Up</button>
-    </form>
+  {% elif delivery.status == 'picked_up' %}
+  <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+    {% csrf_token %}<input type="hidden" name="status" value="en_route">
+    <button class="btn w-100 rounded-3 py-3 fw-bold text-white" style="background:#7c3aed">🛵 Start Delivery</button>
+  </form>
 
-    {% elif delivery.status == 'picked_up' %}
-    <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
-      {% csrf_token %}
-      <input type="hidden" name="status" value="en_route">
-      <button class="btn btn-purple w-full">🛵 Start Delivery</button>
-    </form>
+  {% elif delivery.status == 'en_route' %}
+  <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
+    {% csrf_token %}<input type="hidden" name="status" value="delivered">
+    <button class="btn btn-success w-100 rounded-3 py-3 fw-bold">🎉 Complete Delivery</button>
+  </form>
 
-    {% elif delivery.status == 'en_route' %}
-    <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
-      {% csrf_token %}
-      <input type="hidden" name="status" value="delivered">
-      <button class="btn btn-green w-full">🎉 Complete Delivery</button>
-    </form>
-    {% endif %}
-
-  </div>
-
+  {% elif delivery.status == 'delivered' %}
+  <div class="alert alert-success rounded-3 text-center fw-semibold mb-0">✅ Delivered!</div>
+  {% endif %}
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-const CUSTOMER_LAT = {{ customer_lat }};
-const CUSTOMER_LNG = {{ customer_lng }};
+/* Context vars safely passed from rider/views.live_map() */
+var CUSTOMER_LAT = {{ customer_lat|default:"5.6037" }};
+var CUSTOMER_LNG = {{ customer_lng|default:"-0.1870" }};
+var DELIVERY_ID  = {{ delivery.pk }};
 
-const map = L.map('map', { zoomControl: false })
-  .setView([CUSTOMER_LAT, CUSTOMER_LNG], 14);
+var map = L.map('map', {zoomControl:true}).setView([CUSTOMER_LAT, CUSTOMER_LNG], 14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
-}).addTo(map);
-
+/* Destination marker */
 L.marker([CUSTOMER_LAT, CUSTOMER_LNG])
   .addTo(map)
-  .bindPopup("Delivery Location");
+  .bindPopup('Delivery Location')
+  .openPopup();
 
-// optional: rider tracking placeholder
-let riderMarker;
+/* Rider marker (live position) */
+var riderMarker = null;
 
-function updateLocation(lat, lng) {
-  if (!riderMarker) {
-    riderMarker = L.marker([lat, lng]).addTo(map);
-  } else {
-    riderMarker.setLatLng([lat, lng]);
-  }
+/* GPS: push rider's location every 10 seconds */
+function sendLocation(lat, lng) {
+  fetch('/rider/location/update/', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+    body: JSON.stringify({lat: lat, lng: lng}),
+  });
+}
+
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(function(pos) {
+    var lat = pos.coords.latitude, lng = pos.coords.longitude;
+    if (!riderMarker) {
+      riderMarker = L.marker([lat, lng], {
+        icon: L.divIcon({className:'',
+          html:'<div style="background:#0F1B2D;color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.3)">🛵</div>',
+          iconSize:[32,32], iconAnchor:[16,16]})
+      }).addTo(map);
+    } else {
+      riderMarker.setLatLng([lat, lng]);
+    }
+    sendLocation(lat, lng);
+  }, null, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
 }
 </script>
 {% endblock %}
