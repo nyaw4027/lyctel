@@ -463,6 +463,22 @@ def restaurant_update_order(request, ref):
             order.payment_status = FoodOrder.PaymentStatus.PAID
         order.save()
         messages.success(request, f'Order {ref} → {order.get_status_display()}')
+        # SMS customer on status change
+        try:
+            from notifications.sms import (
+                sms_food_order_confirmed, sms_food_out_for_delivery,
+                sms_food_delivered, sms_food_cancelled,
+            )
+            _sms_map = {
+                'confirmed': sms_food_order_confirmed,
+                'out_for_delivery': sms_food_out_for_delivery,
+                'delivered': sms_food_delivered,
+                'cancelled': sms_food_cancelled,
+            }
+            if ns in _sms_map:
+                _sms_map[ns](order)
+        except Exception:
+            pass
         # Trigger rider payout (95% of delivery fee) when delivery completes
         if ns == 'delivered':
             try:
@@ -1044,6 +1060,7 @@ def _order_total(order):
         Decimal(str(order.delivery_fee  or 0))
     ).quantize(Decimal('0.01'))
 
+@login_required
 def food_payment_initiate(request, order_ref):
     """
     Initiate Hubtel hosted checkout for a food order.

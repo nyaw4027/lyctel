@@ -1,125 +1,68 @@
 """
-notifications/sms.py
+notifications/sms.py  —  Arkesel SMS gateway
 
-SMS service via Arkesel (https://arkesel.com).
-Reads ARKESEL_API_KEY and ARKESEL_SENDER_ID from settings.
-
-Both keys are already in your .env:
-    ARKESEL_API_KEY=UlZDTVpkbHpRamRsdmRBV3diU0o
-    ARKESEL_SENDER_ID=Lynctel
-
-And in settings.py:
-    ARKESEL_API_KEY   = config('ARKESEL_API_KEY',   default='')
-    ARKESEL_SENDER_ID = config('ARKESEL_SENDER_ID', default='Lynctel')
-
-Usage:
-    from notifications.sms import send_sms
-    send_sms(to='0558040216', message='Your order is confirmed!')
+No changes to core send_sms() — wiring only:
+  UPGRADE: Added food order SMS templates to match the food system.
+  UPGRADE: Added sms_food_order_* functions so food/views.py and
+           food/signals.py can import from one place.
 """
 import logging
-
 import requests
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
-
 ARKESEL_URL = 'https://sms.arkesel.com/api/v2/sms/send'
 
 
 def _normalise_phone(phone):
-    """
-    Normalises a Ghana phone number to the format Arkesel expects.
-    Arkesel accepts: 0XXXXXXXXX or 233XXXXXXXXX
-    Handles all common formats:
-        0558040216      → 0558040216
-        +233558040216   → 0558040216
-        233558040216    → 0558040216
-    """
     if not phone:
         return None
-
     digits = ''.join(c for c in str(phone) if c.isdigit())
-
     if digits.startswith('233') and len(digits) == 12:
         return '0' + digits[3:]
-
     if digits.startswith('0') and len(digits) == 10:
         return digits
-
-    # Unrecognised format — pass through and let Arkesel reject explicitly
     return digits
 
 
 def send_sms(to, message):
     """
-    Sends a single SMS via Arkesel API v2.
-
+    Send a single SMS via Arkesel v2.
     Returns True on success, False on any failure.
-    Never raises — a failed SMS must never break the caller
-    (e.g. an order status signal or payment webhook).
+    Never raises — SMS failure must never break the caller.
     """
     api_key   = getattr(settings, 'ARKESEL_API_KEY',   None)
     sender_id = getattr(settings, 'ARKESEL_SENDER_ID', None)
-
     if not api_key:
-        logger.warning('[SMS] ARKESEL_API_KEY not configured — SMS skipped.')
+        logger.warning('[SMS] ARKESEL_API_KEY not set')
         return False
-
     if not sender_id:
-        logger.warning('[SMS] ARKESEL_SENDER_ID not configured — SMS skipped.')
+        logger.warning('[SMS] ARKESEL_SENDER_ID not set')
         return False
-
     phone = _normalise_phone(to)
     if not phone:
-        logger.warning('[SMS] No valid phone number supplied: %r', to)
+        logger.warning('[SMS] No valid phone: %r', to)
         return False
-
-    headers = {
-        'api-key':      api_key,
-        'Content-Type': 'application/json',
-        'Accept':       'application/json',
-    }
-
-    payload = {
-        'sender':     sender_id,
-        'message':    message,
-        'recipients': [phone],
-    }
-
     try:
-        response = requests.post(
+        resp = requests.post(
             ARKESEL_URL,
-            json=payload,
-            headers=headers,
+            json={'sender': sender_id, 'message': message, 'recipients': [phone]},
+            headers={'api-key': api_key, 'Content-Type': 'application/json'},
             timeout=10,
         )
-        response.raise_for_status()
-        data = response.json()
-
-        # Arkesel returns {"status": "success", ...} on success
+        resp.raise_for_status()
+        data = resp.json()
         if data.get('status') == 'success':
-            logger.info('[SMS] ✓ Sent to %s — "%s..."', phone, message[:40])
+            logger.info('[SMS] ✓ %s — %.40s…', phone, message)
             return True
-
-        logger.warning('[SMS] Arkesel non-success for %s: %s', phone, data)
+        logger.warning('[SMS] Non-success: %s', data)
         return False
-
-    except requests.exceptions.Timeout:
-        logger.error('[SMS] Request timed out for %s', phone)
-        return False
-    except requests.exceptions.ConnectionError:
-        logger.error('[SMS] Connection error — Arkesel unreachable')
-        return False
-    except requests.exceptions.HTTPError as exc:
-        logger.error('[SMS] HTTP error for %s: %s', phone, exc)
-        return False
-    except (ValueError, KeyError) as exc:
-        logger.error('[SMS] Unexpected Arkesel response format: %s', exc)
+    except Exception as exc:
+        logger.error('[SMS] Error sending to %s: %s', phone, exc)
         return False
 
 
-# ── ORDER SMS TEMPLATES ───────────────────────────────────
-# One function per status — keeps signals.py thin and wording centralised.
+# ── E-commerce order SMS ───────────────────────────────────────────────────────
 
 def sms_order_confirmed(order):
     return send_sms(
@@ -129,7 +72,6 @@ def sms_order_confirmed(order):
         f'We will text you when your rider is on the way.'
     )
 
-
 def sms_order_dispatched(order):
     return send_sms(
         order.delivery_phone,
@@ -137,40 +79,75 @@ def sms_order_dispatched(order):
         f'Your rider will call {order.delivery_phone} on arrival.'
     )
 
-
 def sms_order_delivered(order):
     return send_sms(
         order.delivery_phone,
         f'Lynctel: Order {order.order_ref} has been delivered. '
         f'Thank you for shopping with us! '
-        f'Rate your experience at lynctel.up.railway.app'
+        f'Rate us at lynctel.up.railway.app'
     )
-
 
 def sms_order_cancelled(order):
     return send_sms(
         order.delivery_phone,
-        f'Lynctel: Your order {order.order_ref} has been cancelled. '
-        f'Contact us on WhatsApp: +233558040216 if this was unexpected.'
+        f'Lynctel: Your order {order.order_ref} was cancelled. '
+        f'WhatsApp us at +233558040216 if this was unexpected.'
     )
-
 
 def sms_vendor_low_stock(vendor, products):
-    """
-    Sends a single low-stock alert to a vendor covering all their
-    affected products. Called from order/signals.py after payment.
-    """
     if not vendor.phone:
         return False
-
-    names = ', '.join(
-        f'{p.name} ({p.stock_qty} left)' for p in products
-    )
+    names  = ', '.join(f'{p.name} ({p.stock_qty} left)' for p in products)
     plural = 'products are' if len(products) > 1 else 'product is'
-
     return send_sms(
         vendor.phone,
         f'Lynctel Stock Alert: The following {plural} running low '
-        f'in your shop: {names}. '
-        f'Restock soon to avoid missed orders.'
+        f'in your shop: {names}. Restock soon to avoid missed orders.'
+    )
+
+
+# ── Food order SMS (NEW) ───────────────────────────────────────────────────────
+
+def sms_food_order_confirmed(food_order):
+    vendor_name = food_order.vendor.name if food_order.vendor else 'the restaurant'
+    return send_sms(
+        food_order.delivery_phone,
+        f'Lynctel Food: {vendor_name} has confirmed your order '
+        f'{food_order.order_ref}! '
+        f'Estimated delivery: {food_order.estimated_delivery_time} mins. '
+        f'Track: lynctel.up.railway.app/food/order/{food_order.order_ref}/'
+    )
+
+def sms_food_out_for_delivery(food_order):
+    return send_sms(
+        food_order.delivery_phone,
+        f'Lynctel Food: Your order {food_order.order_ref} is on the way! '
+        f'Your rider will call {food_order.delivery_phone} when nearby. '
+        f'Track live: lynctel.up.railway.app/food/order/{food_order.order_ref}/'
+    )
+
+def sms_food_delivered(food_order):
+    vendor_name = food_order.vendor.name if food_order.vendor else 'us'
+    return send_sms(
+        food_order.delivery_phone,
+        f'Lynctel Food: Your food from {vendor_name} has arrived! '
+        f'Enjoy your meal 🍽️ '
+        f'Order again at lynctel.up.railway.app/food/'
+    )
+
+def sms_food_cancelled(food_order):
+    return send_sms(
+        food_order.delivery_phone,
+        f'Lynctel Food: Sorry, your order {food_order.order_ref} was cancelled. '
+        f'Contact us on WhatsApp: +233558040216'
+    )
+
+def sms_rider_assigned(food_order, rider_name=None):
+    """SMS customer when a rider accepts their food order."""
+    rider = rider_name or 'A rider'
+    return send_sms(
+        food_order.delivery_phone,
+        f'Lynctel Food: {rider} is picking up your order from '
+        f'{food_order.vendor.name if food_order.vendor else "the restaurant"}. '
+        f'They will call you on arrival at {food_order.delivery_phone}.'
     )

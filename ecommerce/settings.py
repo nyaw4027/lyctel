@@ -315,3 +315,63 @@ LOGGING = {
         'notifications':  {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
     },
 }
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# ── Sentry error tracking ──────────────────────────────────────────────────────
+# Set SENTRY_DSN in Railway environment variables.
+# Get a free DSN at https://sentry.io (Lynctel → Settings → DSN)
+SENTRY_DSN = config('SENTRY_DSN', default='')
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=0.1,      # 10% of requests traced for performance
+        profiles_sample_rate=0.05,   # 5% profiled
+        send_default_pii=False,       # never send PII (GDPR safe)
+        environment=config('DJANGO_ENV', default='production'),
+    )
+
+# ── Channels / WebSocket channel layer ────────────────────────────────────────
+# CRITICAL: without Redis, WebSockets only work on ONE worker process.
+# Railway auto-scales — add the Redis add-on and set REDIS_URL.
+REDIS_URL = config('REDIS_URL', default='redis://localhost:6379')
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG':  {'hosts': [REDIS_URL]},
+    }
+}
+
+# ── Production security headers ────────────────────────────────────────────────
+# These all default to off to allow local HTTP dev, but must be on in prod.
+if not DEBUG:
+    SECURE_SSL_REDIRECT          = True
+    SECURE_HSTS_SECONDS          = 31536000   # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD          = True
+    SESSION_COOKIE_SECURE        = True
+    CSRF_COOKIE_SECURE           = True
+    SECURE_CONTENT_TYPE_NOSNIFF  = True
+    SECURE_BROWSER_XSS_FILTER    = True
+    X_FRAME_OPTIONS              = 'DENY'
+    SECURE_REFERRER_POLICY       = 'strict-origin-when-cross-origin'
+
+# ── Cache backend (Redis) ──────────────────────────────────────────────────────
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': REDIS_URL,
+        'TIMEOUT':  300,   # 5 minutes default
+        'OPTIONS':  {'MAX_ENTRIES': 10000},
+    }
+}
+
+# ── Rate limiting (django-ratelimit) ───────────────────────────────────────────
+# pip install django-ratelimit
+# Cart/payment endpoints: 20 requests/minute per user
+RATELIMIT_ENABLE = True
+RATELIMIT_USE_CACHE = 'default'

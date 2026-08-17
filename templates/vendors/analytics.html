@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Analytics — {{ vendor.shop_name }}{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  .stat-card { background:white; border-radius:16px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+  .stat-val  { font-size:1.75rem; font-weight:800; color:var(--navy); font-family:'Syne',sans-serif; }
+  .stat-lbl  { font-size:.75rem; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; }
+  .chart-wrap{ background:white; border-radius:16px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl px-3 py-4">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'vendors:dashboard' %}" class="text-muted text-decoration-none small">← Dashboard</a>
+    <h1 class="h5 fw-bold mb-0" style="font-family:'Syne',sans-serif">Analytics</h1>
+  </div>
+
+  <!-- KPI row -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-lbl">Total Revenue</div>
+        <div class="stat-val">GHS {{ data.total_revenue|floatformat:0 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-lbl">Total Orders</div>
+        <div class="stat-val">{{ data.total_orders }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-lbl">Avg Order Value</div>
+        <div class="stat-val">GHS {{ data.avg_order_value|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-lbl">Net (after 4%)</div>
+        <div class="stat-val" style="color:#16a34a">GHS {{ data.net_revenue|floatformat:0 }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Revenue chart (30 days) -->
+  <div class="chart-wrap mb-4">
+    <h2 class="h6 fw-bold text-navy mb-3">Revenue — Last 30 Days</h2>
+    <canvas id="revenueChart" height="80"></canvas>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <!-- Top products -->
+    <div class="col-md-6">
+      <div class="chart-wrap h-100">
+        <h2 class="h6 fw-bold text-navy mb-3">Top Products (30 days)</h2>
+        {% for p in data.top_products %}
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="small text-navy fw-semibold text-truncate me-2">{{ p.product__name }}</span>
+          <span class="small text-muted flex-shrink-0">GHS {{ p.revenue|floatformat:0 }}</span>
+        </div>
+        <div class="progress mb-3" style="height:4px">
+          <div class="progress-bar" style="background:var(--gold);width:{% widthratio p.revenue data.total_revenue 100 %}%"></div>
+        </div>
+        {% empty %}
+        <p class="text-muted small">No sales in the last 30 days.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Peak hours -->
+    <div class="col-md-6">
+      <div class="chart-wrap h-100">
+        <h2 class="h6 fw-bold text-navy mb-3">Peak Order Hours (7 days)</h2>
+        <canvas id="hoursChart" height="160"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Commission summary -->
+  <div class="chart-wrap mb-4">
+    <h2 class="h6 fw-bold text-navy mb-2">Commission Summary</h2>
+    <p class="text-muted small mb-0">
+      Lynctel keeps <strong>4%</strong> of your sales as platform fee.
+      Total paid: <strong>GHS {{ data.commission_paid|floatformat:2 }}</strong> |
+      Your net: <strong class="text-success">GHS {{ data.net_revenue|floatformat:2 }}</strong>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var daily     = {{ data.daily|safe }};
+var peakHours = {{ data.peak_hours|safe }};
+
+// Revenue line chart
+new Chart(document.getElementById('revenueChart'), {
+  type: 'line',
+  data: {
+    labels: daily.map(function(d){ return d.day; }),
+    datasets: [{
+      label: 'Revenue (GHS)',
+      data: daily.map(function(d){ return d.revenue; }),
+      borderColor: '#F5A623',
+      backgroundColor: 'rgba(245,166,35,.08)',
+      tension: 0.4, fill: true, pointRadius: 3,
+    }],
+  },
+  options: { responsive:true, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true } } },
+});
+
+// Peak hours bar chart
+var hourLabels = Array.from({length:24}, function(_,i){ return i+'h'; });
+var hourData   = Array(24).fill(0);
+peakHours.forEach(function(h){ hourData[new Date(h.hour).getHours()] = h.count; });
+
+new Chart(document.getElementById('hoursChart'), {
+  type: 'bar',
+  data: {
+    labels: hourLabels,
+    datasets: [{ label: 'Orders', data: hourData, backgroundColor: 'rgba(15,27,45,.7)' }],
+  },
+  options: { responsive:true, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true } } },
+});
+</script>
+{% endblock %}

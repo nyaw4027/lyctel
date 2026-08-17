@@ -3,7 +3,7 @@
 <html lang="{{ LANGUAGE_CODE|default:'en' }}">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
   <!-- Set theme before first paint to avoid a light/dark flash -->
   <script>
@@ -324,160 +324,56 @@
     }
 
   
-    /* ╔══════════════════════════════════════════════════════════╗
-       ║  ANDROID / CROSS-DEVICE FIXES                           ║
-       ║                                                          ║
-       ║  Root causes vs iOS:                                     ║
-       ║  1. Android Chrome 100vh ≠ visual viewport (addr bar)   ║
-       ║  2. env(safe-area-inset-bottom) = 0 on Android gesture  ║
-       ║     nav — content hides behind the bar anyway           ║
-       ║  3. Touch targets <44px silently fail on Android         ║
-       ║  4. Small fonts (<12px) render blurry on Android         ║
-       ║  5. Horizontal overflow causes scroll jank               ║
-       ╚══════════════════════════════════════════════════════════╝ */
+    /* ── Android / Pixel navbar overrides ─────────────────── */
+    /* Ensures cart is always fully visible regardless of screen width */
+    @media (max-width: 575.98px) {
+      /* Right nav: no gap between items, rely on button widths */
+      #main-navbar .d-flex.gap-1.ms-auto { gap: 4px !important; }
 
-    /* ── Prevent horizontal scroll on all Android browsers ───── */
-    html { overflow-x: hidden; }
-    body { overflow-x: hidden; }
+      /* Profile avatar: smaller on tiny screens */
+      #main-navbar #profile-menu-btn img,
+      #main-navbar #profile-menu-btn div[style*="width:32px"] {
+        width: 28px !important;
+        height: 28px !important;
+      }
 
-    /* ── Bottom nav: Android gesture bar adds ~40px below nav ── */
-    /* env(safe-area-inset-bottom) is 0 on most Android devices  */
-    /* even with gesture navigation, so we add an explicit floor  */
-    #mobile-nav {
-      /* Support both iOS safe area AND Android gesture bar */
-      padding-bottom: max(env(safe-area-inset-bottom, 0px), 10px);
-      /* Use dynamic viewport height where supported */
-      height: 64px;
-      height: calc(64px + max(env(safe-area-inset-bottom, 0px), 10px));
-    }
+      /* Ensure cart badge stays inside viewport (not clipped by overflow-x:hidden) */
+      #main-navbar { overflow: visible !important; }
+      #main-navbar .container-xl { overflow: visible !important; }
 
-    /* ── Body padding-bottom: match the actual nav height ─────── */
-    @media (max-width: 767.98px) {
-      body {
-        padding-bottom: calc(74px + max(env(safe-area-inset-bottom, 0px), 10px));
+      /* Cart button: always the rightmost, always visible */
+      button[aria-label^="Open cart"] {
+        position: relative !important;
+        flex-shrink: 0 !important;
+        z-index: 2;
       }
     }
 
-    /* ── Touch targets: Android requires ≥ 48×48px ────────────── */
-    @media (max-width: 767.98px) {
-      /* Bottom nav items — 5 items in 64px bar is fine height,
-         but add explicit min-width so tap area is adequate */
-      .mobile-nav-item {
-        min-height: 52px;
-        padding: 6px 4px;
-        -webkit-tap-highlight-color: rgba(245,166,35,.15);
-        tap-highlight-color: rgba(245,166,35,.15);
-      }
-
-      /* Small buttons used in product cards, nav etc */
-      .btn-sm {
-        min-height: 36px;
-        padding-top: 0.35rem;
-        padding-bottom: 0.35rem;
-      }
-
-      /* Stepper/qty buttons in cart drawer (28px → 40px) */
-      .btn[style*="width:28px"],
-      .btn[style*="height:28px"] {
-        width: 36px !important;
-        height: 36px !important;
-      }
+    /* Pixel 4 and similar: brand text hidden < 576px (done via d-none d-sm-inline)
+       This frees ~110px giving the cart room to breathe */
+    @media (max-width: 575.98px) {
+      .brand-name, .brand-dot { display: none !important; }
+      .navbar-brand { margin-right: 0.25rem !important; }
     }
 
-    /* ── Font sizes: Android renders <12px text blurry ────────── */
-    @media (max-width: 767.98px) {
-      /* Badge/pill font size floor */
-      .badge, [class*="rounded-pill"],
-      .mobile-nav-item { font-size: max(10px, .625rem); }
-
-      /* Ensure readable body copy */
-      .small   { font-size: max(13px, .8rem) !important; }
-      .text-sm { font-size: max(13px, .8rem) !important; }
-
-      /* Hero headings — clamp already handles this but ensure min */
-      h1 { font-size: clamp(1.6rem, 7vw, 2.5rem); }
-      h2 { font-size: clamp(1.2rem, 5vw, 1.8rem); }
+    /* ── Search autocomplete dropdown ──────────────────────────── */
+    .autocomplete-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: white; border-radius: 0 0 12px 12px;
+      box-shadow: 0 8px 24px rgba(15,27,45,.12);
+      z-index: 1050; max-height: 320px; overflow-y: auto;
+      border: 1px solid #f3f4f6; border-top: none;
     }
-
-    /* ── 100vh fix: Android Chrome includes address bar in 100vh ─ */
-    /* Any full-height element should prefer 100dvh (dynamic vh)    */
-    @supports (height: 100dvh) {
-      .min-vh-100  { min-height: 100dvh !important; }
-      .vh-100      { height: 100dvh !important; }
+    .ac-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; cursor: pointer; font-size: .875rem;
+      border-bottom: 1px solid #f9fafb; text-decoration: none; color: var(--navy);
     }
-
-    /* ── Navbar: mobile has 2 rows (112px). On very small screens  */
-    /*   add a tiny extra gap to prevent content starting too high   */
-    @media (max-width: 767.98px) {
-      /* Push all sticky-top content below the double navbar row */
-      .sticky-top + * { scroll-margin-top: var(--navbar-h, 112px); }
-
-      /* Ensure the search row wraps cleanly */
-      #main-navbar .d-md-none { flex-wrap: nowrap; overflow: hidden; }
-    }
-
-    /* ── Product cards: 2-col grid on 360px phones needs more height */
-    @media (max-width: 400px) {
-      /* Give product images more room on very small Android phones */
-      .product-img-wrap,
-      [class*="position-relative"][style*="height:5rem"],
-      [class*="position-relative"][style*="height: 5rem"] {
-        height: 7rem !important;
-      }
-
-      /* Single column on truly tiny screens (<340px) */
-      @media (max-width: 340px) {
-        .row-cols-2 { --bs-columns: 1 !important; }
-      }
-    }
-
-    /* ── Scrollable rails: momentum scroll on Android ─────────── */
-    .live-scroll,
-    .category-scroll,
-    [class*="overflow-x-auto"],
-    [class*="overflow-auto"] {
-      -webkit-overflow-scrolling: touch;
-      scroll-snap-type: x mandatory;
-      overscroll-behavior-x: contain;
-    }
-
-    /* ── Tap highlight: remove default Android blue flash ────────  */
-    a, button, [role="button"] {
-      -webkit-tap-highlight-color: transparent;
-    }
-    /* Add a subtle gold flash instead for branded feel */
-    .mobile-nav-item, .btn-navy, .btn-gold {
-      -webkit-tap-highlight-color: rgba(245,166,35,.12);
-    }
-
-    /* ── Anti-jank: will-change for animated elements ────────────  */
-    @media (max-width: 767.98px) {
-      .slide, #main-navbar, #mobile-nav {
-        will-change: transform;
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
-      }
-    }
-
-    /* ── Card hover → active for Android (no :hover on touch) ─── */
-    @media (hover: none) and (pointer: coarse) {
-      .category-card:active {
-        background: var(--navy) !important;
-        border-color: var(--navy) !important;
-        box-shadow: 0 8px 24px rgba(15,27,45,.15);
-      }
-      .category-card:active .category-card-label { color: #fff !important; }
-      .slide-card:active { background: rgba(255,255,255,.15) !important; }
-      .btn-navy:active  { opacity: .85; }
-      .btn-gold:active  { opacity: .85; }
-    }
-
-    /* ── Drawer / overlay: Android doesn't respect 100vh reliably ─ */
-    #cart-drawer {
-      height: 100dvh;
-      height: 100vh; /* fallback */
-      max-height: 100%;
-    }
+    .ac-item:hover, .ac-item.focused { background: var(--gold-light); color: var(--navy); }
+    .ac-item:last-child { border-bottom: none; border-radius: 0 0 12px 12px; }
+    .ac-type-product::before { content: '🛍️'; font-size: .9rem; }
+    .ac-type-category::before { content: '📂'; font-size: .9rem; }
+    .ac-price { margin-left: auto; color: var(--gold-dark); font-weight: 700; font-size: .8rem; }
 </style>
 
   {% block extra_head %}{% endblock %}
@@ -493,10 +389,11 @@
       <div class="d-flex align-items-center w-100 gap-2 py-2">
 
         <!-- Logo -->
-        <a href="{% url 'frontend:home' %}" class="navbar-brand d-flex align-items-center gap-2 me-3 flex-shrink-0">
+        <a href="{% url 'frontend:home' %}" class="navbar-brand d-flex align-items-center gap-1 me-2 flex-shrink-0">
           <img src="{% static 'logo.png' %}" alt="Lynctel" height="32" class="object-fit-contain"/>
-          <span class="brand-name">Lynctel</span>
-          <span class="brand-dot fw-bold fs-5 lh-1">·</span>
+          <!-- brand text: hidden on mobile to free navbar space for cart/profile -->
+          <span class="brand-name d-none d-sm-inline">Lynctel</span>
+          <span class="brand-dot fw-bold fs-5 lh-1 d-none d-sm-inline">·</span>
         </a>
 
         <!-- Search (desktop) -->
@@ -505,14 +402,20 @@
           <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
           </svg>
-          <input id="desktop-search" type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products, shops, vendors..." class="search-input w-100"/>
+          <input id="desktop-search" type="text" name="q" value="{{ search_query|default:'' }}"
+               placeholder="Search products, shops, vendors..." class="search-input w-100"
+               autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list"/>
+          <div id="desktop-autocomplete" class="autocomplete-dropdown d-none"></div>
         </form>
 
         <!-- Right nav -->
         <div class="d-flex align-items-center gap-1 ms-auto">
 
           <!-- Dark mode -->
-          <button type="button" onclick="toggleTheme()" class="btn btn-light btn-sm px-2 py-1 border-0 rounded-3" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <button type="button" onclick="toggleTheme()"
+                  class="btn btn-sm border-0 rounded-3 d-none d-sm-flex align-items-center justify-content-center"
+                  style="width:36px;height:36px;background:transparent"
+                  aria-label="Toggle dark mode" title="Toggle dark mode">
             <span id="theme-icon" aria-hidden="true">🌙</span>
           </button>
 
@@ -533,7 +436,7 @@
           {% if user.is_authenticated %}
           <!-- Profile dropdown -->
           <div class="dropdown">
-            <button type="button" id="profile-menu-btn" class="btn btn-light btn-sm border-0 d-flex align-items-center gap-2 rounded-3 px-2 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Open account menu" style="text-decoration:none">
+            <button type="button" id="profile-menu-btn" class="btn btn-sm border-0 d-flex align-items-center gap-1 rounded-3 px-1 dropdown-toggle" style="background:transparent" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Open account menu" style="text-decoration:none">
               {% if user.profile_pic %}
               <img src="{{ user.profile_pic.url }}" width="32" height="32" class="rounded-circle object-fit-cover flex-shrink-0" style="border:2px solid var(--gold)" alt=""/>
               {% else %}
@@ -620,21 +523,35 @@
 
           {% else %}
           <a href="{% url 'accounts:login' %}" class="btn btn-sm btn-light border-0 text-muted d-none d-md-inline-flex">Sign In</a>
-          <a href="{% url 'accounts:signup' %}" class="btn btn-sm btn-navy rounded-3">Sign Up</a>
+          <a href="{% url 'accounts:signup' %}" class="btn btn-sm btn-navy rounded-3">
+            <span class="d-none d-sm-inline">Sign Up</span>
+            <span class="d-sm-none fw-bold" aria-label="Sign up">+</span>
+          </a>
           {% endif %}
 
-          <!-- Live button — next to cart -->
-          <a href="{% url 'livestream:list' %}" class="btn btn-light btn-sm border-0 rounded-3 position-relative live-btn px-2" aria-label="Live shopping" title="Live Shopping">
+          <!-- Live button — hidden on <576px (users reach via bottom nav) -->
+          <a href="{% url 'livestream:list' %}"
+             class="btn btn-sm border-0 rounded-3 position-relative live-btn px-2 d-none d-sm-inline-flex align-items-center"
+             style="height:36px"
+             aria-label="Live shopping" title="Live Shopping">
             <span style="font-size:1.1rem" aria-hidden="true">📺</span>
             <span class="live-dot" aria-hidden="true"></span>
           </a>
 
-          <!-- Cart -->
-          <button type="button" onclick="openCart()" class="btn btn-light btn-sm border-0 rounded-3 position-relative px-2" aria-label="Open cart" aria-haspopup="dialog">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="text-muted" aria-hidden="true">
+          <!-- Cart — larger touch target, badge inside viewport -->
+          <button type="button" onclick="openCart()"
+                  class="btn btn-sm border-0 rounded-3 position-relative d-flex align-items-center justify-content-center"
+                  style="width:42px;height:42px;background:var(--navy);color:white;flex-shrink:0"
+                  aria-label="Open cart ({{ cart_count|default:0 }} items)" aria-haspopup="dialog">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
             </svg>
-            <span id="cart-count" class="cart-badge {% if not cart_count or cart_count == 0 %}d-none{% endif %}">{{ cart_count|default:0 }}</span>
+            <span id="cart-count"
+                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger
+                         {% if not cart_count or cart_count == 0 %}d-none{% endif %}"
+                  style="font-size:10px;min-width:18px;padding:2px 5px;transform:translate(-60%,-30%)!important">
+              {{ cart_count|default:0 }}
+            </span>
           </button>
 
         </div>
@@ -647,7 +564,10 @@
           <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
           </svg>
-          <input id="mobile-search" type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search products..." class="search-input w-100"/>
+          <input id="mobile-search" type="text" name="q" value="{{ search_query|default:'' }}"
+                 placeholder="Search products..." class="search-input w-100"
+                 autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list"/>
+          <div id="mobile-autocomplete" class="autocomplete-dropdown d-none"></div>
         </form>
       </div>
     </div>
@@ -949,7 +869,7 @@
       var fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF_TOKEN);fd.append('quantity',1);
       fetch('/cart/add/'+productId+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd})
         .then(function(r){return r.json();}).then(function(d){
-          if(d.success){updateCartBadge(d.cart_count);if(btn){btn.innerHTML='✓ Added';setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1200);}setTimeout(openCart,350);}
+          if(d.success){updateCartBadge(d.cart_count);if(btn){btn.innerHTML='✓ Added';setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1200);}setTimeout(openCart,350);if(d.cart_count===1&&window._showPWAAfterCart)window._showPWAAfterCart();}
           else if(btn){btn.innerHTML=orig;btn.disabled=false;}
         }).catch(function(){if(btn){btn.innerHTML=orig;btn.disabled=false;}});
     }
@@ -974,7 +894,8 @@
 
     // ── PWA ───────────────────────────────────────────────
     var _dp=null,_iOS=(/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream),_sa=(window.matchMedia('(display-mode:standalone)').matches||window.navigator.standalone===true);
-    window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();_dp=e;if(!localStorage.getItem('pwa-dismissed')&&!_sa)setTimeout(function(){document.getElementById('pwa-banner').classList.add('show');},window.innerWidth<640?2000:4000);});
+    window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();_dp=e;if(!localStorage.getItem('pwa-dismissed')&&!_sa)/* PWA prompt: shown after first cart add, not on page load */
+    window._showPWAAfterCart=function(){if(!localStorage.getItem('pwa-dismissed')&&!_sa){document.getElementById('pwa-banner').classList.add('show');}};});
     document.getElementById('pwa-install-btn').addEventListener('click',async function(){if(!_dp)return;_dp.prompt();await _dp.userChoice;_dp=null;document.getElementById('pwa-banner').classList.remove('show');});
     function dismissPWA(){document.getElementById('pwa-banner').classList.remove('show');localStorage.setItem('pwa-dismissed','1');}
     function showInstallPrompt(){if(_sa){alert('Lynctel is already installed! ✅');return;}document.getElementById('ios-install-sheet').classList.add('show');document.getElementById('ios-overlay').classList.add('show');document.body.style.overflow='hidden';}
@@ -996,6 +917,74 @@
       }catch(err){console.warn('[Push] Failed:',err);}
     }
     if(IS_AUTHENTICATED)setTimeout(subscribeToPush,3000);
+
+    
+    // ── SEARCH AUTOCOMPLETE ──────────────────────────────────────
+    (function () {
+      var AC_URL = '/products/autocomplete/';
+      var timers = {};
+
+      function wireInput(inputEl, dropdownEl) {
+        if (!inputEl || !dropdownEl) return;
+        var focused = -1;
+
+        inputEl.addEventListener('input', function () {
+          var q = this.value.trim();
+          focused = -1;
+          clearTimeout(timers[inputEl.id]);
+          if (q.length < 2) { dropdownEl.innerHTML = ''; dropdownEl.classList.add('d-none'); return; }
+          timers[inputEl.id] = setTimeout(function () { fetchSuggestions(q, dropdownEl, inputEl); }, 300);
+        });
+
+        inputEl.addEventListener('keydown', function (e) {
+          var items = dropdownEl.querySelectorAll('.ac-item');
+          if (e.key === 'ArrowDown') {
+            focused = Math.min(focused + 1, items.length - 1);
+            items.forEach(function (el, i) { el.classList.toggle('focused', i === focused); });
+            e.preventDefault();
+          } else if (e.key === 'ArrowUp') {
+            focused = Math.max(focused - 1, 0);
+            items.forEach(function (el, i) { el.classList.toggle('focused', i === focused); });
+            e.preventDefault();
+          } else if (e.key === 'Enter' && focused >= 0) {
+            items[focused] && (window.location.href = items[focused].href);
+            e.preventDefault();
+          } else if (e.key === 'Escape') {
+            dropdownEl.innerHTML = ''; dropdownEl.classList.add('d-none');
+          }
+        });
+
+        document.addEventListener('click', function (e) {
+          if (!e.target.closest('form') || !e.target.closest('form').contains(inputEl)) {
+            dropdownEl.innerHTML = ''; dropdownEl.classList.add('d-none');
+          }
+        });
+      }
+
+      function fetchSuggestions(q, dropdown, input) {
+        fetch(AC_URL + '?q=' + encodeURIComponent(q), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.results || !data.results.length) {
+              dropdown.innerHTML = ''; dropdown.classList.add('d-none'); return;
+            }
+            dropdown.innerHTML = data.results.map(function (r) {
+              return '<a href="' + r.url + '" class="ac-item ac-type-' + r.type + '">'
+                + '<span>' + r.label + '</span>'
+                + (r.price ? '<span class="ac-price">' + r.price + '</span>' : '')
+                + '</a>';
+            }).join('');
+            dropdown.classList.remove('d-none');
+            input.setAttribute('aria-expanded', 'true');
+          })
+          .catch(function () {});
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        wireInput(document.getElementById('desktop-search'), document.getElementById('desktop-autocomplete'));
+        wireInput(document.getElementById('mobile-search'),  document.getElementById('mobile-autocomplete'));
+      });
+    })();
 
     // ── SERVICE WORKER ─────────────────────────────────────
     if('serviceWorker'in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(r){console.log('[SW] Registered:',r.scope);}).catch(function(e){console.error('[SW] Failed:',e);});});
