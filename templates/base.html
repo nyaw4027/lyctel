@@ -403,10 +403,9 @@
         <!-- Right nav -->
         <div class="d-flex align-items-center gap-1 ms-auto">
 
-          <!-- Dark mode -->
-          <button type="button" onclick="toggleTheme()" class="btn btn-light btn-sm px-2 py-1 border-0 rounded-3" aria-label="Toggle dark mode" title="Toggle dark mode">
-            <span id="theme-icon" aria-hidden="true">🌙</span>
-          </button>
+          <!-- Dark mode moved to profile dropdown only -->
+          <!-- theme-icon span kept so toggleTheme() JS can still update the icon -->
+          <span id="theme-icon" class="d-none" aria-hidden="true">🌙</span>
 
           <!-- Desktop links -->
           <a href="{% url 'vendors:directory' %}" class="btn btn-sm btn-light border-0 d-none d-md-inline-flex text-muted">Shops</a>
