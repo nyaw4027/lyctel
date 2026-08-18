@@ -603,15 +603,49 @@
 
   // ── LOCATE ME BUTTON ──────────────────────────────────
   function locateMe() {
-    if (!navigator.geolocation) {
-      setGPSBanner('⚠ GPS not supported — tap the map to set your delivery pin', 'red');
+    const btn = document.getElementById('locate-me-btn');
+
+    // ── FIX 1: ensure map is initialised before using it ──
+    if (!map) {
+      initMap();
+      // Give Leaflet 200ms to fully render before placing markers
+      setTimeout(locateMe, 200);
       return;
     }
-    setGPSBanner('Detecting your location...', 'blue');
+
+    // ── FIX 2: HTTPS / secure context check (iOS Safari) ──
+    if (!window.isSecureContext && location.protocol !== 'https:') {
+      setGPSBanner('⚠ Location requires HTTPS — tap the map to set your pin', 'red');
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setGPSBanner('⚠ GPS not supported on this device — tap the map to set your pin', 'red');
+      return;
+    }
+
+    // ── FIX 3: Button loading state so user knows it's working ─
+    if (btn) {
+      btn.innerHTML = '<svg style="width:.875rem;height:.875rem;animation:spin 1s linear infinite" fill="none" viewBox="0 0 24 24"><circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>';
+      btn.disabled = true;
+    }
+
+    const resetBtn = () => {
+      if (btn) {
+        btn.innerHTML = '<svg style="width:.875rem;height:.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>';
+        btn.disabled = false;
+      }
+    };
+
+    setGPSBanner('📡 Detecting your location…', 'blue');
+
     navigator.geolocation.getCurrentPosition(
       pos => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+
+        // ── FIX 4: guard every map call ────────────────────
+        if (!map) { resetBtn(); return; }
 
         // Show user's blue dot
         if (userMarker) {
@@ -619,23 +653,24 @@
         } else {
           userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: -100 })
             .addTo(map)
-            .bindTooltip('📍 You are here', { direction: 'top' });
+            .bindTooltip('You are here', { direction: 'top' });
         }
 
-        // Auto-drop the delivery pin at user's location
         placePin(lat, lng, true);
         map.setView([lat, lng], 15);
-        setGPSBanner('📍 Delivery pin placed at your location — drag to adjust', 'green');
+        setGPSBanner('📍 Pin placed at your location — drag to adjust', 'green');
+        resetBtn();
       },
       err => {
+        resetBtn();
         const msgs = {
-          1: '⚠ Location access denied — tap the map to set your pin',
-          2: '⚠ Location unavailable — tap the map to set your pin',
-          3: '⚠ Location timed out — tap the map to set your pin',
+          1: '⚠ Location permission denied — please allow location in your browser settings, then try again',
+          2: '⚠ Location signal unavailable — tap the map to set your delivery pin',
+          3: '⚠ Location timed out — tap the map to place your pin manually',
         };
         setGPSBanner(msgs[err.code] || '⚠ Could not detect location — tap the map', 'red');
       },
-      { timeout: 10000, enableHighAccuracy: true, maximumAge: 30000 }
+      { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
     );
   }
   window.locateMe = locateMe;

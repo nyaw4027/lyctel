@@ -65,6 +65,21 @@ def signup(request):
                 role       = 'customer',
             )
             login(request, user)
+
+            # Merge guest cart
+            try:
+                from cart.views import merge_guest_cart
+                merge_guest_cart(request, user)
+            except Exception:
+                pass
+
+            # Credit referral link
+            try:
+                from vendors.views import _apply_referral_on_signup
+                _apply_referral_on_signup(user, request)
+            except Exception:
+                pass
+
             messages.success(request, f'Welcome to Lynctel, {first_name}! 🎉')
             return redirect(request.GET.get('next') or 'frontend:home')
 
@@ -122,59 +137,6 @@ def logout_view(request):
     messages.success(request, 'You have been signed out.')
     return redirect('frontend:home')
 
-
-# ── OTP DELIVERY HELPERS ──────────────────────────────────
-def _send_otp_sms(phone: str, otp: str) -> bool:
-    """
-    Send OTP via Arkesel SMS.
-    Returns True if the API call succeeded, False otherwise.
-    Failure is logged but never raises — we don't want SMS to crash the flow.
-    """
-    api_key   = getattr(settings, 'ARKESEL_API_KEY',   '')
-    sender_id = getattr(settings, 'ARKESEL_SENDER_ID', 'Lynctel')
-
-    if not api_key:
-        logger.warning('ARKESEL_API_KEY not set — skipping SMS OTP')
-        return False
-
-    # Normalise to E.164 international format (+233XXXXXXXXX)
-    intl_phone = phone.strip()
-    if intl_phone.startswith('0'):
-        intl_phone = '+233' + intl_phone[1:]
-    elif intl_phone.startswith('233') and not intl_phone.startswith('+'):
-        intl_phone = '+' + intl_phone
-    elif not intl_phone.startswith('+'):
-        intl_phone = '+233' + intl_phone
-
-    # Arkesel v2 API — key goes in header, not payload
-    payload = {
-        'sender':     sender_id,
-        'message':    f'Your Lynctel password reset code is: {otp}. It expires in 10 minutes. Do not share it.',
-        'recipients': [intl_phone],
-    }
-    headers = {
-        'api-key':      api_key,
-        'Content-Type': 'application/json',
-    }
-
-    try:
-        resp = requests.post(
-            'https://sms.arkesel.com/api/v2/sms/send',
-            json=payload,
-            headers=headers,
-            timeout=10,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        if data.get('status') == 'success':
-            logger.info('OTP SMS sent to %s via Arkesel', phone)
-            return True
-        else:
-            logger.error('Arkesel SMS failed for %s: %s', phone, data)
-            return False
-    except Exception as exc:
-        logger.error('Arkesel SMS failed for %s: %s', phone, exc)
-        return False
 
 # ── OTP DELIVERY HELPERS ──────────────────────────────────
 def _send_otp_sms(phone: str, otp: str) -> bool:
@@ -261,29 +223,50 @@ def _send_otp_email(email: str, otp: str, phone: str) -> bool:
  
  
 # ── STEP 1: enter phone ───────────────────────────────────
+
+def _mask_email(email: str) -> str:
+    """Returns j***@gmail.com style masked email for display."""
+    try:
+        local, domain = email.split('@', 1)
+        return f'{local[0]}***@{domain}'
+    except Exception:
+        return '***'
+
 def forget_password(request):
     """
-    User enters their phone number.
-    OTP is sent via SMS (always) and also via email if the account has one.
-    SMS and email are sent in background threads so they never block the response.
+    User enters their phone number OR email address.
+    OTP is sent via SMS (if phone found) and email (if email found).
+    Both lookups are supported — whichever the user provides.
     """
     if request.user.is_authenticated:
         return redirect('frontend:home')
 
     if request.method == 'POST':
-        phone = normalize_phone(request.POST.get('phone', '').strip())
+        identifier = request.POST.get('identifier', '').strip()
 
-        if not phone:
-            messages.error(request, 'Please enter your phone number.')
+        if not identifier:
+            messages.error(request, 'Please enter your phone number or email address.')
             return redirect('accounts:forget_password')
 
         try:
-            user = User.objects.filter(phone=phone).first()
+            import threading
 
-            # Generic message prevents account enumeration
+            # ── Determine if input is email or phone ──────────────
+            is_email = '@' in identifier
+            user     = None
+
+            if is_email:
+                user = User.objects.filter(email__iexact=identifier).first()
+            else:
+                phone = normalize_phone(identifier)
+                user  = User.objects.filter(phone=phone).first()
+                if user:
+                    identifier = phone   # normalise
+
+            # Generic response — prevents account enumeration
             generic_msg = (
-                'If that number is registered, a reset code has been sent '
-                'via SMS and email (if you have one on file).'
+                'If that account exists, a reset code has been sent. '
+                'Check your SMS and email inbox.'
             )
 
             if not user:
@@ -291,47 +274,54 @@ def forget_password(request):
                 return redirect('accounts:forget_password')
 
             # Generate 6-digit OTP
-            otp = get_random_string(length=6, allowed_chars='0123456789')
+            otp      = get_random_string(length=6, allowed_chars='0123456789')
+            cache_key = f'pwd_reset_otp_{identifier}'
+            cache.set(cache_key, otp, timeout=600)
 
-            # Store OTP in cache (10 min) and phone in session
-            cache.set(f'pwd_reset_otp_{phone}', otp, timeout=600)
-            request.session['pwd_reset_phone'] = phone
+            # Store identifier (phone or email) in session
+            request.session['pwd_reset_identifier'] = identifier
+            request.session['pwd_reset_is_email']   = is_email
+            # Keep legacy key for verify_otp compatibility
+            if not is_email:
+                request.session['pwd_reset_phone'] = identifier
 
-            # ── Send SMS in background thread (non-blocking) ──────
-            # _send_otp_sms makes an HTTP request to Arkesel which
-            # blocks under ASGI/Daphne if called synchronously.
-            import threading
-            threading.Thread(
-                target=_send_otp_sms,
-                args=(phone, otp),
-                daemon=True,
-            ).start()
+            sent_to = []
 
-            # ── Send email in background thread (non-blocking) ────
-            # send_mail uses SMTP which is also a blocking call.
-            if user.email:
+            # ── Send SMS (phone recovery or account has phone) ────
+            sms_phone = None
+            if not is_email:
+                sms_phone = identifier
+            elif user.phone:
+                sms_phone = user.phone
+
+            if sms_phone:
+                threading.Thread(
+                    target=_send_otp_sms, args=(sms_phone, otp), daemon=True
+                ).start()
+                masked = f'{sms_phone[:4]}****{sms_phone[-3:]}'
+                sent_to.append(f'SMS to {masked}')
+
+            # ── Send email (email recovery or account has email) ──
+            email_addr = identifier if is_email else user.email
+            if email_addr:
                 threading.Thread(
                     target=_send_otp_email,
-                    args=(user.email, otp, phone),
+                    args=(email_addr, otp, identifier),
                     daemon=True,
                 ).start()
+                masked_email = _mask_email(email_addr)
+                sent_to.append(f'email to {masked_email}')
 
-            # Respond immediately — don't wait for SMS/email to finish
-            masked_phone = f'{phone[:4]}****{phone[-3:]}'
-            messages.success(
-                request,
-                f'Reset code sent to {masked_phone}.'
-                + (f' Also sent to your email.' if user.email else '')
-            )
+            delivery = ' and '.join(sent_to) if sent_to else 'your contact'
+            messages.success(request, f'Reset code sent via {delivery}.')
 
-            # Always show OTP in DEBUG mode for easy testing
             if settings.DEBUG:
                 messages.warning(request, f'[DEBUG] OTP: {otp}')
 
             return redirect('accounts:verify_otp')
 
         except Exception:
-            logger.exception('Forgot password error for phone=%s', phone)
+            logger.exception('Forgot password error for identifier=%s', identifier)
             messages.error(request, 'Something went wrong. Please try again.')
             return redirect('accounts:forget_password')
 
@@ -343,22 +333,37 @@ def verify_otp(request):
     if request.user.is_authenticated:
         return redirect('frontend:home')
  
-    phone = request.session.get('pwd_reset_phone')
-    if not phone:
+    # Support both phone and email recovery
+    identifier = (
+        request.session.get('pwd_reset_identifier') or
+        request.session.get('pwd_reset_phone')
+    )
+    is_email   = request.session.get('pwd_reset_is_email', False)
+    phone      = None if is_email else identifier
+
+    if not identifier:
         messages.error(request, 'Session expired. Please start again.')
         return redirect('accounts:forget_password')
- 
-    masked = f'{phone[:4]}****{phone[-3:]}'
+
+    if is_email:
+        masked = _mask_email(identifier)
+    else:
+        masked = f'{identifier[:4]}****{identifier[-3:]}'
  
     # ── Resend action ──────────────────────────────────────
     if request.method == 'POST' and request.POST.get('action') == 'resend':
-        user = User.objects.filter(phone=phone).first()
+        user = (
+            User.objects.filter(email__iexact=identifier).first()
+            if is_email
+            else User.objects.filter(phone=identifier).first()
+        )
         if user:
             otp = get_random_string(length=6, allowed_chars='0123456789')
-            cache.set(f'pwd_reset_otp_{phone}', otp, timeout=600)
-            _send_otp_sms(phone, otp)
-            if user.email:
-                _send_otp_email(user.email, otp, phone)
+            cache.set(f'pwd_reset_otp_{identifier}', otp, timeout=600)
+            if phone or user.phone:
+                _send_otp_sms(phone or user.phone, otp)
+            if is_email or user.email:
+                _send_otp_email(identifier if is_email else user.email, otp, identifier)
             messages.success(request, 'A new code has been sent.')
             if settings.DEBUG:
                 messages.warning(request, f'[DEBUG] New OTP: {otp}')
@@ -367,7 +372,7 @@ def verify_otp(request):
     # ── Verify action ──────────────────────────────────────
     if request.method == 'POST':
         entered_otp = request.POST.get('otp', '').strip()
-        stored_otp  = cache.get(f'pwd_reset_otp_{phone}')
+        stored_otp  = cache.get(f'pwd_reset_otp_{identifier}')
  
         if not stored_otp:
             messages.error(
@@ -382,7 +387,7 @@ def verify_otp(request):
                 'masked': masked,
             })
  
-        cache.delete(f'pwd_reset_otp_{phone}')
+        cache.delete(f'pwd_reset_otp_{identifier}')
         request.session['pwd_reset_verified'] = True
         return redirect('accounts:reset_password')
  
@@ -398,10 +403,14 @@ def reset_password(request):
     if request.user.is_authenticated:
         return redirect('frontend:home')
  
-    phone    = request.session.get('pwd_reset_phone')
+    identifier = (
+        request.session.get('pwd_reset_identifier') or
+        request.session.get('pwd_reset_phone')
+    )
+    is_email = request.session.get('pwd_reset_is_email', False)
     verified = request.session.get('pwd_reset_verified')
- 
-    if not phone or not verified:
+
+    if not identifier or not verified:
         messages.error(request, 'Session expired. Please start again.')
         return redirect('accounts:forget_password')
  
@@ -419,11 +428,17 @@ def reset_password(request):
             return render(request, 'accounts/reset_password.html', {'errors': errors})
  
         try:
-            user = User.objects.get(phone=phone)
+            user = (
+                User.objects.get(email__iexact=identifier)
+                if is_email
+                else User.objects.get(phone=identifier)
+            )
             user.set_password(new_pass)
             user.save()
  
+            request.session.pop('pwd_reset_identifier', None)
             request.session.pop('pwd_reset_phone', None)
+            request.session.pop('pwd_reset_is_email', None)
             request.session.pop('pwd_reset_verified', None)
  
             from django.contrib.auth import login
@@ -435,7 +450,7 @@ def reset_password(request):
             messages.error(request, 'Account not found.')
             return redirect('accounts:forget_password')
         except Exception as e:
-            logger.error('Reset password error for %s: %s', phone, e, exc_info=True)
+            logger.error('Reset password error for %s: %s', identifier, e, exc_info=True)
             messages.error(request, f'Could not reset password: {e}')
             return render(request, 'accounts/reset_password.html', {})
  
