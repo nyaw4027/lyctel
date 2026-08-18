@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Flash Sales — Lynctel{% endblock %}
+
+{% block extra_head %}
+<style>
+  @keyframes flash-glow { 0%,100%{opacity:1} 50%{opacity:.75} }
+  .flash-countdown { font-size:.7rem; font-weight:700; color:#ef4444; display:block; margin-top:4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl px-3 py-4">
+
+  <div class="rounded-4 p-4 mb-4 text-center text-white"
+       style="background:linear-gradient(135deg,#ef4444,#dc2626)">
+    <div class="small fw-bold mb-1" style="opacity:.8;text-transform:uppercase;letter-spacing:.05em">⚡ Limited Time</div>
+    <h1 class="h3 fw-bold mb-1" style="font-family:'Syne',sans-serif">Flash Sales</h1>
+    <p class="mb-0 small" style="opacity:.85">Grab these deals before they expire!</p>
+  </div>
+
+  {% if flash_products %}
+  <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
+    {% for product in flash_products %}
+    <div class="col">
+      <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="position-relative" style="height:10rem">
+          <a href="{% url 'products:detail' product.slug %}">
+            {% if product.primary_image %}
+            <img src="{{ product.primary_image }}" alt="{{ product.name }}"
+                 class="w-100 h-100 object-fit-cover" loading="lazy"/>
+            {% else %}
+            <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-light fs-1">📦</div>
+            {% endif %}
+          </a>
+          <span class="position-absolute top-0 start-0 m-2 badge text-white"
+                style="background:linear-gradient(135deg,#ef4444,#dc2626);font-size:.62rem">⚡ Flash</span>
+        </div>
+        <div class="p-2">
+          <a href="{% url 'products:detail' product.slug %}"
+             class="text-navy fw-semibold small text-decoration-none d-block text-truncate mb-1">
+            {{ product.name }}
+          </a>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="fw-bold text-navy small">GHS {{ product.flash_price }}</span>
+            <span class="text-muted text-decoration-line-through" style="font-size:.75rem">
+              GHS {{ product.selling_price }}
+            </span>
+          </div>
+          <span class="flash-countdown" data-secs="{{ product.flash_seconds_remaining }}"></span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <div class="fs-1 mb-2">⚡</div>
+    <p class="fw-semibold">No flash sales right now</p>
+    <p class="small">Check back soon — new deals drop daily!</p>
+    <a href="{% url 'products:list' %}" class="btn btn-navy rounded-3 px-4">Browse Products</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.flash-countdown[data-secs]').forEach(function(el) {
+  var secs = parseInt(el.dataset.secs);
+  if (!secs || secs <= 0) { el.style.display='none'; return; }
+  function fmt(n){ return n<10?'0'+n:n; }
+  function tick(){
+    if(secs<=0){el.textContent='Ended';clearInterval(t);return;}
+    var h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
+    el.textContent='⏱ '+(h>0?h+'h ':'')+fmt(m)+'m '+fmt(s)+'s left';
+    secs--;
+  }
+  tick(); var t=setInterval(tick,1000);
+});
+</script>
+{% endblock %}

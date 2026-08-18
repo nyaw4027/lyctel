@@ -135,6 +135,15 @@ def product_list(request):
         status='active', is_featured=True
     ).prefetch_related('images')[:4]
 
+    # Flash sale products
+    import datetime
+    from django.utils import timezone as _tz
+    flash_products = Product.objects.filter(
+        status='active',
+        flash_price__isnull=False,
+        flash_sale_ends__gt=_tz.now(),
+    ).prefetch_related('images')
+
     return render(request, 'products/product_list.html', {
         'products':        products,
         'categories':      categories,
@@ -146,6 +155,7 @@ def product_list(request):
         'price_min':       price_min,
         'price_max':       price_max,
         'in_stock_only':   in_stock_only,
+        'flash_products':  flash_products,
     })
 
 
@@ -200,12 +210,21 @@ def product_detail(request, slug):
 # ── Deals ──────────────────────────────────────────────────────────────────────
 
 def deals_page(request):
+    from django.utils import timezone as _tz
+    now = _tz.now()
     deals = Product.objects.filter(
         status='active',
-        discount_price__isnull=False,
-        discount_price__lt=F('selling_price')
-    ).prefetch_related('images')
-    return render(request, 'products/deals.html', {'deals': deals})
+    ).filter(
+        Q(discount_price__isnull=False, discount_price__lt=F('selling_price')) |
+        Q(flash_price__isnull=False, flash_sale_ends__gt=now)
+    ).prefetch_related('images').distinct()
+    flash_pks = set(Product.objects.filter(
+        status='active', flash_price__isnull=False, flash_sale_ends__gt=now
+    ).values_list('pk', flat=True))
+    return render(request, 'products/deals.html', {
+        'deals':     deals,
+        'flash_pks': flash_pks,
+    })
 
 
 # ── Video delete ───────────────────────────────────────────────────────────────
@@ -229,3 +248,19 @@ def video_delete(request, pk):
 def product_list_api(request):
     from rest_framework.response import Response
     return Response({'detail': 'Product list API'})
+
+# ── Flash sale listing ─────────────────────────────────────────────────────────
+
+def flash_sale_list(request):
+    """GET /products/flash/ — active flash sale products, ending soonest first."""
+    from django.utils import timezone as _tz
+    flash_products = Product.objects.filter(
+        status='active',
+        flash_price__isnull=False,
+        flash_sale_ends__gt=_tz.now(),
+    ).prefetch_related('images').order_by('flash_sale_ends')
+    cart = get_or_create_cart(request)
+    return render(request, 'products/flash_sale.html', {
+        'flash_products': flash_products,
+        'cart_count':     cart.total_items,
+    })
