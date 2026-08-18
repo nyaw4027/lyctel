@@ -113,7 +113,7 @@
       <p id="presence-label" class="text-muted mb-0" style="font-size:.75rem">Connecting…</p>
     </div>
     {% if not is_vendor %}
-    <a href="{% url 'vendors:shop' chat_room.vendor.slug %}" class="text-decoration-none flex-shrink-0" style="font-size:.75rem;color:var(--gold-dark)">View Shop</a>
+    <a href="{% url 'vendors:detail' chat_room.vendor.slug %}" class="text-decoration-none flex-shrink-0" style="font-size:.75rem;color:var(--gold-dark)">View Shop</a>
     {% endif %}
     {% endif %}
   </div>

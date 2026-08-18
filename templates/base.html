@@ -316,7 +316,10 @@
       /* Tighter horizontal padding on very small phones */
       .container-xl { padding-left: 14px !important; padding-right: 14px !important; }
       /* Prevent flash messages from overflowing */
-      #flash-wrap .alert { font-size: .82rem; padding: .55rem .85rem; }
+      /* Was `#flash-wrap` (an ID selector) — the element only ever had
+         class="flash-wrap", never id="flash-wrap", so this rule never
+         matched anything since it was added. */
+      .flash-wrap .alert { font-size: .82rem; padding: .55rem .85rem; }
       /* Cart drawer full-width on tiny screens */
       #cart-drawer { max-width: 100% !important; }
       /* Navbar search row height */
@@ -429,7 +432,7 @@
           <span id="theme-icon" class="d-none" aria-hidden="true">🌙</span>
 
           <!-- Desktop links -->
-          <a href="{% url 'vendors:directory' %}" class="btn btn-sm btn-light border-0 d-none d-md-inline-flex text-muted">Shops</a>
+          <a href="{% url 'vendors:list' %}" class="btn btn-sm btn-light border-0 d-none d-md-inline-flex text-muted">Shops</a>
           <a href="{% url 'food:home' %}" class="btn btn-sm btn-light border-0 d-none d-md-inline-flex text-muted">🍔 Food</a>
 
           {% if user.is_authenticated %}
@@ -619,7 +622,7 @@
             <li><a href="{% url 'products:list' %}" class="footer-link small">All Products</a></li>
             <li><a href="{% url 'food:home' %}" class="footer-link small">🍔 Food Delivery</a></li>
             <li><a href="{% url 'livestream:list' %}" class="footer-link small d-flex align-items-center gap-2"><span class="live-dot" aria-hidden="true"></span>Live Shopping</a></li>
-            <li><a href="{% url 'vendors:directory' %}" class="footer-link small">Vendors &amp; Shops</a></li>
+            <li><a href="{% url 'vendors:list' %}" class="footer-link small">Vendors &amp; Shops</a></li>
             <li><a href="{% url 'products:deals' %}" class="footer-link small">🔥 Deals</a></li>
           </ul>
         </div>
@@ -934,8 +937,8 @@
 
         inputEl.addEventListener('keydown', function (e) {
           var items = dropEl.querySelectorAll('.ac-item');
-          if (e.key === 'ArrowDown') { fi = Math.min(fi+1, items.length-1); hl(items); e.preventDefault(); }
-          else if (e.key === 'ArrowUp') { fi = Math.max(fi-1, 0); hl(items); e.preventDefault(); }
+          if (e.key === 'ArrowDown') { fi = Math.min(fi+1, items.length-1); hl(items, fi); e.preventDefault(); }
+          else if (e.key === 'ArrowUp') { fi = Math.max(fi-1, 0); hl(items, fi); e.preventDefault(); }
           else if (e.key === 'Enter' && fi >= 0) { items[fi] && (window.location.href = items[fi].href); e.preventDefault(); }
           else if (e.key === 'Escape') { dropEl.innerHTML = ''; dropEl.classList.add('d-none'); }
         });
@@ -945,7 +948,20 @@
         });
       }
 
-      function hl(items) { items.forEach(function(el,i){ el.classList.toggle('focused', i===fi); }); }
+      // Was declared as a sibling of wireInput() but tried to read `fi`,
+      // a variable that only exists inside wireInput()'s own scope
+      // (var fi = -1). Sibling functions don't share each other's locals
+      // in JS — this threw "ReferenceError: fi is not defined" the
+      // moment anyone pressed ArrowDown/ArrowUp, breaking keyboard nav
+      // on both search boxes. Now takes the current index as a real
+      // parameter instead of reaching for a variable it can't see.
+      function hl(items, fi) { items.forEach(function(el,i){ el.classList.toggle('focused', i===fi); }); }
+
+      function esc(str) {
+        return String(str == null ? '' : str)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
 
       function fetchAC(q, drop, input) {
         fetch(AC_URL + '?q=' + encodeURIComponent(q), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -953,9 +969,13 @@
           .then(function(d){
             if (!d.results || !d.results.length) { drop.innerHTML = ''; drop.classList.add('d-none'); return; }
             drop.innerHTML = d.results.map(function(r){
-              return '<a href="'+r.url+'" class="ac-item ac-type-'+r.type+'">'
-                + '<span>'+r.label+'</span>'
-                + (r.price ? '<span class="ac-price">'+r.price+'</span>' : '')
+              // r.label / r.price previously went straight into the HTML
+              // string with no escaping — a product or vendor name
+              // (attacker-influenced, not trusted input) containing
+              // <, >, &, or " could break the markup or inject content.
+              return '<a href="'+esc(r.url)+'" class="ac-item ac-type-'+esc(r.type)+'">'
+                + '<span>'+esc(r.label)+'</span>'
+                + (r.price ? '<span class="ac-price">'+esc(r.price)+'</span>' : '')
                 + '</a>';
             }).join('');
             drop.classList.remove('d-none');
