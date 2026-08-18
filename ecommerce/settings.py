@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'csp.middleware.CSPMiddleware',
 ]
 
 ROOT_URLCONF     = 'ecommerce.urls'
@@ -222,12 +223,25 @@ LOGOUT_REDIRECT_URL = '/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── Cache ──────────────────────────────────────────────────────────────────────
-CACHES = {
-    'default': {
-        'BACKEND':  'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'lynctel-cache',
+# ── Cache backend ─────────────────────────────────────────────────────────────
+# Uses Redis in production (faster, shared across workers).
+# Falls back to in-memory cache for local dev.
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND':  'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+            'TIMEOUT':  300,
+            'OPTIONS':  {'MAX_ENTRIES': 10000},
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND':  'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'lynctel-cache',
+        }
+    }
 
 # ── Upload limits (mobile photos / videos) ─────────────────────────────────────
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB
@@ -239,7 +253,7 @@ CSRF_TRUSTED_ORIGINS = ['https://lynctel.up.railway.app']
 # ── Security headers (production only) ────────────────────────────────────────
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER     = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT         = False   # Railway handles HTTPS termination
+    SECURE_SSL_REDIRECT         = False   # Railway terminates SSL at load balancer — don't redirect againS termination
     SESSION_COOKIE_SECURE       = True
     CSRF_COOKIE_SECURE          = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -375,3 +389,17 @@ CACHES = {
 # Cart/payment endpoints: 20 requests/minute per user
 RATELIMIT_ENABLE = True
 RATELIMIT_USE_CACHE = 'default'
+
+# ── Content Security Policy ────────────────────────────────────────────────────
+CSP_DEFAULT_SRC  = ("'self'",)
+CSP_SCRIPT_SRC   = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
+                     "cdnjs.cloudflare.com", "maps.googleapis.com",)
+CSP_STYLE_SRC    = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
+                     "cdnjs.cloudflare.com", "fonts.googleapis.com",)
+CSP_FONT_SRC     = ("'self'", "fonts.gstatic.com",)
+CSP_IMG_SRC      = ("'self'", "data:", "blob:", "*.openstreetmap.org",
+                     "res.cloudinary.com", "maps.gstatic.com",)
+CSP_CONNECT_SRC  = ("'self'", "wss:", "ws:", "nominatim.openstreetmap.org",
+                     "us1.locationiq.com", "api.hubtel.com", "sms.arkesel.com",)
+CSP_FRAME_SRC    = ("'self'",)
+CSP_REPORT_ONLY  = False
