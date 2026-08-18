@@ -1,5 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Shop — Lynctel{% endblock %}
+{% block title %}Shop — Lynctel
+<style>
+@keyframes flash-pulse { 0%,100%{opacity:1} 50%{opacity:.75} }
+</style>
+<script>
+document.querySelectorAll('.flash-countdown[data-secs]').forEach(function(el) {
+  var secs = parseInt(el.dataset.secs);
+  if (!secs || secs <= 0) { el.style.display='none'; return; }
+  function fmt(n){ return n<10?'0'+n:n; }
+  function tick(){
+    if(secs<=0){el.textContent='Ended';clearInterval(t);return;}
+    var h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
+    el.textContent='⏱ '+(h>0?h+'h ':'')+fmt(m)+'m '+fmt(s)+'s';
+    secs--;
+  }
+  tick(); var t=setInterval(tick,1000);
+});
+</script>
+
+{% endblock %}
 
 {% block content %}
 <div class="container px-3 px-md-4 py-4">
@@ -37,6 +56,48 @@
       </select>
     </form>
   </div>
+
+
+  <!-- ── Flash Sale Strip ───────────────────────────────────────────── -->
+  {% if flash_products %}
+  <div class="mb-4 rounded-4 overflow-hidden" style="background:linear-gradient(135deg,#ef4444,#dc2626)">
+    <div class="d-flex align-items-center justify-content-between px-4 py-3">
+      <div class="text-white">
+        <span class="fw-bold fs-6" style="font-family:'Syne',sans-serif">
+          ⚡ Flash Sales
+        </span>
+        <span class="ms-2 small" style="opacity:.8">{{ flash_products|length }} deal{{ flash_products|length|pluralize }}</span>
+      </div>
+      <a href="{% url 'products:flash' %}" class="btn btn-sm fw-bold rounded-3"
+         style="background:rgba(255,255,255,.2);color:white;border:1px solid rgba(255,255,255,.3)">
+        See all →
+      </a>
+    </div>
+    <div class="d-flex gap-3 overflow-auto px-4 pb-3" style="scrollbar-width:none">
+      {% for fp in flash_products|slice:":6" %}
+      <a href="{% url 'products:detail' fp.slug %}"
+         class="d-flex flex-column text-decoration-none flex-shrink-0"
+         style="width:100px">
+        {% if fp.primary_image %}
+        <img src="{{ fp.primary_image }}" alt="{{ fp.name }}"
+             class="rounded-3 object-fit-cover mb-1"
+             style="width:100px;height:80px" loading="lazy"/>
+        {% else %}
+        <div class="rounded-3 d-flex align-items-center justify-content-center mb-1"
+             style="width:100px;height:80px;background:rgba(255,255,255,.15);font-size:1.6rem">📦</div>
+        {% endif %}
+        <span class="text-white fw-semibold text-truncate" style="font-size:.72rem">{{ fp.name }}</span>
+        <div class="d-flex align-items-center gap-1">
+          <span class="fw-bold text-white" style="font-size:.78rem">GHS {{ fp.flash_price }}</span>
+          <span class="text-decoration-line-through" style="font-size:.65rem;opacity:.6;color:white">{{ fp.selling_price }}</span>
+        </div>
+        <span class="flash-countdown" data-secs="{{ fp.flash_seconds_remaining }}"
+              style="font-size:.62rem;color:rgba(255,255,255,.85);font-weight:700"></span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   <div class="d-flex gap-4">
 
@@ -130,7 +191,11 @@
                 Only {{ product.stock_qty }} left
               </span>
               {% endif %}
-              {% if product.has_discount %}
+              {% if product.is_flash_sale_active %}
+              <span class="text-white fw-bold rounded-pill px-2 py-1" style="font-size:10px;background:linear-gradient(135deg,#ef4444,#dc2626)">
+                ⚡ Flash
+              </span>
+              {% elif product.has_discount %}
               <span class="bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:10px;">
                 -{{ product.discount_percent }}%
               </span>
@@ -143,7 +208,7 @@
 
           <div class="p-3 d-flex flex-column flex-fill">
             {% if product.vendor %}
-            <a href="{% url 'vendors:shop' product.vendor.slug %}"
+            <a href="{% url 'vendors:detail' product.vendor.slug %}"
                class="text-gold-dark fw-semibold mb-2 text-truncate text-decoration-none" style="font-size:10px;">
               🏪 {{ product.vendor.shop_name }}
             </a>
@@ -159,7 +224,12 @@
 
             <div class="mt-auto d-flex align-items-center justify-content-between gap-2">
               <div>
-                {% if product.has_discount %}
+                {% if product.is_flash_sale_active %}
+                <p class="font-display fw-bold text-navy mb-0" style="line-height:1.2;">GHS {{ product.flash_price }}</p>
+                <p class="small text-secondary text-decoration-line-through mb-0" style="line-height:1.2;">GHS {{ product.selling_price }}</p>
+                <span class="flash-countdown" data-secs="{{ product.flash_seconds_remaining }}"
+                      style="font-size:.62rem;color:#ef4444;font-weight:700;display:block"></span>
+                {% elif product.has_discount %}
                 <p class="font-display fw-bold text-navy mb-0" style="line-height:1.2;">GHS {{ product.final_price }}</p>
                 <p class="small text-secondary text-decoration-line-through mb-0" style="line-height:1.2;">GHS {{ product.selling_price }}</p>
                 {% else %}
