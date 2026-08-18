@@ -393,6 +393,82 @@
     .ac-type-product::before { content: '🛍️'; font-size: .9rem; }
     .ac-type-category::before { content: '📂'; font-size: .9rem; }
     .ac-price { margin-left: auto; color: var(--gold-dark); font-weight: 700; font-size: .8rem; flex-shrink: 0; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       iPhone 14 / iOS Safari Fixes
+       Screen: 390×844px | Notch: 47px top | Home bar: 34px bottom
+       ═══════════════════════════════════════════════════════════════ */
+
+    /* Fix 1: Navbar safe area — prevents content hiding behind notch ── */
+    #main-navbar {
+      padding-top: env(safe-area-inset-top);
+    }
+
+    /* Fix 2: Body padding accounts for mobile nav + iPhone home indicator */
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      body {
+        padding-bottom: calc(64px + env(safe-area-inset-bottom)) !important;
+      }
+    }
+
+    /* Fix 3: Remove tap highlight on all interactive elements ─────────── */
+    button, a, input, select, textarea, [role="button"] {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+
+    /* Fix 4: iOS Safari dropdown positioning ──────────────────────────── */
+    /* sticky navbar + overflow:visible = dropdown clipping on iOS.
+       Force the dropdown to position relative to viewport */
+    @supports (-webkit-touch-callout: none) {
+      .profile-dropdown {
+        position: fixed !important;
+        top: calc(60px + env(safe-area-inset-top)) !important;
+        right: 8px !important;
+        left: auto !important;
+        width: 270px !important;
+        z-index: 1070 !important;
+      }
+    }
+
+    /* Fix 5: Cart badge — prevent sub-pixel rendering shift on iOS ─────── */
+    .cart-badge {
+      -webkit-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+      top: 2px !important;
+      right: 0px !important;
+    }
+
+    /* Fix 6: Cart count badge (Bootstrap positioned) ─────────────────── */
+    #cart-count {
+      right: -4px !important;
+      top: -4px !important;
+    }
+
+    /* Fix 7: Smooth momentum scrolling on iOS ──────────────────────────── */
+    .overflow-auto, .overflow-x-auto, #cart-drawer {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Fix 8: iOS form inputs — prevent zoom on focus (font must be ≥16px) */
+    input, select, textarea {
+      font-size: max(16px, 1em) !important;
+    }
+
+    /* Fix 9: PWA / standalone mode — hide bottom nav on notch phones
+       since they already have the home swipe gesture */
+    @media (max-width: 767.98px) {
+      /* Autocomplete dropdown must clear keyboard on iOS */
+      .autocomplete-dropdown {
+        z-index: 1065 !important;
+      }
+    }
+
+    /* Fix 10: Prevent double-tap zoom on buttons (iOS Safari quirk) ──── */
+    button, a.btn {
+      touch-action: manipulation;
+    }
+
 </style>
 
   {% block extra_head %}{% endblock %}
@@ -408,10 +484,10 @@
       <div class="d-flex align-items-center w-100 gap-2 py-2">
 
         <!-- Logo -->
-        <a href="{% url 'frontend:home' %}" class="navbar-brand d-flex align-items-center gap-2 me-3 flex-shrink-0">
+        <a href="{% url 'frontend:home' %}" class="navbar-brand d-flex align-items-center gap-2 me-1 me-sm-3 flex-shrink-0">
           <img src="{% static 'logo.png' %}" alt="Lynctel" height="32" class="object-fit-contain"/>
-          <span class="brand-name">Lynctel</span>
-          <span class="brand-dot fw-bold fs-5 lh-1">·</span>
+          <span class="brand-name d-none d-sm-inline">Lynctel</span>
+          <span class="brand-dot fw-bold fs-5 lh-1 d-none d-sm-inline">·</span>
         </a>
 
         <!-- Search (desktop) -->
@@ -545,7 +621,7 @@
           </a>
 
           <!-- Cart -->
-          <button type="button" onclick="openCart()" class="btn btn-light btn-sm border-0 rounded-3 position-relative px-2" aria-label="Open cart" aria-haspopup="dialog">
+          <button type="button" onclick="openCart()" class="btn btn-light btn-sm border-0 rounded-3 position-relative px-2 flex-shrink-0" aria-label="Open cart" aria-haspopup="dialog">
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="text-muted" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
             </svg>

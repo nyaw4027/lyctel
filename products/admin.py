@@ -1,65 +1,38 @@
+# ── products/admin.py — add this to make flash sales editable in Django admin ──
+# Paste into your existing products/admin.py, replacing or updating ProductAdmin
+
 from django.contrib import admin
-from .models import Product, Category, ProductImage
+from .models import Product, ProductImage, ProductVideo, Category
 
+class ProductImageInline(admin.TabularInline):
+    model  = ProductImage
+    extra  = 1
+    fields = ['image', 'is_primary', 'order']
 
-# ─────────────────────────────
-# CATEGORY ADMIN
-# ─────────────────────────────
-@admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "is_active")
-    prepopulated_fields = {"slug": ("name",)}
-    search_fields = ("name",)
-    list_filter = ("is_active",)
-
-
-# ─────────────────────────────
-# PRODUCT ADMIN
-# ─────────────────────────────
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
+    list_display   = ['name', 'vendor', 'selling_price', 'flash_price',
+                      'flash_sale_ends', 'is_flash_sale_active', 'status', 'stock_qty']
+    list_editable  = ['flash_price', 'flash_sale_ends', 'status', 'stock_qty']
+    list_filter    = ['status', 'category', 'is_featured', 'vendor']
+    search_fields  = ['name', 'sku', 'vendor__shop_name']
+    readonly_fields= ['is_flash_sale_active', 'flash_seconds_remaining',
+                      'effective_price', 'created_at', 'updated_at']
+    inlines        = [ProductImageInline]
 
-    list_display = (
-        "name",
-        "selling_price",
-        "discount_price",
-        "discount_percent_display",
-        "stock_qty",
-        "status",
-        "is_featured",
-        "is_hot_deal",
+    fieldsets = (
+        ('Basic Info',   {'fields': ('vendor','name','slug','category','description',
+                                     'short_description','brand','status')}),
+        ('Pricing',      {'fields': ('cost_price','selling_price','discount_price',
+                                     'flash_price','flash_sale_ends',
+                                     'is_flash_sale_active','effective_price')}),
+        ('Inventory',    {'fields': ('sku','stock_qty','low_stock_alert','weight')}),
+        ('Flags',        {'fields': ('is_featured','is_digital')}),
+        ('Timestamps',   {'fields': ('created_at','updated_at'), 'classes': ('collapse',)}),
     )
 
-    list_filter = (
-        "status",
-        "is_featured",
-        "category",
-        "stock_qty",
-    )
-
-    search_fields = ("name", "description")
-    prepopulated_fields = {"slug": ("name",)}
-    ordering = ("-created_at",)
-
-    readonly_fields = ("created_at", "updated_at", "discount_percent_display")
-
-    # ───── HOT DEAL FILTER (ADMIN ONLY LOGIC) ─────
-    def is_hot_deal(self, obj):
-        return obj.has_discount and obj.discount_percent >= 10
-    is_hot_deal.boolean = True
-    is_hot_deal.short_description = "🔥 Hot Deal"
-
-
-    def discount_percent_display(self, obj):
-        return f"{obj.discount_percent}%"
-    discount_percent_display.short_description = "Discount %"
-
-
-# ─────────────────────────────
-# PRODUCT IMAGE ADMIN
-# ─────────────────────────────
-@admin.register(ProductImage)
-class ProductImageAdmin(admin.ModelAdmin):
-    list_display = ("product", "is_primary", "order")
-    list_filter = ("is_primary",)
-    search_fields = ("product__name",)
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display  = ['name', 'parent', 'category_type', 'is_active', 'sort_order']
+    list_editable = ['is_active', 'sort_order']
+    prepopulated_fields = {'slug': ('name',)}

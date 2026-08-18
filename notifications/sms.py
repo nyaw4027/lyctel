@@ -128,11 +128,13 @@ def sms_food_out_for_delivery(food_order):
 
 def sms_food_delivered(food_order):
     vendor_name = food_order.vendor.name if food_order.vendor else 'us'
+    order_ref   = getattr(food_order, 'order_ref', '')
+    rating_link = f'lynctel.up.railway.app/food/rate/{order_ref}/'
     return send_sms(
         food_order.delivery_phone,
         f'Lynctel Food: Your food from {vendor_name} has arrived! '
         f'Enjoy your meal 🍽️ '
-        f'Order again at lynctel.up.railway.app/food/'
+        f'Rate your order: {rating_link}'
     )
 
 def sms_food_cancelled(food_order):
