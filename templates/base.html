@@ -394,146 +394,88 @@
     .ac-type-category::before { content: '📂'; font-size: .9rem; }
     .ac-price { margin-left: auto; color: var(--gold-dark); font-weight: 700; font-size: .8rem; flex-shrink: 0; }
 
-    /* ═══════════════════════════════════════════════════════════════
-       iPhone 14 / iOS Safari Fixes
-       Screen: 390×844px | Notch: 47px top | Home bar: 34px bottom
-       ═══════════════════════════════════════════════════════════════ */
+    /* ══════════════════════════════════════════════════════════════════
+       iOS PWA — DEFINITIVE FIX (single clean block, no conflicts)
+       ══════════════════════════════════════════════════════════════════
 
-    /* Fix 1: Navbar safe area ─────────────────────────────────────────
-       status-bar-style="default": OS keeps page below status bar.
-       padding-top only needed in standalone/PWA mode where the page
-       starts at y=0 (behind status bar). */
-    #main-navbar {
-      /* no padding-top in browser mode — Safari chrome handles it */
-    }
+       HOW iOS PWA WORKS:
+       • viewport-fit=cover → viewport extends to screen edges (y=0)
+       • status-bar-style=default → status bar is opaque white
+       • In BROWSER mode: Safari chrome starts below status bar,
+         so env(safe-area-inset-top) ≈ 0 — no padding needed on navbar
+       • In STANDALONE mode: page starts at y=0 (behind status bar),
+         env(safe-area-inset-top) ≈ 47px (iPhone 14) or 59px (Pro)
+         → navbar content is hidden behind the status bar without fix
+    ══════════════════════════════════════════════════════════════════ */
 
-    /* Fix 2: Body padding accounts for mobile nav + iPhone home indicator */
-    @supports (padding-bottom: env(safe-area-inset-bottom)) {
-      body {
-        padding-bottom: calc(64px + env(safe-area-inset-bottom)) !important;
-      }
-    }
-
-    /* Fix 3: Remove tap highlight on all interactive elements ─────────── */
+    /* ── All screens: tap targets, momentum scroll, no highlight ─────── */
     button, a, input, select, textarea, [role="button"] {
       -webkit-tap-highlight-color: transparent;
-      -webkit-touch-callout: none;
+      touch-action: manipulation;
     }
-
-    /* Fix 4: iOS Safari dropdown positioning ──────────────────────────── */
-    /* sticky navbar + overflow:visible = dropdown clipping on iOS.
-       Force the dropdown to position relative to viewport */
-    @supports (-webkit-touch-callout: none) {
-      .profile-dropdown {
-        position: fixed !important;
-        top: calc(60px + env(safe-area-inset-top)) !important;
-        right: 8px !important;
-        left: auto !important;
-        width: 270px !important;
-        z-index: 1070 !important;
-      }
-    }
-
-    /* Fix 5: Cart badge — prevent sub-pixel rendering shift on iOS ─────── */
-    .cart-badge {
-      -webkit-transform: translate(-50%, -50%);
-      transform: translate(-50%, -50%);
-      top: 2px !important;
-      right: 0px !important;
-    }
-
-    /* Fix 6: Cart count badge (Bootstrap positioned) ─────────────────── */
-    #cart-count {
-      right: -4px !important;
-      top: -4px !important;
-    }
-
-    /* Fix 7: Smooth momentum scrolling on iOS ──────────────────────────── */
-    .overflow-auto, .overflow-x-auto, #cart-drawer {
+    .overflow-auto, #cart-drawer {
       -webkit-overflow-scrolling: touch;
     }
 
-    /* Fix 8: iOS form inputs — prevent zoom on focus (font must be ≥16px) */
-    input, select, textarea {
-      font-size: max(16px, 1em) !important;
-    }
-
-    /* Fix 9: PWA / standalone mode — hide bottom nav on notch phones
-       since they already have the home swipe gesture */
-    @media (max-width: 767.98px) {
-      /* Autocomplete dropdown must clear keyboard on iOS */
-      .autocomplete-dropdown {
-        z-index: 1065 !important;
-      }
-    }
-
-    /* Fix 10: Prevent double-tap zoom on buttons (iOS Safari quirk) ──── */
-    button, a.btn {
-      touch-action: manipulation;
-    }
-
-
-    /* ═══════════════════════════════════════════════════════════════
-       PWA / STANDALONE MODE — iOS Home Screen
-       When added to home screen, iOS runs without Safari chrome.
-       The page starts at y=0 (top of screen, behind status bar).
-       We need to push ALL content below the status bar correctly.
-       ═══════════════════════════════════════════════════════════════ */
-
+    /* ── iOS standalone (PWA installed to home screen) ────────────────── */
     @media (display-mode: standalone) {
 
-      /* 1. Push navbar content below status bar */
+      /* 1. Push navbar content below the status bar */
       #main-navbar {
         padding-top: env(safe-area-inset-top) !important;
       }
 
-      /* 2. Update the navbar height variable so child pages
-            account for the extra status-bar space */
-      :root {
-        --navbar-h: calc(112px + env(safe-area-inset-top));
-      }
-
-      /* 3. Body top padding — prevents content hiding under the navbar */
-      body {
-        padding-top: calc(env(safe-area-inset-top)) !important;
-      }
-
-      /* 4. Navbar background must cover the full status bar area */
+      /* 2. Extend navbar background colour into the status bar zone
+            so there's no gap / white strip above the navbar */
       #main-navbar::before {
         content: '';
         display: block;
         position: absolute;
         top: calc(-1 * env(safe-area-inset-top));
-        left: 0; right: 0;
+        left: 0;
+        right: 0;
         height: env(safe-area-inset-top);
-        background: #fff;
+        background: #ffffff;           /* matches navbar background */
         z-index: 1;
       }
-
-      /* 5. Dark mode: match the status bar fill */
       [data-bs-theme="dark"] #main-navbar::before {
-        background: #111827;
+        background: #111827;           /* dark mode match */
       }
 
-      /* 6. Mobile bottom nav: already has safe-area-inset-bottom,
-            but standalone mode needs body padding too */
-      @supports (padding-bottom: env(safe-area-inset-bottom)) {
-        body {
-          padding-bottom: calc(64px + env(safe-area-inset-bottom)) !important;
-        }
+      /* 3. Update navbar height variable — child templates use this
+            to offset their content below the navbar. Without this,
+            content hides behind the taller PWA navbar. */
+      :root {
+        --navbar-h: calc(112px + env(safe-area-inset-top));
+      }
+
+      /* 4. Bottom: account for iPhone home indicator bar */
+      body {
+        padding-bottom: calc(64px + env(safe-area-inset-bottom)) !important;
+      }
+
+      /* 5. Profile dropdown: reposition for standalone's taller navbar */
+      .profile-dropdown {
+        top: calc(64px + env(safe-area-inset-top)) !important;
+      }
+
+      /* 6. Mobile bottom nav already has env(safe-area-inset-bottom) —
+            no change needed there */
+    }
+
+    /* ── iOS browser mode: no extra padding (Safari handles it) ───────── */
+    @media not all and (display-mode: standalone) {
+      #main-navbar {
+        padding-top: 0 !important;
       }
     }
 
-    /* ── Dropdown positioning fix for standalone mode ──────────────── */
-    @media (display-mode: standalone) {
-      @supports (-webkit-touch-callout: none) {
-        .profile-dropdown {
-          top: calc(64px + env(safe-area-inset-top)) !important;
-        }
-      }
+    /* ── Autocomplete z-index (must clear iOS keyboard) ───────────────── */
+    .autocomplete-dropdown {
+      z-index: 1065 !important;
     }
 
-    </style>
+  </style>
 
   {% block extra_head %}{% endblock %}
 </head>
