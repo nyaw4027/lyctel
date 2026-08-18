@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Deals & Discounts — Lynctel{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Page header ────────────────────────────────────────────── */
+  .deals-header {
+    background: linear-gradient(135deg, var(--navy) 0%, #1a2d47 100%);
+    border-radius: 20px;
+    padding: 28px 20px;
+    color: white;
+    margin-bottom: 24px;
+  }
+  .deals-header .stat-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,.12); border-radius: 999px;
+    padding: 4px 14px; font-size: .78rem; font-weight: 600;
+  }
+
+  /* ── Filter chips ───────────────────────────────────────────── */
+  .filter-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1.5px solid #e5e7eb; background: white;
+    border-radius: 999px; padding: 5px 14px;
+    font-size: .8rem; font-weight: 600; color: var(--navy);
+    cursor: pointer; transition: all .15s; text-decoration: none;
+    white-space: nowrap;
+  }
+  .filter-chip:hover,
+  .filter-chip.active { background: var(--navy); color: var(--gold); border-color: var(--navy); }
+
+  /* ── Deal card ──────────────────────────────────────────────── */
+  .deal-card {
+    border-radius: 16px; border: 1px solid #f3f4f6;
+    background: white; overflow: hidden;
+    transition: box-shadow .22s, transform .22s, border-color .22s;
+  }
+  .deal-card:hover {
+    box-shadow: 0 8px 28px rgba(15,27,45,.11);
+    transform: translateY(-3px);
+    border-color: rgba(245,166,35,.4);
+  }
+  .deal-img { height: 11rem; object-fit: cover; width: 100%; }
+  .deal-img-placeholder {
+    height: 11rem; background: #f9fafb;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem;
+  }
+
+  /* ── Badges ─────────────────────────────────────────────────── */
+  .badge-discount {
+    position: absolute; top: 8px; right: 8px;
+    background: var(--gold); color: var(--navy);
+    font-size: .65rem; font-weight: 800;
+    padding: 3px 8px; border-radius: 999px;
+  }
+  .badge-flash {
+    position: absolute; top: 8px; left: 8px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white; font-size: .62rem; font-weight: 800;
+    padding: 3px 8px; border-radius: 999px;
+    animation: flash-glow 1.2s ease-in-out infinite;
+  }
+  @keyframes flash-glow { 0%,100%{opacity:1} 50%{opacity:.8} }
+
+  /* ── Price ──────────────────────────────────────────────────── */
+  .price-was { text-decoration: line-through; color: #9ca3af; font-size: .78rem; }
+  .price-now { font-weight: 800; color: var(--navy); font-size: 1rem; }
+  .price-save { font-size: .7rem; font-weight: 700; color: #16a34a; }
+
+  /* ── Flash countdown ────────────────────────────────────────── */
+  .flash-countdown {
+    font-size: .68rem; font-weight: 700; color: #ef4444;
+    display: flex; align-items: center; gap: 3px;
+  }
+
+  /* ── Quick add ──────────────────────────────────────────────── */
+  .quick-add-btn {
+    background: var(--navy); color: var(--gold);
+    font-weight: 700; font-size: .75rem;
+    border: none; border-radius: 8px; padding: 7px 10px;
+    transition: all .2s; cursor: pointer;
+    flex-shrink: 0;
+  }
+  .quick-add-btn:hover { background: var(--gold); color: var(--navy); }
+  .quick-add-btn.added { background: #10b981 !important; color: white !important; }
+
+  /* ── Empty state ────────────────────────────────────────────── */
+  .empty-deals { text-align: center; padding: 64px 24px; color: #9ca3af; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl px-3 py-4">
+
+  <!-- ── Page header ───────────────────────────────────────────── -->
+  <div class="deals-header text-center mb-4">
+    <div class="fs-2 mb-2">🏷️</div>
+    <h1 class="h3 fw-bold mb-1" style="font-family:'Syne',sans-serif">Deals &amp; Discounts</h1>
+    <p class="mb-3 small" style="opacity:.8">
+      Every product below is reduced — discount prices and live flash sales in one place.
+    </p>
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+      <span class="stat-pill">
+        🏷️ {{ deals|length }} deal{{ deals|length|pluralize }}
+      </span>
+      {% if flash_pks %}
+      <span class="stat-pill" style="background:rgba(239,68,68,.25)">
+        ⚡ {{ flash_pks|length }} flash sale{{ flash_pks|length|pluralize }}
+      </span>
+      {% endif %}
+      <a href="{% url 'products:flash' %}" class="stat-pill text-decoration-none text-white">
+        See flash sales →
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Filter bar ─────────────────────────────────────────────── -->
+  <div class="d-flex flex-wrap gap-2 mb-4 overflow-x-auto pb-1" style="scrollbar-width:none">
+    <a href="?sort=discount" class="filter-chip {% if request.GET.sort == 'discount' %}active{% endif %}">
+      🏷️ Biggest Discount
+    </a>
+    <a href="?sort=price_low" class="filter-chip {% if request.GET.sort == 'price_low' %}active{% endif %}">
+      💰 Lowest Price
+    </a>
+    <a href="?sort=price_high" class="filter-chip {% if request.GET.sort == 'price_high' %}active{% endif %}">
+      💎 Highest Price
+    </a>
+    <a href="?sort=newest" class="filter-chip {% if request.GET.sort == 'newest' or not request.GET.sort %}active{% endif %}">
+      🆕 Newest
+    </a>
+    {% if flash_pks %}
+    <a href="{% url 'products:flash' %}" class="filter-chip" style="border-color:#ef4444;color:#ef4444">
+      ⚡ Flash Only
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- ── Deal cards grid ───────────────────────────────────────── -->
+  {% if deals %}
+  <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
+    {% for product in deals %}
+    <div class="col">
+      <div class="deal-card h-100 d-flex flex-column">
+
+        <!-- Image -->
+        <div class="position-relative">
+          <a href="{% url 'products:detail' product.slug %}">
+            {% if product.primary_image %}
+            <img src="{{ product.primary_image }}" alt="{{ product.name }}"
+                 class="deal-img" loading="lazy"/>
+            {% else %}
+            <div class="deal-img-placeholder">📦</div>
+            {% endif %}
+          </a>
+
+          <!-- Flash badge -->
+          {% if product.pk in flash_pks %}
+          <span class="badge-flash">⚡ Flash</span>
+          {% endif %}
+
+          <!-- Discount badge -->
+          {% if product.has_discount or product.pk in flash_pks %}
+          <span class="badge-discount">
+            {% if product.pk in flash_pks %}
+              -{{ product.flash_seconds_remaining|default:"" }}
+              {# Show savings % for flash #}
+              ⚡
+            {% else %}
+              -{{ product.discount_percent }}%
+            {% endif %}
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- Info -->
+        <div class="p-2 flex-grow-1 d-flex flex-column">
+          <a href="{% url 'products:detail' product.slug %}"
+             class="text-navy fw-semibold text-decoration-none d-block text-truncate mb-1"
+             style="font-size:.85rem">
+            {{ product.name }}
+          </a>
+
+          {% if product.vendor %}
+          <div class="text-muted mb-1" style="font-size:.72rem">{{ product.vendor.shop_name }}</div>
+          {% endif %}
+
+          <!-- Price row -->
+          <div class="d-flex align-items-baseline gap-2 mb-1">
+            {% if product.pk in flash_pks %}
+            <span class="price-now">GHS {{ product.flash_price }}</span>
+            <span class="price-was">GHS {{ product.selling_price }}</span>
+            {% elif product.has_discount %}
+            <span class="price-now">GHS {{ product.discount_price }}</span>
+            <span class="price-was">GHS {{ product.selling_price }}</span>
+            {% else %}
+            <span class="price-now">GHS {{ product.selling_price }}</span>
+            {% endif %}
+          </div>
+
+          <!-- Savings tag -->
+          {% if product.pk in flash_pks %}
+          <span class="price-save mb-1">
+            Save GHS {{ product.selling_price|add:"-0"|floatformat:2 }}
+          </span>
+          <!-- Flash countdown -->
+          {% if product.flash_seconds_remaining %}
+          <div class="flash-countdown mb-2"
+               data-secs="{{ product.flash_seconds_remaining }}">
+            ⏱ Loading…
+          </div>
+          {% endif %}
+          {% elif product.has_discount %}
+          <span class="price-save mb-2">
+            You save GHS
+            {% widthratio product.discount_percent 100 product.selling_price as saved %}
+            {{ saved|floatformat:2 }}
+          </span>
+          {% endif %}
+
+          <!-- Quick add -->
+          <div class="d-flex align-items-center gap-2 mt-auto">
+            <a href="{% url 'products:detail' product.slug %}"
+               class="btn btn-outline-secondary btn-sm rounded-3 flex-grow-1"
+               style="font-size:.75rem">View</a>
+            <button class="quick-add-btn"
+                    data-product-id="{{ product.pk }}"
+                    data-product-name="{{ product.name }}"
+                    title="Add to cart">
+              🛒
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-deals">
+    <div class="fs-1 mb-3">🏷️</div>
+    <h2 class="h5 fw-bold text-navy mb-2">No deals right now</h2>
+    <p class="small mb-4">Vendors are loading up new discounts. Check back soon!</p>
+    <a href="{% url 'products:list' %}" class="btn btn-navy rounded-3 px-4 py-2 fw-semibold">
+      Browse All Products
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ── Flash countdown timers ─────────────────────────────────── */
+document.querySelectorAll('.flash-countdown[data-secs]').forEach(function(el) {
+  var secs = parseInt(el.dataset.secs);
+  if (!secs || secs <= 0) { el.style.display = 'none'; return; }
+  function fmt(n) { return n < 10 ? '0' + n : n; }
+  function tick() {
+    if (secs <= 0) { el.textContent = 'Sale ended'; clearInterval(t); return; }
+    var h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+    el.textContent = '⏱ ' + (h > 0 ? h + 'h ' : '') + fmt(m) + 'm ' + fmt(s) + 's left';
+    secs--;
+  }
+  tick();
+  var t = setInterval(tick, 1000);
+});
+
+/* ── Quick add to cart ──────────────────────────────────────── */
+document.querySelectorAll('.quick-add-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var pid  = btn.dataset.productId;
+    var orig = btn.innerHTML;
+    btn.innerHTML = '…';
+    btn.disabled  = true;
+
+    var csrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+    fetch('/cart/add/' + pid + '/', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/x-www-form-urlencoded',
+        'X-CSRFToken':   csrf,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: 'quantity=1',
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.success) {
+        btn.innerHTML = '✓';
+        btn.classList.add('added');
+        if (typeof updateCartBadge === 'function') updateCartBadge(d.cart_count);
+        setTimeout(function() {
+          btn.innerHTML = orig;
+          btn.classList.remove('added');
+          btn.disabled  = false;
+        }, 1400);
+      } else {
+        btn.innerHTML = orig;
+        btn.disabled  = false;
+      }
+    })
+    .catch(function() {
+      btn.innerHTML = orig;
+      btn.disabled  = false;
+    });
+  });
+});
+
+/* ── Client-side sort (no reload) ──────────────────────────── */
+(function() {
+  var sort = new URLSearchParams(location.search).get('sort') || 'newest';
+  var cards = Array.from(document.querySelectorAll('.col'));
+  var grid  = document.querySelector('.row.row-cols-2');
+  if (!grid || cards.length < 2) return;
+
+  function getVal(card, key) {
+    var priceEl = card.querySelector('.price-now');
+    var price   = priceEl ? parseFloat(priceEl.textContent.replace(/[^\d.]/g, '')) : 0;
+    if (key === 'price_low')  return price;
+    if (key === 'price_high') return -price;
+    if (key === 'discount') {
+      var save = card.querySelector('.price-save');
+      return save ? -parseFloat(save.textContent.replace(/[^\d.]/g, '')) : 0;
+    }
+    return 0; // newest — keep server order
+  }
+
+  if (sort !== 'newest') {
+    cards.sort(function(a, b) { return getVal(a, sort) - getVal(b, sort); });
+    cards.forEach(function(c) { grid.appendChild(c); });
+  }
+})();
+</script>
+{% endblock %}
