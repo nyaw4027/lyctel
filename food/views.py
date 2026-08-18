@@ -1069,6 +1069,29 @@ def food_payment_initiate(request, order_ref):
       - Hubtel fires webhook → food_payment_webhook → _mark_food_paid
       - Hubtel redirects browser → food_payment_callback → tracking page
     """
+    # ── Hubtel credentials guard ───────────────────────────────────────
+    # If Hubtel is not yet configured, treat the order as cash-on-delivery
+    # so the app doesn't crash. Remove this block once credentials are live.
+    _hubtel_ready = bool(
+        getattr(settings, 'HUBTEL_CLIENT_ID',     '') and
+        getattr(settings, 'HUBTEL_CLIENT_SECRET', '') and
+        getattr(settings, 'HUBTEL_MERCHANT_ACCT', '')
+    )
+    if not _hubtel_ready:
+        # Mark as pending cash order — rider collects on delivery
+        try:
+            order = FoodOrder.objects.get(order_ref=order_ref)
+            order.payment_method = FoodOrder.PaymentMethod.CASH_ON_DELIVERY
+            order.save(update_fields=['payment_method'])
+        except Exception:
+            pass
+        messages.info(
+            request,
+            'Online payment is being set up. Your order is confirmed — '
+            'please pay your rider on delivery. 🛵'
+        )
+        return redirect('food:order_track', ref=order_ref)
+
     if not _HAS_FOOD_PAYMENT:
         # No FoodPayment model — treat as cash order
         messages.success(request, f'Order {order_ref} placed!')
