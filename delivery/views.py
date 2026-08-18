@@ -10,11 +10,9 @@ FIXES in this version:
 """
 import json
 import logging
-from datetime import timedelta
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -455,72 +453,48 @@ def _pay_rider_for_delivery(delivery):
     except ImportError:
         log.warning('[Delivery] _hubtel_transfer not available — payout skipped')
 
-
 # ── ACCEPTANCE TIMEOUT CRON (item 5) ──────────────────────────────────────────
-# Railway Cron hits GET /delivery/timeout/ every minute (see urls.py's comment
-# on this path). This was referenced by urls.py but never actually defined
-# anywhere in this file, which is what crashed the entire URL config on
-# startup — Django builds `path()` objects at import time, so a missing view
-# function here takes down every route in the project, not just this one.
-#
-# Auth is a shared-secret header (X-Cron-Token) rather than login_required,
-# since this is hit by Railway's cron worker, not a logged-in browser.
-#
-# The expiry/reassignment logic below assumes DeliveryAcceptance has a
-# `created_at` auto_now_add timestamp — every other model in this project
-# (Delivery, DeliveryTracking, FoodOrder) follows that convention, but this
-# hasn't been confirmed against rider.models.DeliveryAcceptance directly.
-# If that field is named differently, this fails safely: it logs the error
-# and returns a 500 for that one cron tick, rather than crashing the app
-# the way the missing function itself did. Share rider/models.py and this
-# can be tightened up (also worth confirming whether DeliveryAcceptance.Status
-# has an EXPIRED choice, or whether REJECTED is the right terminal state for
-# a timed-out offer — currently falls back to REJECTED if EXPIRED isn't
-# defined).
+# Railway Cron: every minute → GET /delivery/timeout/?token=<CRON_TOKEN>
+# Set Header: X-Cron-Token in Railway Cron settings
+
 def acceptance_timeout(request):
+    """
+    Reassigns any DeliveryAcceptance pending > 60s without a rider response.
+    Called by Railway Cron job every minute.
+    """
+    import logging
+    from datetime import timedelta
+    from django.conf import settings as _s
+    from django.http import HttpResponse, JsonResponse
+    from django.utils import timezone as _tz
+
+    _log = logging.getLogger(__name__)
+
+    # Verify cron token
     token = request.headers.get('X-Cron-Token', '')
-    expected = getattr(settings, 'CRON_TOKEN', None)
-    if not expected or token != expected:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    if token != getattr(_s, 'CRON_TOKEN', ''):
+        return HttpResponse(status=401)
 
-    TIMEOUT_SECONDS = 60
-    cutoff = now() - timedelta(seconds=TIMEOUT_SECONDS)
+    from rider.models import DeliveryAcceptance
+    from delivery.services import assign_rider_to_delivery
 
-    try:
-        stale = DeliveryAcceptance.objects.filter(
-            status=DeliveryAcceptance.Status.PENDING,
-            created_at__lt=cutoff,
-        ).select_related('delivery', 'rider')
-    except Exception as exc:
-        log.error('[Delivery] acceptance_timeout query failed — '
-                  'confirm DeliveryAcceptance has a created_at field: %s', exc)
-        return JsonResponse({'success': False, 'error': str(exc)}, status=500)
+    cutoff      = _tz.now() - timedelta(seconds=60)
+    stale       = DeliveryAcceptance.objects.filter(
+        status=DeliveryAcceptance.Status.PENDING,
+        created_at__lt=cutoff,
+    ).select_related('delivery', 'rider')
+    stale_count = stale.count()
+    reassigned  = 0
 
-    from .services import assign_rider_to_delivery
+    for acc in stale:
+        acc.status       = DeliveryAcceptance.Status.REJECTED
+        acc.responded_at = _tz.now()
+        acc.save(update_fields=['status', 'responded_at'])
+        try:
+            assign_rider_to_delivery(acc.delivery, notify=True)
+            reassigned += 1
+            _log.info('[Timeout] Delivery %d reassigned after rider timeout', acc.delivery.pk)
+        except Exception as exc:
+            _log.error('[Timeout] Reassignment failed for delivery %d: %s', acc.delivery.pk, exc)
 
-    expired_count = 0
-    reassigned_count = 0
-    timeout_status = getattr(DeliveryAcceptance.Status, 'EXPIRED', None) \
-        or DeliveryAcceptance.Status.REJECTED
-
-    for acceptance in stale:
-        acceptance.status = timeout_status
-        acceptance.responded_at = now()
-        acceptance.save(update_fields=['status', 'responded_at'])
-        expired_count += 1
-
-        delivery = acceptance.delivery
-        if delivery and delivery.status == Delivery.Status.PENDING:
-            try:
-                next_rider = assign_rider_to_delivery(delivery, notify=True)
-                if next_rider:
-                    reassigned_count += 1
-            except Exception as exc:
-                log.error('[Delivery] Reassignment failed for delivery %s: %s',
-                          delivery.pk, exc)
-
-    return JsonResponse({
-        'success': True,
-        'expired': expired_count,
-        'reassigned': reassigned_count,
-    })
+    return JsonResponse({'checked': stale_count, 'reassigned': reassigned})
