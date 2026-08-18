@@ -35,7 +35,7 @@
   <meta name="theme-color" content="#0F1B2D" id="meta-theme-color"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <meta name="apple-mobile-web-app-title" content="Lynctel"/>
   <link rel="apple-touch-icon" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}"/>
   <link rel="apple-touch-icon" sizes="512x512" href="{% static 'icons/icon-512x512.png' %}"/>
@@ -399,9 +399,12 @@
        Screen: 390×844px | Notch: 47px top | Home bar: 34px bottom
        ═══════════════════════════════════════════════════════════════ */
 
-    /* Fix 1: Navbar safe area — prevents content hiding behind notch ── */
+    /* Fix 1: Navbar safe area ─────────────────────────────────────────
+       status-bar-style="default": OS keeps page below status bar.
+       padding-top only needed in standalone/PWA mode where the page
+       starts at y=0 (behind status bar). */
     #main-navbar {
-      padding-top: env(safe-area-inset-top);
+      /* no padding-top in browser mode — Safari chrome handles it */
     }
 
     /* Fix 2: Body padding accounts for mobile nav + iPhone home indicator */
@@ -469,7 +472,68 @@
       touch-action: manipulation;
     }
 
-</style>
+
+    /* ═══════════════════════════════════════════════════════════════
+       PWA / STANDALONE MODE — iOS Home Screen
+       When added to home screen, iOS runs without Safari chrome.
+       The page starts at y=0 (top of screen, behind status bar).
+       We need to push ALL content below the status bar correctly.
+       ═══════════════════════════════════════════════════════════════ */
+
+    @media (display-mode: standalone) {
+
+      /* 1. Push navbar content below status bar */
+      #main-navbar {
+        padding-top: env(safe-area-inset-top) !important;
+      }
+
+      /* 2. Update the navbar height variable so child pages
+            account for the extra status-bar space */
+      :root {
+        --navbar-h: calc(112px + env(safe-area-inset-top));
+      }
+
+      /* 3. Body top padding — prevents content hiding under the navbar */
+      body {
+        padding-top: calc(env(safe-area-inset-top)) !important;
+      }
+
+      /* 4. Navbar background must cover the full status bar area */
+      #main-navbar::before {
+        content: '';
+        display: block;
+        position: absolute;
+        top: calc(-1 * env(safe-area-inset-top));
+        left: 0; right: 0;
+        height: env(safe-area-inset-top);
+        background: #fff;
+        z-index: 1;
+      }
+
+      /* 5. Dark mode: match the status bar fill */
+      [data-bs-theme="dark"] #main-navbar::before {
+        background: #111827;
+      }
+
+      /* 6. Mobile bottom nav: already has safe-area-inset-bottom,
+            but standalone mode needs body padding too */
+      @supports (padding-bottom: env(safe-area-inset-bottom)) {
+        body {
+          padding-bottom: calc(64px + env(safe-area-inset-bottom)) !important;
+        }
+      }
+    }
+
+    /* ── Dropdown positioning fix for standalone mode ──────────────── */
+    @media (display-mode: standalone) {
+      @supports (-webkit-touch-callout: none) {
+        .profile-dropdown {
+          top: calc(64px + env(safe-area-inset-top)) !important;
+        }
+      }
+    }
+
+    </style>
 
   {% block extra_head %}{% endblock %}
 </head>
