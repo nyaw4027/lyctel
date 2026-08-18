@@ -159,7 +159,17 @@ class Product(models.Model):
     )
 
     is_featured = models.BooleanField(default=False)
-    is_digital = models.BooleanField(default=False)
+    is_digital  = models.BooleanField(default=False)
+
+    # ── Flash sale (item 11) ──────────────────────────────────────────────────
+    flash_price     = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text='Sale price during flash sale — must be lower than selling_price',
+    )
+    flash_sale_ends = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Flash sale expires at this UTC datetime',
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -201,6 +211,32 @@ class Product(models.Model):
                  self.selling_price) * 100
             )
         return 0
+
+    @property
+    def is_flash_sale_active(self):
+        """True if a flash sale is configured and has not yet expired."""
+        from django.utils import timezone
+        return bool(
+            self.flash_price
+            and self.flash_sale_ends
+            and self.flash_sale_ends > timezone.now()
+            and self.flash_price < self.selling_price
+        )
+
+    @property
+    def effective_price(self):
+        """Lowest applicable price — flash > discount > selling."""
+        if self.is_flash_sale_active:
+            return self.flash_price
+        return self.discount_price if self.has_discount else self.selling_price
+
+    @property
+    def flash_seconds_remaining(self):
+        """Seconds until flash sale expires (for JS countdown)."""
+        from django.utils import timezone
+        if not self.is_flash_sale_active:
+            return 0
+        return max(0, int((self.flash_sale_ends - timezone.now()).total_seconds()))
 
     @property
     def is_in_stock(self):

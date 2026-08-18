@@ -1,6 +1,41 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Lynctel — Quality Products Delivered in Ghana{% endblock %}
+{% block title %}Lynctel — Quality Products Delivered in Ghana
+<!-- ── First-visit onboarding modal (item 18) ─────────────────── -->
+<div id="onboarding-modal" class="modal fade" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 overflow-hidden">
+      <!-- Steps -->
+      <div id="ob-step-1" class="ob-step p-4 text-center">
+        <div class="fs-1 mb-2">🛍️</div>
+        <h2 class="h5 fw-bold text-navy">Welcome to Lynctel!</h2>
+        <p class="text-muted small mb-4">Ghana's fastest-growing marketplace for electronics, gadgets, food and more.</p>
+        <button class="btn btn-navy w-100 rounded-3 py-2 fw-semibold" onclick="obNext(2)">Next →</button>
+      </div>
+      <div id="ob-step-2" class="ob-step p-4 text-center d-none">
+        <div class="fs-1 mb-2">🍔</div>
+        <h2 class="h5 fw-bold text-navy">Order Food Delivery</h2>
+        <p class="text-muted small mb-4">Browse local restaurants, track your rider live on the map, and get food delivered fast.</p>
+        <button class="btn btn-navy w-100 rounded-3 py-2 fw-semibold" onclick="obNext(3)">Next →</button>
+      </div>
+      <div id="ob-step-3" class="ob-step p-4 text-center d-none">
+        <div class="fs-1 mb-2">💰</div>
+        <h2 class="h5 fw-bold text-navy">Sell on Lynctel</h2>
+        <p class="text-muted small mb-4">Open your shop for free. Keep 96% of every sale. Payments straight to your MoMo.</p>
+        <a href="{% url 'vendors:apply' %}" class="btn btn-gold w-100 rounded-3 py-2 fw-semibold mb-2">Start Selling</a>
+        <button class="btn btn-outline-secondary w-100 rounded-3 py-2 small" onclick="obClose()">Skip for now</button>
+      </div>
+      <!-- Progress dots -->
+      <div class="d-flex justify-content-center gap-2 pb-3">
+        <span id="ob-dot-1" class="rounded-circle" style="width:8px;height:8px;background:var(--navy)"></span>
+        <span id="ob-dot-2" class="rounded-circle" style="width:8px;height:8px;background:#e5e7eb"></span>
+        <span id="ob-dot-3" class="rounded-circle" style="width:8px;height:8px;background:#e5e7eb"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/home.css' %}">
@@ -297,6 +332,40 @@
 @media (prefers-reduced-motion: reduce) {
   .fade-up, .hiw-step, .slide { animation: none !important; opacity: 1 !important; transform: none !important; }
 }
+
+    /* ── Flash sale badge + countdown ──────────────────────────────── */
+    .flash-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white; font-size: .62rem; font-weight: 800;
+      padding: 2px 7px; border-radius: 999px;
+      text-transform: uppercase; letter-spacing: .04em;
+      animation: flash-glow 1.2s ease-in-out infinite;
+    }
+    @keyframes flash-glow { 0%,100%{opacity:1;box-shadow:0 0 0 rgba(239,68,68,0)}
+                            50%{opacity:.85;box-shadow:0 0 8px rgba(239,68,68,.5)} }
+    .flash-countdown {
+      font-size: .65rem; font-weight: 700; color: #ef4444;
+      display: block; margin-top: 2px; letter-spacing: .01em;
+    }
+
+
+    /* ── Skeleton loading screens ───────────────────────────────────── */
+    .skeleton-grid { display: none; }
+    body.loading .skeleton-grid { display: flex; flex-wrap: wrap; gap: .5rem; }
+    body.loading .product-live-grid { display: none; }
+    .skeleton-card {
+      width: calc(50% - .25rem); border-radius: 16px;
+      background: #f3f4f6; overflow: hidden;
+    }
+    .skeleton-img  { height: 9rem; background: linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);
+                     background-size: 200% 100%; animation: skel-wave 1.4s ease-in-out infinite; }
+    .skeleton-line { height: 12px; margin: 10px 12px 6px; border-radius: 4px;
+                     background: linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);
+                     background-size: 200% 100%; animation: skel-wave 1.4s ease-in-out infinite; }
+    .skeleton-line.short { width: 60%; }
+    @keyframes skel-wave { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
 </style>
 {% endblock %}
 
@@ -402,7 +471,13 @@
                 <a href="{% url 'products:list' %}" class="text-white-50 small text-decoration-none">View all →</a>
               </div>
               {% if hot_products %}
-              <div class="row row-cols-2 g-2">
+              <!-- Skeleton loading placeholders (shown while page loads) -->
+  <div class="skeleton-grid">
+    {% for _ in "12345678" %}<div class="skeleton-card"><div class="skeleton-img"></div>
+    <div class="skeleton-line"></div><div class="skeleton-line short"></div></div>{% endfor %}
+  </div>
+  <div class="product-live-grid">
+  <div class="row row-cols-2 g-2">
                 {% for p in hot_products %}
                 <div class="col">
                   <a href="{% url 'products:detail' p.slug %}"
@@ -416,6 +491,17 @@
                       <span class="position-absolute top-0 start-0 m-1 bg-danger text-white fw-bold rounded-pill px-2 py-1" style="font-size:9px;">🔥</span>
                       {% if p.has_discount %}
                       <span class="position-absolute top-0 end-0 m-1 bg-gold text-navy fw-bold rounded-pill px-2 py-1" style="font-size:9px;">-{{ p.discount_percent }}%</span>
+                      {% endif %}
+                      {# Flash sale badge #}
+                      {% if p.is_flash_sale_active %}
+                      <span class="position-absolute top-0 start-0 m-1 flash-badge">
+                        ⚡ Flash
+                      </span>
+                      <span class="flash-countdown position-absolute bottom-0 start-0 m-1 px-1"
+                            style="background:rgba(0,0,0,.6);border-radius:4px;color:white"
+                            data-ends="{{ p.flash_sale_ends|date:'c' }}"
+                            data-secs="{{ p.flash_seconds_remaining }}">
+                      </span>
                       {% endif %}
                     </div>
                     <div class="p-2">
@@ -1207,3 +1293,55 @@ document.querySelectorAll('.video-card-wrap.has-video').forEach(function (wrap) 
 });
 </script>
 {% endblock %}
+
+<script>
+/* ── Flash sale countdown ──────────────────────────────────── */
+document.querySelectorAll('.flash-countdown[data-secs]').forEach(function(el) {
+  var secs = parseInt(el.dataset.secs);
+  if (!secs || secs <= 0) { el.style.display = 'none'; return; }
+  function fmt(n) { return n < 10 ? '0' + n : n; }
+  function tick() {
+    if (secs <= 0) { el.textContent = 'Ended'; clearInterval(t); return; }
+    var h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60), s = secs%60;
+    el.textContent = '⏱ ' + (h > 0 ? h + 'h ' : '') + fmt(m) + 'm ' + fmt(s) + 's';
+    secs--;
+  }
+  tick();
+  var t = setInterval(tick, 1000);
+});
+
+/* ── Skeleton: hide once content ready ─────────────────────── */
+document.addEventListener('DOMContentLoaded', function() {
+  document.body.classList.remove('loading');
+});
+document.body.classList.add('loading');
+
+/* ── Onboarding modal ──────────────────────────────────────── */
+function obNext(step) {
+  document.querySelectorAll('.ob-step').forEach(function(el) { el.classList.add('d-none'); });
+  document.querySelectorAll('[id^="ob-dot-"]').forEach(function(el) { el.style.background = '#e5e7eb'; });
+  var s = document.getElementById('ob-step-' + step);
+  var d = document.getElementById('ob-dot-' + step);
+  if (s) s.classList.remove('d-none');
+  if (d) d.style.background = 'var(--navy)';
+}
+function obClose() {
+  var m = bootstrap.Modal.getInstance(document.getElementById('onboarding-modal'));
+  if (m) m.hide();
+  localStorage.setItem('ob-done', '1');
+}
+document.addEventListener('DOMContentLoaded', function() {
+  if (!localStorage.getItem('ob-done')) {
+    var el = document.getElementById('onboarding-modal');
+    if (el) {
+      setTimeout(function() {
+        var m = new bootstrap.Modal(el, { backdrop: true, keyboard: true });
+        m.show();
+        el.addEventListener('hidden.bs.modal', function() {
+          localStorage.setItem('ob-done', '1');
+        });
+      }, 1500);
+    }
+  }
+});
+</script>
