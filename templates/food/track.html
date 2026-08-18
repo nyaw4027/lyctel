@@ -100,7 +100,7 @@
         status_timeline isn't a FoodOrder field or property — it's either
         injected separately into the render context by order_track() (in
         which case this should read {% for step in status_timeline %}, not
-        order.status_timeline), or it doesn't exist yet. {% for %} resolves
+        order.status_timeline), or it doesn't exist yet. { for } resolves
         its sequence with ignore_failures=True and falls back to {% empty %}
         safely either way, so this can't crash — it just shows the empty
         state until confirmed.
