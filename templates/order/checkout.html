@@ -282,7 +282,7 @@
 
         <!-- Map -->
         <div class="position-relative rounded-2xl overflow-hidden border shadow-sm mb-3">
-          <div id="delivery-map"></div>
+          <div id="delivery-map" style="height:380px;border-radius:1.25rem;z-index:1;background:#e8edf2;"></div>
           <!-- Locate me button inside map -->
           <button type="button" id="locate-me-btn" class="map-btn" onclick="locateMe()">
             <svg style="width:.875rem;height:.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -571,6 +571,11 @@
     L.marker(PICKUP, { icon: vendorIcon })
       .addTo(map)
       .bindTooltip('📦 Pickup point', { permanent: false, direction: 'top' });
+
+    // Re-measure when browser window resizes (phone rotation, PWA resize)
+    window.addEventListener('resize', function() {
+      setTimeout(function() { if (map) map.invalidateSize(); }, 150);
+    });
 
     // Click to drop pin
     map.on('click', e => placePin(e.latlng.lat, e.latlng.lng, true));
@@ -947,9 +952,11 @@
     if (choice === 'rider') {
       banner.classList.remove('d-none');
       initMap();
-      setTimeout(() => { if (map) map.invalidateSize(); }, 60);
-      // Auto-locate removed — geolocation requires user gesture on iOS/Android.
-      // The 'My Location' button triggers locateMe() manually.
+      // invalidateSize must wait for the browser to repaint the newly
+      // visible section. 60ms is too short — use 300ms + a second call
+      // at 600ms for slow devices. Without this the map draws at 0x0.
+      setTimeout(() => { if (map) map.invalidateSize(); }, 300);
+      setTimeout(() => { if (map) map.invalidateSize(); }, 600);
     } else {
       banner.classList.add('d-none');
       // Reset fee for non-rider methods
