@@ -313,11 +313,9 @@ document.body.classList.add('page-fullscreen');
 
 {% block extra_js %}
 <!--
-  All constants livestream.js needs are defined here as window.* globals
-  BEFORE the script loads. Static files are served directly by the file
-  server — Django's template engine never touches them — so any {{ }} or
-  {% %} inside livestream.js renders as literal text in the browser.
-  Passing values via inline window.* is the correct pattern.
+  Constants for livestream.js are defined here as window.* globals
+  before the external script loads. Values come from Django template
+  context; the JS file itself is static and cannot use template tags.
 -->
 <script>
 {% url "livestream:end_stream"        stream.id as _end_url %}
