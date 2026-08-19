@@ -3,13 +3,19 @@
 {% block title %}{{ stream.vendor.shop_name }} is Live{% endblock %}
 
 {% block extra_head %}
- <link rel="stylesheet" href="{% static 'css/pages/livestream.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/livestream.css' %}">
+<meta name="theme-color" content="#000000">
+<style>
+  /* Ensure navbar/body overrides from base.html are reset for this page */
+  #main-navbar, #mobile-nav { display: none !important; }
+  body { padding: 0 !important; overflow: hidden !important; background: #000; }
+</style>
 {% endblock %}
 
 {% block content %}
 <div id="root">
 
-  <div id="video-section" style="position:relative;flex:1;overflow:hidden;">
+  <div id="video-section">
 
     <div id="video-bg">
       <!-- Live viewer sees remote-video via WebRTC; ended streams with a
@@ -221,7 +227,7 @@ const HEARTBEAT_URL   = `/livestream/${STREAM_ID}/heartbeat/`;
 const WS_SCHEME       = location.protocol === 'https:' ? 'wss' : 'ws';
 const wsUrl           = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
 const SHOP_NAME       = "{{ stream.vendor.shop_name|escapejs }}";
-{% url "vendors:public_shop" stream.vendor.slug as shop_url %}{% url "vendors:directory" as dir_url %}
+{% url "vendors:public_shop" stream.vendor.slug as shop_url %}{% url "vendors:list" as dir_url %}
 const SHOP_URL        = "{{ shop_url|default:dir_url|escapejs }}";
 // CSRF_TOKEN declared in base.html
 

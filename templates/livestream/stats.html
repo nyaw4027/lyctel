@@ -24,11 +24,31 @@
     font-size: 12px;
     color: #9ca3af;
   }
+
+  /* ── Mobile gift table → card list ─────────────────────────────
+     On screens < 576px the table columns are too tight.
+     Switch to stacked gift cards for readability.            */
+  @media (max-width: 575.98px) {
+    .gift-table { display: none; }
+    .gift-cards  { display: flex !important; }
+  }
+  @media (min-width: 576px) {
+    .gift-table  { display: table; }
+    .gift-cards  { display: none !important; }
+  }
+  .gift-card-item {
+    border: 1px solid #f3f4f6;
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: white;
+  }
+  /* Touch targets */
+  a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container py-5" style="max-width:900px">
+<div class="container py-3 py-md-5" style="max-width:900px">
 
   <!-- Breadcrumb -->
   <div class="d-flex align-items-center gap-2 mb-5" style="font-size:13px">
@@ -50,7 +70,7 @@
         <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
              style="width:72px;height:90px;background:#f3f4f6;font-size:2rem">📺</div>
         {% endif %}
-        <div class="flex-grow-1 min-width-0">
+        <div class="flex-grow-1 min-w-0">
           <h2 class="font-display fw-bold text-navy mb-1" style="font-size:1.2rem">
             {{ stream.title }}
           </h2>
@@ -114,7 +134,29 @@
         🎁 Gift History
       </h2>
     </div>
-    <div class="table-responsive">
+    <!-- Mobile: stacked gift cards (shown on phones) -->
+    <div class="gift-cards flex-column gap-2 p-3 d-none">
+      {% for gift in gifts %}
+      <div class="gift-card-item">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <span class="fw-semibold text-navy" style="font-size:.88rem">
+            {{ gift.get_gift_type_display }}
+            {{ gift.sender.get_full_name|default:gift.sender.username|default:"Anonymous" }}
+          </span>
+          <span class="fw-bold" style="color:#16a34a;font-size:.88rem">
+            GHS {{ gift.vendor_earnings|default:gift.total_value|floatformat:2 }}
+          </span>
+        </div>
+        <div class="d-flex justify-content-between" style="font-size:.75rem;color:#9ca3af">
+          <span>Value: GHS {{ gift.total_value }}</span>
+          <span>{{ gift.sent_at|date:"g:i A" }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Desktop: full table -->
+    <div class="gift-table table-responsive">
       <table class="table table-hover mb-0 align-middle">
         <thead style="background:#f9fafb">
           <tr>
@@ -162,6 +204,7 @@
           {% endfor %}
         </tbody>
       </table>
+    </div>
     </div>
   </div>
   {% else %}

@@ -144,6 +144,12 @@
       color: var(--navy);
       animation: brandGlow 3.5s ease-in-out infinite;
     }
+    /* Show brand name on all screens — slightly smaller on mobile */
+    @media (max-width: 575.98px) {
+      .brand-name {
+        font-size: .95rem;
+      }
+    }
     .brand-dot { animation: dotPulse 2s ease-in-out infinite; display: inline-block; color: var(--gold); }
     @keyframes brandGlow {
       0%,100% { color: var(--navy); }
@@ -492,7 +498,7 @@
         <!-- Logo -->
         <a href="{% url 'frontend:home' %}" class="navbar-brand d-flex align-items-center gap-2 me-1 me-sm-3 flex-shrink-0">
           <img src="{% static 'logo.png' %}" alt="Lynctel" height="32" class="object-fit-contain"/>
-          <span class="brand-name d-none d-sm-inline">Lynctel</span>
+          <span class="brand-name">Lynctel</span>
           <span class="brand-dot fw-bold fs-5 lh-1 d-none d-sm-inline">·</span>
         </a>
 

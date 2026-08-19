@@ -2,9 +2,49 @@
 {% load i18n static %}
 {% block title %}Go Live — {{ vendor.shop_name }}{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* ── File upload wrapper ─────────────────────────────────────────
+     Hides the raw file input on iOS + Android and uses a styled
+     label as the tap target instead.                           */
+  .file-upload-wrap { display: block; cursor: pointer; }
+  .mobile-file-input {
+    position: absolute;
+    width: 1px; height: 1px;
+    opacity: 0; pointer-events: none;
+    overflow: hidden;
+  }
+
+  /* Highlight the drop zone when focused via keyboard */
+  .file-upload-wrap:focus-within #thumb-preview {
+    border-color: var(--navy) !important;
+    background: #f0f9ff !important;
+  }
+
+  /* iOS: remove tap highlight on file label */
+  .file-upload-wrap, .file-upload-wrap * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Form touch improvements ─────────────────────────────────── */
+  .form-control, .form-control:focus {
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  /* Go live button pulse while loading */
+  #golive-submit:disabled {
+    animation: btn-pulse 1s ease-in-out infinite;
+  }
+  @keyframes btn-pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+  /* ── Touch targets ───────────────────────────────────────────── */
+  a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container" style="max-width:680px">
-  <div class="py-5">
+  <div class="py-3 py-md-5">
 
     <!-- Header -->
     <div class="d-flex align-items-center gap-3 mb-4">
@@ -184,8 +224,17 @@ function previewThumb(input) {
 
 document.getElementById('golive-form').addEventListener('submit', function() {
   const btn = document.getElementById('golive-submit');
+  const title = document.getElementById('stream-title');
+  if (!title.value.trim()) {
+    title.focus();
+    return false;
+  }
   btn.disabled = true;
-  btn.textContent = 'Starting…';
+  btn.innerHTML = '<svg style="width:18px;height:18px;animation:spin 1s linear infinite;margin-right:6px" fill="none" viewBox="0 0 24 24"><circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Starting your stream…';
 });
+// CSS for spinner
+const s = document.createElement('style');
+s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+document.head.appendChild(s);
 </script>
 {% endblock %}
