@@ -3,6 +3,12 @@
 {% block title %}Checkout — Lynctel{% endblock %}
 
 {% block extra_head %}
+<!-- Preconnect to geocoding APIs so the first request is instant -->
+<link rel="preconnect" href="https://us1.locationiq.com" crossorigin>
+<link rel="preconnect" href="https://nominatim.openstreetmap.org" crossorigin>
+<link rel="preconnect" href="https://api.locationiq.com" crossorigin>
+<link rel="dns-prefetch" href="https://us1.locationiq.com">
+<link rel="dns-prefetch" href="https://nominatim.openstreetmap.org">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   /* ── Map container ─────────────────────────────────── */
@@ -964,43 +970,118 @@
   }
 
   // ── REVERSE GEOCODE ───────────────────────────────────
+  // ── FAST REVERSE GEOCODE ─────────────────────────────────────────────────────
+  // Optimisations:
+  //   1. In-memory LRU cache — same pin = instant (0ms)
+  //   2. Race both APIs simultaneously — use whichever responds first
+  //   3. 0ms debounce on pin drop (drag-end already throttles)
+  //   4. Preconnect hints in <head> — TCP/TLS already warmed
+  //   5. Optimistic fill — shows "Detecting…" in < 1 frame
+
+  const _geoCache   = {};   // { "lat,lng": { address, city } }
+  const _GEO_PREC   = 4;    // decimal places to round cache keys (~11m grid)
+  let   geocodeTimer = null;
+
+  function _cacheKey(lat, lng) {
+    return lat.toFixed(_GEO_PREC) + ',' + lng.toFixed(_GEO_PREC);
+  }
+
+  function _applyGeoResult(addr, city) {
+    const addrField = document.getElementById('delivery_address');
+    const cityField = document.getElementById('delivery_city');
+    if (addr) {
+      addrField.value = addr;
+      addrField.placeholder = 'House number, street, area';
+      addrField.style.background = '#f0fdf4';
+      setTimeout(function() { addrField.style.background = ''; }, 600);
+    }
+    if (city) cityField.value = city;
+  }
+
+  function _extractCity(addrObj) {
+    return (addrObj.city || addrObj.town || addrObj.suburb ||
+            addrObj.county || addrObj.state_district || addrObj.region || '');
+  }
+
+  // Fetch from LocationIQ reverse geocode
+  function _fetchLIQ(lat, lng) {
+    if (!LOCATIONIQ_KEY) return Promise.reject('no key');
+    return fetch(
+      `https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}` +
+      `&lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`,
+      { headers: { 'Accept-Language': 'en' } }
+    ).then(function(r) {
+      if (!r.ok) throw new Error('LIQ ' + r.status);
+      return r.json();
+    }).then(function(d) {
+      if (!d.display_name) throw new Error('no result');
+      return { address: d.display_name, city: _extractCity(d.address || {}) };
+    });
+  }
+
+  // Fetch from Nominatim reverse geocode (free, no key)
+  function _fetchNominatim(lat, lng) {
+    return fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}` +
+      `&format=json&addressdetails=1&zoom=18`,
+      { headers: { 'Accept-Language': 'en' } }
+    ).then(function(r) {
+      if (!r.ok) throw new Error('OSM ' + r.status);
+      return r.json();
+    }).then(function(d) {
+      if (!d.display_name) throw new Error('no result');
+      return { address: d.display_name, city: _extractCity(d.address || {}) };
+    });
+  }
+
   function reverseGeocode(lat, lng) {
-    // Always reverse-geocode — use LocationIQ if key set, else Nominatim (free)
     clearTimeout(geocodeTimer);
+
+    // ── 1. Cache hit → instant return ────────────────────
+    const key = _cacheKey(lat, lng);
+    if (_geoCache[key]) {
+      _applyGeoResult(_geoCache[key].address, _geoCache[key].city);
+      return;
+    }
+
+    // ── 2. Optimistic fill in < 1 frame ──────────────────
+    const addrField = document.getElementById('delivery_address');
+    const orig      = addrField.value;
+    addrField.value = '';
+    addrField.placeholder = '⟳ Detecting address…';
+
+    // ── 3. Race both APIs — 0ms debounce on final pin drop ─
+    // (drag-end and click events are already throttled by Leaflet)
     geocodeTimer = setTimeout(function() {
-      // Show loading hint in address field
-      const addrField = document.getElementById('delivery_address');
-      const cityField = document.getElementById('delivery_city');
-      if (!addrField.value) addrField.placeholder = 'Detecting address…';
+      // Fire both simultaneously, whichever resolves first wins
+      const liq  = _fetchLIQ(lat, lng);
+      const osm  = _fetchNominatim(lat, lng);
+      let   done = false;
 
-      const url = LOCATIONIQ_KEY
-        ? `https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`
-        : `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
+      function onResult(result) {
+        if (done) return;
+        done = true;
+        _geoCache[key] = result;           // cache for instant re-use
+        _applyGeoResult(result.address, result.city);
+      }
 
-      fetch(url, { headers: { 'Accept-Language': 'en' } })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          // ── Fill delivery address ────────────────────────────────
-          const fullAddress = d.display_name || '';
-          if (fullAddress) {
-            addrField.value = fullAddress;
-            addrField.placeholder = 'House number, street, area';
-          }
-
-          // ── Fill city from address components ────────────────────
-          const a = d.address || {};
-          const city = a.city || a.town || a.suburb || a.county
-                     || a.state_district || a.region || '';
-          if (city) cityField.value = city;
-
-          // ── Visual flash to confirm the field was filled ──────────
-          addrField.style.background = '#f0fdf4';
-          setTimeout(function() { addrField.style.background = ''; }, 800);
-        })
-        .catch(function() {
+      function onError() {
+        if (done) return;
+        // Restore previous value if both failed
+        if (!addrField.value) {
+          addrField.value = orig;
           addrField.placeholder = 'House number, street, area';
-        });
-    }, 500);
+        }
+      }
+
+      liq.then(onResult).catch(function() {});
+      osm.then(onResult).catch(function() {});
+
+      // If both fail, restore
+      Promise.allSettled([liq, osm]).then(function(results) {
+        if (!done) onError();
+      });
+    }, 0);   // 0ms — fire immediately, no artificial wait
   }
 
   // ── SMART ADDRESS AUTOCOMPLETE ────────────────────────
