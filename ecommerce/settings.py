@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     'livestream',
     'fraud',
     'notifications',
+    'corsheaders',
+    'csp',
 ]
 
 # ── Middleware ─────────────────────────────────────────────────────────────────
@@ -61,6 +63,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -125,7 +128,23 @@ if REDIS_URL:
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG':  {'hosts': [REDIS_URL]},
+            'CONFIG':  {
+                'hosts':    [REDIS_URL],
+                # Prevent timeout errors from killing WebSocket connections
+                'socket_timeout':         30,      # seconds before read times out
+                'socket_connect_timeout': 10,      # seconds to establish connection
+                'retry_on_timeout':       True,    # auto-retry on timeout
+                'health_check_interval':  30,      # keep-alive ping every 30s
+                # Connection pool — limit concurrent Redis connections
+                'connection_pool_kwargs': {
+                    'max_connections': 20,
+                    'timeout':         20,
+                },
+                # Capacity limits
+                'capacity':     1500,      # max messages per channel
+                'expiry':       60,        # message TTL in seconds
+                'group_expiry': 900,       # group TTL (15 min idle)
+            },
         },
     }
 else:
@@ -398,15 +417,21 @@ CSP_STYLE_SRC    = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com"
                      "cdnjs.cloudflare.com", "fonts.googleapis.com",)
 CSP_FONT_SRC     = ("'self'", "fonts.gstatic.com",)
 CSP_IMG_SRC      = ("'self'", "data:", "blob:",
-                     # OSM tiles: a/b/c.tile.openstreetmap.org (2 levels — needs both rules)
                      "*.openstreetmap.org",
-                     "*.tile.openstreetmap.org",
-                     # LocationIQ styled map tiles
-                     "*.locationiq.com",
-                     # Cloudinary + Google
+                     "*.tile.openstreetmap.org",     # covers a/b/c.tile.openstreetmap.org
+                     "*.locationiq.com",             # LocationIQ map tiles
                      "res.cloudinary.com",
                      "maps.gstatic.com",)
 CSP_CONNECT_SRC  = ("'self'", "wss:", "ws:", "nominatim.openstreetmap.org",
                      "us1.locationiq.com", "api.hubtel.com", "sms.arkesel.com",)
 CSP_FRAME_SRC    = ("'self'",)
 CSP_REPORT_ONLY  = False
+
+# ── CORS ──────────────────────────────────────────────────────────────────────
+# Allows the frontend to call the API from the same Railway domain.
+# Tighten to specific origins in production once you have a custom domain.
+CORS_ALLOW_ALL_ORIGINS   = False
+CORS_ALLOWED_ORIGINS     = [
+    'https://lynctel.up.railway.app',
+]
+CORS_ALLOW_CREDENTIALS   = True

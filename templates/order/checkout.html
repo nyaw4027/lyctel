@@ -3,6 +3,9 @@
 {% block title %}Checkout — Lynctel{% endblock %}
 
 {% block extra_head %}
+<link rel="preconnect" href="https://us1.locationiq.com" crossorigin>
+<link rel="preconnect" href="https://nominatim.openstreetmap.org" crossorigin>
+<link rel="dns-prefetch" href="https://api.locationiq.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   /* ── Map container ─────────────────────────────────── */
@@ -30,24 +33,28 @@
 
   /* ── Address autocomplete ──────────────────────────── */
   #address-suggestions {
-    position: absolute; top: 100%; left: 0; right: 0;
-    background: white;
-    border-radius: 0 0 .875rem .875rem;
-    max-height: 220px; overflow-y: auto; z-index: 9999;
-    box-shadow: 0 12px 32px rgba(0,0,0,.12);
-    display: none;
-    border: 1px solid #e5e7eb;
-    border-top: none;
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: white; border-radius: 14px;
+    max-height: 280px; overflow-y: auto; z-index: 9999;
+    box-shadow: 0 8px 32px rgba(0,0,0,.14);
+    display: none; border: 1px solid #e5e7eb;
+    -webkit-overflow-scrolling: touch;
   }
   #address-suggestions.show { display: block; }
-  .suggestion-item {
-    padding: 11px 16px; font-size: 13px; cursor: pointer;
+  .sugg-item {
+    padding: 11px 14px; font-size: 13px; cursor: pointer;
     border-bottom: 1px solid #f3f4f6;
     display: flex; align-items: flex-start; gap: 10px;
-    transition: background .15s;
+    transition: background .12s;
+    -webkit-tap-highlight-color: transparent;
   }
-  .suggestion-item:hover { background: #f8fafc; }
-  .suggestion-item:last-child { border-bottom: none; }
+  .sugg-item:hover, .sugg-item.kb-focus { background: #f0f9ff; }
+  .sugg-item:last-child { border-bottom: none; }
+  .sugg-main { font-weight: 600; color: #0F1B2D; font-size: 13px; }
+  .sugg-sub  { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+  .sugg-loader { padding: 14px 16px; color: #9ca3af; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  #search-clear { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: #e5e7eb; border: none; border-radius: 50%; width: 20px; height: 20px; display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: #6b7280; }
+  #search-clear.show { display: flex; }
 
   /* ── GPS banner ────────────────────────────────────── */
   #gps-banner {
@@ -61,14 +68,14 @@
   }
   .user-location-dot::before {
     content: '';
-    position: absolute; inset: -6px;
+    position: absolute; top: -6px; right: -6px; bottom: -6px; left: -6px;
     border-radius: 50%;
     background: rgba(59,130,246,.25);
     animation: userPulse 2s ease-out infinite;
   }
   .user-location-dot::after {
     content: '';
-    position: absolute; inset: 0;
+    position: absolute; top: 0; right: 0; bottom: 0; left: 0;
     border-radius: 50%;
     background: #3b82f6;
     border: 3px solid white;
@@ -171,6 +178,8 @@
   /* ── Input errors ──────────────────────────────────── */
   .field-error { color: #dc2626; font-size: 12px; margin-top: 4px; }
   .input-error { border-color: #fca5a5 !important; background: #fef2f2; }
+  .form-control { font-size: 16px !important; }
+  @media(min-width:768px){ .form-control { font-size: 14px !important; } }
 
   /* ── Map overlay button (locate me) ───────────────── */
   .map-btn {
@@ -275,7 +284,7 @@
 
         <!-- Map -->
         <div class="position-relative rounded-2xl overflow-hidden border shadow-sm mb-3">
-          <div id="delivery-map"></div>
+          <div id="delivery-map" style="height:380px;border-radius:1.25rem;z-index:1;background:#e8edf2;"></div>
           <!-- Locate me button inside map -->
           <button type="button" id="locate-me-btn" class="map-btn" onclick="locateMe()">
             <svg style="width:.875rem;height:.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -286,17 +295,16 @@
           </button>
         </div>
 
-        <!-- Address search -->
+        <!-- Smart address autocomplete -->
         <div class="position-relative mb-3">
           <div class="position-relative">
-            <svg class="position-absolute top-50 translate-middle-y text-secondary" style="left:.875rem;width:1rem;height:1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="position-absolute top-50 translate-middle-y text-secondary" style="left:.875rem;width:1rem;height:1rem;pointer-events:none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
             </svg>
-            <input type="text" id="address-search" autocomplete="off"
-                   placeholder="Search your delivery address..."
-                   class="form-control rounded-xl" style="padding-left:2.5rem;background:#f9fafb;"/>
+            <input type="text" id="address-search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Type street, area or landmark…" class="form-control rounded-xl" style="padding-left:2.5rem;padding-right:2rem;background:#f9fafb;"/>
+            <button type="button" id="search-clear" aria-label="Clear">✕</button>
           </div>
-          <div id="address-suggestions"></div>
+          <div id="address-suggestions" role="listbox"></div>
         </div>
 
         <!-- Address fields -->
@@ -358,6 +366,7 @@
 
         <input type="hidden" name="delivery_lat" id="delivery_lat" value="{{ form_data.delivery_lat|default:'' }}">
         <input type="hidden" name="delivery_lng" id="delivery_lng" value="{{ form_data.delivery_lng|default:'' }}">
+        <input type="hidden" name="delivery_fee" id="delivery_fee" value="{{ form_data.delivery_fee|default:'0' }}">
       </div>
 
       <!-- Step 2b: Bus / parcel -->
@@ -562,6 +571,10 @@
     // Click to drop pin
     map.on('click', e => placePin(e.latlng.lat, e.latlng.lng, true));
 
+    // Re-measure on phone rotation and app tab-switch
+    window.addEventListener('resize', function() { if (map) map.invalidateSize(); });
+    window.addEventListener('focus',  function() { if (map) map.invalidateSize(); });
+
     // Restore from failed submit
     const savedLat = parseFloat(document.getElementById('delivery_lat').value);
     const savedLng = parseFloat(document.getElementById('delivery_lng').value);
@@ -639,38 +652,26 @@
 
     setGPSBanner('📡 Detecting your location…', 'blue');
 
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-
-        // ── FIX 4: guard every map call ────────────────────
-        if (!map) { resetBtn(); return; }
-
-        // Show user's blue dot
-        if (userMarker) {
-          userMarker.setLatLng([lat, lng]);
-        } else {
-          userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: -100 })
-            .addTo(map)
-            .bindTooltip('You are here', { direction: 'top' });
-        }
-
-        placePin(lat, lng, true);
-        map.setView([lat, lng], 15);
-        setGPSBanner('📍 Pin placed at your location — drag to adjust', 'green');
-        resetBtn();
-      },
-      err => {
-        resetBtn();
-        const msgs = {
-          1: '⚠ Location permission denied — please allow location in your browser settings, then try again',
-          2: '⚠ Location signal unavailable — tap the map to set your delivery pin',
-          3: '⚠ Location timed out — tap the map to place your pin manually',
-        };
-        setGPSBanner(msgs[err.code] || '⚠ Could not detect location — tap the map', 'red');
-      },
-      { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
+    var watchId=null,bestPos=null,accCircle=null,MAX_WAIT=6000,TARGET_ACC=30;
+    function applyPos(pos){
+      var lat=pos.coords.latitude,lng=pos.coords.longitude,acc=Math.round(pos.coords.accuracy);
+      if(!map){resetBtn();return;}
+      if(accCircle){accCircle.setLatLng([lat,lng]).setRadius(acc);}
+      else{accCircle=L.circle([lat,lng],{radius:acc,color:'#3b82f6',fillColor:'#3b82f6',fillOpacity:.08,weight:1.5,opacity:.4}).addTo(map);}
+      if(userMarker){userMarker.setLatLng([lat,lng]);}
+      else{userMarker=L.marker([lat,lng],{icon:userIcon,zIndexOffset:-100}).addTo(map).bindTooltip('You',{direction:'top'});}
+      placePin(lat,lng,true);
+      map.setView([lat,lng],acc<80?17:acc<200?15:13);
+      var t=acc<=15?'Very precise (±'+acc+'m)':acc<=50?'Accurate (±'+acc+'m)':acc<=150?'Good (±'+acc+'m) — drag pin':('Weak signal (±'+acc+'m) — drag pin');
+      setGPSBanner('📍 '+t, acc<=100?'green':'blue');
+    }
+    function stopWatch(){if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}resetBtn();}
+    var gpsTmr=setTimeout(function(){stopWatch();if(!bestPos)setGPSBanner('⚠ Weak GPS — tap map or search address','red');},MAX_WAIT);
+    setGPSBanner('📡 Locking onto location…','blue');
+    watchId=navigator.geolocation.watchPosition(
+      function(pos){var acc=pos.coords.accuracy;if(!bestPos||acc<bestPos.coords.accuracy){bestPos=pos;applyPos(pos);}if(acc<=TARGET_ACC){clearTimeout(gpsTmr);stopWatch();}},
+      function(err){clearTimeout(gpsTmr);stopWatch();var m={1:'⚠ Location denied — allow in settings',2:'⚠ Signal unavailable — tap map or search',3:'⚠ Timed out — tap map or search'};setGPSBanner(m[err.code]||'⚠ Could not detect location','red');},
+      {enableHighAccuracy:true,maximumAge:0,timeout:8000}
     );
   }
   window.locateMe = locateMe;
@@ -693,7 +694,7 @@
 
   function calculateFare() {
     if (dropoffLat === null) return;
-    fetch(`/delivery/api/price-estimate/?olat=${PICKUP[0]}&olng=${PICKUP[1]}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
+    fetch(`/delivery/price/?olat=${PICKUP[0]}&olng=${PICKUP[1]}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
       .then(r => r.json())
       .then(data => {
         if (!data.success) return;
@@ -704,6 +705,7 @@
         const eta   = data.eta_minutes;
         const clock = formatEtaClock(eta);
 
+        document.getElementById('delivery_fee').value = fee.toFixed(2);
         // Fare card
         document.getElementById('fare-card').classList.remove('d-none');
         document.getElementById('fare-amount').textContent    = data.fee;
@@ -832,65 +834,113 @@
 
   // ── REVERSE GEOCODE ───────────────────────────────────
   function reverseGeocode(lat, lng) {
-    if (!LOCATIONIQ_KEY) return;
     clearTimeout(geocodeTimer);
-    geocodeTimer = setTimeout(() => {
-      fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
-        .then(r => r.json())
-        .then(d => {
-          if (d.display_name) {
-            document.getElementById('delivery_address').value = d.display_name;
-          }
-          if (d.address) {
-            const city = d.address.city || d.address.town || d.address.county || '';
-            if (city) document.getElementById('delivery_city').value = city;
-          }
-        }).catch(() => {});
-    }, 300);
+    geocodeTimer = setTimeout(function() {
+      var addrF=document.getElementById('delivery_address');
+      var cityF=document.getElementById('delivery_city');
+      if(addrF&&!addrF.value) addrF.placeholder='Detecting address…';
+      var url=LOCATIONIQ_KEY
+        ?('https://us1.locationiq.com/v1/reverse?key='+LOCATIONIQ_KEY+'&lat='+lat+'&lon='+lng+'&format=json&addressdetails=1')
+        :('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&addressdetails=1');
+      fetch(url,{headers:{'Accept-Language':'en'}})
+        .then(function(r){return r.json();})
+        .then(function(d){
+          if(d.display_name&&addrF){addrF.value=d.display_name;addrF.placeholder='House number, street, area';addrF.style.background='#f0fdf4';setTimeout(function(){addrF.style.background='';},800);}
+          var a=d.address||{};var city=a.city||a.town||a.suburb||a.county||a.region||'';
+          if(city&&cityF)cityF.value=city;
+        }).catch(function(){if(addrF)addrF.placeholder='House number, street, area';});
+    }, 150);
   }
 
-  // ── ADDRESS AUTOCOMPLETE ──────────────────────────────
-  const searchInput = document.getElementById('address-search');
-  const suggestBox  = document.getElementById('address-suggestions');
-  let searchTimer   = null;
+  // ── SMART ADDRESS AUTOCOMPLETE ────────────────────────
+  var searchInput    = document.getElementById('address-search');
+  var suggestBox     = document.getElementById('address-suggestions');
+  var searchClearBtn = document.getElementById('search-clear');
+  var searchTimer    = null;
+  var kbIndex        = -1;
 
-  searchInput.addEventListener('input', function() {
-    const q = this.value.trim();
-    clearTimeout(searchTimer);
-    if (q.length < 3 || !LOCATIONIQ_KEY) { suggestBox.classList.remove('show'); return; }
-
-    searchTimer = setTimeout(() => {
-      fetch(`https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&countrycodes=gh&limit=6&format=json`)
-        .then(r => r.json())
-        .then(results => {
-          if (!Array.isArray(results) || !results.length) { suggestBox.classList.remove('show'); return; }
-          suggestBox.innerHTML = results.map(r =>
-            `<div class="suggestion-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.replace(/"/g,'&quot;')}">
-               <svg style="width:1rem;height:1rem;flex-shrink:0;margin-top:.125rem;" class="text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
-               <span>${r.display_name}</span>
-             </div>`
-          ).join('');
-          suggestBox.classList.add('show');
-        }).catch(() => {});
-    }, 350);
+  if (searchInput) searchInput.addEventListener('input', function() {
+    if (searchClearBtn) searchClearBtn.classList.toggle('show', this.value.length > 0);
+  });
+  if (searchClearBtn) searchClearBtn.addEventListener('click', function() {
+    if (searchInput) { searchInput.value=''; searchInput.focus(); }
+    if (suggestBox) suggestBox.classList.remove('show');
+    searchClearBtn.classList.remove('show');
   });
 
-  suggestBox.addEventListener('click', e => {
-    const item = e.target.closest('.suggestion-item');
-    if (!item) return;
-    const lat = parseFloat(item.dataset.lat);
-    const lon = parseFloat(item.dataset.lon);
-    searchInput.value = '';
-    document.getElementById('delivery_address').value = item.dataset.name;
-    suggestBox.classList.remove('show');
-    placePin(lat, lon, true);
-    map.setView([lat, lon], 15);
-  });
+  function buildSuggItems(results) {
+    return results.map(function(r) {
+      var full  = r.display_name || r.name || '';
+      var parts = full.split(', ');
+      var main  = parts.slice(0,2).join(', ');
+      var sub   = parts.slice(2).join(', ');
+      return '<div class="sugg-item" data-lat="'+r.lat+'" data-lon="'+r.lon+'" data-name="'+full.replace(/"/g,'&quot;')+'">'+
+        '<svg style="width:14px;height:14px;margin-top:3px;flex-shrink:0;color:#9ca3af" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>'+
+        '<div><div class="sugg-main">'+main+'</div>'+(sub?'<div class="sugg-sub">'+sub+'</div>':'')+
+        '</div></div>';
+    }).join('');
+  }
 
-  document.addEventListener('click', e => {
-    if (!searchInput.contains(e.target) && !suggestBox.contains(e.target)) {
-      suggestBox.classList.remove('show');
+  function fetchLIQ(q) {
+    if (!LOCATIONIQ_KEY) return Promise.reject('no key');
+    return fetch('https://api.locationiq.com/v1/autocomplete?key='+LOCATIONIQ_KEY+'&q='+encodeURIComponent(q)+'&countrycodes=gh&limit=7&format=json&dedupe=1')
+      .then(function(r){return r.json();}).then(function(d){return Array.isArray(d)?d:[];});
+  }
+  function fetchOSM(q) {
+    return fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+' Ghana')+'&format=json&addressdetails=1&limit=7&countrycodes=gh',{headers:{'Accept-Language':'en'}})
+      .then(function(r){return r.json();}).then(function(d){return Array.isArray(d)?d:[];});
+  }
+
+  if (searchInput) searchInput.addEventListener('input', function() {
+    var q = this.value.trim();
+    clearTimeout(searchTimer); kbIndex=-1;
+    if (q.length < 2) { if(suggestBox) suggestBox.classList.remove('show'); return; }
+    if (suggestBox) {
+      suggestBox.innerHTML='<div class="sugg-loader"><svg style="width:14px;height:14px;animation:spin 1s linear infinite" fill="none" viewBox="0 0 24 24"><circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Searching…</div>';
+      suggestBox.classList.add('show');
     }
+    searchTimer = setTimeout(function() {
+      var primary = LOCATIONIQ_KEY ? fetchLIQ(q) : fetchOSM(q);
+      primary.then(function(results) {
+        if (!results.length) return fetchOSM(q);
+        return results;
+      }).then(function(results) {
+        if (!suggestBox) return;
+        suggestBox.innerHTML = results.length ? buildSuggItems(results) : '<div class="sugg-loader">No results for "'+q+'" in Ghana</div>';
+        suggestBox.classList.add('show'); kbIndex=-1;
+      }).catch(function() {
+        fetchOSM(q).then(function(r){ if(suggestBox&&r.length){suggestBox.innerHTML=buildSuggItems(r);suggestBox.classList.add('show');} });
+      });
+    }, 250);
+  });
+
+  function selectSugg(item) {
+    if (!item) return;
+    var lat=parseFloat(item.dataset.lat), lon=parseFloat(item.dataset.lon), name=item.dataset.name;
+    if(searchInput) searchInput.value='';
+    if(searchClearBtn) searchClearBtn.classList.remove('show');
+    var af=document.getElementById('delivery_address'); if(af) af.value=name;
+    if(suggestBox) suggestBox.classList.remove('show');
+    var parts=name.split(', ');
+    if(parts.length>=2){ var city=parts[parts.length-2]; if(city&&city!=='Ghana'){var cf=document.getElementById('delivery_city');if(cf)cf.value=city;} }
+    if(!map){initMap();setTimeout(function(){selectSugg(item);},300);return;}
+    placePin(lat,lon,true); map.setView([lat,lon],16);
+  }
+  if(suggestBox) suggestBox.addEventListener('click',function(e){selectSugg(e.target.closest('.sugg-item'));});
+
+  if(searchInput) searchInput.addEventListener('keydown',function(e){
+    var items=suggestBox?suggestBox.querySelectorAll('.sugg-item'):[];
+    if(!items.length||!suggestBox||!suggestBox.classList.contains('show')) return;
+    if(e.key==='ArrowDown'){e.preventDefault();kbIndex=Math.min(kbIndex+1,items.length-1);}
+    else if(e.key==='ArrowUp'){e.preventDefault();kbIndex=Math.max(kbIndex-1,-1);}
+    else if(e.key==='Enter'&&kbIndex>=0){e.preventDefault();selectSugg(items[kbIndex]);return;}
+    else if(e.key==='Escape'){suggestBox.classList.remove('show');kbIndex=-1;return;}
+    items.forEach(function(el,i){el.classList.toggle('kb-focus',i===kbIndex);});
+    if(kbIndex>=0)items[kbIndex].scrollIntoView({block:'nearest'});
+  });
+  document.addEventListener('click',function(e){
+    if(suggestBox&&searchInput&&!searchInput.contains(e.target)&&!suggestBox.contains(e.target))suggestBox.classList.remove('show');
   });
 
   // ── GPS BANNER ────────────────────────────────────────
@@ -915,10 +965,14 @@
     const banner = document.getElementById('gps-banner');
     if (choice === 'rider') {
       banner.classList.remove('d-none');
-      initMap();
-      setTimeout(() => { if (map) map.invalidateSize(); }, 60);
-      // Auto-locate when rider tab shown for the first time
-      if (!dropoffMarker) locateMe();
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          initMap();
+          if (map) map.invalidateSize();
+          setTimeout(function() { if (map) map.invalidateSize(); }, 400);
+        });
+      });
+      // GPS triggered only by user tapping 'My Location' button
     } else {
       banner.classList.add('d-none');
       // Reset fee display for non-rider methods
