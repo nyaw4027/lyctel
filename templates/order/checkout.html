@@ -61,14 +61,14 @@
   }
   .user-location-dot::before {
     content: '';
-    position: absolute; top: -6px; right: -6px; bottom: -6px; left: -6px;
+    position: absolute; inset: -6px;
     border-radius: 50%;
     background: rgba(59,130,246,.25);
     animation: userPulse 2s ease-out infinite;
   }
   .user-location-dot::after {
     content: '';
-    position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+    position: absolute; inset: 0;
     border-radius: 50%;
     background: #3b82f6;
     border: 3px solid white;
@@ -119,7 +119,7 @@
   .vendor-dot::after {
     content: '';
     position: absolute;
-    top: -7px; right: -7px; bottom: -7px; left: -7px;
+    inset: -7px;
     border-radius: 50%;
     border: 2px solid #0F1B2D;
     opacity: .35;
@@ -164,20 +164,13 @@
   .delivery-section { display: none; }
   .delivery-section.active { display: block; }
 
-  /* ── Delivery method option highlight ────────────────────────────────────── */
-  /* :has(:checked) replaced with JS class — not supported Android Chrome < 105 */
+  /* ── Delivery method option (native :has() — no framework needed) ── */
   .delivery-option-label { border: 2px solid transparent; transition: all .2s; }
-  .delivery-option-label.selected { border-color: var(--navy); background: rgba(15,27,45,.05); }
+  .delivery-option-label:has(:checked) { border-color: var(--navy); background: rgba(15,27,45,.05); }
 
   /* ── Input errors ──────────────────────────────────── */
   .field-error { color: #dc2626; font-size: 12px; margin-top: 4px; }
   .input-error { border-color: #fca5a5 !important; background: #fef2f2; }
-
-  /* ── iOS: prevent auto-zoom on input focus (requires font-size >= 16px) ── */
-  .form-control, .form-control:focus { font-size: 16px !important; }
-  @media (min-width: 768px) {
-    .form-control, .form-control:focus { font-size: 14px !important; }
-  }
 
   /* ── Map overlay button (locate me) ───────────────── */
   .map-btn {
@@ -282,7 +275,7 @@
 
         <!-- Map -->
         <div class="position-relative rounded-2xl overflow-hidden border shadow-sm mb-3">
-          <div id="delivery-map" style="height:380px;border-radius:1.25rem;z-index:1;background:#e8edf2;"></div>
+          <div id="delivery-map"></div>
           <!-- Locate me button inside map -->
           <button type="button" id="locate-me-btn" class="map-btn" onclick="locateMe()">
             <svg style="width:.875rem;height:.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -365,7 +358,6 @@
 
         <input type="hidden" name="delivery_lat" id="delivery_lat" value="{{ form_data.delivery_lat|default:'' }}">
         <input type="hidden" name="delivery_lng" id="delivery_lng" value="{{ form_data.delivery_lng|default:'' }}">
-        <input type="hidden" name="delivery_fee" id="delivery_fee" value="{{ form_data.delivery_fee|default:'0' }}">
       </div>
 
       <!-- Step 2b: Bus / parcel -->
@@ -432,7 +424,7 @@
 
     <!-- RIGHT: Order summary ──────────────────────────── -->
     <div class="col-lg-4">
-      <div class="bg-white border rounded-2xl p-3 shadow-sm position-sticky" style="top:calc(5rem + env(safe-area-inset-top));">
+      <div class="bg-white border rounded-2xl p-3 shadow-sm position-sticky" style="top:6rem;">
         <h2 class="fw-bold text-navy small mb-3">🧾 Order Summary</h2>
 
         <div class="d-flex flex-column gap-3 mb-3 pe-1" style="max-height:16rem;overflow-y:auto;">
@@ -464,18 +456,13 @@
           </div>
           <div class="d-flex justify-content-between text-secondary">
             <span>Delivery Fee</span>
-            <span id="summary-fee" class="fw-medium small fst-italic" style="color:#9ca3af">
-              Drop a pin to calculate
-            </span>
+            <span id="summary-fee" class="fw-medium text-navy small text-secondary fst-italic">Set by location</span>
           </div>
           <div id="summary-meta" class="small text-secondary text-end d-none"></div>
           <div class="d-flex justify-content-between font-display fw-bold text-navy pt-2 border-top">
             <span>Total</span>
             <span id="summary-total">GHS {{ cart.total_price|floatformat:2 }}</span>
           </div>
-          <p id="fee-note" class="small text-secondary mb-0 mt-1" style="font-size:.72rem">
-            Total updates when you place your delivery pin 📍
-          </p>
         </div>
 
         <button type="submit" id="place-order-btn"
@@ -571,11 +558,6 @@
     L.marker(PICKUP, { icon: vendorIcon })
       .addTo(map)
       .bindTooltip('📦 Pickup point', { permanent: false, direction: 'top' });
-
-    // Re-measure when browser window resizes (phone rotation, PWA resize)
-    window.addEventListener('resize', function() {
-      setTimeout(function() { if (map) map.invalidateSize(); }, 150);
-    });
 
     // Click to drop pin
     map.on('click', e => placePin(e.latlng.lat, e.latlng.lng, true));
@@ -711,14 +693,10 @@
 
   function calculateFare() {
     if (dropoffLat === null) return;
-    fetch(`/delivery/price/?olat=${PICKUP[0]}&olng=${PICKUP[1]}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
+    fetch(`/delivery/api/price-estimate/?olat=${PICKUP[0]}&olng=${PICKUP[1]}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
       .then(r => r.json())
       .then(data => {
-        if (!data.success) {
-          document.getElementById('summary-fee').innerHTML =
-            '<span class="small text-danger">Unable to calculate — check your pin</span>';
-          return;
-        }
+        if (!data.success) return;
 
         const fee   = parseFloat(data.fee);
         const total = (SUBTOTAL + fee).toFixed(2);
@@ -726,38 +704,24 @@
         const eta   = data.eta_minutes;
         const clock = formatEtaClock(eta);
 
-        // ── Write fee to hidden form field so backend receives it ──────────
-        document.getElementById('delivery_fee').value = fee.toFixed(2);
-
         // Fare card
         document.getElementById('fare-card').classList.remove('d-none');
-        document.getElementById('fare-amount').textContent   = fee.toFixed(2);
-        document.getElementById('fare-distance').textContent = `${dist} km`;
-        document.getElementById('fare-eta').textContent      = eta ? `~${eta} min` : '';
+        document.getElementById('fare-amount').textContent    = data.fee;
+        document.getElementById('fare-distance').textContent  = `${dist} km`;
+        document.getElementById('fare-eta').textContent       = eta ? `~${eta} min` : '';
 
-        // Draw route on map
+        // Draw route on map — the label gets filled in once the route
+        // geometry comes back, so it can show real road distance/ETA.
         drawRoute(dist, clock);
 
-        // ── Summary panel: subtotal + delivery fee = total ─────────────────
-        document.getElementById('summary-fee').innerHTML =
-          `<span class="fw-medium text-navy">GHS ${fee.toFixed(2)}</span>`;
-        document.getElementById('summary-total').textContent =
-          `GHS ${total}`;
-        document.getElementById('summary-total').style.color = '';
-        const feeNote = document.getElementById('fee-note');
-        if (feeNote) feeNote.style.display = 'none';
-
+        // Summary panel
+        document.getElementById('summary-fee').innerHTML = `<span class="fw-medium text-navy">GHS ${data.fee}</span>`;
+        document.getElementById('summary-total').textContent = `GHS ${total}`;
         const meta = document.getElementById('summary-meta');
-        meta.textContent = `${dist} km`
-          + (eta   ? ` · ~${eta} min`       : '')
-          + (clock ? ` · arrives ~${clock}` : '');
+        meta.textContent = `${dist} km` + (eta ? ` · ~${eta} min` : '') + (clock ? ` · arrives ~${clock}` : '');
         meta.classList.remove('d-none');
       })
-      .catch(err => {
-        console.error('Fare calc error:', err);
-        document.getElementById('summary-fee').innerHTML =
-          '<span class="small text-danger">Fee unavailable — move your pin</span>';
-      });
+      .catch(console.error);
   }
 
   // ── ROUTE DRAWING (real road path + animated flow + traveling rider) ──
@@ -952,105 +916,43 @@
     if (choice === 'rider') {
       banner.classList.remove('d-none');
       initMap();
-      // invalidateSize must wait for the browser to repaint the newly
-      // visible section. 60ms is too short — use 300ms + a second call
-      // at 600ms for slow devices. Without this the map draws at 0x0.
-      setTimeout(() => { if (map) map.invalidateSize(); }, 300);
-      setTimeout(() => { if (map) map.invalidateSize(); }, 600);
+      setTimeout(() => { if (map) map.invalidateSize(); }, 60);
+      // Auto-locate when rider tab shown for the first time
+      if (!dropoffMarker) locateMe();
     } else {
       banner.classList.add('d-none');
-      // Reset fee for non-rider methods
-      document.getElementById('delivery_fee').value = '0';
-      document.getElementById('summary-fee').innerHTML = '<span class="fw-medium text-navy">Free</span>';
+      // Reset fee display for non-rider methods
+      document.getElementById('summary-fee').innerHTML = '<span class="small text-secondary fst-italic">Free / N/A</span>';
       document.getElementById('summary-total').textContent = `GHS ${SUBTOTAL.toFixed(2)}`;
       document.getElementById('summary-meta').classList.add('d-none');
-      const fn = document.getElementById('fee-note');
-      if (fn) fn.style.display = 'none';
     }
   }
 
-  function updateOptionHighlight() {
-    document.querySelectorAll('.delivery-option-label').forEach(label => {
-      const radio = label.querySelector('input[type="radio"]');
-      label.classList.toggle('selected', radio && radio.checked);
-    });
-  }
-
   choiceInputs.forEach(input => {
-    input.addEventListener('change', () => {
-      if (input.checked) {
-        showSection(input.value);
-        updateOptionHighlight();
-      }
-    });
+    input.addEventListener('change', () => { if (input.checked) showSection(input.value); });
   });
 
   const initial = document.querySelector('.delivery-choice-input:checked');
   showSection(initial ? initial.value : 'rider');
-  updateOptionHighlight();
 
   // ── FORM VALIDATION ───────────────────────────────────
-  function showFormError(msg) {
-    // Inline banner — no alert() which can be blocked in PWA/WebView
-    setGPSBanner('⚠ ' + msg, 'red');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
   document.getElementById('checkout-form').addEventListener('submit', function(e) {
     const choice = document.querySelector('.delivery-choice-input:checked').value;
     const phone  = document.getElementById('delivery_phone').value.trim();
-
-    if (!phone) {
-      e.preventDefault();
-      document.getElementById('delivery_phone').focus();
-      showFormError('Please enter a contact phone number.');
-      return;
-    }
+    if (!phone) { e.preventDefault(); alert('Please enter a contact phone number.'); return; }
 
     if (choice === 'rider') {
-      const lat     = document.getElementById('delivery_lat').value;
-      const fee     = parseFloat(document.getElementById('delivery_fee').value || '0');
       const address = document.getElementById('delivery_address').value.trim();
       const city    = document.getElementById('delivery_city').value.trim();
-      if (!lat) {
-        e.preventDefault();
-        showFormError('Please drop a delivery pin on the map first.');
-        return;
-      }
-      if (!fee || fee <= 0) {
-        e.preventDefault();
-        showFormError('Delivery fee is still calculating — please wait a moment then try again.');
-        return;
-      }
-      if (!address) {
-        e.preventDefault();
-        document.getElementById('delivery_address').focus();
-        showFormError('Please enter your delivery address.');
-        return;
-      }
-      if (!city) {
-        e.preventDefault();
-        document.getElementById('delivery_city').focus();
-        showFormError('Please enter your city.');
-        return;
-      }
+      if (!address) { e.preventDefault(); alert('Please enter your delivery address.'); return; }
+      if (!city)    { e.preventDefault(); alert('Please enter your city.'); return; }
     }
 
     if (choice === 'parcel') {
       const station = document.querySelector('[name=parcel_bus_station]').value.trim();
       const rPhone  = document.querySelector('[name=parcel_recipient_phone]').value.trim();
-      if (!station) {
-        e.preventDefault();
-        document.querySelector('[name=parcel_bus_station]').focus();
-        showFormError('Please enter the bus station.');
-        return;
-      }
-      if (!rPhone) {
-        e.preventDefault();
-        document.querySelector('[name=parcel_recipient_phone]').focus();
-        showFormError("Please enter the recipient's phone.");
-        return;
-      }
+      if (!station) { e.preventDefault(); alert('Please enter the bus station.'); return; }
+      if (!rPhone)  { e.preventDefault(); alert("Please enter the recipient's phone."); return; }
     }
 
     const btn = document.getElementById('place-order-btn');
