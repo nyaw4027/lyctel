@@ -397,8 +397,15 @@ CSP_SCRIPT_SRC   = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com"
 CSP_STYLE_SRC    = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
                      "cdnjs.cloudflare.com", "fonts.googleapis.com",)
 CSP_FONT_SRC     = ("'self'", "fonts.gstatic.com",)
-CSP_IMG_SRC      = ("'self'", "data:", "blob:", "*.openstreetmap.org",
-                     "res.cloudinary.com", "maps.gstatic.com",)
+CSP_IMG_SRC      = ("'self'", "data:", "blob:",
+                     # OSM tiles: a/b/c.tile.openstreetmap.org (2 levels — needs both rules)
+                     "*.openstreetmap.org",
+                     "*.tile.openstreetmap.org",
+                     # LocationIQ styled map tiles
+                     "*.locationiq.com",
+                     # Cloudinary + Google
+                     "res.cloudinary.com",
+                     "maps.gstatic.com",)
 CSP_CONNECT_SRC  = ("'self'", "wss:", "ws:", "nominatim.openstreetmap.org",
                      "us1.locationiq.com", "api.hubtel.com", "sms.arkesel.com",)
 CSP_FRAME_SRC    = ("'self'",)
