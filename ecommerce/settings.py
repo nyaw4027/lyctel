@@ -228,12 +228,12 @@ if _use_cloudinary:
     }
     STORAGES = {
         'default':    {'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage'},
-        'staticfiles':{'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+        'staticfiles':{'BACKEND': 'ecommerce.storage.LynctelStaticFilesStorage'},
     }
 else:
     STORAGES = {
         'default':    {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
-        'staticfiles':{'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+        'staticfiles':{'BACKEND': 'ecommerce.storage.LynctelStaticFilesStorage'},
     }
 
 MEDIA_URL  = '/media/'

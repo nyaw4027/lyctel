@@ -1,45 +1,6 @@
-﻿@import "base/reset.css";
-@import "base/variables.css";
-@import "base/typography.css";
-@import "base/animations.css";
-
-@import "layout/containers.css";
-@import "layout/grid.css";
-@import "layout/navbar.css";
-@import "layout/sidebar.css";
-@import "layout/footer.css";
-
-@import "components/buttons.css";
-@import "components/cards.css";
-@import "components/forms.css";
-@import "components/alerts.css";
-@import "components/badges.css";
-@import "components/modal.css";
-@import "components/dropdown.css";
-@import "components/tables.css";
-@import "components/loaders.css";
-
-@import "pages/home.css";
-@import "pages/products.css";
-@import "pages/food.css";
-@import "pages/cart.css";
-@import "pages/checkout.css";
-@import "pages/dashboard.css";
-@import "pages/vendors.css";
-@import "pages/rider.css";
-@import "pages/livestream.css";
-@import "pages/accounts.css";
-@import "pages/reviews.css";
-
-@import "chat/chat.css";
-@import "chat/messages.css";
-@import "chat/typing.css";
-
-@import "pwa/install.css";
-@import "pwa/offline.css";
-@import "pwa/notifications.css";
-
-@import "responsive/mobile.css";
-@import "responsive/tablet.css";
-@import "responsive/desktop.css";
-@import "responsive/android.css"; 
+﻿/*
+ * main.css — Lynctel
+ * @import statements removed: the imported files (base/, components/, pages/ etc.)
+ * do not exist in this project. Styles are loaded via Bootstrap 5 CDN in base.html.
+ * Page-specific CSS is loaded via {% block extra_head %} in each template.
+ */
