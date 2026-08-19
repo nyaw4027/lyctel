@@ -22,7 +22,8 @@
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  /* Note: will-change:transform removed — breaks fixed nav on Android */
+  /* GPU layer prevents jank on scroll */
+  will-change: transform;
   transition: transform .15s ease;
 }
 .stream-card:active {
@@ -178,7 +179,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-xl px-3 py-3 py-md-5" style="padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important">
+<div class="container-xl px-3 py-3 py-md-5">
 
   <!-- ── Header ─────────────────────────────────────────────── -->
   <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
@@ -207,24 +208,25 @@
     {% for stream in live_streams %}
     <div class="col">
       <a href="{% url 'livestream:watch' stream.id %}"
-         class="stream-card"
+         class="stream-card" style="position:relative;display:block;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1e293b;text-decoration:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .15s ease;"
          aria-label="{{ stream.vendor.shop_name }} is live: {{ stream.title }}">
 
         <!-- Thumbnail -->
         {% if stream.thumbnail %}
         <img src="{{ stream.thumbnail.url }}"
+             style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;"
              class="stream-thumb"
              alt="{{ stream.title }}"
              loading="lazy"
              decoding="async"/>
         {% else %}
-        <div class="stream-thumb d-flex align-items-center justify-content-center"
-             style="font-size:2.5rem;color:rgba(255,255,255,.3)"
+        <div class="stream-thumb"
+             style="position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:rgba(255,255,255,.3)"
              aria-hidden="true">📺</div>
         {% endif %}
 
         <!-- Overlay -->
-        <div class="stream-overlay" aria-hidden="true"></div>
+        <div class="stream-overlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.2) 45%,transparent 70%);" aria-hidden="true"></div>
 
         <!-- LIVE badge -->
         <div class="live-badge" aria-label="Live">
@@ -238,7 +240,7 @@
         </div>
 
         <!-- Stream info -->
-        <div class="stream-info">
+        <div class="stream-info" style="position:absolute;bottom:0;left:0;right:0;padding:10px;">
           <div class="stream-vendor-row">
             {% if stream.vendor.logo %}
             <img src="{{ stream.vendor.logo.url }}"
@@ -282,45 +284,46 @@
       {% for stream in recent_streams %}
       <div class="col">
         <a href="{% if stream.recording_url %}{% url 'livestream:watch' stream.id %}{% else %}{% url 'livestream:stats' stream.id %}{% endif %}"
-           class="stream-card"
+           class="stream-card" style="position:relative;display:block;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1e293b;text-decoration:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .15s ease;"
            aria-label="{{ stream.vendor.shop_name }}: {{ stream.title }}{% if stream.recording_url %} (Replay available){% endif %}">
 
           <!-- Thumbnail -->
           {% if stream.thumbnail %}
           <img src="{{ stream.thumbnail.url }}"
+               style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;"
                class="stream-thumb"
                alt="{{ stream.title }}"
                loading="lazy"
                decoding="async"/>
           {% else %}
-          <div class="stream-thumb d-flex align-items-center justify-content-center"
-               style="font-size:2rem;background:#f3f4f6;color:#9ca3af"
+          <div class="stream-thumb"
+               style="position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#f3f4f6;color:#9ca3af"
                aria-hidden="true">📺</div>
           {% endif %}
 
           <!-- Overlay -->
-          <div class="stream-overlay" aria-hidden="true"></div>
+          <div class="stream-overlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.2) 45%,transparent 70%);" aria-hidden="true"></div>
 
           <!-- Status badge -->
           {% if stream.recording_url %}
           <div class="stream-status-badge"
-               style="background:#2563eb;color:white">
+               style="position:absolute;top:8px;left:8px;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:999px;display:flex;align-items:center;gap:4px;background:#2563eb;color:white">
             ▶ REPLAY
           </div>
           <!-- Play button hover overlay -->
-          <div class="replay-play" aria-hidden="true">
+          <div class="replay-play" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;" aria-hidden="true">
             <div class="rounded-circle bg-white d-flex align-items-center justify-content-center fw-bold text-navy"
                  style="width:2.5rem;height:2.5rem;opacity:.9">▶</div>
           </div>
           {% else %}
           <div class="stream-status-badge"
-               style="background:rgba(0,0,0,.6);color:rgba(255,255,255,.7)">
+               style="position:absolute;top:8px;left:8px;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:999px;display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.6);color:rgba(255,255,255,.7)">
             ENDED
           </div>
           {% endif %}
 
           <!-- Stream info -->
-          <div class="stream-info">
+          <div class="stream-info" style="position:absolute;bottom:0;left:0;right:0;padding:10px;">
             <p class="stream-vendor-name">{{ stream.vendor.shop_name }}</p>
             <p class="stream-meta">
               👁 {{ stream.peak_viewers|default:stream.total_viewers }} peak
@@ -335,7 +338,6 @@
   </div>
   {% endif %}
 
-  <!-- Bottom spacer: clears mobile nav (64px) + Android home bar -->
-  <div style="height: calc(80px + env(safe-area-inset-bottom))" aria-hidden="true"></div>
+  <div style="height:calc(80px + env(safe-area-inset-bottom))" aria-hidden="true"></div>
 </div>
 {% endblock %}
