@@ -3,10 +3,6 @@
 {% block title %}Checkout — Lynctel{% endblock %}
 
 {% block extra_head %}
-<link rel="preconnect" href="https://us1.locationiq.com" crossorigin>
-<link rel="preconnect" href="https://nominatim.openstreetmap.org" crossorigin>
-<link rel="dns-prefetch" href="https://us1.locationiq.com">
-<link rel="dns-prefetch" href="https://nominatim.openstreetmap.org">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   /* ── Map container ─────────────────────────────────── */
@@ -33,25 +29,47 @@
   }
 
   /* ── Address autocomplete ──────────────────────────── */
+  .search-wrap { position: relative; }
   #address-suggestions {
-    position: absolute; top: 100%; left: 0; right: 0;
+    position: absolute; top: calc(100% + 2px); left: 0; right: 0;
     background: white;
-    border-radius: 0 0 .875rem .875rem;
-    max-height: 220px; overflow-y: auto; z-index: 9999;
-    box-shadow: 0 12px 32px rgba(0,0,0,.12);
+    border-radius: 14px;
+    max-height: 280px; overflow-y: auto; z-index: 9999;
+    box-shadow: 0 8px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08);
     display: none;
     border: 1px solid #e5e7eb;
-    border-top: none;
+    -webkit-overflow-scrolling: touch;
   }
   #address-suggestions.show { display: block; }
   .suggestion-item {
-    padding: 11px 16px; font-size: 13px; cursor: pointer;
+    padding: 11px 14px; font-size: 13px; cursor: pointer;
     border-bottom: 1px solid #f3f4f6;
     display: flex; align-items: flex-start; gap: 10px;
-    transition: background .15s;
+    transition: background .12s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
-  .suggestion-item:hover { background: #f8fafc; }
+  .suggestion-item:hover,
+  .suggestion-item.keyboard-focus { background: #f0f9ff; }
   .suggestion-item:last-child { border-bottom: none; }
+  .sugg-icon { color: #6b7280; margin-top: 1px; flex-shrink: 0; }
+  .sugg-main { font-weight: 600; color: #0F1B2D; line-height: 1.3; }
+  .sugg-sub  { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+  .sugg-loading { padding: 14px 16px; color: #9ca3af; font-size: 13px;
+                   display: flex; align-items: center; gap: 8px; }
+  .sugg-empty { padding: 14px 16px; color: #9ca3af; font-size: 13px; }
+
+  /* Search clear button */
+  #search-clear {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: #e5e7eb; border: none; border-radius: 50%;
+    width: 20px; height: 20px;
+    display: none; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 10px; color: #6b7280;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #search-clear.show { display: flex; }
 
   /* ── GPS banner ────────────────────────────────────── */
   #gps-banner {
@@ -168,15 +186,20 @@
   .delivery-section { display: none; }
   .delivery-section.active { display: block; }
 
-  /* ── Delivery method option (native :has() — no framework needed) ── */
+  /* ── Delivery method option highlight ────────────────────────────────────── */
+  /* :has(:checked) replaced with JS class — not supported Android Chrome < 105 */
   .delivery-option-label { border: 2px solid transparent; transition: all .2s; }
-  .delivery-option-label:has(:checked) { border-color: var(--navy); background: rgba(15,27,45,.05); }
+  .delivery-option-label.selected { border-color: var(--navy); background: rgba(15,27,45,.05); }
 
   /* ── Input errors ──────────────────────────────────── */
   .field-error { color: #dc2626; font-size: 12px; margin-top: 4px; }
   .input-error { border-color: #fca5a5 !important; background: #fef2f2; }
-  .form-control { font-size: 16px !important; }
-  @media(min-width:768px){ .form-control { font-size: 14px !important; } }
+
+  /* ── iOS: prevent auto-zoom on input focus (requires font-size >= 16px) ── */
+  .form-control, .form-control:focus { font-size: 16px !important; }
+  @media (min-width: 768px) {
+    .form-control, .form-control:focus { font-size: 14px !important; }
+  }
 
   /* ── Map overlay button (locate me) ───────────────── */
   .map-btn {
@@ -292,17 +315,25 @@
           </button>
         </div>
 
-        <!-- Address search -->
-        <div class="position-relative mb-3">
+        <!-- Address search with smart autocomplete -->
+        <div class="position-relative mb-3 search-wrap">
           <div class="position-relative">
-            <svg class="position-absolute top-50 translate-middle-y text-secondary" style="left:.875rem;width:1rem;height:1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+            <svg class="position-absolute top-50 translate-middle-y text-secondary"
+                 style="left:.875rem;width:1rem;height:1rem;pointer-events:none"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
             </svg>
-            <input type="text" id="address-search" autocomplete="off"
-                   placeholder="Search your delivery address..."
-                   class="form-control rounded-xl" style="padding-left:2.5rem;background:#f9fafb;"/>
+            <input type="text" id="address-search"
+                   autocomplete="off" autocorrect="off" autocapitalize="off"
+                   spellcheck="false"
+                   placeholder="Type street, area or landmark…"
+                   class="form-control rounded-xl"
+                   style="padding-left:2.5rem;padding-right:2rem;background:#f9fafb;"/>
+            <button type="button" id="search-clear"
+                    aria-label="Clear search">✕</button>
           </div>
-          <div id="address-suggestions"></div>
+          <div id="address-suggestions" role="listbox" aria-label="Address suggestions"></div>
         </div>
 
         <!-- Address fields -->
@@ -431,7 +462,7 @@
 
     <!-- RIGHT: Order summary ──────────────────────────── -->
     <div class="col-lg-4">
-      <div class="bg-white border rounded-2xl p-3 shadow-sm position-sticky" style="top:6rem;">
+      <div class="bg-white border rounded-2xl p-3 shadow-sm position-sticky" style="top:calc(5rem + env(safe-area-inset-top));">
         <h2 class="fw-bold text-navy small mb-3">🧾 Order Summary</h2>
 
         <div class="d-flex flex-column gap-3 mb-3 pe-1" style="max-height:16rem;overflow-y:auto;">
@@ -463,13 +494,18 @@
           </div>
           <div class="d-flex justify-content-between text-secondary">
             <span>Delivery Fee</span>
-            <span id="summary-fee" class="fw-medium text-navy small text-secondary fst-italic">Set by location</span>
+            <span id="summary-fee" class="fw-medium small fst-italic" style="color:#9ca3af">
+              Drop a pin to calculate
+            </span>
           </div>
           <div id="summary-meta" class="small text-secondary text-end d-none"></div>
           <div class="d-flex justify-content-between font-display fw-bold text-navy pt-2 border-top">
             <span>Total</span>
             <span id="summary-total">GHS {{ cart.total_price|floatformat:2 }}</span>
           </div>
+          <p id="fee-note" class="small text-secondary mb-0 mt-1" style="font-size:.72rem">
+            Total updates when you place your delivery pin 📍
+          </p>
         </div>
 
         <button type="submit" id="place-order-btn"
@@ -551,10 +587,20 @@
       ? `https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`
       : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-    L.tileLayer(tileUrl, {
+    const tileLayer = L.tileLayer(tileUrl, {
       maxZoom: 19,
       subdomains: ['a', 'b', 'c'],
-    }).addTo(map);
+      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    });
+    tileLayer.addTo(map);
+
+    // If LocationIQ tiles fail (CSP, quota), fall back to plain OSM
+    tileLayer.on('tileerror', function() {
+      if (LOCATIONIQ_KEY && !tileLayer._osmFallback) {
+        tileLayer._osmFallback = true;
+        tileLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+      }
+    });
 
     // Small attribution bottom-left
     L.control.attribution({ position: 'bottomleft', prefix: false })
@@ -566,12 +612,13 @@
       .addTo(map)
       .bindTooltip('📦 Pickup point', { permanent: false, direction: 'top' });
 
+    // Re-measure when browser window resizes (phone rotation, PWA resize)
+    window.addEventListener('resize', function() {
+      setTimeout(function() { if (map) map.invalidateSize(); }, 150);
+    });
+
     // Click to drop pin
     map.on('click', e => placePin(e.latlng.lat, e.latlng.lng, true));
-
-    // Re-measure on phone rotation and PWA tab-switch
-    window.addEventListener('resize', function() { if (map) map.invalidateSize(); });
-    window.addEventListener('focus',  function() { if (map) map.invalidateSize(); });
 
     // Restore from failed submit
     const savedLat = parseFloat(document.getElementById('delivery_lat').value);
@@ -650,38 +697,95 @@
 
     setGPSBanner('📡 Detecting your location…', 'blue');
 
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
+    // ── Best-of GPS sampling: take multiple readings, keep the most accurate ──
+    // A single GPS reading on mobile can be 50-500m off.
+    // watchPosition() refines over 6 seconds — stops as soon as we hit
+    // < 30m accuracy OR after 6 seconds (whichever comes first).
+    let watchId       = null;
+    let bestPos       = null;
+    let accuracyCircle = null;
+    const MAX_WAIT_MS  = 6000;
+    const TARGET_ACC   = 30;   // metres — stop early if we hit this
 
-        // ── FIX 4: guard every map call ────────────────────
-        if (!map) { resetBtn(); return; }
+    function applyPosition(pos) {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const acc = pos.coords.accuracy;          // metres
 
-        // Show user's blue dot
-        if (userMarker) {
-          userMarker.setLatLng([lat, lng]);
-        } else {
-          userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: -100 })
-            .addTo(map)
-            .bindTooltip('You are here', { direction: 'top' });
+      if (!map) { resetBtn(); return; }
+
+      // Show / update accuracy circle
+      if (accuracyCircle) {
+        accuracyCircle.setLatLng([lat, lng]).setRadius(acc);
+      } else {
+        accuracyCircle = L.circle([lat, lng], {
+          radius: acc, color: '#3b82f6', fillColor: '#3b82f6',
+          fillOpacity: 0.08, weight: 1.5, opacity: 0.4,
+        }).addTo(map);
+      }
+
+      // Show / update user dot
+      if (userMarker) {
+        userMarker.setLatLng([lat, lng]);
+      } else {
+        userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: -100 })
+          .addTo(map)
+          .bindTooltip('You are here', { direction: 'top' });
+      }
+
+      placePin(lat, lng, true);
+      map.setView([lat, lng], acc < 100 ? 17 : acc < 300 ? 15 : 13);
+
+      const accText = acc < 10  ? '< 10m — very precise' :
+                      acc < 50  ? `~${Math.round(acc)}m accurate` :
+                      acc < 150 ? `~${Math.round(acc)}m — drag pin to refine` :
+                                  `~${Math.round(acc)}m — low signal, drag pin`;
+      setGPSBanner(`📍 Located (${accText})`, acc < 100 ? 'green' : 'blue');
+    }
+
+    function stopWatch() {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      resetBtn();
+    }
+
+    // Timeout: stop after MAX_WAIT_MS regardless
+    const gpsTimeout = setTimeout(function() {
+      stopWatch();
+      if (!bestPos) {
+        setGPSBanner('⚠ GPS signal weak — tap map or search your address', 'red');
+      }
+    }, MAX_WAIT_MS);
+
+    setGPSBanner('📡 Locking onto your location…', 'blue');
+
+    watchId = navigator.geolocation.watchPosition(
+      function(pos) {
+        const acc = pos.coords.accuracy;
+        // Keep the most accurate reading
+        if (!bestPos || acc < bestPos.coords.accuracy) {
+          bestPos = pos;
+          applyPosition(pos);
         }
-
-        placePin(lat, lng, true);
-        map.setView([lat, lng], 15);
-        setGPSBanner('📍 Pin placed at your location — drag to adjust', 'green');
-        resetBtn();
+        // Early exit if accurate enough
+        if (acc <= TARGET_ACC) {
+          clearTimeout(gpsTimeout);
+          stopWatch();
+        }
       },
-      err => {
-        resetBtn();
+      function(err) {
+        clearTimeout(gpsTimeout);
+        stopWatch();
         const msgs = {
-          1: '⚠ Location permission denied — please allow location in your browser settings, then try again',
-          2: '⚠ Location signal unavailable — tap the map to set your delivery pin',
-          3: '⚠ Location timed out — tap the map to place your pin manually',
+          1: '⚠ Location permission denied — allow location in browser settings',
+          2: '⚠ Location unavailable — tap map or search your address',
+          3: '⚠ Location timed out — tap map or search your address',
         };
-        setGPSBanner(msgs[err.code] || '⚠ Could not detect location — tap the map', 'red');
+        setGPSBanner(msgs[err.code] || '⚠ Could not detect location', 'red');
       },
-      { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
     );
   }
   window.locateMe = locateMe;
@@ -707,7 +811,11 @@
     fetch(`/delivery/price/?olat=${PICKUP[0]}&olng=${PICKUP[1]}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
       .then(r => r.json())
       .then(data => {
-        if (!data.success) return;
+        if (!data.success) {
+          document.getElementById('summary-fee').innerHTML =
+            '<span class="small text-danger">Unable to calculate — check your pin</span>';
+          return;
+        }
 
         const fee   = parseFloat(data.fee);
         const total = (SUBTOTAL + fee).toFixed(2);
@@ -715,27 +823,38 @@
         const eta   = data.eta_minutes;
         const clock = formatEtaClock(eta);
 
-        // Write fee to hidden field so backend receives it
+        // ── Write fee to hidden form field so backend receives it ──────────
         document.getElementById('delivery_fee').value = fee.toFixed(2);
 
         // Fare card
         document.getElementById('fare-card').classList.remove('d-none');
-        document.getElementById('fare-amount').textContent    = data.fee;
-        document.getElementById('fare-distance').textContent  = `${dist} km`;
-        document.getElementById('fare-eta').textContent       = eta ? `~${eta} min` : '';
+        document.getElementById('fare-amount').textContent   = fee.toFixed(2);
+        document.getElementById('fare-distance').textContent = `${dist} km`;
+        document.getElementById('fare-eta').textContent      = eta ? `~${eta} min` : '';
 
-        // Draw route on map — the label gets filled in once the route
-        // geometry comes back, so it can show real road distance/ETA.
+        // Draw route on map
         drawRoute(dist, clock);
 
-        // Summary panel
-        document.getElementById('summary-fee').innerHTML = `<span class="fw-medium text-navy">GHS ${data.fee}</span>`;
-        document.getElementById('summary-total').textContent = `GHS ${total}`;
+        // ── Summary panel: subtotal + delivery fee = total ─────────────────
+        document.getElementById('summary-fee').innerHTML =
+          `<span class="fw-medium text-navy">GHS ${fee.toFixed(2)}</span>`;
+        document.getElementById('summary-total').textContent =
+          `GHS ${total}`;
+        document.getElementById('summary-total').style.color = '';
+        const feeNote = document.getElementById('fee-note');
+        if (feeNote) feeNote.style.display = 'none';
+
         const meta = document.getElementById('summary-meta');
-        meta.textContent = `${dist} km` + (eta ? ` · ~${eta} min` : '') + (clock ? ` · arrives ~${clock}` : '');
+        meta.textContent = `${dist} km`
+          + (eta   ? ` · ~${eta} min`       : '')
+          + (clock ? ` · arrives ~${clock}` : '');
         meta.classList.remove('d-none');
       })
-      .catch(console.error);
+      .catch(err => {
+        console.error('Fare calc error:', err);
+        document.getElementById('summary-fee').innerHTML =
+          '<span class="small text-danger">Fee unavailable — move your pin</span>';
+      });
   }
 
   // ── ROUTE DRAWING (real road path + animated flow + traveling rider) ──
@@ -846,89 +965,239 @@
 
   // ── REVERSE GEOCODE ───────────────────────────────────
   function reverseGeocode(lat, lng) {
+    // Always reverse-geocode — use LocationIQ if key set, else Nominatim (free)
     clearTimeout(geocodeTimer);
     geocodeTimer = setTimeout(function() {
+      // Show loading hint in address field
       const addrField = document.getElementById('delivery_address');
       const cityField = document.getElementById('delivery_city');
-      addrField.placeholder = 'Detecting address…';
+      if (!addrField.value) addrField.placeholder = 'Detecting address…';
 
-      var url = LOCATIONIQ_KEY
-        ? ('https://us1.locationiq.com/v1/reverse?key=' + LOCATIONIQ_KEY +
-           '&lat=' + lat + '&lon=' + lng + '&format=json&addressdetails=1')
-        : ('https://nominatim.openstreetmap.org/reverse?lat=' + lat +
-           '&lon=' + lng + '&format=json&addressdetails=1');
+      const url = LOCATIONIQ_KEY
+        ? `https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`
+        : `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
 
       fetch(url, { headers: { 'Accept-Language': 'en' } })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-          if (d.display_name) {
-            addrField.value = d.display_name;
+          // ── Fill delivery address ────────────────────────────────
+          const fullAddress = d.display_name || '';
+          if (fullAddress) {
+            addrField.value = fullAddress;
             addrField.placeholder = 'House number, street, area';
-            addrField.style.background = '#f0fdf4';
-            setTimeout(function() { addrField.style.background = ''; }, 800);
           }
-          var a = d.address || {};
-          var city = a.city || a.town || a.suburb || a.county || a.region || '';
+
+          // ── Fill city from address components ────────────────────
+          const a = d.address || {};
+          const city = a.city || a.town || a.suburb || a.county
+                     || a.state_district || a.region || '';
           if (city) cityField.value = city;
+
+          // ── Visual flash to confirm the field was filled ──────────
+          addrField.style.background = '#f0fdf4';
+          setTimeout(function() { addrField.style.background = ''; }, 800);
         })
         .catch(function() {
-          // If primary failed and we used LocationIQ, try Nominatim
-          if (LOCATIONIQ_KEY) {
-            fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat +
-                  '&lon=' + lng + '&format=json&addressdetails=1',
-                  { headers: { 'Accept-Language': 'en' } })
-              .then(function(r) { return r.json(); })
-              .then(function(d) {
-                if (d.display_name) addrField.value = d.display_name;
-                var a = d.address || {};
-                var city = a.city || a.town || a.suburb || a.county || '';
-                if (city) cityField.value = city;
-              }).catch(function() {});
-          }
           addrField.placeholder = 'House number, street, area';
         });
-    }, 150);
+    }, 500);
   }
 
-  // ── ADDRESS AUTOCOMPLETE ──────────────────────────────
-  const searchInput = document.getElementById('address-search');
-  const suggestBox  = document.getElementById('address-suggestions');
-  let searchTimer   = null;
+  // ── SMART ADDRESS AUTOCOMPLETE ────────────────────────
+  // Primary: LocationIQ autocomplete (rich, Ghana-focused)
+  // Fallback: Nominatim/OSM search (free, no key needed)
+  // Both return results — best effort, no silent failures.
 
+  const searchInput    = document.getElementById('address-search');
+  const suggestBox     = document.getElementById('address-suggestions');
+  const searchClearBtn = document.getElementById('search-clear');
+  let   searchTimer    = null;
+  let   kbIndex        = -1;  // keyboard navigation index
+
+  // Clear button
+  searchInput.addEventListener('input', function() {
+    searchClearBtn.classList.toggle('show', this.value.length > 0);
+  });
+  searchClearBtn.addEventListener('click', function() {
+    searchInput.value = '';
+    searchClearBtn.classList.remove('show');
+    suggestBox.classList.remove('show');
+    searchInput.focus();
+  });
+
+  // ── Build rich suggestion HTML ─────────────────────────
+  function buildSuggestions(results) {
+    return results.map(function(r, i) {
+      // Parse into main line + sub line
+      const parts = (r.display_name || r.name || '').split(', ');
+      const main  = parts.slice(0, 2).join(', ');
+      const sub   = parts.slice(2).join(', ');
+      const lat   = r.lat || (r.geometry && r.geometry.coordinates[1]);
+      const lon   = r.lon || r.lng || (r.geometry && r.geometry.coordinates[0]);
+      return (
+        `<div class="suggestion-item" role="option"
+              data-lat="${lat}" data-lon="${lon}"
+              data-name="${(r.display_name||main).replace(/"/g,'&quot;')}">
+           <svg class="sugg-icon" style="width:14px;height:14px;margin-top:3px" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                   d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+           </svg>
+           <div>
+             <div class="sugg-main">${main}</div>
+             ${sub ? `<div class="sugg-sub">${sub}</div>` : ''}
+           </div>
+         </div>`
+      );
+    }).join('');
+  }
+
+  // ── Fetch from LocationIQ autocomplete ────────────────
+  function searchLocationIQ(q) {
+    return fetch(
+      `https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}` +
+      `&q=${encodeURIComponent(q)}&countrycodes=gh&limit=7&format=json&` +
+      `dedupe=1&normalizecity=1`
+    ).then(function(r) { return r.json(); })
+     .then(function(data) {
+       if (!Array.isArray(data) || !data.length) return [];
+       return data;
+     });
+  }
+
+  // ── Fetch from Nominatim (free OSM geocoder, no key) ──
+  function searchNominatim(q) {
+    return fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ', Ghana')}` +
+      `&format=json&addressdetails=1&limit=7&countrycodes=gh`,
+      { headers: { 'Accept-Language': 'en' } }
+    ).then(function(r) { return r.json(); })
+     .then(function(data) {
+       if (!Array.isArray(data)) return [];
+       return data;
+     });
+  }
+
+  // ── Main search handler ────────────────────────────────
   searchInput.addEventListener('input', function() {
     const q = this.value.trim();
     clearTimeout(searchTimer);
-    if (q.length < 3 || !LOCATIONIQ_KEY) { suggestBox.classList.remove('show'); return; }
+    kbIndex = -1;
 
-    searchTimer = setTimeout(() => {
-      fetch(`https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&countrycodes=gh&limit=6&format=json`)
-        .then(r => r.json())
-        .then(results => {
-          if (!Array.isArray(results) || !results.length) { suggestBox.classList.remove('show'); return; }
-          suggestBox.innerHTML = results.map(r =>
-            `<div class="suggestion-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.replace(/"/g,'&quot;')}">
-               <svg style="width:1rem;height:1rem;flex-shrink:0;margin-top:.125rem;" class="text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
-               <span>${r.display_name}</span>
-             </div>`
-          ).join('');
+    if (q.length < 2) {
+      suggestBox.classList.remove('show');
+      return;
+    }
+
+    // Show loading immediately
+    suggestBox.innerHTML =
+      `<div class="sugg-loading">
+         <svg style="width:14px;height:14px;animation:spin 1s linear infinite;flex-shrink:0"
+              fill="none" viewBox="0 0 24 24">
+           <circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+           <path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+         </svg>
+         Searching…
+       </div>`;
+    suggestBox.classList.add('show');
+
+    searchTimer = setTimeout(function() {
+      const search = LOCATIONIQ_KEY ? searchLocationIQ(q) : searchNominatim(q);
+
+      search
+        .then(function(results) {
+          if (!results.length) {
+            // If LocationIQ returned nothing, try Nominatim as backup
+            return LOCATIONIQ_KEY ? searchNominatim(q) : Promise.resolve([]);
+          }
+          return results;
+        })
+        .then(function(results) {
+          if (!results.length) {
+            suggestBox.innerHTML =
+              `<div class="sugg-empty">No addresses found for "<strong>${q}</strong>" in Ghana</div>`;
+            suggestBox.classList.add('show');
+            return;
+          }
+          suggestBox.innerHTML = buildSuggestions(results);
           suggestBox.classList.add('show');
-        }).catch(() => {});
-    }, 350);
+          kbIndex = -1;
+        })
+        .catch(function() {
+          // Both APIs failed — try the other one
+          const fallback = LOCATIONIQ_KEY ? searchNominatim(q) : Promise.resolve([]);
+          fallback.then(function(results) {
+            if (!results.length) { suggestBox.classList.remove('show'); return; }
+            suggestBox.innerHTML = buildSuggestions(results);
+            suggestBox.classList.add('show');
+          }).catch(function() { suggestBox.classList.remove('show'); });
+        });
+    }, 280);   // 280ms debounce — fast enough to feel live
   });
 
-  suggestBox.addEventListener('click', e => {
-    const item = e.target.closest('.suggestion-item');
+  // ── Select a suggestion ────────────────────────────────
+  function selectSuggestion(item) {
     if (!item) return;
-    const lat = parseFloat(item.dataset.lat);
-    const lon = parseFloat(item.dataset.lon);
+    const lat  = parseFloat(item.dataset.lat);
+    const lon  = parseFloat(item.dataset.lon);
+    const name = item.dataset.name;
+
     searchInput.value = '';
-    document.getElementById('delivery_address').value = item.dataset.name;
+    searchClearBtn.classList.remove('show');
+    document.getElementById('delivery_address').value = name;
     suggestBox.classList.remove('show');
+
+    // Parse city from the suggestion text
+    const parts = name.split(', ');
+    if (parts.length >= 2) {
+      const city = parts[parts.length - 2];
+      if (city && city !== 'Ghana') {
+        document.getElementById('delivery_city').value = city;
+      }
+    }
+
+    // Ensure map is initialised before placing the pin
+    if (!map) { initMap(); setTimeout(function() { selectSuggestion(item); }, 200); return; }
     placePin(lat, lon, true);
-    map.setView([lat, lon], 15);
+    map.setView([lat, lon], 16);
+  }
+
+  // Click/tap on suggestion
+  suggestBox.addEventListener('click', function(e) {
+    const item = e.target.closest('.suggestion-item');
+    selectSuggestion(item);
   });
 
-  document.addEventListener('click', e => {
+  // ── Keyboard navigation ────────────────────────────────
+  searchInput.addEventListener('keydown', function(e) {
+    const items = suggestBox.querySelectorAll('.suggestion-item');
+    if (!items.length || !suggestBox.classList.contains('show')) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      kbIndex = Math.min(kbIndex + 1, items.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      kbIndex = Math.max(kbIndex - 1, -1);
+    } else if (e.key === 'Enter' && kbIndex >= 0) {
+      e.preventDefault();
+      selectSuggestion(items[kbIndex]);
+      return;
+    } else if (e.key === 'Escape') {
+      suggestBox.classList.remove('show');
+      kbIndex = -1;
+      return;
+    }
+
+    // Highlight focused item
+    items.forEach(function(el, i) {
+      el.classList.toggle('keyboard-focus', i === kbIndex);
+    });
+    if (kbIndex >= 0) items[kbIndex].scrollIntoView({ block: 'nearest' });
+  });
+
+  // Close on outside click/tap
+  document.addEventListener('click', function(e) {
     if (!searchInput.contains(e.target) && !suggestBox.contains(e.target)) {
       suggestBox.classList.remove('show');
     }
@@ -956,62 +1225,110 @@
     const banner = document.getElementById('gps-banner');
     if (choice === 'rider') {
       banner.classList.remove('d-none');
-      // Use double-rAF: guaranteed to run AFTER the browser has painted
-      // the now-visible section. setTimeout(80ms) is not reliable across
-      // devices; rAF fires in the next paint frame, rAF(rAF()) in the one after.
-      requestAnimationFrame(function() {
-        requestAnimationFrame(function() {
-          initMap();
-          if (map) map.invalidateSize();
-          // Second call for slow devices
-          setTimeout(function() { if (map) map.invalidateSize(); }, 400);
-        });
-      });
-      // GPS triggered only by user tapping 'My Location' button
+      // CRITICAL: delay initMap so the browser finishes painting the
+      // now-visible section BEFORE Leaflet measures the container.
+      // If initMap() runs while display:none is still transitioning,
+      // Leaflet measures 0×0 and the map stays permanently blank.
+      setTimeout(function() {
+        initMap();
+        // Extra invalidateSize calls for slow/low-end Android devices
+        setTimeout(function() { if (map) map.invalidateSize(); }, 200);
+        setTimeout(function() { if (map) map.invalidateSize(); }, 600);
+      }, 80);
     } else {
       banner.classList.add('d-none');
-      // Reset fee display for non-rider methods
-      document.getElementById('summary-fee').innerHTML = '<span class="small text-secondary fst-italic">Free / N/A</span>';
+      // Reset fee for non-rider methods
+      document.getElementById('delivery_fee').value = '0';
+      document.getElementById('summary-fee').innerHTML = '<span class="fw-medium text-navy">Free</span>';
       document.getElementById('summary-total').textContent = `GHS ${SUBTOTAL.toFixed(2)}`;
       document.getElementById('summary-meta').classList.add('d-none');
+      const fn = document.getElementById('fee-note');
+      if (fn) fn.style.display = 'none';
     }
   }
 
+  function updateOptionHighlight() {
+    document.querySelectorAll('.delivery-option-label').forEach(label => {
+      const radio = label.querySelector('input[type="radio"]');
+      label.classList.toggle('selected', radio && radio.checked);
+    });
+  }
+
   choiceInputs.forEach(input => {
-    input.addEventListener('change', () => { if (input.checked) showSection(input.value); });
+    input.addEventListener('change', () => {
+      if (input.checked) {
+        showSection(input.value);
+        updateOptionHighlight();
+      }
+    });
   });
 
   const initial = document.querySelector('.delivery-choice-input:checked');
   showSection(initial ? initial.value : 'rider');
+  updateOptionHighlight();
 
   // ── FORM VALIDATION ───────────────────────────────────
+  function showFormError(msg) {
+    // Inline banner — no alert() which can be blocked in PWA/WebView
+    setGPSBanner('⚠ ' + msg, 'red');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   document.getElementById('checkout-form').addEventListener('submit', function(e) {
     const choice = document.querySelector('.delivery-choice-input:checked').value;
     const phone  = document.getElementById('delivery_phone').value.trim();
-    if (!phone) { e.preventDefault();
-      setGPSBanner('⚠ Please enter a contact phone number.', 'red');
-      return; }
+
+    if (!phone) {
+      e.preventDefault();
+      document.getElementById('delivery_phone').focus();
+      showFormError('Please enter a contact phone number.');
+      return;
+    }
 
     if (choice === 'rider') {
+      const lat     = document.getElementById('delivery_lat').value;
+      const fee     = parseFloat(document.getElementById('delivery_fee').value || '0');
       const address = document.getElementById('delivery_address').value.trim();
       const city    = document.getElementById('delivery_city').value.trim();
-      if (!address) { e.preventDefault();
-      setGPSBanner('⚠ Please enter your delivery address.', 'red');
-      return; }
-      if (!city)    { e.preventDefault();
-      setGPSBanner('⚠ Please enter your city.', 'red');
-      return; }
+      if (!lat) {
+        e.preventDefault();
+        showFormError('Please drop a delivery pin on the map first.');
+        return;
+      }
+      if (!fee || fee <= 0) {
+        e.preventDefault();
+        showFormError('Delivery fee is still calculating — please wait a moment then try again.');
+        return;
+      }
+      if (!address) {
+        e.preventDefault();
+        document.getElementById('delivery_address').focus();
+        showFormError('Please enter your delivery address.');
+        return;
+      }
+      if (!city) {
+        e.preventDefault();
+        document.getElementById('delivery_city').focus();
+        showFormError('Please enter your city.');
+        return;
+      }
     }
 
     if (choice === 'parcel') {
       const station = document.querySelector('[name=parcel_bus_station]').value.trim();
       const rPhone  = document.querySelector('[name=parcel_recipient_phone]').value.trim();
-      if (!station) { e.preventDefault();
-      setGPSBanner('⚠ Please enter the bus station.', 'red');
-      return; }
-      if (!rPhone)  { e.preventDefault();
-      setGPSBanner('⚠ Please enter the recipient's phone.', 'red');
-      return; }
+      if (!station) {
+        e.preventDefault();
+        document.querySelector('[name=parcel_bus_station]').focus();
+        showFormError('Please enter the bus station.');
+        return;
+      }
+      if (!rPhone) {
+        e.preventDefault();
+        document.querySelector('[name=parcel_recipient_phone]').focus();
+        showFormError("Please enter the recipient's phone.");
+        return;
+      }
     }
 
     const btn = document.getElementById('place-order-btn');
