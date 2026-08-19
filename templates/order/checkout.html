@@ -365,6 +365,7 @@
 
         <input type="hidden" name="delivery_lat" id="delivery_lat" value="{{ form_data.delivery_lat|default:'' }}">
         <input type="hidden" name="delivery_lng" id="delivery_lng" value="{{ form_data.delivery_lng|default:'' }}">
+        <input type="hidden" name="delivery_fee" id="delivery_fee" value="{{ form_data.delivery_fee|default:'0' }}">
       </div>
 
       <!-- Step 2b: Bus / parcel -->
@@ -463,13 +464,18 @@
           </div>
           <div class="d-flex justify-content-between text-secondary">
             <span>Delivery Fee</span>
-            <span id="summary-fee" class="fw-medium text-navy small text-secondary fst-italic">Set by location</span>
+            <span id="summary-fee" class="fw-medium small fst-italic" style="color:#9ca3af">
+              Drop a pin to calculate
+            </span>
           </div>
           <div id="summary-meta" class="small text-secondary text-end d-none"></div>
           <div class="d-flex justify-content-between font-display fw-bold text-navy pt-2 border-top">
             <span>Total</span>
             <span id="summary-total">GHS {{ cart.total_price|floatformat:2 }}</span>
           </div>
+          <p id="fee-note" class="small text-secondary mb-0 mt-1" style="font-size:.72rem">
+            Total updates when you place your delivery pin 📍
+          </p>
         </div>
 
         <button type="submit" id="place-order-btn"
@@ -700,10 +706,14 @@
 
   function calculateFare() {
     if (dropoffLat === null) return;
-    fetch(`/delivery/api/price-estimate/?olat=${PICKUP[0]}&olng=${PICKUP[1]}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
+    fetch(`/delivery/price/?olat=${PICKUP[0]}&olng=${PICKUP[1]}&dlat=${dropoffLat}&dlng=${dropoffLng}`)
       .then(r => r.json())
       .then(data => {
-        if (!data.success) return;
+        if (!data.success) {
+          document.getElementById('summary-fee').innerHTML =
+            '<span class="small text-danger">Unable to calculate — check your pin</span>';
+          return;
+        }
 
         const fee   = parseFloat(data.fee);
         const total = (SUBTOTAL + fee).toFixed(2);
@@ -711,24 +721,38 @@
         const eta   = data.eta_minutes;
         const clock = formatEtaClock(eta);
 
+        // ── Write fee to hidden form field so backend receives it ──────────
+        document.getElementById('delivery_fee').value = fee.toFixed(2);
+
         // Fare card
         document.getElementById('fare-card').classList.remove('d-none');
-        document.getElementById('fare-amount').textContent    = data.fee;
-        document.getElementById('fare-distance').textContent  = `${dist} km`;
-        document.getElementById('fare-eta').textContent       = eta ? `~${eta} min` : '';
+        document.getElementById('fare-amount').textContent   = fee.toFixed(2);
+        document.getElementById('fare-distance').textContent = `${dist} km`;
+        document.getElementById('fare-eta').textContent      = eta ? `~${eta} min` : '';
 
-        // Draw route on map — the label gets filled in once the route
-        // geometry comes back, so it can show real road distance/ETA.
+        // Draw route on map
         drawRoute(dist, clock);
 
-        // Summary panel
-        document.getElementById('summary-fee').innerHTML = `<span class="fw-medium text-navy">GHS ${data.fee}</span>`;
-        document.getElementById('summary-total').textContent = `GHS ${total}`;
+        // ── Summary panel: subtotal + delivery fee = total ─────────────────
+        document.getElementById('summary-fee').innerHTML =
+          `<span class="fw-medium text-navy">GHS ${fee.toFixed(2)}</span>`;
+        document.getElementById('summary-total').textContent =
+          `GHS ${total}`;
+        document.getElementById('summary-total').style.color = '';
+        const feeNote = document.getElementById('fee-note');
+        if (feeNote) feeNote.style.display = 'none';
+
         const meta = document.getElementById('summary-meta');
-        meta.textContent = `${dist} km` + (eta ? ` · ~${eta} min` : '') + (clock ? ` · arrives ~${clock}` : '');
+        meta.textContent = `${dist} km`
+          + (eta   ? ` · ~${eta} min`       : '')
+          + (clock ? ` · arrives ~${clock}` : '');
         meta.classList.remove('d-none');
       })
-      .catch(console.error);
+      .catch(err => {
+        console.error('Fare calc error:', err);
+        document.getElementById('summary-fee').innerHTML =
+          '<span class="small text-danger">Fee unavailable — move your pin</span>';
+      });
   }
 
   // ── ROUTE DRAWING (real road path + animated flow + traveling rider) ──
@@ -928,10 +952,13 @@
       // The 'My Location' button triggers locateMe() manually.
     } else {
       banner.classList.add('d-none');
-      // Reset fee display for non-rider methods
-      document.getElementById('summary-fee').innerHTML = '<span class="small text-secondary fst-italic">Free / N/A</span>';
+      // Reset fee for non-rider methods
+      document.getElementById('delivery_fee').value = '0';
+      document.getElementById('summary-fee').innerHTML = '<span class="fw-medium text-navy">Free</span>';
       document.getElementById('summary-total').textContent = `GHS ${SUBTOTAL.toFixed(2)}`;
       document.getElementById('summary-meta').classList.add('d-none');
+      const fn = document.getElementById('fee-note');
+      if (fn) fn.style.display = 'none';
     }
   }
 
@@ -975,11 +1002,17 @@
 
     if (choice === 'rider') {
       const lat     = document.getElementById('delivery_lat').value;
+      const fee     = parseFloat(document.getElementById('delivery_fee').value || '0');
       const address = document.getElementById('delivery_address').value.trim();
       const city    = document.getElementById('delivery_city').value.trim();
       if (!lat) {
         e.preventDefault();
-        showFormError('Please drop a delivery pin on the map.');
+        showFormError('Please drop a delivery pin on the map first.');
+        return;
+      }
+      if (!fee || fee <= 0) {
+        e.preventDefault();
+        showFormError('Delivery fee is still calculating — please wait a moment then try again.');
         return;
       }
       if (!address) {

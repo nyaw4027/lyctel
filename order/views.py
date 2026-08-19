@@ -76,11 +76,13 @@ def checkout(request):
                 errors["parcel_recipient_phone"] = "Enter the recipient phone number."
 
         if errors:
+            from django.conf import settings as _s
             return render(request, "order/checkout.html", {
-                "cart": cart,
-                "errors": errors,
-                "cart_count": cart.total_items,
-                "form_data": request.POST,
+                "cart":           cart,
+                "errors":         errors,
+                "cart_count":     cart.total_items,
+                "form_data":      request.POST,
+                "locationiq_key": getattr(_s, 'LOCATIONIQ_API_KEY', ''),
             })
 
         # Cart subtotal
@@ -96,17 +98,23 @@ def checkout(request):
             try:
                 delivery_lat = float(dlat_raw)
                 delivery_lng = float(dlng_raw)
-                # No per-vendor pickup point is chosen at cart-checkout time
-                # (a cart can span multiple vendors), so we estimate from a
-                # fixed city-center pickup, same fallback used by the
-                # estimate_delivery_fee AJAX endpoint below.
+                # Server-side recalculation — never trust the client value.
+                # This prevents fee manipulation from browser devtools.
                 distance_km, fee = estimate_fee_for_request(
                     ACCRA_CENTER[0], ACCRA_CENTER[1], delivery_lat, delivery_lng
                 )
                 delivery_fee = Decimal(str(fee))
             except (TypeError, ValueError):
-                delivery_lat = delivery_lng = distance_km = None
-                delivery_fee = Decimal("0.00")
+                # Service unavailable — fall back to the frontend-calculated
+                # fee that was posted in the hidden delivery_fee field.
+                submitted_fee = request.POST.get("delivery_fee", "0").strip()
+                try:
+                    delivery_fee = max(Decimal("0.00"), Decimal(submitted_fee))
+                except Exception:
+                    delivery_fee = Decimal("0.00")
+                delivery_lat = float(dlat_raw) if dlat_raw else None
+                delivery_lng = float(dlng_raw) if dlng_raw else None
+                distance_km  = None
 
         total = subtotal + delivery_fee
 
@@ -130,10 +138,13 @@ def checkout(request):
 
         return redirect("payment:page")
 
+    from django.conf import settings as _s
     return render(request, "order/checkout.html", {
-        "cart": cart,
-        "cart_count": cart.total_items,
-        "user": request.user,
+        "cart":           cart,
+        "cart_count":     cart.total_items,
+        "user":           request.user,
+        # Required by checkout map — used for LocationIQ tiles + geocoding
+        "locationiq_key": getattr(_s, 'LOCATIONIQ_API_KEY', ''),
     })
 
 
@@ -348,43 +359,55 @@ def create_delivery_for_order(order):
 @login_required
 def estimate_delivery_fee(request):
     """
-    AJAX endpoint called from checkout when customer shares their location.
-    POST body: { dropoff_lat, dropoff_lng, vendor_id (optional) }
-    Returns: { distance_km, delivery_fee, fee_display }
+    AJAX endpoint — supports both:
+      GET  /order/estimate-fee/?olat=...&olng=...&dlat=...&dlng=...
+      POST /order/estimate-fee/  { dropoff_lat, dropoff_lng, vendor_id }
+
+    checkout.html calls GET /delivery/price/ which maps to
+    delivery.views.price_estimate — keep this POST endpoint for
+    programmatic use from other views.
     """
     try:
-        data        = json.loads(request.body)
-        dropoff_lat = float(data.get('dropoff_lat', 0))
-        dropoff_lng = float(data.get('dropoff_lng', 0))
-        vendor_id   = data.get('vendor_id')
+        if request.method == 'GET':
+            olat       = float(request.GET.get('olat', ACCRA_CENTER[0]))
+            olng       = float(request.GET.get('olng', ACCRA_CENTER[1]))
+            dlat       = float(request.GET.get('dlat', 0))
+            dlng       = float(request.GET.get('dlng', 0))
+            vendor_id  = request.GET.get('vendor_id')
+        else:
+            data      = json.loads(request.body)
+            dlat      = float(data.get('dropoff_lat', 0))
+            dlng      = float(data.get('dropoff_lng', 0))
+            olat      = ACCRA_CENTER[0]
+            olng      = ACCRA_CENTER[1]
+            vendor_id = data.get('vendor_id')
 
-        if not dropoff_lat or not dropoff_lng:
-            return JsonResponse({'error': 'Missing coordinates.'}, status=400)
+        if not dlat or not dlng:
+            return JsonResponse({'success': False, 'error': 'Missing coordinates.'}, status=400)
 
-        # Get pickup coords from vendor if provided
-        pickup_lat = pickup_lng = None
+        # Use vendor pickup point if provided
         if vendor_id:
             try:
                 from vendors.models import Vendor
-                vendor     = Vendor.objects.get(pk=vendor_id)
-                pickup_lat = getattr(vendor, 'latitude',  None)
-                pickup_lng = getattr(vendor, 'longitude', None)
+                v    = Vendor.objects.get(pk=vendor_id)
+                olat = getattr(v, 'latitude',  None) or olat
+                olng = getattr(v, 'longitude', None) or olng
             except Exception:
                 pass
 
-        pickup_lat = pickup_lat or ACCRA_CENTER[0]
-        pickup_lng = pickup_lng or ACCRA_CENTER[1]
-
-        distance_km, fee = estimate_fee_for_request(
-            pickup_lat, pickup_lng, dropoff_lat, dropoff_lng
-        )
+        distance_km, fee = estimate_fee_for_request(olat, olng, dlat, dlng)
+        eta_minutes = max(10, int(float(distance_km) * 3))
 
         return JsonResponse({
+            'success':      True,
+            'fee':          str(fee),
             'distance_km':  distance_km,
+            'eta_minutes':  eta_minutes,
+            # Legacy keys kept for backward compat
             'delivery_fee': float(fee),
             'fee_display':  f'GHS {fee}',
             'distance_display': f'{distance_km} km',
         })
 
     except (ValueError, TypeError) as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
