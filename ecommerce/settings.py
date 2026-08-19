@@ -310,27 +310,31 @@ CORS_ALLOW_ALL_ORIGINS  = False
 CORS_ALLOWED_ORIGINS    = ['https://lynctel.up.railway.app']
 CORS_ALLOW_CREDENTIALS  = True
 
-# ── Content Security Policy ────────────────────────────────────────────────────
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC  = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
-                    "cdnjs.cloudflare.com", "maps.googleapis.com",)
-CSP_STYLE_SRC   = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
-                    "cdnjs.cloudflare.com", "fonts.googleapis.com",)
-CSP_FONT_SRC    = ("'self'", "fonts.gstatic.com",)
-CSP_IMG_SRC     = ("'self'", "data:", "blob:",
-                    "*.openstreetmap.org",
-                    "*.tile.openstreetmap.org",
-                    "*.locationiq.com",
-                    "res.cloudinary.com",
-                    "maps.gstatic.com",)
-CSP_CONNECT_SRC = ("'self'", "wss:", "ws:",
-                    "nominatim.openstreetmap.org",
-                    "us1.locationiq.com",
-                    "api.locationiq.com",
-                    "api.hubtel.com",
-                    "sms.arkesel.com",)
-CSP_FRAME_SRC   = ("'self'",)
-CSP_REPORT_ONLY = False
+# ── Content Security Policy (django-csp >= 4.0 format) ────────────────────────
+CONTENT_SECURITY_POLICY = {
+    'DIRECTIVES': {
+        'default-src': ("'self'",),
+        'script-src':  ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
+                        "cdnjs.cloudflare.com", "maps.googleapis.com"),
+        'style-src':   ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
+                        "cdnjs.cloudflare.com", "fonts.googleapis.com"),
+        'font-src':    ("'self'", "fonts.gstatic.com"),
+        'img-src':     ("'self'", "data:", "blob:",
+                        "*.openstreetmap.org",
+                        "*.tile.openstreetmap.org",
+                        "*.locationiq.com",
+                        "res.cloudinary.com",
+                        "maps.gstatic.com"),
+        'connect-src': ("'self'", "wss:", "ws:",
+                        "nominatim.openstreetmap.org",
+                        "us1.locationiq.com",
+                        "api.locationiq.com",
+                        "api.hubtel.com",
+                        "sms.arkesel.com"),
+        'frame-src':   ("'self'",),
+    },
+    'REPORT_ONLY': False,
+}
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 LOGGING = {
