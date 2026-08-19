@@ -1,6 +1,6 @@
 /*
  * android.css — Lynctel cross-device fixes
- * Import last in main.css: @import "responsive/android.css";
+ * Load order: include this file after your main stylesheet
  */
 
 /* ── 1. Prevent horizontal scroll ───────────────────────── */
