@@ -222,7 +222,7 @@
   {% if categories %}
   <div class="mb-4">
     <div class="d-flex gap-2 overflow-auto pb-3 scrollbar-hide">
-      <a href="{% url 'vendors:shop' vendor.slug %}"
+      <a href="{% url 'vendors:detail' vendor.slug %}"
          class="flex-shrink-0 px-3 py-2 rounded-xl small fw-semibold border text-nowrap shadow-sm text-decoration-none
                 {% if not filter_cat %} bg-navy text-white border-navy
                 {% else %} bg-white text-secondary {% endif %}">
@@ -234,8 +234,8 @@
                 {% if filter_cat == cat.slug %} bg-navy text-white border-navy
                 {% else %} bg-white text-secondary {% endif %}">
         {{ cat.name }}
-        {% if cat.product_count %}
-          <span style="opacity:.6;">({{ cat.product_count }})</span>
+        {% if cat.total_items %}
+          <span style="opacity:.6;">({{ cat.total_items }})</span>
         {% endif %}
       </a>
       {% endfor %}
@@ -389,7 +389,7 @@
       {% else %}Check back shortly! New inventory pipelines are being mapped.{% endif %}
     </p>
     {% if search or filter_cat %}
-    <a href="{% url 'vendors:shop' vendor.slug %}" class="btn btn-navy btn-sm small fw-bold rounded-xl shadow-sm">
+    <a href="{% url 'vendors:detail' vendor.slug %}" class="btn btn-navy btn-sm small fw-bold rounded-xl shadow-sm">
       Reset Layout View
     </a>
     {% endif %}
