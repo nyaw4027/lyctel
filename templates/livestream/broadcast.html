@@ -318,16 +318,12 @@ document.body.classList.add('page-fullscreen');
   context; the JS file itself is static and cannot use template tags.
 -->
 <script>
-{% url "livestream:end_stream"        stream.id as _end_url %}
-{% url "livestream:pin_product"       stream.id as _pin_url %}
-{% url "livestream:upload_recording"  stream.id as _upload_url %}
-{% url "vendors:dashboard"                       as _dash_url %}
 window.STREAM_ID            = '{{ stream.id }}';
 window.WS_URL               = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws/stream/{{ stream.id }}/';
-window.END_URL              = '{{ _end_url|default:"" }}';
-window.PIN_URL              = '{{ _pin_url|default:"" }}';
-window.UPLOAD_URL           = '{{ _upload_url|default:"" }}';
-window.VENDOR_DASHBOARD_URL = '{{ _dash_url|default:"/" }}';
+window.END_URL              = '/livestream/{{ stream.id }}/end/';
+window.PIN_URL              = '/livestream/{{ stream.id }}/pin-product/';
+window.UPLOAD_URL           = '/livestream/{{ stream.id }}/upload-recording/';
+window.VENDOR_DASHBOARD_URL = '/vendors/dashboard/';
 window.PINNED_IDS           = {{ pinned_ids|default:"[]"|safe }};
 </script>
 <script src="{% static 'js/livestream.js' %}"></script>
