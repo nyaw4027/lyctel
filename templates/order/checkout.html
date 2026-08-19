@@ -557,10 +557,20 @@
       ? `https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`
       : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-    L.tileLayer(tileUrl, {
+    const tileLayer = L.tileLayer(tileUrl, {
       maxZoom: 19,
       subdomains: ['a', 'b', 'c'],
-    }).addTo(map);
+      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    });
+    tileLayer.addTo(map);
+
+    // If LocationIQ tiles fail (CSP, quota), fall back to plain OSM
+    tileLayer.on('tileerror', function() {
+      if (LOCATIONIQ_KEY && !tileLayer._osmFallback) {
+        tileLayer._osmFallback = true;
+        tileLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+      }
+    });
 
     // Small attribution bottom-left
     L.control.attribution({ position: 'bottomleft', prefix: false })
@@ -868,21 +878,42 @@
 
   // ── REVERSE GEOCODE ───────────────────────────────────
   function reverseGeocode(lat, lng) {
-    if (!LOCATIONIQ_KEY) return;
+    // Always reverse-geocode — use LocationIQ if key set, else Nominatim (free)
     clearTimeout(geocodeTimer);
-    geocodeTimer = setTimeout(() => {
-      fetch(`https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`)
-        .then(r => r.json())
-        .then(d => {
-          if (d.display_name) {
-            document.getElementById('delivery_address').value = d.display_name;
+    geocodeTimer = setTimeout(function() {
+      // Show loading hint in address field
+      const addrField = document.getElementById('delivery_address');
+      const cityField = document.getElementById('delivery_city');
+      if (!addrField.value) addrField.placeholder = 'Detecting address…';
+
+      const url = LOCATIONIQ_KEY
+        ? `https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`
+        : `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
+
+      fetch(url, { headers: { 'Accept-Language': 'en' } })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          // ── Fill delivery address ────────────────────────────────
+          const fullAddress = d.display_name || '';
+          if (fullAddress) {
+            addrField.value = fullAddress;
+            addrField.placeholder = 'House number, street, area';
           }
-          if (d.address) {
-            const city = d.address.city || d.address.town || d.address.county || '';
-            if (city) document.getElementById('delivery_city').value = city;
-          }
-        }).catch(() => {});
-    }, 300);
+
+          // ── Fill city from address components ────────────────────
+          const a = d.address || {};
+          const city = a.city || a.town || a.suburb || a.county
+                     || a.state_district || a.region || '';
+          if (city) cityField.value = city;
+
+          // ── Visual flash to confirm the field was filled ──────────
+          addrField.style.background = '#f0fdf4';
+          setTimeout(function() { addrField.style.background = ''; }, 800);
+        })
+        .catch(function() {
+          addrField.placeholder = 'House number, street, area';
+        });
+    }, 500);
   }
 
   // ── ADDRESS AUTOCOMPLETE ──────────────────────────────
@@ -951,12 +982,16 @@
     const banner = document.getElementById('gps-banner');
     if (choice === 'rider') {
       banner.classList.remove('d-none');
-      initMap();
-      // invalidateSize must wait for the browser to repaint the newly
-      // visible section. 60ms is too short — use 300ms + a second call
-      // at 600ms for slow devices. Without this the map draws at 0x0.
-      setTimeout(() => { if (map) map.invalidateSize(); }, 300);
-      setTimeout(() => { if (map) map.invalidateSize(); }, 600);
+      // CRITICAL: delay initMap so the browser finishes painting the
+      // now-visible section BEFORE Leaflet measures the container.
+      // If initMap() runs while display:none is still transitioning,
+      // Leaflet measures 0×0 and the map stays permanently blank.
+      setTimeout(function() {
+        initMap();
+        // Extra invalidateSize calls for slow/low-end Android devices
+        setTimeout(function() { if (map) map.invalidateSize(); }, 200);
+        setTimeout(function() { if (map) map.invalidateSize(); }, 600);
+      }, 80);
     } else {
       banner.classList.add('d-none');
       // Reset fee for non-rider methods
