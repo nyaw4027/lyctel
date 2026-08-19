@@ -14,7 +14,14 @@
     background:#212529;
     cursor:pointer;
     transition:transform .25s ease;
+    /* 9:16 portrait on mobile, 4:5 on tablet (see @media below) */
     aspect-ratio:9/16;
+    /* Explicit display:block needed on Android for aspect-ratio to work */
+    display:block;
+    width:100%;
+    /* Remove will-change — can break position:fixed footer on Android */
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
 }
 
 @media (min-width:768px){
@@ -28,9 +35,14 @@
 }
 
 .stream-thumb{
+    /* Must be absolute + inset:0 on Android — without this, the image
+       doesn't fill the aspect-ratio card correctly. iOS is forgiving. */
+    position:absolute;
+    inset:0;
     width:100%;
     height:100%;
     object-fit:cover;
+    display:block;
 }
 
 .stream-play{
@@ -96,6 +108,7 @@
     border-radius:50rem;
     background:rgba(0,0,0,.55);
     backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
     color:#fff;
     font-size:.7rem;
     font-weight:600;
@@ -165,6 +178,7 @@
    and swapping the selectors below for `body.page-fullscreen`.
 ========================================================== */
 
+/* Primary: :has() scoping — Chrome 105+, Safari 15.4+, Firefox 121+ */
 body:has(#root){
     margin:0;
     padding:0;
@@ -172,9 +186,22 @@ body:has(#root){
     overflow:hidden;
     background:#000;
 }
-
 body:has(#root) #mobile-nav,
 body:has(#root) #main-navbar{
+    display:none !important;
+}
+
+/* Fallback: class-based scoping for older Android browsers.
+   Add class="page-fullscreen" to <body> in watch.html + broadcast.html */
+body.page-fullscreen{
+    margin:0;
+    padding:0;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+}
+body.page-fullscreen #mobile-nav,
+body.page-fullscreen #main-navbar{
     display:none !important;
 }
 
@@ -184,6 +211,8 @@ body:has(#root) #main-navbar{
     display:flex;
     background:#000;
     z-index:10;
+    /* Safe area: insets applied per-child (top-bar, chat-bar)
+       so the video itself can still fill edge-to-edge */
 }
 
 /* ----------------------------------------------------------
@@ -270,7 +299,8 @@ body:has(#root) #main-navbar{
     display:flex;
     align-items:center;
     gap:.75rem;
-    padding:1rem;
+    /* Safe area: push content below iPhone notch / Dynamic Island */
+    padding: calc(env(safe-area-inset-top) + .6rem) 1rem .6rem;
     background:linear-gradient(
         to bottom,
         rgba(0,0,0,.75),
@@ -304,6 +334,7 @@ body:has(#root) #main-navbar{
     gap:.3rem;
     background:rgba(255,255,255,.12);
     backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
     color:#fff;
     font-size:11px;
     font-weight:600;
@@ -323,6 +354,7 @@ body:has(#root) #main-navbar{
     bottom:0;
     display:flex;
     flex-direction:column;
+    /* Safe area already handled by #chat-bar padding-bottom */
 }
 
 /* ----------------------------------------------------------
@@ -338,6 +370,7 @@ body:has(#root) #main-navbar{
     z-index:6;
     background:rgba(0,0,0,.6);
     backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
     border:1px solid rgba(255,255,255,.12);
     border-radius:1rem;
     padding:.75rem .9rem;
@@ -427,6 +460,12 @@ body:has(#root) #main-navbar{
     align-items:center;
     gap:.25rem;
     cursor:pointer;
+    /* Remove tap highlight on iOS and Android */
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+    min-width:44px;
+    min-height:44px;
+    justify-content:center;
 }
 
 .rail-icon,
@@ -439,6 +478,7 @@ body:has(#root) #main-navbar{
     border-radius:50%;
     background:rgba(255,255,255,.15);
     backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
     transition:.2s;
     font-size:1.3rem;
 }
@@ -496,6 +536,7 @@ body:has(#root) #main-navbar{
 .chat-text-wrap{
     background:rgba(0,0,0,.5);
     backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
     color:#fff;
     padding:.5rem .75rem;
     border-radius:1rem;
@@ -513,7 +554,8 @@ body:has(#root) #main-navbar{
     display:flex;
     gap:.5rem;
     align-items:center;
-    padding:.75rem;
+    /* Safe area: clear iPhone home indicator bar */
+    padding:.75rem .75rem max(env(safe-area-inset-bottom), .75rem);
     background:linear-gradient(
         to top,
         rgba(0,0,0,.85),
@@ -539,6 +581,8 @@ body:has(#root) #main-navbar{
     border-radius:50rem;
     padding:.65rem 1rem;
     outline:none;
+    /* iOS: font-size must be >= 16px to prevent auto-zoom on focus */
+    font-size:16px;
 }
 
 #chat-input-field::placeholder,
@@ -561,13 +605,15 @@ body:has(#root) #main-navbar{
     bottom:0;
     background:#1a1a1a;
     border-radius:1.5rem 1.5rem 0 0;
-    padding:1rem;
+    /* Safe area: clear home bar at bottom */
+    padding:1rem 1rem max(env(safe-area-inset-bottom), 1rem);
     transform:translateY(100%);
     transition:.35s;
     z-index:41;
     max-height:80vh;
     display:flex;
     flex-direction:column;
+    -webkit-overflow-scrolling:touch;
 }
 
 #gift-sheet.open,

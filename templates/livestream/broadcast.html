@@ -9,6 +9,11 @@
   #main-navbar, #mobile-nav { display: none !important; }
   body { padding: 0 !important; overflow: hidden !important; background: #000; }
 </style>
+<script>
+/* Fallback for Android < Chrome 105 which doesn't support :has().
+   body.page-fullscreen triggers the same CSS rules as body:has(#root). */
+document.body.classList.add('page-fullscreen');
+</script>
 {% endblock %}
 
 {% block content %}
