@@ -235,7 +235,7 @@ document.body.classList.add('page-fullscreen');
 </div><!-- end root -->
 
 <!-- ── PIN PRODUCT SHEET ──────────────────────────────── -->
-<div id="pin-backdrop" onclick="closePinSheet()" style="position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.7);display:none;"></div>
+<div id="pin-backdrop" onclick="closePinSheet()" style="position:fixed;top:0;right:0;bottom:0;left:0;z-index:40;background:rgba(0,0,0,.7);display:none;"></div>
 <div id="pin-sheet" role="dialog" aria-label="Pin a product">
   <div style="width:40px;height:4px;background:#333;border-radius:99px;margin:0 auto 14px;"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -274,7 +274,7 @@ document.body.classList.add('page-fullscreen');
 </div>
 
 <!-- ── POLL SHEET ──────────────────────────────── -->
-<div id="poll-backdrop" onclick="closePollSheet()" style="position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.7);display:none;"></div>
+<div id="poll-backdrop" onclick="closePollSheet()" style="position:fixed;top:0;right:0;bottom:0;left:0;z-index:40;background:rgba(0,0,0,.7);display:none;"></div>
 <div id="poll-sheet" role="dialog" aria-label="Start a poll">
   <div style="width:40px;height:4px;background:#333;border-radius:99px;margin:0 auto 14px;"></div>
   <p style="color:white;font-weight:700;font-size:15px;margin:0 0 12px;">📊 Start a Poll</p>
@@ -292,7 +292,7 @@ document.body.classList.add('page-fullscreen');
 
 <!-- ── END CONFIRM MODAL ──────────────────────────────── -->
 <div id="end-modal" role="dialog" aria-label="End stream confirmation"
-     style="display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:20px;">
+     style="display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:50;background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:20px;">
   <div style="background:#1a1a1a;border-radius:24px;padding:28px;max-width:320px;width:100%;text-align:center;border:1px solid #333;">
     <p style="font-size:48px;margin-bottom:12px;" aria-hidden="true">⏹</p>
     <p style="color:white;font-weight:700;font-size:18px;margin-bottom:8px;">End your stream?</p>
@@ -320,13 +320,17 @@ document.body.classList.add('page-fullscreen');
   Passing values via inline window.* is the correct pattern.
 -->
 <script>
-window.STREAM_ID          = '{{ stream.id }}';
-window.WS_URL             = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws/stream/{{ stream.id }}/';
-window.END_URL            = '{% url "livestream:end_stream" stream.id %}';
-window.PIN_URL            = '{% url "livestream:pin_product" stream.id %}';
-window.UPLOAD_URL         = '{% url "livestream:upload_recording" stream.id %}';
-window.VENDOR_DASHBOARD_URL = '{% url "vendors:dashboard" %}';
-window.PINNED_IDS         = {{ pinned_ids|default:"[]"|safe }};
+{% url "livestream:end_stream"        stream.id as _end_url %}
+{% url "livestream:pin_product"       stream.id as _pin_url %}
+{% url "livestream:upload_recording"  stream.id as _upload_url %}
+{% url "vendors:dashboard"                       as _dash_url %}
+window.STREAM_ID            = '{{ stream.id }}';
+window.WS_URL               = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws/stream/{{ stream.id }}/';
+window.END_URL              = '{{ _end_url|default:"" }}';
+window.PIN_URL              = '{{ _pin_url|default:"" }}';
+window.UPLOAD_URL           = '{{ _upload_url|default:"" }}';
+window.VENDOR_DASHBOARD_URL = '{{ _dash_url|default:"/" }}';
+window.PINNED_IDS           = {{ pinned_ids|default:"[]"|safe }};
 </script>
 <script src="{% static 'js/livestream.js' %}"></script>
 {% endblock %}

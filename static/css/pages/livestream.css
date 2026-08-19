@@ -35,10 +35,10 @@
 }
 
 .stream-thumb{
-    /* Must be absolute + inset:0 on Android — without this, the image
+    /* Must be absolute + top/right/bottom/left:0 on Android — without this, the image
        doesn't fill the aspect-ratio card correctly. iOS is forgiving. */
     position:absolute;
-    inset:0;
+    top:0;right:0;bottom:0;left:0;
     width:100%;
     height:100%;
     object-fit:cover;
@@ -60,7 +60,7 @@
 
 .stream-overlay{
     position:absolute;
-    inset:0;
+    top:0;right:0;bottom:0;left:0;
     background:linear-gradient(
         to top,
         rgba(0,0,0,.85),
@@ -207,7 +207,7 @@ body.page-fullscreen #main-navbar{
 
 #root{
     position:fixed;
-    inset:0;
+    top:0;right:0;bottom:0;left:0;
     display:flex;
     background:#000;
     z-index:10;
@@ -222,8 +222,13 @@ body.page-fullscreen #main-navbar{
 #video-bg,
 #video-section{
     position:relative;
+    -webkit-flex:1;
     flex:1;
+    min-width:0;
+    overflow:hidden;
     background:#000;
+    /* explicit height needed for Android flex child */
+    height:100%;
 }
 
 #remote-video,
@@ -242,7 +247,7 @@ body.page-fullscreen #main-navbar{
 #connecting-overlay,
 #cam-placeholder{
     position:absolute;
-    inset:0;
+    top:0;right:0;bottom:0;left:0;
     z-index:4;
     display:flex;
     flex-direction:column;
@@ -277,7 +282,7 @@ body.page-fullscreen #main-navbar{
 #ui-layer,
 #ui{
     position:absolute;
-    inset:0;
+    top:0;right:0;bottom:0;left:0;
     z-index:5;
     pointer-events:none;
 }
@@ -405,7 +410,7 @@ body.page-fullscreen #main-navbar{
 }
 .vp-fill{
     position:absolute;
-    inset:0;
+    top:0;right:0;bottom:0;left:0;
     width:0%;
     background:rgba(245,166,35,.35);
     transition:width .3s ease;
@@ -506,13 +511,18 @@ body.page-fullscreen #main-navbar{
 ---------------------------------------------------------- */
 
 #chat-overlay{
-    position:absolute;
-    left:0;
-    right:4.5rem;
-    bottom:5rem;
-    max-height:40vh;
+    -webkit-flex:1;
+    flex:1;
+    min-height:0;
+    display:-webkit-flex;
+    display:flex;
+    -webkit-flex-direction:column;
+    flex-direction:column;
+    -webkit-justify-content:flex-end;
+    justify-content:flex-end;
+    padding:.5rem 0 .5rem .75rem;
+    pointer-events:none;
     overflow:hidden;
-    padding:0 .75rem;
 }
 
 #chat-messages{
@@ -567,9 +577,7 @@ body.page-fullscreen #main-navbar{
    absolute positioning; broadcast.html's #chat-bar sits inside
    #bottom-area (already positioned), so it stays position:relative
    there via the rule above and only watch.html needs the override. */
-#video-section > #ui-layer > #chat-bar{
-    position:absolute;
-}
+#video-section > #ui-layer > #chat-bar{position:relative;left:0;right:0;bottom:0;-webkit-flex-shrink:0;flex-shrink:0;}
 
 #chat-input-field,
 #chat-input,
@@ -626,7 +634,7 @@ body.page-fullscreen #main-navbar{
 #pin-backdrop,
 #poll-backdrop{
     position:fixed;
-    inset:0;
+    top:0;right:0;bottom:0;left:0;
     display:none;
     background:rgba(0,0,0,.5);
     z-index:40;

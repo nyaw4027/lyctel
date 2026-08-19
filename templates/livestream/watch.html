@@ -1,18 +1,333 @@
 {% extends "base.html" %}
 {% load i18n static %}
-{% block title %}{{ stream.vendor.shop_name }} is Live{% endblock %}
+{% block title %}{{ stream.vendor.shop_name }} is Live — Lynctel{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/livestream.css' %}">
 <meta name="theme-color" content="#000000">
 <style>
-  /* Ensure navbar/body overrides from base.html are reset for this page */
   #main-navbar, #mobile-nav { display: none !important; }
   body { padding: 0 !important; overflow: hidden !important; background: #000; }
+
+  /* ── Chat bubbles ─────────────────────────────────────────────────────── */
+  .chat-bubble {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    max-width: calc(100% - 56px);
+    animation: slideUp .2s ease;
+  }
+  @keyframes slideUp {
+    from { opacity:0; transform:translateY(8px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .chat-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .chat-body {
+    background: rgba(0,0,0,.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 0 12px 12px 12px;
+    padding: 7px 11px;
+    max-width: 100%;
+    word-break: break-word;
+  }
+  .chat-name {
+    font-size: 11px; font-weight: 700;
+    margin: 0 0 2px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .chat-text {
+    font-size: 13px; color: rgba(255,255,255,.95);
+    margin: 0; line-height: 1.4;
+  }
+  .vendor-badge {
+    font-size: 9px; background: #F5A623; color: #0F1B2D;
+    font-weight: 800; padding: 1px 6px; border-radius: 99px;
+  }
+  .chat-system {
+    text-align: center; padding: 3px 0;
+  }
+  .chat-system span {
+    font-size: 11px; color: rgba(255,255,255,.45);
+    background: rgba(0,0,0,.3);
+    padding: 3px 12px; border-radius: 99px;
+  }
+
+  /* ── Gift sheet ───────────────────────────────────────────────────────── */
+  #gift-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #0d0d0d;
+    border-radius: 24px 24px 0 0;
+    padding: 16px 16px max(env(safe-area-inset-bottom), 16px);
+    z-index: 51;
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    border-top: 1px solid #1f1f1f;
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #gift-sheet.open { transform: translateY(0); }
+  #gift-sheet-backdrop {
+    display: none;
+    position: fixed; top:0;right:0;bottom:0;left:0;
+    background: rgba(0,0,0,.65);
+    z-index: 50;
+  }
+  #gift-sheet-backdrop.open { display: block; }
+
+  .gift-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-top: 14px;
+  }
+  @media (max-width: 380px) { .gift-grid { grid-template-columns: repeat(4, 1fr); } }
+
+  .gift-btn {
+    background: rgba(255,255,255,.06);
+    border: 1.5px solid rgba(255,255,255,.1);
+    border-radius: 16px;
+    padding: 12px 6px;
+    cursor: pointer;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 5px;
+    color: white;
+    transition: all .18s;
+    min-height: 80px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .gift-btn:active { transform: scale(.88); border-color: #F5A623; }
+  .gift-btn .gift-emoji { font-size: 26px; line-height: 1; }
+  .gift-btn .gift-price { font-size: 10px; font-weight: 700; color: #F5A623; }
+  .gift-btn .gift-name  { font-size: 10px; color: rgba(255,255,255,.5); }
+
+  /* ── Bottom chat bar ──────────────────────────────────────────────────── */
+  #chat-bar {
+    padding: 8px 12px;
+    padding-bottom: max(env(safe-area-inset-bottom), 8px);
+    background: linear-gradient(to top, rgba(0,0,0,.8) 0%, transparent 100%);
+  }
+  .chat-bar-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+  #chat-input-field {
+    flex: 1;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 24px;
+    padding: 10px 16px;
+    color: white;
+    font-size: 14px;
+    outline: none;
+    min-height: 44px;
+  }
+  #chat-input-field::placeholder { color: rgba(255,255,255,.4); }
+  .chat-send-btn {
+    width: 44px; height: 44px;
+    background: #F5A623;
+    border: none; border-radius: 50%;
+    color: #0F1B2D; font-size: 18px; font-weight: 700;
+    cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .gift-open-btn {
+    width: 44px; height: 44px;
+    background: rgba(255,255,255,.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: none; border-radius: 50%;
+    font-size: 20px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: transform .15s;
+  }
+  .gift-open-btn:active { transform: scale(.88); }
+
+  /* ── Emoji reaction strip ─────────────────────────────────────────────── */
+  .reaction-strip {
+    display: flex; gap: 8px; padding: 6px 12px 2px;
+    pointer-events: auto;
+  }
+  .reaction-btn {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: none; border-radius: 50%;
+    font-size: 17px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: transform .12s;
+  }
+  .reaction-btn:active { transform: scale(.8); }
+
+  /* ── Gift combo ───────────────────────────────────────────────────────── */
+  #gift-combo {
+    position: absolute;
+    left: 16px; bottom: 110px;
+    background: linear-gradient(135deg, rgba(245,166,35,.9), rgba(239,68,68,.9));
+    color: white;
+    font-size: 13px; font-weight: 800;
+    padding: 7px 16px;
+    border-radius: 24px;
+    display: none;
+    pointer-events: none;
+    z-index: 30;
+    box-shadow: 0 4px 16px rgba(245,166,35,.4);
+  }
+  #gift-combo.show {
+    display: block;
+    animation: comboIn .25s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes comboIn {
+    from { transform: scale(.6); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── Viewer poll ──────────────────────────────────────────────────────── */
+  #viewer-poll-widget {
+    background: rgba(0,0,0,.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,.1);
+    padding: 14px;
+    margin: 8px 12px;
+    display: none;
+    pointer-events: auto;
+  }
+  #viewer-poll-widget.show { display: block; }
+  .vp-btn {
+    width: 100%; position: relative;
+    background: rgba(255,255,255,.08);
+    border: 1.5px solid rgba(255,255,255,.15);
+    border-radius: 10px;
+    padding: 9px 12px;
+    color: rgba(255,255,255,.85);
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; margin-top: 8px;
+    overflow: hidden; text-align: left;
+    pointer-events: auto;
+    transition: border-color .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .vp-btn.voted { border-color: #F5A623; color: #F5A623; }
+  .vp-fill {
+    position: absolute; top: 0; left: 0; bottom: 0;
+    background: rgba(245,166,35,.18);
+    border-radius: 10px;
+    transition: width .4s ease;
+    pointer-events: none;
+  }
+  .vp-text { position: relative; z-index: 1; }
+
+  /* ── Desktop side ─────────────────────────────────────────────────────── */
+  .desktop-chat-bubble {
+    display: flex; align-items: flex-start; gap: 8px;
+    animation: fadeIn .2s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .desktop-chat-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .desktop-chat-body { flex: 1; min-width: 0; }
+  .desktop-chat-name {
+    font-size: 11px; font-weight: 700;
+    margin: 0 0 2px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .desktop-chat-text {
+    font-size: 13px; color: white; margin: 0;
+    word-break: break-word; line-height: 1.4;
+  }
+  .desktop-gift-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .desktop-gift-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    padding: 8px 4px;
+    cursor: pointer;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 3px;
+    color: white;
+    transition: all .18s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .desktop-gift-btn:hover { background: rgba(245,166,35,.15); border-color: #F5A623; }
+  .desktop-gift-btn:active { transform: scale(.88); }
+
+  /* ── Share toast ──────────────────────────────────────────────────────── */
+  #share-toast {
+    display: none;
+    position: fixed;
+    bottom: 90px; left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: white; font-size: 13px; font-weight: 600;
+    padding: 10px 20px; border-radius: 20px;
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    white-space: nowrap;
+  }
+
+  /* ── Products strip ───────────────────────────────────────────────────── */
+  #products-strip {
+    display: flex; gap: 8px;
+    padding: 8px 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    pointer-events: auto;
+    flex-shrink: 0;
+  }
+  #products-strip::-webkit-scrollbar { display: none; }
+  .live-product {
+    flex-shrink: 0;
+    width: 90px;
+    background: rgba(0,0,0,.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1.5px solid rgba(255,255,255,.08);
+    text-decoration: none;
+    transition: transform .15s, border-color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .live-product:active { transform: scale(.94); }
+  .live-product.featured { border-color: #F5A623; }
+
+  @keyframes spin   { to { transform: rotate(360deg); } }
+  @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.6} }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration:.001ms !important; animation-iteration-count:1 !important; }
+  }
 </style>
 <script>
-/* Fallback for Android < Chrome 105 which doesn't support :has().
-   body.page-fullscreen triggers the same CSS rules as body:has(#root). */
 document.body.classList.add('page-fullscreen');
 </script>
 {% endblock %}
@@ -22,157 +337,194 @@ document.body.classList.add('page-fullscreen');
 
   <div id="video-section">
 
+    <!-- Video elements -->
     <div id="video-bg">
-      <!-- Live viewer sees remote-video via WebRTC; ended streams with a
-           saved recording play vod-video instead — see initPlayback(). -->
       <video id="remote-video" autoplay playsinline style="display:none;"></video>
       <video id="vod-video" controls playsinline style="display:none;"></video>
     </div>
 
+    <!-- Connecting overlay -->
     <div id="connecting-overlay">
-      <div class="position-relative mb-4">
+      <div style="position:relative;margin-bottom:20px;">
         <div style="width:72px;height:72px;border:4px solid rgba(239,68,68,.3);border-top-color:#ef4444;border-radius:50%;animation:spin 1s linear infinite;"></div>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;">📺</div>
+        <div style="position:absolute;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;font-size:28px;">📺</div>
       </div>
-      <p style="color:white;font-weight:700;font-size:18px;margin-bottom:6px;">Joining Live Stream</p>
-      <p style="color:#9ca3af;font-size:13px;margin-bottom:4px;">{{ stream.vendor.shop_name }}</p>
+      <p style="color:white;font-weight:700;font-size:18px;margin:0 0 6px;">Joining Live Stream</p>
+      <p style="color:#9ca3af;font-size:13px;margin:0 0 4px;">{{ stream.vendor.shop_name }}</p>
       <p id="connecting-hint" style="color:#4b5563;font-size:12px;max-width:220px;text-align:center;margin-top:8px;"></p>
     </div>
 
+    <!-- UI layer -->
     <div id="ui-layer">
 
+      <!-- Top bar -->
       <div id="top-bar">
         <button onclick="history.back()" aria-label="Go back"
-                style="width:36px;height:36px;background:rgba(0,0,0,.5);border:none;border-radius:50%;color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                style="width:36px;height:36px;background:rgba(0,0,0,.55);border:none;border-radius:50%;color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;">
           ←
         </button>
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
           {% if stream.vendor.logo %}
-          <img src="{{ stream.vendor.logo.url }}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.3);flex-shrink:0;"/>
+          <img src="{{ stream.vendor.logo.url }}" alt=""
+               style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.3);flex-shrink:0;"/>
+          {% else %}
+          <div style="width:34px;height:34px;border-radius:50%;background:#F5A623;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0F1B2D;font-size:13px;flex-shrink:0;">
+            {{ stream.vendor.shop_name|first|upper }}
+          </div>
           {% endif %}
           <div style="min-width:0;">
             <p style="color:white;font-weight:700;font-size:13px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ stream.vendor.shop_name }}</p>
-            <p style="color:rgba(255,255,255,.6);font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ stream.title }}</p>
+            <p style="color:rgba(255,255,255,.55);font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ stream.title }}</p>
           </div>
         </div>
         {% if stream.is_live %}
-        <span style="background:#ef4444;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;animation:pulse 1.5s infinite;flex-shrink:0;">🔴 LIVE</span>
+        <span style="background:#ef4444;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;animation:pulse 1.5s infinite;flex-shrink:0;white-space:nowrap;">
+          🔴 LIVE
+        </span>
         {% endif %}
-        <span id="replay-badge">▶ REPLAY</span>
+        <span id="replay-badge" style="display:none;background:#2563eb;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;flex-shrink:0;">▶ REPLAY</span>
         <div id="viewer-badge"
-             style="background:rgba(0,0,0,.5);backdrop-filter:blur(8px);color:rgba(255,255,255,.8);font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;flex-shrink:0;">
+             style="background:rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:rgba(255,255,255,.8);font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;flex-shrink:0;white-space:nowrap;">
           👁 —
         </div>
-        <button onclick="shareStream()" aria-label="Share this stream"
-                style="width:36px;height:36px;background:rgba(0,0,0,.5);border:none;border-radius:50%;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <button onclick="shareStream()" aria-label="Share"
+                style="width:36px;height:36px;background:rgba(0,0,0,.55);border:none;border-radius:50%;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;">
           ↗
         </button>
       </div>
 
-      <!-- Viewer poll widget -->
+      <!-- Viewer poll -->
       <div id="viewer-poll-widget">
         <p id="vp-question" style="color:white;font-weight:700;font-size:12.5px;margin:0;"></p>
-        <button class="vp-option" id="vp-btn-a" onclick="votePoll('a')"><div class="vp-fill" id="vp-fill-a"></div><span id="vp-label-a"></span></button>
-        <button class="vp-option" id="vp-btn-b" onclick="votePoll('b')"><div class="vp-fill" id="vp-fill-b"></div><span id="vp-label-b"></span></button>
+        <button class="vp-btn" id="vp-btn-a" onclick="votePoll('a')">
+          <div class="vp-fill" id="vp-fill-a"></div>
+          <span class="vp-text" id="vp-label-a"></span>
+        </button>
+        <button class="vp-btn" id="vp-btn-b" onclick="votePoll('b')">
+          <div class="vp-fill" id="vp-fill-b"></div>
+          <span class="vp-text" id="vp-label-b"></span>
+        </button>
       </div>
 
+      <!-- Pinned products strip -->
       <div id="products-strip"></div>
 
+      <!-- Chat messages -->
       <div id="chat-overlay">
         <div id="chat-messages" aria-live="polite"></div>
       </div>
 
+      <!-- Right action rail -->
       <div id="action-rail">
-        <button class="rail-btn" onclick="sendLike()" id="like-btn" aria-label="Like this stream">
-          <div class="rail-icon" id="like-icon" aria-hidden="true">♡</div>
+        <button class="rail-btn" onclick="sendLike()" id="like-btn" aria-label="Like">
+          <div class="rail-icon" id="like-icon">♡</div>
           <span class="rail-label" id="like-count">Like</span>
         </button>
-
         {% if user.is_authenticated %}
-        <button class="rail-btn" onclick="openGiftSheet()" aria-label="Send a gift">
-          <div class="rail-icon" aria-hidden="true">🎁</div>
+        <button class="rail-btn" onclick="openGiftSheet()" aria-label="Send gift">
+          <div class="rail-icon">🎁</div>
           <span class="rail-label">Gift</span>
         </button>
         {% endif %}
-
-        <button class="rail-btn" onclick="shareStream()" aria-label="Share this stream">
-          <div class="rail-icon" aria-hidden="true">↗</div>
+        <button class="rail-btn" onclick="shareStream()" aria-label="Share">
+          <div class="rail-icon">↗</div>
           <span class="rail-label">Share</span>
         </button>
-
-        <button class="rail-btn" onclick="toggleFullscreen()" aria-label="Toggle fullscreen">
-          <div class="rail-icon" id="fs-icon" aria-hidden="true">⛶</div>
+        <button class="rail-btn" onclick="toggleFullscreen()" aria-label="Fullscreen">
+          <div class="rail-icon" id="fs-icon">⛶</div>
           <span class="rail-label">Full</span>
         </button>
       </div>
 
+      <!-- Bottom bar -->
       <div id="chat-bar">
+        <!-- Emoji reaction strip (above chat input) -->
+        <div class="reaction-strip">
+          <button class="reaction-btn" onclick="sendReaction('❤️')" aria-label="Heart">❤️</button>
+          <button class="reaction-btn" onclick="sendReaction('🔥')" aria-label="Fire">🔥</button>
+          <button class="reaction-btn" onclick="sendReaction('😂')" aria-label="Laugh">😂</button>
+          <button class="reaction-btn" onclick="sendReaction('👏')" aria-label="Clap">👏</button>
+          <button class="reaction-btn" onclick="sendReaction('🎉')" aria-label="Party">🎉</button>
+        </div>
+        <!-- Chat input row -->
         {% if user.is_authenticated %}
-        <label for="chat-input-field" class="visually-hidden">Chat message</label>
-        <input type="text" id="chat-input-field"
-               placeholder="Say something..."
-               maxlength="300"
-               onkeydown="if(event.key==='Enter')sendChat()"/>
-        <button onclick="sendChat()" aria-label="Send message"
-                style="width:44px;height:44px;background:#F5A623;border:none;border-radius:50%;color:#0F1B2D;font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-          ↑
-        </button>
-        <button onclick="openGiftSheet()" aria-label="Send a gift"
-                style="width:44px;height:44px;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border:none;border-radius:50%;font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-          🎁
-        </button>
+        <div class="chat-bar-row">
+          <label for="chat-input-field" class="visually-hidden">Chat message</label>
+          <input type="text" id="chat-input-field"
+                 placeholder="Say something…"
+                 maxlength="300"
+                 onkeydown="if(event.key==='Enter')sendChat()"/>
+          <button class="chat-send-btn" onclick="sendChat()" aria-label="Send">↑</button>
+          <button class="gift-open-btn" onclick="openGiftSheet()" aria-label="Send gift">🎁</button>
+        </div>
         {% else %}
-        <a href="{% url 'accounts:login' %}?next={{ request.path }}"
-           style="flex:1;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2);border-radius:24px;padding:10px 16px;color:rgba(255,255,255,.8);font-size:13px;text-align:center;text-decoration:none;">
-          Sign in to chat →
-        </a>
+        <div class="chat-bar-row">
+          <a href="{% url 'accounts:login' %}?next={{ request.path }}"
+             style="flex:1;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:24px;padding:10px 16px;color:rgba(255,255,255,.75);font-size:13px;text-align:center;text-decoration:none;display:block;">
+            Sign in to chat & send gifts →
+          </a>
+        </div>
         {% endif %}
       </div>
-    </div>
 
+    </div><!-- end ui-layer -->
+
+    <!-- Gift combo indicator -->
     <div id="gift-combo"></div>
 
   </div><!-- end video-section -->
 
-  <div id="desktop-side" style="display:none;">
-    <div style="padding:16px;border-bottom:1px solid #222;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+  <!-- Desktop side panel -->
+  <div id="desktop-side">
+    <!-- Header -->
+    <div style="padding:14px 16px;border-bottom:1px solid #1f1f1f;display:flex;align-items:center;justify-content:space-between;">
       <span style="color:white;font-weight:700;font-size:14px;">💬 Live Chat</span>
-      <span id="chat-count-badge" style="margin-left:auto;font-size:11px;color:#6b7280;background:rgba(255,255,255,.05);padding:2px 8px;border-radius:99px;">0</span>
+      <span id="chat-count-badge" style="font-size:11px;color:#6b7280;background:rgba(255,255,255,.06);padding:2px 8px;border-radius:99px;">0</span>
     </div>
-    <div id="desktop-chat" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:#333 transparent;" aria-live="polite"></div>
 
+    <!-- Messages -->
+    <div id="desktop-chat"
+         style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:#2a2a2a transparent;"
+         aria-live="polite"></div>
+
+    <!-- Gifts section (desktop) -->
     {% if user.is_authenticated %}
-    <div style="padding:12px;border-top:1px solid #222;">
-      <p style="color:white;font-size:12px;font-weight:700;margin-bottom:8px;">🎁 Send a Gift</p>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px;">
+    <div style="padding:14px 16px;border-top:1px solid #1f1f1f;background:rgba(0,0,0,.3);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <p style="color:white;font-size:12px;font-weight:700;margin:0;">🎁 Send a Gift</p>
+        <p style="color:#6b7280;font-size:10px;margin:0;">Vendor earns 80%</p>
+      </div>
+      <div class="desktop-gift-grid">
         {% for gift in gifts %}
-        <button onclick="sendGift('{{ gift.type }}', this)" aria-label="Send {{ gift.label }} gift, GHS {{ gift.value }}"
-                style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:white;transition:all .2s;">
-          <span style="font-size:20px;" aria-hidden="true">{{ gift.emoji }}</span>
-          <span style="font-size:10px;color:#9ca3af;">GHS {{ gift.value }}</span>
+        <button onclick="sendGift('{{ gift.type }}', this)"
+                class="desktop-gift-btn"
+                aria-label="{{ gift.label }}, GHS {{ gift.value }}">
+          <span style="font-size:20px;">{{ gift.emoji }}</span>
+          <span style="font-size:9px;color:#F5A623;font-weight:700;">GHS {{ gift.value }}</span>
         </button>
         {% endfor %}
       </div>
     </div>
     {% endif %}
 
-    <div style="padding:10px 12px;border-top:1px solid #222;">
+    <!-- Desktop chat input -->
+    <div style="padding:10px 12px;border-top:1px solid #1f1f1f;">
       {% if user.is_authenticated %}
       <div style="display:flex;gap:8px;">
         <label for="desktop-chat-input" class="visually-hidden">Chat message</label>
         <input type="text" id="desktop-chat-input"
-               placeholder="Say something..."
+               placeholder="Say something…"
                maxlength="300"
                onkeydown="if(event.key==='Enter')sendChat()"
-               style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:9px 14px;color:white;font-size:13px;outline:none;"/>
+               style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:9px 14px;color:white;font-size:14px;outline:none;"/>
         <button onclick="sendChat()"
-                style="background:#F5A623;border:none;border-radius:20px;padding:9px 16px;color:#0F1B2D;font-weight:700;font-size:13px;cursor:pointer;">
+                style="background:#F5A623;border:none;border-radius:20px;padding:9px 18px;color:#0F1B2D;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">
           Send
         </button>
       </div>
       {% else %}
       <a href="{% url 'accounts:login' %}?next={{ request.path }}"
-         style="display:block;text-align:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:10px;color:rgba(255,255,255,.7);font-size:13px;text-decoration:none;">
+         style="display:block;text-align:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:10px;color:rgba(255,255,255,.6);font-size:13px;text-decoration:none;">
         Sign in to chat →
       </a>
       {% endif %}
@@ -181,60 +533,60 @@ document.body.classList.add('page-fullscreen');
 
 </div><!-- end root -->
 
+<!-- Gift sheet (mobile bottom sheet) -->
 <div id="gift-sheet-backdrop" onclick="closeGiftSheet()"></div>
-<div id="gift-sheet" role="dialog" aria-label="Send a gift">
+<div id="gift-sheet" role="dialog" aria-label="Send a gift" aria-modal="true">
+  <!-- Handle -->
   <div style="width:40px;height:4px;background:#333;border-radius:99px;margin:0 auto 16px;"></div>
-  <p style="color:white;font-weight:700;font-size:15px;margin-bottom:4px;">🎁 Send a Gift</p>
-  <p style="color:#6b7280;font-size:11px;margin-bottom:16px;">Vendor earns 80% · Lynctel 20%</p>
-  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
-    {% for gift in gifts %}
-    <button class="gift-btn" onclick="sendGift('{{ gift.type }}', this)" aria-label="Send {{ gift.label }} gift, GHS {{ gift.value }}"
-            style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;color:white;transition:all .2s;">
-      <span style="font-size:28px;line-height:1;" aria-hidden="true">{{ gift.emoji }}</span>
-      <span style="font-size:10px;font-weight:700;color:#F5A623;">GHS {{ gift.value }}</span>
-      <span style="font-size:10px;color:#6b7280;">{{ gift.label }}</span>
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <p style="color:white;font-weight:700;font-size:16px;margin:0;">🎁 Send a Gift</p>
+    <button onclick="closeGiftSheet()" aria-label="Close"
+            style="background:rgba(255,255,255,.08);border:none;border-radius:50%;width:32px;height:32px;color:#9ca3af;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+      ×
     </button>
+  </div>
+  <p style="color:#6b7280;font-size:12px;margin:0 0 4px;">
+    Vendor earns <strong style="color:#4ade80;">80%</strong> · Lynctel 20%
+  </p>
+  <!-- Gift grid -->
+  <div class="gift-grid">
+    {% for gift in gifts %}
+    <button class="gift-btn" onclick="sendGift('{{ gift.type }}', this)"
+            aria-label="Send {{ gift.label }}, GHS {{ gift.value }}">
+      <span class="gift-emoji">{{ gift.emoji }}</span>
+      <span class="gift-price">GHS {{ gift.value }}</span>
+      <span class="gift-name">{{ gift.label }}</span>
+    </button>
+    {% empty %}
+    <p style="color:#6b7280;font-size:13px;text-align:center;grid-column:1/-1;padding:16px 0;">
+      Gifts coming soon!
+    </p>
     {% endfor %}
   </div>
 </div>
 
-<div id="share-toast" role="status"
-     style="display:none;position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
-            background:#1f2937;color:white;font-size:13px;font-weight:600;
-            padding:10px 20px;border-radius:20px;z-index:9999;
-            box-shadow:0 8px 24px rgba(0,0,0,.4);">
-  🔗 Link copied!
-</div>
+<!-- Share toast -->
+<div id="share-toast" role="status">🔗 Link copied!</div>
 
 <style>
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin  { to { transform: rotate(360deg); } }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
-}
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const STREAM_ID       = '{{ stream.id|lower }}';
-const IS_AUTH         = {{ user.is_authenticated|yesno:'true,false' }};
-const IS_LIVE         = {{ stream.is_live|yesno:'true,false' }};
-{# stream.recording_url was previously injected completely unquoted:
-   `const RECORDING_URL = https://example.com/video.mp4;` — that's not
-   valid JS, it's a syntax error the moment a stream actually HAS a
-   recording (i.e. exactly the replay case this variable exists for),
-   and a syntax error in this block means NONE of the functions below —
-   chat, gifts, polls, WebRTC — get defined at all. Quoting + |escapejs
-   makes this a safe, always-valid string literal. #}
-const RECORDING_URL   = {% if stream.recording_url %}"{{ stream.recording_url|escapejs }}"{% else %}null{% endif %};
-const HEARTBEAT_URL   = `/livestream/${STREAM_ID}/heartbeat/`;
-const WS_SCHEME       = location.protocol === 'https:' ? 'wss' : 'ws';
-const wsUrl           = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
-const SHOP_NAME       = "{{ stream.vendor.shop_name|escapejs }}";
-{% url "vendors:public_shop" stream.vendor.slug as shop_url %}{% url "vendors:list" as dir_url %}
-const SHOP_URL        = "{{ shop_url|default:dir_url|escapejs }}";
-// CSRF_TOKEN declared in base.html
+const STREAM_ID     = '{{ stream.id|lower }}';
+const IS_AUTH       = {{ user.is_authenticated|yesno:'true,false' }};
+const IS_LIVE       = {{ stream.is_live|yesno:'true,false' }};
+const RECORDING_URL = {% if stream.recording_url %}"{{ stream.recording_url|escapejs }}"{% else %}null{% endif %};
+const HEARTBEAT_URL = `/livestream/${STREAM_ID}/heartbeat/`;
+const WS_SCHEME     = location.protocol === 'https:' ? 'wss' : 'ws';
+const wsUrl         = `${WS_SCHEME}://${location.host}/ws/stream/${STREAM_ID}/`;
+const SHOP_NAME     = "{{ stream.vendor.shop_name|escapejs }}";
+{% url "vendors:list" as dir_url %}
+const SHOP_URL      = "{{ dir_url|escapejs }}";
 
 let ws, pc, vendorChannel = null, connectTimeout = null;
 let chatCount = 0, likeCount = 0, likeTimer = null;
@@ -251,30 +603,27 @@ const iceConfig = {
 };
 
 if (isDesktop) {
-  document.getElementById('desktop-side').style.display = 'flex';
-  document.getElementById('desktop-side').style.flexDirection = 'column';
+  const ds = document.getElementById('desktop-side');
+  ds.style.display = 'flex';
+  ds.style.flexDirection = 'column';
 }
 
-// ── PLAYBACK ROUTING ───────────────────────────────────────
-// Live stream with no recording yet → WebRTC as before.
-// Ended stream with a saved recording → play it back directly, no
-// signaling/WebRTC needed at all (cheaper for both server and viewer).
+// ── PLAYBACK ───────────────────────────────────────────────
 function initPlayback() {
   if (!IS_LIVE && RECORDING_URL) {
     document.getElementById('replay-badge').style.display = 'inline-flex';
     const vod = document.getElementById('vod-video');
     vod.src = RECORDING_URL;
     vod.style.display = 'block';
-    vod.play().catch(() => {});
+    vod.play().catch(()=>{});
     document.getElementById('connecting-overlay').style.display = 'none';
-    // Chat/gifts/likes are replayed as inert UI on a VOD — no live socket.
     return;
   }
   if (!IS_LIVE && !RECORDING_URL) {
     document.getElementById('connecting-overlay').innerHTML = `
       <p style="font-size:48px;margin-bottom:16px;">📺</p>
-      <p style="color:white;font-weight:700;font-size:18px;margin-bottom:6px;">This stream has ended</p>
-      <p style="color:#9ca3af;font-size:13px;">No replay was saved for this one.</p>`;
+      <p style="color:white;font-weight:700;font-size:18px;margin-bottom:6px;">Stream has ended</p>
+      <p style="color:#9ca3af;font-size:13px;">No replay was saved for this stream.</p>`;
     return;
   }
   document.getElementById('remote-video').style.display = 'block';
@@ -282,33 +631,29 @@ function initPlayback() {
   startHeartbeat();
 }
 
-// ── VIEWER HEARTBEAT (so view counts persist server-side) ───
-// The WS 'viewer_count' broadcast is live-only and ephemeral — nothing
-// records it once the stream ends, which is why total/peak viewer counts
-// shown after a stream ends are unreliable. This posts a lightweight
-// "I'm still watching" ping every 20s so the backend can track unique
-// viewers and current concurrent count independently of socket state.
 function startHeartbeat() {
-  const ping = () => fetch(HEARTBEAT_URL, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN } }).catch(() => {});
+  const ping = () => fetch(HEARTBEAT_URL, {
+    method:'POST', headers:{'X-CSRFToken':CSRF_TOKEN}
+  }).catch(()=>{});
   ping();
   heartbeatInterval = setInterval(ping, 20000);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') ping();
+    if(document.visibilityState==='visible') ping();
   });
   window.addEventListener('beforeunload', () => {
     fetch(HEARTBEAT_URL, {
-      method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN },
-      body: new URLSearchParams({ leaving: '1' }), keepalive: true,
-    }).catch(() => {});
+      method:'POST', headers:{'X-CSRFToken':CSRF_TOKEN},
+      body: new URLSearchParams({leaving:'1'}), keepalive:true,
+    }).catch(()=>{});
   });
 }
 
-// ── WEBSOCKET ─────────────────────────────────────────────
+// ── WEBSOCKET ──────────────────────────────────────────────
 function connectWS() {
   ws = new WebSocket(wsUrl);
   ws.onopen = () => {
     startViewing();
-    connectTimeout = setTimeout(() => {
+    connectTimeout = setTimeout(()=>{
       const h = document.getElementById('connecting-hint');
       if(h) h.textContent = 'Still connecting — the streamer may not have started yet.';
     }, 15000);
@@ -316,47 +661,36 @@ function connectWS() {
   ws.onmessage = ({data}) => {
     let msg; try { msg = JSON.parse(data); } catch { return; }
     switch(msg.type) {
-      case 'offer':
-        vendorChannel = msg.sender;
-        handleVendorOffer(msg.sdp);
-        break;
-      case 'answer':
-        vendorChannel = msg.sender;
-        pc?.setRemoteDescription(new RTCSessionDescription({type:'answer',sdp:msg.sdp})).catch(()=>{});
-        break;
-      case 'ice':
-        if(pc && msg.sender === vendorChannel)
-          pc.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(()=>{});
-        break;
-      case 'viewer_count': updateViewers(msg.count); break;
-      case 'chat':         appendChat(msg); break;
-      case 'gift':         handleGift(msg); break;
+      case 'offer':           vendorChannel=msg.sender; handleVendorOffer(msg.sdp); break;
+      case 'ice':             if(pc&&msg.sender===vendorChannel) pc.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(()=>{}); break;
+      case 'viewer_count':    updateViewers(msg.count); break;
+      case 'chat':            appendChat(msg); break;
+      case 'gift':            handleGift(msg); break;
       case 'pinned_products': renderProducts(msg.products); break;
       case 'product_pinned':  upsertProduct(msg.product); break;
       case 'product_unpinned':removeProduct(msg.product_id); break;
-      case 'poll_start':    showPoll(msg); break;
-      case 'poll_update':   updatePollBars(msg.tallies); break;
-      case 'poll_end':      hidePoll(); break;
-      case 'stream_ended': showEnded(); break;
+      case 'poll_start':      showPoll(msg); break;
+      case 'poll_update':     updatePollBars(msg.tallies); break;
+      case 'poll_end':        hidePoll(); break;
+      case 'stream_ended':    showEnded(); break;
     }
   };
   ws.onclose = () => setTimeout(connectWS, 4000);
 }
 
-// ── WEBRTC ────────────────────────────────────────────────
 async function startViewing() {
   pc = new RTCPeerConnection(iceConfig);
   pc.ontrack = ({streams}) => {
     document.getElementById('remote-video').srcObject = streams[0];
     document.getElementById('connecting-overlay').style.display = 'none';
-    if(connectTimeout){clearTimeout(connectTimeout);connectTimeout=null;}
+    if(connectTimeout){ clearTimeout(connectTimeout); connectTimeout=null; }
   };
   pc.onicecandidate = ({candidate}) => {
     if(candidate && ws?.readyState===1)
       ws.send(JSON.stringify({type:'ice',candidate,peer_id:vendorChannel}));
   };
   pc.onconnectionstatechange = () => {
-    if(pc.connectionState==='failed'){pc.close();setTimeout(startViewing,2000);}
+    if(pc.connectionState==='failed'){ pc.close(); setTimeout(startViewing,2000); }
   };
   pc.addTransceiver('video',{direction:'recvonly'});
   pc.addTransceiver('audio',{direction:'recvonly'});
@@ -373,7 +707,7 @@ async function handleVendorOffer(sdp) {
   ws?.readyState===1 && ws.send(JSON.stringify({type:'answer',sdp:ans.sdp,peer_id:vendorChannel}));
 }
 
-// ── CHAT ──────────────────────────────────────────────────
+// ── CHAT ───────────────────────────────────────────────────
 function sendChat() {
   const mobile  = document.getElementById('chat-input-field');
   const desktop = document.getElementById('desktop-chat-input');
@@ -386,50 +720,49 @@ function sendChat() {
 
 function appendChat(data) {
   const isVendor = data.is_vendor;
+  const avatarBg = isVendor ? '#F5A623' : 'rgba(255,255,255,.18)';
+  const avatarCl = isVendor ? '#0F1B2D' : 'white';
+  const initials = (data.initials || data.username || '?')[0].toUpperCase();
+
   chatCount++;
   const badge = document.getElementById('chat-count-badge');
   if(badge) badge.textContent = chatCount;
 
+  // Mobile chat
   const mBox = document.getElementById('chat-messages');
   const mDiv = document.createElement('div');
   mDiv.className = 'chat-bubble';
   mDiv.innerHTML = `
-    <div style="width:26px;height:26px;border-radius:50%;flex-shrink:0;
-                background:${isVendor?'#F5A623':'rgba(255,255,255,.15)'};
-                display:flex;align-items:center;justify-content:center;
-                font-size:11px;font-weight:700;color:${isVendor?'#0F1B2D':'white'};">
-      ${data.initials||'?'}
+    <div class="chat-avatar" style="background:${avatarBg};color:${avatarCl};">
+      ${initials}
     </div>
-    <div class="chat-text-wrap">
-      <span style="font-size:11px;font-weight:700;color:${isVendor?'#F5A623':'rgba(255,255,255,.8)'};margin-right:4px;">
+    <div class="chat-body">
+      <p class="chat-name" style="color:${isVendor?'#F5A623':'rgba(255,255,255,.75)'};">
         ${isVendor?'🏪 ':''}${esc(data.username)}
-      </span>
-      <span style="font-size:13px;color:white;">${esc(data.message)}</span>
+        ${isVendor?'<span class="vendor-badge">VENDOR</span>':''}
+      </p>
+      <p class="chat-text">${esc(data.message)}</p>
     </div>`;
   mBox.appendChild(mDiv);
   mBox.scrollTop = mBox.scrollHeight;
   while(mBox.children.length > 60) mBox.removeChild(mBox.children[0]);
 
+  // Desktop chat
   if(isDesktop) {
     const dBox = document.getElementById('desktop-chat');
     const dDiv = document.createElement('div');
-    dDiv.style.cssText = 'display:flex;align-items:flex-start;gap:8px;';
+    dDiv.className = 'desktop-chat-bubble';
     dDiv.innerHTML = `
-      <div style="width:30px;height:30px;border-radius:50%;flex-shrink:0;
-                  background:${isVendor?'#F5A623':'rgba(255,255,255,.1)'};
-                  display:flex;align-items:center;justify-content:center;
-                  font-size:11px;font-weight:700;color:${isVendor?'#0F1B2D':'white'};">
-        ${data.initials||'?'}
+      <div class="desktop-chat-avatar" style="background:${avatarBg};color:${avatarCl};">
+        ${initials}
       </div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-          <span style="font-size:11px;font-weight:700;color:${isVendor?'#F5A623':'#d1d5db'};">
-            ${isVendor?'🏪 ':''}${esc(data.username)}
-          </span>
-          ${isVendor?'<span style="font-size:9px;background:#F5A623;color:#0F1B2D;font-weight:700;padding:1px 6px;border-radius:99px;">VENDOR</span>':''}
+      <div class="desktop-chat-body">
+        <p class="desktop-chat-name" style="color:${isVendor?'#F5A623':'#d1d5db'};">
+          ${isVendor?'🏪 ':''}${esc(data.username)}
+          ${isVendor?'<span class="vendor-badge">VENDOR</span>':''}
           <span style="font-size:10px;color:#4b5563;margin-left:auto;">${data.sent_at||''}</span>
-        </div>
-        <p style="font-size:13px;color:white;margin:0;word-break:break-word;">${esc(data.message)}</p>
+        </p>
+        <p class="desktop-chat-text">${esc(data.message)}</p>
       </div>`;
     dBox.appendChild(dDiv);
     dBox.scrollTop = dBox.scrollHeight;
@@ -440,13 +773,13 @@ function appendChat(data) {
 function appendSystem(text) {
   const mBox = document.getElementById('chat-messages');
   const div  = document.createElement('div');
-  div.style.cssText = 'text-align:left;padding:2px 0;';
-  div.innerHTML = `<span style="font-size:11px;color:rgba(255,255,255,.4);background:rgba(0,0,0,.3);padding:3px 10px;border-radius:99px;">${text}</span>`;
+  div.className = 'chat-system';
+  div.innerHTML = `<span>${text}</span>`;
   mBox.appendChild(div);
   mBox.scrollTop = mBox.scrollHeight;
 }
 
-// ── LIKE ─────────────────────────────────────────────────
+// ── LIKE ────────────────────────────────────────────────────
 function sendLike() {
   const icon = document.getElementById('like-icon');
   icon.textContent = '❤️';
@@ -454,7 +787,7 @@ function sendLike() {
   setTimeout(()=>icon.classList.remove('heart-pop'),350);
   likeCount++;
   spawnFloat('❤️','like');
-  if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'like' }));
+  if(ws?.readyState===1) ws.send(JSON.stringify({type:'like'}));
   clearTimeout(likeTimer);
   likeTimer = setTimeout(()=>{
     document.getElementById('like-count').textContent = likeCount + ' likes';
@@ -462,39 +795,41 @@ function sendLike() {
   },600);
 }
 
-// ── LIVE POLL ───────────────────────────────────
+function sendReaction(emoji) {
+  spawnFloat(emoji,'reaction');
+  if(ws?.readyState===1) ws.send(JSON.stringify({type:'reaction',emoji}));
+}
+
+// ── POLL ────────────────────────────────────────────────────
 function showPoll(msg) {
   myPollVote = null;
   document.getElementById('vp-question').textContent = msg.question;
-  document.getElementById('vp-label-a').textContent = msg.options.a;
-  document.getElementById('vp-label-b').textContent = msg.options.b;
-  document.getElementById('vp-fill-a').style.width = '0%';
-  document.getElementById('vp-fill-b').style.width = '0%';
+  document.getElementById('vp-label-a').textContent  = msg.options.a;
+  document.getElementById('vp-label-b').textContent  = msg.options.b;
+  document.getElementById('vp-fill-a').style.width   = '0%';
+  document.getElementById('vp-fill-b').style.width   = '0%';
   document.getElementById('vp-btn-a').classList.remove('voted');
   document.getElementById('vp-btn-b').classList.remove('voted');
   document.getElementById('viewer-poll-widget').classList.add('show');
 }
-
 function votePoll(option) {
-  if (!IS_AUTH) { location.href = '/accounts/login/'; return; }
-  if (myPollVote) return; // one vote per poll
+  if(!IS_AUTH){ location.href='/accounts/login/'; return; }
+  if(myPollVote) return;
   myPollVote = option;
-  document.getElementById('vp-btn-' + option).classList.add('voted');
-  ws?.readyState === 1 && ws.send(JSON.stringify({ type: 'poll_vote', option }));
+  document.getElementById('vp-btn-'+option).classList.add('voted');
+  ws?.readyState===1 && ws.send(JSON.stringify({type:'poll_vote',option}));
 }
-
 function updatePollBars(tallies) {
-  if (!tallies) return;
-  const a = tallies.a || 0, b = tallies.b || 0, total = a + b || 1;
-  document.getElementById('vp-fill-a').style.width = Math.round((a/total)*100) + '%';
-  document.getElementById('vp-fill-b').style.width = Math.round((b/total)*100) + '%';
+  if(!tallies) return;
+  const a=tallies.a||0, b=tallies.b||0, total=a+b||1;
+  document.getElementById('vp-fill-a').style.width = Math.round((a/total)*100)+'%';
+  document.getElementById('vp-fill-b').style.width = Math.round((b/total)*100)+'%';
 }
-
 function hidePoll() {
   document.getElementById('viewer-poll-widget').classList.remove('show');
 }
 
-// ── GIFTS ─────────────────────────────────────────────────
+// ── GIFTS ───────────────────────────────────────────────────
 function openGiftSheet() {
   document.getElementById('gift-sheet').classList.add('open');
   document.getElementById('gift-sheet-backdrop').classList.add('open');
@@ -505,76 +840,72 @@ function closeGiftSheet() {
 }
 
 async function sendGift(giftType, btn) {
-  if(!IS_AUTH){location.href='/accounts/login/';return;}
-  btn.style.transform='scale(.85)';
+  if(!IS_AUTH){ location.href='/accounts/login/'; return; }
+  btn.style.transform = 'scale(.82)';
   setTimeout(()=>btn.style.transform='',200);
   closeGiftSheet();
   try {
     const res  = await fetch(`/livestream/${STREAM_ID}/send-gift/`,{
       method:'POST',
       headers:{'X-CSRFToken':CSRF_TOKEN,'X-Requested-With':'XMLHttpRequest'},
-      body:new URLSearchParams({gift_type:giftType,quantity:1}),
+      body: new URLSearchParams({gift_type:giftType,quantity:1}),
     });
     const data = await res.json();
     if(data.success){
       handleGift({emoji:data.emoji,username:'You',total_value:data.total_value});
       ws?.readyState===1 && ws.send(JSON.stringify({type:'gift',gift_type:giftType,quantity:1}));
     }
-  } catch(e){console.error(e);}
+  } catch(e){ console.error(e); }
 }
 
 function handleGift(data) {
   const emoji = data.emoji;
-  for(let i=0;i<4;i++) setTimeout(()=>spawnFloat(emoji,'gift'),i*100);
+  for(let i=0;i<4;i++) setTimeout(()=>spawnFloat(emoji,'gift'),i*90);
   if(emoji===lastGiftEmoji){ giftCombo++; } else { giftCombo=1; lastGiftEmoji=emoji; }
   clearTimeout(giftComboTimer);
-  if(giftCombo>1){
-    const el=document.getElementById('gift-combo');
-    el.textContent=`${emoji} ×${giftCombo} COMBO!`;
-    el.classList.add('show');
-    giftComboTimer=setTimeout(()=>{el.classList.remove('show');giftCombo=0;},2200);
-  }
-  appendSystem(`🎁 ${esc(data.username||'Someone')} sent ${emoji}${data.total_value?` (GHS ${data.total_value})`:''}`);
+  const el = document.getElementById('gift-combo');
+  el.textContent = `${emoji} ×${giftCombo} COMBO!`;
+  el.classList.add('show');
+  giftComboTimer = setTimeout(()=>{ el.classList.remove('show'); giftCombo=0; }, 2200);
+  appendSystem(`🎁 ${esc(data.username||'Someone')} sent ${emoji}${data.total_value?` · GHS ${data.total_value}`:''}`);
 }
 
-function sendReaction(emoji) { spawnFloat(emoji,'reaction'); }
-
 function spawnFloat(emoji, kind) {
-  const el  = document.createElement('div');
+  const el = document.createElement('div');
   el.className = kind==='like' ? 'like-float' : 'gift-float';
   el.textContent = emoji;
   const x = kind==='reaction' ? 5+Math.random()*25
            : kind==='like'    ? 70+Math.random()*20
            : 20+Math.random()*60;
-  el.style.left   = x + '%';
-  el.style.bottom = '100px';
+  el.style.cssText = `left:${x}%;bottom:120px;`;
   document.body.appendChild(el);
   setTimeout(()=>el.remove(),2800);
 }
 
 function updateViewers(count) {
-  const badge = document.getElementById('viewer-badge');
-  if(badge){ badge.textContent=`👁 ${count}`; }
+  const b = document.getElementById('viewer-badge');
+  if(b) b.textContent = `👁 ${count}`;
 }
 
+// ── PRODUCTS ────────────────────────────────────────────────
 function renderProducts(products) {
-  document.getElementById('products-strip').innerHTML='';
+  document.getElementById('products-strip').innerHTML = '';
   products.forEach(upsertProduct);
 }
 function upsertProduct(p) {
-  const old=document.getElementById(`lp-${p.id}`);
+  const old = document.getElementById(`lp-${p.id}`);
   if(old) old.remove();
-  const strip=document.getElementById('products-strip');
-  const a=document.createElement('a');
-  a.id=`lp-${p.id}`;
-  a.href=`/products/${p.slug}/`;
-  a.className='live-product'+(p.is_highlighted?' featured':'');
-  a.innerHTML=`
-    ${p.is_highlighted?'<div style="background:#F5A623;color:#0F1B2D;font-size:9px;font-weight:700;text-align:center;padding:2px 0;">🔥 FEATURED</div>':''}
+  const strip = document.getElementById('products-strip');
+  const a = document.createElement('a');
+  a.id = `lp-${p.id}`;
+  a.href = `/products/${p.slug}/`;
+  a.className = 'live-product' + (p.is_highlighted?' featured':'');
+  a.innerHTML = `
+    ${p.is_highlighted?'<div style="background:#F5A623;color:#0F1B2D;font-size:9px;font-weight:800;text-align:center;padding:3px 0;">🔥 FEATURED</div>':''}
     <div style="position:relative;">
       <img src="${p.image||''}" onerror="this.style.display='none'" alt=""
            style="width:100%;height:64px;object-fit:cover;"/>
-      ${!p.in_stock?'<div style="position:absolute;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;"><span style="font-size:10px;color:#ef4444;font-weight:700;">Sold Out</span></div>':''}
+      ${!p.in_stock?'<div style="position:absolute;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;"><span style="font-size:10px;color:#ef4444;font-weight:700;">Sold Out</span></div>':''}
     </div>
     <div style="padding:6px;">
       <p style="color:white;font-size:11px;font-weight:600;margin:0 0 2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(p.name)}</p>
@@ -583,38 +914,58 @@ function upsertProduct(p) {
   p.is_highlighted ? strip.prepend(a) : strip.appendChild(a);
 }
 function removeProduct(id) {
-  const el=document.getElementById(`lp-${id}`);
+  const el = document.getElementById(`lp-${id}`);
   if(el) el.remove();
 }
 
+// ── SHARE ───────────────────────────────────────────────────
 async function shareStream() {
   const url = location.href;
   if(navigator.share){
-    // Was `{{ stream.vendor.shop_name }}` spliced straight into a
-    // single-quoted JS string — a shop name containing an apostrophe
-    // (e.g. "Kwame's Shop") would break this call. SHOP_NAME above is
-    // already |escapejs-safe.
-    try{await navigator.share({title:`${SHOP_NAME} is Live`,url});return;}catch{}
+    try{ await navigator.share({title:`${SHOP_NAME} is Live`,url}); return; }catch{}
   }
   try{
     await navigator.clipboard.writeText(url);
-    const t=document.getElementById('share-toast');
-    t.style.display='block';
-    setTimeout(()=>t.style.display='none',2200);
+    const t = document.getElementById('share-toast');
+    t.style.display = 'block';
+    setTimeout(()=>t.style.display='none', 2200);
   }catch{}
 }
 
+// ── FULLSCREEN ──────────────────────────────────────────────
 function toggleFullscreen() {
-  const el=document.getElementById('video-section');
+  const el = document.getElementById('video-section');
   if(!document.fullscreenElement){
     (el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen).call(el);
-    document.getElementById('fs-icon').textContent='⊡';
+    document.getElementById('fs-icon').textContent = '⊡';
   } else {
     (document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen).call(document);
-    document.getElementById('fs-icon').textContent='⛶';
+    document.getElementById('fs-icon').textContent = '⛶';
   }
 }
 
+// ── STREAM ENDED ────────────────────────────────────────────
+function showEnded() {
+  clearInterval(heartbeatInterval);
+  const overlay = document.getElementById('connecting-overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <p style="font-size:48px;margin-bottom:16px;">📺</p>
+    <p style="color:white;font-weight:700;font-size:20px;margin-bottom:8px;">Stream Ended</p>
+    <p style="color:#9ca3af;font-size:14px;margin-bottom:24px;">Thanks for watching ${esc(SHOP_NAME)}!</p>
+    <div style="display:flex;flex-direction:column;gap:10px;width:220px;">
+      <a href="{% url 'livestream:list' %}"
+         style="background:#ef4444;color:white;font-weight:600;padding:13px;border-radius:14px;text-align:center;text-decoration:none;">
+        Browse Live Streams
+      </a>
+      <a href="${SHOP_URL}"
+         style="background:rgba(255,255,255,.1);color:white;font-weight:600;padding:13px;border-radius:14px;text-align:center;text-decoration:none;">
+        Visit ${esc(SHOP_NAME)}
+      </a>
+    </div>`;
+}
+
+// ── TOUCH GESTURES ──────────────────────────────────────────
 let touchStartY=0, touchStartX=0, touchStartTime=0;
 const videoEl = document.getElementById('video-section');
 
@@ -627,11 +978,10 @@ videoEl.addEventListener('touchstart', e=>{
 videoEl.addEventListener('touchend', e=>{
   const dy = touchStartY - e.changedTouches[0].clientY;
   const dx = Math.abs(touchStartX - e.changedTouches[0].clientX);
-  const dt = Date.now()-touchStartTime;
-
+  const dt = Date.now() - touchStartTime;
   if(Math.abs(dy)>60 && dx<60 && dt<400){
     if(dy>0){ if(IS_AUTH) openGiftSheet(); }
-    else { history.back(); }
+    else     { history.back(); }
   }
 },{passive:true});
 
@@ -641,26 +991,6 @@ videoEl.addEventListener('touchend', e=>{
   if(now-lastTap<300){ sendLike(); e.preventDefault(); }
   lastTap=now;
 },{passive:false});
-
-function showEnded() {
-  clearInterval(heartbeatInterval);
-  const overlay=document.getElementById('connecting-overlay');
-  overlay.style.display='flex';
-  overlay.innerHTML=`
-    <p style="font-size:48px;margin-bottom:16px;">📺</p>
-    <p style="color:white;font-weight:700;font-size:20px;margin-bottom:8px;">Stream Ended</p>
-    <p style="color:#9ca3af;font-size:14px;margin-bottom:24px;">Thanks for watching ${esc(SHOP_NAME)}!</p>
-    <div style="display:flex;flex-direction:column;gap:10px;width:220px;">
-      <a href="{% url 'livestream:list' %}"
-         style="background:#ef4444;color:white;font-weight:600;padding:12px;border-radius:14px;text-align:center;text-decoration:none;">
-        Browse Live Streams
-      </a>
-      <a href="${SHOP_URL}"
-         style="background:rgba(255,255,255,.1);color:white;font-weight:600;padding:12px;border-radius:14px;text-align:center;text-decoration:none;">
-        Visit ${esc(SHOP_NAME)}
-      </a>
-    </div>`;
-}
 
 function esc(str){
   return String(str||'')
