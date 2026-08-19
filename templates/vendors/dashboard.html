@@ -19,7 +19,7 @@
   }
   .video-card { position: relative; }
   .video-card-overlay {
-    position: absolute; inset: 0;
+    position: absolute; top: 0; right: 0; bottom: 0; left: 0;
     background: linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 55%);
     border-radius: 12px;
     pointer-events: none;
@@ -66,7 +66,7 @@
           <span class="bg-success rounded-circle" style="width:.5rem;height:.5rem;"></span>
           <span class="small text-success fw-semibold">Active Shop</span>
           <span class="text-secondary">·</span>
-          <a href="{% url 'vendors:shop' vendor.slug %}" class="small text-gold-dark" target="_blank">
+          <a href="{% url 'vendors:detail' vendor.slug %}" class="small text-gold-dark" target="_blank">
             View Shop →
           </a>
         </div>
