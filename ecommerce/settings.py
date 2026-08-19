@@ -18,7 +18,6 @@ ALLOWED_HOSTS = [
     'lynctel.up.railway.app',
 ]
 
-# ── Custom user model ──────────────────────────────────────────────────────────
 AUTH_USER_MODEL = 'ecommerce.User'
 
 # ── Applications ───────────────────────────────────────────────────────────────
@@ -31,10 +30,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Storage
     'cloudinary',
     'cloudinary_storage',
-    # Project apps
     'ecommerce',
     'products',
     'cart',
@@ -97,9 +94,6 @@ TEMPLATES = [
 ]
 
 # ── Database ───────────────────────────────────────────────────────────────────
-# Priority:
-#   1. DATABASE_PRIVATE_URL / DATABASE_URL — Railway auto-injects
-#   2. SQLite — local dev only
 _db_url = (
     os.environ.get('DATABASE_PRIVATE_URL') or
     os.environ.get('DATABASE_URL')
@@ -121,29 +115,61 @@ else:
         }
     }
 
-# ── Channel layers (WebSocket / live streaming) ────────────────────────────────
-REDIS_URL = os.getenv('REDIS_URL')
+# ── Redis ──────────────────────────────────────────────────────────────────────
+# Single definition — used by CACHES and CHANNEL_LAYERS below.
+REDIS_URL = os.environ.get('REDIS_URL', '')
+
+# ── Cache ──────────────────────────────────────────────────────────────────────
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND':  'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+            'TIMEOUT':  300,
+            'OPTIONS':  {'MAX_ENTRIES': 10000},
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND':  'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'lynctel-cache',
+        }
+    }
+
+# ── Channel layers ─────────────────────────────────────────────────────────────
+# socket_keepalive + health_check_interval prevent Railway's idle-connection
+# timeout from killing every WebSocket every ~30 seconds.
+def _make_redis_host(url):
+    import urllib.parse as _p
+    try:
+        p = _p.urlparse(url)
+        cfg = {
+            'host': p.hostname or 'localhost',
+            'port': p.port or 6379,
+            'socket_keepalive':       True,
+            'socket_keepalive_options': {},
+            'socket_timeout':          30,
+            'socket_connect_timeout':  10,
+            'retry_on_timeout':        True,
+            'health_check_interval':   25,
+        }
+        if p.password: cfg['password'] = p.password
+        db = (p.path or '/0').lstrip('/')
+        if db.isdigit(): cfg['db'] = int(db)
+        return cfg
+    except Exception:
+        return url
 
 if REDIS_URL:
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG':  {
-                'hosts':    [REDIS_URL],
-                # Prevent timeout errors from killing WebSocket connections
-                'socket_timeout':         30,      # seconds before read times out
-                'socket_connect_timeout': 10,      # seconds to establish connection
-                'retry_on_timeout':       True,    # auto-retry on timeout
-                'health_check_interval':  30,      # keep-alive ping every 30s
-                # Connection pool — limit concurrent Redis connections
-                'connection_pool_kwargs': {
-                    'max_connections': 20,
-                    'timeout':         20,
-                },
-                # Capacity limits
-                'capacity':     1500,      # max messages per channel
-                'expiry':       60,        # message TTL in seconds
-                'group_expiry': 900,       # group TTL (15 min idle)
+            'CONFIG': {
+                'hosts':       [_make_redis_host(REDIS_URL)],
+                'capacity':     1500,
+                'expiry':       60,
+                'group_expiry': 900,
             },
         },
     }
@@ -183,122 +209,80 @@ STATIC_URL       = '/static/'
 STATIC_ROOT      = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# ── Media / Storage (Cloudinary or local filesystem) ──────────────────────────
+# ── Media / Storage ────────────────────────────────────────────────────────────
 _cloud_name   = config('CLOUDINARY_CLOUD_NAME', default='').strip()
 _cloud_key    = config('CLOUDINARY_API_KEY',    default='').strip()
 _cloud_secret = config('CLOUDINARY_API_SECRET', default='').strip()
 _use_cloudinary = bool(_cloud_name and _cloud_key and _cloud_secret)
 
 if _use_cloudinary:
-    import cloudinary
-    import cloudinary.uploader
-    import cloudinary.api
-
+    import cloudinary, cloudinary.uploader, cloudinary.api
     cloudinary.config(
-        cloud_name = _cloud_name,
-        api_key    = _cloud_key,
-        api_secret = _cloud_secret,
-        secure     = True,
+        cloud_name=_cloud_name, api_key=_cloud_key,
+        api_secret=_cloud_secret, secure=True,
     )
-
     CLOUDINARY_STORAGE = {
         'CLOUD_NAME': _cloud_name,
         'API_KEY':    _cloud_key,
         'API_SECRET': _cloud_secret,
     }
-
     STORAGES = {
-        'default': {
-            'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
-        },
-        'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
-        },
+        'default':    {'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage'},
+        'staticfiles':{'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
     }
-
-    MEDIA_URL  = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
-
 else:
-    # Railway Volume or local filesystem
     STORAGES = {
-        'default': {
-            'BACKEND': 'django.core.files.storage.FileSystemStorage',
-        },
-        'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
-        },
+        'default':    {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles':{'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
     }
 
-    MEDIA_URL  = '/media/'
-    MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
+MEDIA_URL  = '/media/'
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', str(BASE_DIR / 'media'))
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
 LOGIN_URL           = '/accounts/login/'
 LOGIN_REDIRECT_URL  = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-# ── Misc ───────────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ── Cache ──────────────────────────────────────────────────────────────────────
-# ── Cache backend ─────────────────────────────────────────────────────────────
-# Uses Redis in production (faster, shared across workers).
-# Falls back to in-memory cache for local dev.
-if REDIS_URL:
-    CACHES = {
-        'default': {
-            'BACKEND':  'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': REDIS_URL,
-            'TIMEOUT':  300,
-            'OPTIONS':  {'MAX_ENTRIES': 10000},
-        }
-    }
-else:
-    CACHES = {
-        'default': {
-            'BACKEND':  'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'lynctel-cache',
-        }
-    }
-
-# ── Upload limits (mobile photos / videos) ─────────────────────────────────────
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB
+# ── Upload limits ──────────────────────────────────────────────────────────────
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 # ── CSRF ───────────────────────────────────────────────────────────────────────
 CSRF_TRUSTED_ORIGINS = ['https://lynctel.up.railway.app']
 
-# ── Security headers (production only) ────────────────────────────────────────
+# ── Security headers ───────────────────────────────────────────────────────────
+# SECURE_SSL_REDIRECT is False — Railway terminates SSL at the load balancer.
+# Setting it True causes an infinite redirect loop (Railway already forces HTTPS).
+SECURE_PROXY_SSL_HEADER        = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT             = False   # DO NOT change — Railway handles this
+SECURE_CONTENT_TYPE_NOSNIFF     = True
+SECURE_BROWSER_XSS_FILTER       = True
+X_FRAME_OPTIONS                 = 'DENY'
+SECURE_REFERRER_POLICY          = 'strict-origin-when-cross-origin'
+
 if not DEBUG:
-    SECURE_PROXY_SSL_HEADER     = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT         = False   # Railway terminates SSL at load balancer — don't redirect againS termination
-    SESSION_COOKIE_SECURE       = True
-    CSRF_COOKIE_SECURE          = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS             = 'DENY'
+    SESSION_COOKIE_SECURE        = True
+    CSRF_COOKIE_SECURE           = True
+    SECURE_HSTS_SECONDS          = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD          = True
 
 # ── Payment gateways ───────────────────────────────────────────────────────────
-
-# Hubtel — primary payment gateway (replaces Paystack)
-# Get from: merchants.hubtel.com → Settings → API
 HUBTEL_CLIENT_ID     = config('HUBTEL_CLIENT_ID',     default='')
 HUBTEL_CLIENT_SECRET = config('HUBTEL_CLIENT_SECRET', default='')
 HUBTEL_MERCHANT_ACCT = config('HUBTEL_MERCHANT_ACCT', default='')
 
-# Flutterwave — secondary gateway (kept as fallback)
-# FIXED: was FLW_WEBHOOK_SECRET but payment/views.py reads FLW_WEBHOOK_HASH
 FLW_PUBLIC_KEY   = config('FLW_PUBLIC_KEY',   default='')
 FLW_SECRET_KEY   = config('FLW_SECRET_KEY',   default='')
-FLW_WEBHOOK_HASH = config('FLW_WEBHOOK_HASH', default='')   # was FLW_WEBHOOK_SECRET
+FLW_WEBHOOK_HASH = config('FLW_WEBHOOK_HASH', default='')
 
-# ── SMS — Arkesel ──────────────────────────────────────────────────────────────
+# ── SMS ────────────────────────────────────────────────────────────────────────
 ARKESEL_API_KEY   = config('ARKESEL_API_KEY',   default='')
 ARKESEL_SENDER_ID = config('ARKESEL_SENDER_ID', default='Lynctel')
-
-# ── Admin alerts (payout failures etc.) ───────────────────────────────────────
-# SMS is sent to this number when a vendor MoMo disbursement fails.
-ADMIN_PHONE = config('ADMIN_PHONE', default='')
+ADMIN_PHONE       = config('ADMIN_PHONE',        default='')
 
 # ── Email ──────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND       = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
@@ -317,13 +301,44 @@ VAPID_PUBLIC_KEY  = config('VAPID_PUBLIC_KEY',  default='')
 VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default='')
 VAPID_ADMIN_EMAIL = config('VAPID_ADMIN_EMAIL', default='admin@lynctel.com')
 
+# ── Rate limiting ──────────────────────────────────────────────────────────────
+RATELIMIT_ENABLE    = True
+RATELIMIT_USE_CACHE = 'default'
+
+# ── CORS ───────────────────────────────────────────────────────────────────────
+CORS_ALLOW_ALL_ORIGINS  = False
+CORS_ALLOWED_ORIGINS    = ['https://lynctel.up.railway.app']
+CORS_ALLOW_CREDENTIALS  = True
+
+# ── Content Security Policy ────────────────────────────────────────────────────
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC  = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
+                    "cdnjs.cloudflare.com", "maps.googleapis.com",)
+CSP_STYLE_SRC   = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
+                    "cdnjs.cloudflare.com", "fonts.googleapis.com",)
+CSP_FONT_SRC    = ("'self'", "fonts.gstatic.com",)
+CSP_IMG_SRC     = ("'self'", "data:", "blob:",
+                    "*.openstreetmap.org",
+                    "*.tile.openstreetmap.org",
+                    "*.locationiq.com",
+                    "res.cloudinary.com",
+                    "maps.gstatic.com",)
+CSP_CONNECT_SRC = ("'self'", "wss:", "ws:",
+                    "nominatim.openstreetmap.org",
+                    "us1.locationiq.com",
+                    "api.locationiq.com",
+                    "api.hubtel.com",
+                    "sms.arkesel.com",)
+CSP_FRAME_SRC   = ("'self'",)
+CSP_REPORT_ONLY = False
+
 # ── Logging ────────────────────────────────────────────────────────────────────
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {message}',
+            'format': '{levelname} {asctime} {module} {message}',
             'style':  '{',
         },
     },
@@ -333,27 +348,20 @@ LOGGING = {
             'formatter': 'verbose',
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level':    'WARNING',
-    },
+    'root': {'handlers': ['console'], 'level': 'WARNING'},
     'loggers': {
-        'django':         {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
-        'django.request': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
-        'accounts':       {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
-        'ecommerce':      {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
-        # Payment + payout logging — shows in Railway logs so you can see
-        # every Hubtel transfer attempt and any payout failures in real time.
-        'payment':        {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
-        'notifications':  {'handlers': ['console'], 'level': 'INFO',  'propagate': False},
+        'django':         {'handlers': ['console'], 'level': 'ERROR',   'propagate': False},
+        'django.request': {'handlers': ['console'], 'level': 'ERROR',   'propagate': False},
+        'accounts':       {'handlers': ['console'], 'level': 'INFO',    'propagate': False},
+        'payment':        {'handlers': ['console'], 'level': 'INFO',    'propagate': False},
+        'notifications':  {'handlers': ['console'], 'level': 'INFO',    'propagate': False},
+        'delivery':       {'handlers': ['console'], 'level': 'INFO',    'propagate': False},
+        'rider':          {'handlers': ['console'], 'level': 'INFO',    'propagate': False},
+        'food':           {'handlers': ['console'], 'level': 'INFO',    'propagate': False},
     },
 }
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# ── Sentry error tracking ──────────────────────────────────────────────────────
-# Set SENTRY_DSN in Railway environment variables.
-# Get a free DSN at https://sentry.io (Lynctel → Settings → DSN)
+# ── Sentry ─────────────────────────────────────────────────────────────────────
 SENTRY_DSN = config('SENTRY_DSN', default='')
 if SENTRY_DSN:
     import sentry_sdk
@@ -361,77 +369,7 @@ if SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[DjangoIntegration()],
-        traces_sample_rate=0.1,      # 10% of requests traced for performance
-        profiles_sample_rate=0.05,   # 5% profiled
-        send_default_pii=False,       # never send PII (GDPR safe)
+        traces_sample_rate=0.1,
+        send_default_pii=False,
         environment=config('DJANGO_ENV', default='production'),
     )
-
-# ── Channels / WebSocket channel layer ────────────────────────────────────────
-# CRITICAL: without Redis, WebSockets only work on ONE worker process.
-# Railway auto-scales — add the Redis add-on and set REDIS_URL.
-REDIS_URL = config('REDIS_URL', default='redis://localhost:6379')
-
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG':  {'hosts': [REDIS_URL]},
-    }
-}
-
-# ── Production security headers ────────────────────────────────────────────────
-# These all default to off to allow local HTTP dev, but must be on in prod.
-if not DEBUG:
-    SECURE_SSL_REDIRECT          = True
-    SECURE_HSTS_SECONDS          = 31536000   # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD          = True
-    SESSION_COOKIE_SECURE        = True
-    CSRF_COOKIE_SECURE           = True
-    SECURE_CONTENT_TYPE_NOSNIFF  = True
-    SECURE_BROWSER_XSS_FILTER    = True
-    X_FRAME_OPTIONS              = 'DENY'
-    SECURE_REFERRER_POLICY       = 'strict-origin-when-cross-origin'
-
-# ── Cache backend (Redis) ──────────────────────────────────────────────────────
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': REDIS_URL,
-        'TIMEOUT':  300,   # 5 minutes default
-        'OPTIONS':  {'MAX_ENTRIES': 10000},
-    }
-}
-
-# ── Rate limiting (django-ratelimit) ───────────────────────────────────────────
-# pip install django-ratelimit
-# Cart/payment endpoints: 20 requests/minute per user
-RATELIMIT_ENABLE = True
-RATELIMIT_USE_CACHE = 'default'
-
-# ── Content Security Policy ────────────────────────────────────────────────────
-CSP_DEFAULT_SRC  = ("'self'",)
-CSP_SCRIPT_SRC   = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
-                     "cdnjs.cloudflare.com", "maps.googleapis.com",)
-CSP_STYLE_SRC    = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com",
-                     "cdnjs.cloudflare.com", "fonts.googleapis.com",)
-CSP_FONT_SRC     = ("'self'", "fonts.gstatic.com",)
-CSP_IMG_SRC      = ("'self'", "data:", "blob:",
-                     "*.openstreetmap.org",
-                     "*.tile.openstreetmap.org",     # covers a/b/c.tile.openstreetmap.org
-                     "*.locationiq.com",             # LocationIQ map tiles
-                     "res.cloudinary.com",
-                     "maps.gstatic.com",)
-CSP_CONNECT_SRC  = ("'self'", "wss:", "ws:", "nominatim.openstreetmap.org",
-                     "us1.locationiq.com", "api.hubtel.com", "sms.arkesel.com",)
-CSP_FRAME_SRC    = ("'self'",)
-CSP_REPORT_ONLY  = False
-
-# ── CORS ──────────────────────────────────────────────────────────────────────
-# Allows the frontend to call the API from the same Railway domain.
-# Tighten to specific origins in production once you have a custom domain.
-CORS_ALLOW_ALL_ORIGINS   = False
-CORS_ALLOWED_ORIGINS     = [
-    'https://lynctel.up.railway.app',
-]
-CORS_ALLOW_CREDENTIALS   = True

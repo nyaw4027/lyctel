@@ -1,6 +1,7 @@
 # chat/consumers.py
 
 import json
+import asyncio
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -8,7 +9,60 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from push_notifications import send_push_notification
 
 
-class BaseChatConsumer(AsyncWebsocketConsumer):
+import logging as _logging
+
+_log = _logging.getLogger(__name__)
+
+
+def _is_redis_error(exc):
+    """True for any Redis connectivity / timeout exception."""
+    return (
+        type(exc).__name__ in ('TimeoutError', 'RedisError', 'ConnectionError',
+                               'CancelledError')
+        or 'redis' in getattr(type(exc), '__module__', '').lower()
+        or 'Timeout reading from redis' in str(exc)
+        or 'asyncio.exceptions.CancelledError' in str(type(exc))
+    )
+
+
+class ResilientConsumerMixin:
+    """
+    Drop-in mixin for AsyncWebsocketConsumer.
+    Catches Redis timeout / CancelledError that Railway generates
+    when idle connections are dropped, and closes the WebSocket
+    cleanly (code 1001 = "Going Away") so the client auto-reconnects.
+
+    Usage:
+        class BaseChatConsumer(ResilientConsumerMixin, AsyncWebsocketConsumer):
+            ...
+    """
+
+    async def dispatch(self, message):
+        try:
+            await super().dispatch(message)
+        except Exception as exc:
+            if _is_redis_error(exc):
+                _log.warning('[WS] Redis timeout in %s — closing for clean reconnect',
+                             self.__class__.__name__)
+                try:
+                    await self.close(code=1001)
+                except Exception:
+                    pass
+            else:
+                raise
+
+    async def websocket_connect(self, message):
+        try:
+            await super().websocket_connect(message)
+        except Exception as exc:
+            if _is_redis_error(exc):
+                _log.warning('[WS] Redis timeout on connect in %s',
+                             self.__class__.__name__)
+            else:
+                raise
+
+
+class BaseChatConsumer(ResilientConsumerMixin, AsyncWebsocketConsumer):
     """
     Shared logic for Vendor Chat and Support Chat.
     """
