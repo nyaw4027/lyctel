@@ -1,43 +1,20 @@
-"""
-products/views.py — Performance optimised
-  - select_related('vendor', 'category') on all querysets → eliminates N+1 queries
-  - rating_breakdown in ONE annotate query instead of 5 separate COUNTs
-  - view counter cached in Redis, flushed every 10 views (reduces DB writes by 90%)
-  - product_list cached for 2 minutes
-  - pagination on product_list (24 per page)
-"""
-from django.contrib.auth.decorators import login_required
+import json
+from decimal import Decimal
+
 from django.contrib import messages
-from django.core.cache import cache
-from django.core.paginator import Paginator
-from django.db.models import Q, Avg, Count, F, IntegerField
-from django.db.models.functions import Coalesce
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST, require_GET
 from django.utils import timezone
 
-from .models import Product, Category, ProductVideo
 from cart.models import Cart
-from rest_framework.decorators import api_view
+from delivery.models import Delivery
+from delivery.services import ACCRA_CENTER, assign_rider_to_delivery, estimate_fee_for_request
+
+from .models import Order
 
 
-def _cget(key, default=None):
-    """Redis-safe cache.get — returns default on any connection error."""
-    try:
-        from django.core.cache import cache
-        return _cget(key, default)
-    except Exception:
-        return default
-
-def _cset(key, val, ttl):
-    """Redis-safe cache.set — silently ignores connection errors."""
-    try:
-        from django.core.cache import cache
-        _cset(key, val, ttl)
-    except Exception:
-        pass
-
+# ── CART HELPER ───────────────────────────────────────────
 
 def get_or_create_cart(request):
     if request.user.is_authenticated:
@@ -46,273 +23,391 @@ def get_or_create_cart(request):
         if not request.session.session_key:
             request.session.create()
         cart, _ = Cart.objects.get_or_create(
-            session_key=request.session.session_key, user=None
+            session_key=request.session.session_key,
+            user=None
         )
     return cart
 
 
-# ── Search autocomplete ────────────────────────────────────────────────────────
-
-@require_GET
-def search_autocomplete(request):
-    q = request.GET.get('q', '').strip()
-    if len(q) < 2:
-        return JsonResponse({'results': []})
-
-    cache_key = f'autocomplete:{q.lower()}'
-    cached    = _cget(cache_key)
-    if cached is not None:
-        return JsonResponse({'results': cached})
-
-    products = (
-        Product.objects
-        .filter(status='active', name__icontains=q)
-        .select_related('category')
-        .values('name', 'slug', 'selling_price')
-        .order_by('-views')[:6]
-    )
-    categories = (
-        Category.objects
-        .filter(is_active=True, name__icontains=q)
-        .values('name', 'slug')[:3]
-    )
-
-    results = [
-        {'type': 'product', 'label': p['name'],
-         'price': f"GHS {p['selling_price']}", 'url': f"/products/{p['slug']}/"}
-        for p in products
-    ] + [
-        {'type': 'category', 'label': c['name'], 'url': f"/products/?category={c['slug']}"}
-        for c in categories
-    ]
-
-    _cset(cache_key, results, 60)
-    return JsonResponse({'results': results})
-
-
-# ── Product list ───────────────────────────────────────────────────────────────
-
-def product_list(request):
-    category_slug = request.GET.get('category', '')
-    search_query  = request.GET.get('q', '').strip()
-    sort_by       = request.GET.get('sort', 'newest')
-    price_min     = request.GET.get('price_min', '').strip()
-    price_max     = request.GET.get('price_max', '').strip()
-    in_stock_only = request.GET.get('in_stock') == '1'
-    page_num      = request.GET.get('page', 1)
-
-    # Cache key includes all filter params
-    cache_key = (
-        f'plist:{category_slug}:{search_query}:{sort_by}:'
-        f'{price_min}:{price_max}:{in_stock_only}:{page_num}'
-    )
-    ctx = _cget(cache_key) if not search_query else None  # don't cache searches
-
-    if ctx is None:
-        # ── single queryset with select_related — no N+1 ──────────────────────
-        products = (
-            Product.objects
-            .filter(status='active')
-            .select_related('vendor', 'category')
-            .prefetch_related('images')
-        )
-
-        if category_slug:
-            products = products.filter(category__slug=category_slug)
-        if search_query:
-            products = products.filter(
-                Q(name__icontains=search_query) |
-                Q(description__icontains=search_query) |
-                Q(category__name__icontains=search_query)
-            )
-        if price_min:
-            try: products = products.filter(selling_price__gte=float(price_min))
-            except ValueError: pass
-        if price_max:
-            try: products = products.filter(selling_price__lte=float(price_max))
-            except ValueError: pass
-        if in_stock_only:
-            products = products.filter(stock_qty__gt=0)
-
-        if sort_by == 'top_rated':
-            products = products.annotate(avg_rating=Avg('reviews__rating'))
-
-        sort_map = {
-            'newest':     '-created_at',
-            'price_low':  'selling_price',
-            'price_high': '-selling_price',
-            'name':       'name',
-            'top_rated':  '-avg_rating',
-        }
-        products = products.order_by(sort_map.get(sort_by, '-created_at'))
-
-        # Pagination — 24 per page reduces initial load significantly
-        paginator = Paginator(products, 24)
-        page_obj  = paginator.get_page(page_num)
-
-        categories = _cget('categories:active')
-        if categories is None:
-            categories = list(Category.objects.filter(is_active=True))
-            _cset('categories:active', categories, 600)
-
-        flash_products = _cget('flash:active')
-        if flash_products is None:
-            flash_products = list(
-                Product.objects.filter(
-                    status='active',
-                    flash_price__isnull=False,
-                    flash_sale_ends__gt=timezone.now(),
-                ).prefetch_related('images').order_by('flash_sale_ends')[:8]
-            )
-            _cset('flash:active', flash_products, 120)
-
-        featured = list(
-            Product.objects.filter(is_featured=True, status='active')
-            .select_related('vendor', 'category')
-            .prefetch_related('images')[:4]
-        )
-
-        ctx = {
-            'page_obj':       page_obj,
-            'products':       page_obj.object_list,
-            'categories':     categories,
-            'featured':       featured,
-            'flash_products': flash_products,
-            'active_category': category_slug,
-            'search_query':   search_query,
-            'sort_by':        sort_by,
-            'price_min':      price_min,
-            'price_max':      price_max,
-            'in_stock_only':  in_stock_only,
-        }
-        if not search_query:
-            _cset(cache_key, ctx, 120)   # 2-min cache for filtered views
-
-    cart    = get_or_create_cart(request)
-    ctx['cart_count'] = cart.total_items
-    return render(request, 'products/product_list.html', ctx)
-
-
-# ── Product detail ─────────────────────────────────────────────────────────────
-
-def product_detail(request, slug):
-    product = get_object_or_404(
-        Product.objects.select_related('vendor', 'category'),
-        slug=slug, status='active'
-    )
-    cart    = get_or_create_cart(request)
-    related = (
-        Product.objects
-        .filter(category=product.category, status='active')
-        .exclude(pk=product.pk)
-        .select_related('vendor', 'category')
-        .prefetch_related('images')[:4]
-    )
-    videos  = product.videos.all().order_by('order', 'uploaded_at')
-    reviews = product.reviews.filter(is_visible=True).select_related('customer')
-
-    # ── One annotate query instead of 5 separate COUNTs ───────────────────────
-    from django.db.models import Case, When, IntegerField
-    review_stats = reviews.aggregate(
-        avg=Avg('rating'),
-        count=Count('id'),
-        r5=Count(Case(When(rating=5, then=1), output_field=IntegerField())),
-        r4=Count(Case(When(rating=4, then=1), output_field=IntegerField())),
-        r3=Count(Case(When(rating=3, then=1), output_field=IntegerField())),
-        r2=Count(Case(When(rating=2, then=1), output_field=IntegerField())),
-        r1=Count(Case(When(rating=1, then=1), output_field=IntegerField())),
-    )
-    avg_rating   = round(review_stats['avg'] or 0, 1)
-    review_count = review_stats['count'] or 0
-
-    rating_breakdown = {}
-    for i in range(5, 0, -1):
-        cnt = review_stats.get(f'r{i}', 0) or 0
-        rating_breakdown[i] = {
-            'count': cnt,
-            'pct':   int((cnt / review_count * 100)) if review_count else 0,
-        }
-
-    user_review = user_can_review = None
-    if request.user.is_authenticated:
-        user_review = reviews.filter(customer=request.user).first()
-        if not user_review:
-            from reviews.views import can_review
-            user_can_review = can_review(request.user, product)
-
-    # ── Cached view counter — only writes to DB every 10 increments ───────────
-    # Without caching: 1 DB write per product page view (high write load)
-    # With caching: 1 DB write per 10 views (90% fewer writes)
-    vc_key   = f'views:{product.pk}'
-    vc_count = _cget(vc_key, 0) + 1
-    _cset(vc_key, vc_count, 3600)
-    if vc_count % 10 == 0:
-        Product.objects.filter(pk=product.pk).update(views=F('views') + 10)
-
-    return render(request, 'products/product_detail.html', {
-        'product':          product,
-        'images':           product.images.all(),
-        'videos':           videos,
-        'related':          related,
-        'in_cart':          cart.items.filter(product=product).exists(),
-        'cart_count':       cart.total_items,
-        'reviews':          reviews,
-        'avg_rating':       avg_rating,
-        'review_count':     review_count,
-        'rating_breakdown': rating_breakdown,
-        'user_review':      user_review,
-        'user_can_review':  user_can_review,
-    })
-
-
-def deals_page(request):
-    from django.utils import timezone as _tz
-    now   = _tz.now()
-    deals = Product.objects.filter(
-        status='active',
-    ).filter(
-        Q(discount_price__isnull=False, discount_price__lt=F('selling_price')) |
-        Q(flash_price__isnull=False, flash_sale_ends__gt=now)
-    ).select_related('vendor', 'category').prefetch_related('images').distinct()
-    flash_pks = set(Product.objects.filter(
-        status='active', flash_price__isnull=False, flash_sale_ends__gt=now
-    ).values_list('pk', flat=True))
-    return render(request, 'products/deals.html', {'deals': deals, 'flash_pks': flash_pks})
-
+# ── CHECKOUT ───────────────────────────────────────────────
 
 @login_required
-@require_POST
-def video_delete(request, pk):
-    video = get_object_or_404(ProductVideo, pk=pk)
-    if not (video.product.vendor and video.product.vendor.owner == request.user):
-        messages.error(request, 'Permission denied.')
-        return redirect('vendors:dashboard')
-    product_pk = video.product.pk
-    video.delete()
-    messages.success(request, 'Video removed.')
-    return redirect('vendors:product_edit', pk=product_pk)
-
-
-@api_view(['GET'])
-def product_list_api(request):
-    from rest_framework.response import Response
-    return Response({'detail': 'Product list API'})
-
-
-def flash_sale_list(request):
-    flash_products = _cget('flash:active')
-    if flash_products is None:
-        flash_products = list(
-            Product.objects.filter(
-                status='active',
-                flash_price__isnull=False,
-                flash_sale_ends__gt=timezone.now(),
-            ).select_related('vendor', 'category').prefetch_related('images')
-            .order_by('flash_sale_ends')
-        )
-        _cset('flash:active', flash_products, 120)
+def checkout(request):
     cart = get_or_create_cart(request)
-    return render(request, 'products/flash_sale.html', {
-        'flash_products': flash_products,
-        'cart_count':     cart.total_items,
+
+    if cart.total_items == 0:
+        messages.warning(request, "Your cart is empty.")
+        return redirect("cart:detail")
+
+    if request.method == "POST":
+        delivery_choice        = request.POST.get("delivery_choice", "rider")
+        delivery_phone         = request.POST.get("delivery_phone", "").strip()
+        delivery_address       = request.POST.get("delivery_address", "").strip()
+        delivery_city           = request.POST.get("delivery_city", "").strip()
+        # FIXED: checkout.html posts this field as "order_note", not
+        # "special_notes" — the old code was silently discarding every note.
+        order_note              = request.POST.get("order_note", "").strip()
+        parcel_bus_station       = request.POST.get("parcel_bus_station", "").strip()
+        parcel_recipient_phone  = request.POST.get("parcel_recipient_phone", "").strip()
+        parcel_notes            = request.POST.get("parcel_notes", "").strip()
+
+        # FIXED: the map in checkout.html writes to hidden inputs
+        # delivery_lat / delivery_lng, but nothing ever read them —
+        # coordinates picked on the frontend never reached the backend.
+        dlat_raw = request.POST.get("delivery_lat", "").strip()
+        dlng_raw = request.POST.get("delivery_lng", "").strip()
+
+        errors = {}
+
+        # Phone is required for all delivery methods
+        if not delivery_phone:
+            errors["delivery_phone"] = "Enter a contact phone number."
+
+        if delivery_choice == "rider":
+            if not delivery_address:
+                errors["delivery_address"] = "Enter your delivery address."
+            if not delivery_city:
+                errors["delivery_city"] = "Enter your city."
+
+        elif delivery_choice == "parcel":
+            if not parcel_bus_station:
+                errors["parcel_bus_station"] = "Enter the bus station name."
+            if not parcel_recipient_phone:
+                errors["parcel_recipient_phone"] = "Enter the recipient phone number."
+
+        if errors:
+            from django.conf import settings as _s
+            return render(request, "order/checkout.html", {
+                "cart":           cart,
+                "errors":         errors,
+                "cart_count":     cart.total_items,
+                "form_data":      request.POST,
+                "locationiq_key": getattr(_s, 'LOCATIONIQ_API_KEY', ''),
+            })
+
+        # Cart subtotal
+        subtotal = Decimal(str(cart.total_price))
+
+        # Delivery fee — never trust the client-posted number, recompute
+        # server-side from coordinates whenever we have them.
+        delivery_lat = delivery_lng = None
+        distance_km  = None
+        delivery_fee = Decimal("0.00")
+
+        if delivery_choice == "rider" and dlat_raw and dlng_raw:
+            try:
+                delivery_lat = float(dlat_raw)
+                delivery_lng = float(dlng_raw)
+                # Server-side recalculation — never trust the client value.
+                # This prevents fee manipulation from browser devtools.
+                distance_km, fee = estimate_fee_for_request(
+                    ACCRA_CENTER[0], ACCRA_CENTER[1], delivery_lat, delivery_lng
+                )
+                delivery_fee = Decimal(str(fee))
+            except (TypeError, ValueError):
+                # Service unavailable — fall back to the frontend-calculated
+                # fee that was posted in the hidden delivery_fee field.
+                submitted_fee = request.POST.get("delivery_fee", "0").strip()
+                try:
+                    delivery_fee = max(Decimal("0.00"), Decimal(submitted_fee))
+                except Exception:
+                    delivery_fee = Decimal("0.00")
+                delivery_lat = float(dlat_raw) if dlat_raw else None
+                delivery_lng = float(dlng_raw) if dlng_raw else None
+                distance_km  = None
+
+        total = subtotal + delivery_fee
+
+        # Save order until payment succeeds
+        request.session["pending_order"] = {
+            "delivery_choice": delivery_choice,
+            "delivery_address": delivery_address,
+            "delivery_city": delivery_city,
+            "delivery_phone": delivery_phone,
+            "delivery_lat": delivery_lat,
+            "delivery_lng": delivery_lng,
+            "distance_km": distance_km,
+            "subtotal": str(subtotal),
+            "delivery_fee": str(delivery_fee),
+            "total": str(total),
+            "order_note": order_note,
+            "parcel_bus_station": parcel_bus_station,
+            "parcel_recipient_phone": parcel_recipient_phone,
+            "parcel_notes": parcel_notes,
+        }
+
+        return redirect("payment:page")
+
+    from django.conf import settings as _s
+    return render(request, "order/checkout.html", {
+        "cart":           cart,
+        "cart_count":     cart.total_items,
+        "user":           request.user,
+        # Required by checkout map — used for LocationIQ tiles + geocoding
+        "locationiq_key": getattr(_s, 'LOCATIONIQ_API_KEY', ''),
     })
+
+
+# ── ORDER CONFIRMATION ────────────────────────────────────
+
+@login_required
+def order_confirmation(request, order_ref):
+    order = get_object_or_404(Order, order_ref=order_ref, customer=request.user)
+
+    if order.payment_status != Order.PaymentStatus.PAID:
+        return render(request, 'order/not_paid.html', {
+            'order':      order,
+            'cart_count': 0,
+        })
+
+    items = order.items.select_related('product')
+
+    return render(request, 'order/order_confirmation.html', {
+        'order':      order,
+        'items':      items,
+        'cart_count': 0,
+    })
+
+
+# ── ORDER HISTORY ─────────────────────────────────────────
+
+@login_required
+def order_history(request):
+    orders = Order.objects.filter(
+        customer=request.user
+    ).prefetch_related('items').order_by('-created_at')
+
+    cart = get_or_create_cart(request)
+
+    return render(request, 'order/order_history.html', {
+        'orders':     orders,
+        'cart_count': cart.total_items,
+    })
+
+
+# ── ORDER TRACKING ────────────────────────────────────────
+
+@login_required
+def order_tracking(request, order_ref):
+    order    = get_object_or_404(Order, order_ref=order_ref, customer=request.user)
+    delivery = getattr(order, 'delivery', None)
+
+    return render(request, 'order/tracking.html', {
+        'order':      order,
+        'delivery':   delivery,
+        'cart_count': 0,
+    })
+
+
+# ── ORDER RECEIPT ─────────────────────────────────────────
+
+@login_required
+def order_receipt(request, order_ref):
+    """Download a PDF receipt for a paid order."""
+    order = get_object_or_404(
+        Order,
+        order_ref=order_ref,
+        customer=request.user,
+        payment_status=Order.PaymentStatus.PAID,
+    )
+    from .pdf import generate_order_receipt_pdf
+    return generate_order_receipt_pdf(order)
+
+
+# ── VENDOR: CONFIRM PICKUP ────────────────────────────────
+
+@login_required
+def vendor_confirm_pickup(request, order_ref):
+    """Vendor marks a pickup order as ready for collection."""
+    if request.method != 'POST':
+        return redirect('vendors:dashboard')
+
+    try:
+        vendor = request.user.vendor
+    except Exception:
+        messages.error(request, 'Vendor account not found.')
+        return redirect('vendors:dashboard')
+
+    order = get_object_or_404(
+        Order,
+        order_ref=order_ref,
+        items__product__vendor=vendor,
+        delivery_choice='pickup',
+    )
+
+    order.pickup_confirmed_at = timezone.now()
+    order.status = Order.Status.READY
+    order.save(update_fields=['pickup_confirmed_at', 'status'])
+
+    _notify_customer(
+        order.customer,
+        title=f'Order {order.order_ref} Ready for Pickup',
+        body=(
+            f'Your order from {vendor.shop_name} is ready to collect. '
+            f'Head to: {vendor.location or vendor.phone}.'
+        ),
+    )
+
+    messages.success(request, f'Order {order.order_ref} marked as ready for pickup.')
+    return redirect('vendors:dashboard')
+
+
+# ── VENDOR: DISPATCH PARCEL ───────────────────────────────
+
+@login_required
+def vendor_dispatch_parcel(request, order_ref):
+    """Vendor confirms a parcel has been sent via bus."""
+    if request.method != 'POST':
+        return redirect('vendors:dashboard')
+
+    try:
+        vendor = request.user.vendor
+    except Exception:
+        messages.error(request, 'Vendor account not found.')
+        return redirect('vendors:dashboard')
+
+    order = get_object_or_404(
+        Order,
+        order_ref=order_ref,
+        items__product__vendor=vendor,
+        delivery_choice='parcel',
+    )
+
+    waybill = request.POST.get('parcel_waybill', '').strip()
+
+    order.parcel_dispatched_at = timezone.now()
+    order.parcel_waybill       = waybill
+    order.status               = Order.Status.DISPATCHED
+    order.save(update_fields=['parcel_dispatched_at', 'parcel_waybill', 'status'])
+
+    waybill_line = f' Waybill: {waybill}.' if waybill else ''
+    _notify_customer(
+        order.customer,
+        title=f'Order {order.order_ref} Dispatched via Bus',
+        body=(
+            f'Your order from {vendor.shop_name} has been sent to '
+            f'{order.parcel_bus_station}.{waybill_line} '
+            f'Call {order.parcel_recipient_phone} to arrange collection.'
+        ),
+    )
+
+    messages.success(
+        request,
+        f'Order {order.order_ref} marked as dispatched.'
+        + (f' Waybill: {waybill}.' if waybill else ''),
+    )
+    return redirect('vendors:dashboard')
+
+
+# ── INTERNAL: customer notification stub ──────────────────
+
+def _notify_customer(user, title, body):
+    """
+    Replace this with your real notification call —
+    e.g. Notification.objects.create(...) or send_sms(...).
+    """
+    if not user:
+        return
+    try:
+        from chat.models import Notification  # adjust import to your app
+        Notification.objects.create(user=user, title=title, body=body)
+    except Exception:
+        pass  # fail silently — don't break the order flow
+
+
+# ── DELIVERY CREATION (post-payment) ──────────────────────
+#
+# NOTE: previous versions of this function referenced order.address,
+# order.vendor_lat/vendor_lng, and order.lat/lng — none of which are
+# guaranteed to exist on the Order model. Using getattr(..., None) below
+# avoids a hard crash either way, but this is still a TODO:
+#   1. There's no per-vendor pickup coordinate anywhere in checkout yet
+#      (a cart can span multiple vendors), so pickup_lat/pickup_lng will
+#      be None until that's designed properly.
+#   2. dropoff coordinates are only available if the Order model actually
+#      stores delivery_lat/delivery_lng (populated from the session
+#      "pending_order" dict set in checkout() above, once payment succeeds
+#      and the real Order row is created). Confirm those fields exist on
+#      Order before relying on them.
+def create_delivery_for_order(order):
+    """Only called for rider-mode orders."""
+    from delivery.models import DeliveryZone
+
+    zone = DeliveryZone.objects.filter(is_active=True).first()
+
+    delivery = Delivery.objects.create(
+        order=order,
+        zone=zone,
+        pickup_location='Vendor Location',  # TODO: use real vendor address — see note above
+        dropoff_location=order.delivery_address,
+        pickup_lat=getattr(order, 'vendor_lat', None),
+        pickup_lng=getattr(order, 'vendor_lng', None),
+        dropoff_lat=getattr(order, 'delivery_lat', None),
+        dropoff_lng=getattr(order, 'delivery_lng', None),
+        status=Delivery.Status.PENDING,
+    )
+
+    rider = assign_rider_to_delivery(delivery)
+    if not rider:
+        print(f'[order {order.order_ref}] No available rider found.')
+
+    return delivery
+
+
+# ── FEE ESTIMATE (AJAX, called from checkout map) ─────────
+
+@login_required
+def estimate_delivery_fee(request):
+    """
+    AJAX endpoint — supports both:
+      GET  /order/estimate-fee/?olat=...&olng=...&dlat=...&dlng=...
+      POST /order/estimate-fee/  { dropoff_lat, dropoff_lng, vendor_id }
+
+    checkout.html calls GET /delivery/price/ which maps to
+    delivery.views.price_estimate — keep this POST endpoint for
+    programmatic use from other views.
+    """
+    try:
+        if request.method == 'GET':
+            olat       = float(request.GET.get('olat', ACCRA_CENTER[0]))
+            olng       = float(request.GET.get('olng', ACCRA_CENTER[1]))
+            dlat       = float(request.GET.get('dlat', 0))
+            dlng       = float(request.GET.get('dlng', 0))
+            vendor_id  = request.GET.get('vendor_id')
+        else:
+            data      = json.loads(request.body)
+            dlat      = float(data.get('dropoff_lat', 0))
+            dlng      = float(data.get('dropoff_lng', 0))
+            olat      = ACCRA_CENTER[0]
+            olng      = ACCRA_CENTER[1]
+            vendor_id = data.get('vendor_id')
+
+        if not dlat or not dlng:
+            return JsonResponse({'success': False, 'error': 'Missing coordinates.'}, status=400)
+
+        # Use vendor pickup point if provided
+        if vendor_id:
+            try:
+                from vendors.models import Vendor
+                v    = Vendor.objects.get(pk=vendor_id)
+                olat = getattr(v, 'latitude',  None) or olat
+                olng = getattr(v, 'longitude', None) or olng
+            except Exception:
+                pass
+
+        distance_km, fee = estimate_fee_for_request(olat, olng, dlat, dlng)
+        eta_minutes = max(10, int(float(distance_km) * 3))
+
+        return JsonResponse({
+            'success':      True,
+            'fee':          str(fee),
+            'distance_km':  distance_km,
+            'eta_minutes':  eta_minutes,
+            # Legacy keys kept for backward compat
+            'delivery_fee': float(fee),
+            'fee_display':  f'GHS {fee}',
+            'distance_display': f'{distance_km} km',
+        })
+
+    except (ValueError, TypeError) as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
