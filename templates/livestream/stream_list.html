@@ -15,16 +15,16 @@
   display: block;
   width: 100%;
   /* 9:16 portrait — same as TikTok / Instagram Reels cards */
-  aspect-ratio: 9 / 16;
+  /* padding-bottom trick: reliable on ALL Android versions */
+  padding-bottom: 177.78%;
   border-radius: 14px;
   overflow: hidden;
   background: #1e293b;
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  /* GPU layer prevents jank on scroll */
-  will-change: transform;
-  transition: transform .15s ease;
+  -webkit-transition: opacity .15s;
+  transition: opacity .15s;
 }
 .stream-card:active {
   transform: scale(.97);
@@ -33,7 +33,7 @@
 /* Thumbnail fills the entire card */
 .stream-thumb {
   position: absolute;
-  inset: 0;
+  top:0;right:0;bottom:0;left:0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -43,7 +43,7 @@
 /* Gradient overlay — darker at bottom for text legibility */
 .stream-overlay {
   position: absolute;
-  inset: 0;
+  top:0;right:0;bottom:0;left:0;
   background: linear-gradient(
     to top,
     rgba(0,0,0,.85) 0%,
@@ -156,7 +156,7 @@
 /* Play button overlay on replay cards */
 .replay-play {
   position: absolute;
-  inset: 0;
+  top:0;right:0;bottom:0;left:0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -208,25 +208,25 @@
     {% for stream in live_streams %}
     <div class="col">
       <a href="{% url 'livestream:watch' stream.id %}"
-         class="stream-card" style="position:relative;display:block;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1e293b;text-decoration:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .15s ease;"
+         class="stream-card" style="position:relative;display:block;width:100%;padding-bottom:177.78%;overflow:hidden;background:#1e293b;text-decoration:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;"
          aria-label="{{ stream.vendor.shop_name }} is live: {{ stream.title }}">
 
         <!-- Thumbnail -->
         {% if stream.thumbnail %}
         <img src="{{ stream.thumbnail.url }}"
-             style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;"
+             style="position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover;display:block;"
              class="stream-thumb"
              alt="{{ stream.title }}"
              loading="lazy"
              decoding="async"/>
         {% else %}
         <div class="stream-thumb"
-             style="position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:rgba(255,255,255,.3)"
+             style="position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;font-size:2.5rem;color:rgba(255,255,255,.3)"
              aria-hidden="true">📺</div>
         {% endif %}
 
         <!-- Overlay -->
-        <div class="stream-overlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.2) 45%,transparent 70%);" aria-hidden="true"></div>
+        <div class="stream-overlay" style="position:absolute;top:0;right:0;bottom:0;left:0;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.2) 45%,transparent 70%);" aria-hidden="true"></div>
 
         <!-- LIVE badge -->
         <div class="live-badge" aria-label="Live">
@@ -284,40 +284,40 @@
       {% for stream in recent_streams %}
       <div class="col">
         <a href="{% if stream.recording_url %}{% url 'livestream:watch' stream.id %}{% else %}{% url 'livestream:stats' stream.id %}{% endif %}"
-           class="stream-card" style="position:relative;display:block;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#1e293b;text-decoration:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .15s ease;"
+           class="stream-card" style="position:relative;display:block;width:100%;padding-bottom:177.78%;overflow:hidden;background:#1e293b;text-decoration:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;"
            aria-label="{{ stream.vendor.shop_name }}: {{ stream.title }}{% if stream.recording_url %} (Replay available){% endif %}">
 
           <!-- Thumbnail -->
           {% if stream.thumbnail %}
           <img src="{{ stream.thumbnail.url }}"
-               style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;"
+               style="position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover;display:block;"
                class="stream-thumb"
                alt="{{ stream.title }}"
                loading="lazy"
                decoding="async"/>
           {% else %}
           <div class="stream-thumb"
-               style="position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#f3f4f6;color:#9ca3af"
+               style="position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;font-size:2rem;background:#f3f4f6;color:#9ca3af"
                aria-hidden="true">📺</div>
           {% endif %}
 
           <!-- Overlay -->
-          <div class="stream-overlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.2) 45%,transparent 70%);" aria-hidden="true"></div>
+          <div class="stream-overlay" style="position:absolute;top:0;right:0;bottom:0;left:0;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.2) 45%,transparent 70%);" aria-hidden="true"></div>
 
           <!-- Status badge -->
           {% if stream.recording_url %}
           <div class="stream-status-badge"
-               style="position:absolute;top:8px;left:8px;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:999px;display:flex;align-items:center;gap:4px;background:#2563eb;color:white">
+               style="position:absolute;top:8px;left:8px;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:999px;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:4px;background:#2563eb;color:white">
             ▶ REPLAY
           </div>
           <!-- Play button hover overlay -->
-          <div class="replay-play" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;" aria-hidden="true">
+          <div class="replay-play" style="position:absolute;top:0;right:0;bottom:0;left:0;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;opacity:0;-webkit-transition:opacity .2s;transition:opacity .2s;" aria-hidden="true">
             <div class="rounded-circle bg-white d-flex align-items-center justify-content-center fw-bold text-navy"
                  style="width:2.5rem;height:2.5rem;opacity:.9">▶</div>
           </div>
           {% else %}
           <div class="stream-status-badge"
-               style="position:absolute;top:8px;left:8px;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:999px;display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.6);color:rgba(255,255,255,.7)">
+               style="position:absolute;top:8px;left:8px;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:999px;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:4px;background:rgba(0,0,0,.6);color:rgba(255,255,255,.7)">
             ENDED
           </div>
           {% endif %}
