@@ -1,816 +1,1005 @@
 /* ==========================================================
-   LYNCTEL LIVESTREAM
-   Bootstrap 5 Version
+   LYNCTEL LIVESTREAM — RESPONSIVE CSS
+   Works on: iOS Safari 14+, Android Chrome 76+, Desktop
+   
+   ARCHITECTURE:
+   - Mobile (< 1024px): Single-column, full-screen video
+   - Desktop (≥ 1024px): Video | Chat side panel
+   - Safe areas handled for iPhone notch + Android gesture bar
+   - No `inset` shorthand (unsupported Android < 87)
+   - No `aspect-ratio` on flex children (unreliable Android)
+   - No `will-change:transform` (breaks fixed nav on Android)
    ========================================================== */
 
 /* ----------------------------------------------------------
-   Stream Cards
+   FULL-SCREEN LAYOUT — Watch & Broadcast pages
+   body:has(#root) = primary (Chrome 105+, Safari 15.4+)
+   body.page-fullscreen = fallback for older Android
 ---------------------------------------------------------- */
 
-.stream-card{
-    position:relative;
-    overflow:hidden;
-    border-radius:1rem;
-    background:#212529;
-    cursor:pointer;
-    transition:transform .25s ease;
-    /* 9:16 portrait on mobile, 4:5 on tablet (see @media below) */
-    aspect-ratio:9/16;
-    /* Explicit display:block needed on Android for aspect-ratio to work */
-    display:block;
-    width:100%;
-    /* Remove will-change — can break position:fixed footer on Android */
-    -webkit-tap-highlight-color:transparent;
-    touch-action:manipulation;
+body:has(#root),
+body.page-fullscreen {
+    margin: 0;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #000;
+    height: 100%;
 }
 
-@media (min-width:768px){
-    .stream-card{
-        aspect-ratio:4/5;
-    }
-}
-
-.stream-card:hover{
-    transform:translateY(-3px);
-}
-
-.stream-thumb{
-    /* Must be absolute + top/right/bottom/left:0 on Android — without this, the image
-       doesn't fill the aspect-ratio card correctly. iOS is forgiving. */
-    position:absolute;
-    top:0;right:0;bottom:0;left:0;
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    display:block;
-}
-
-.stream-play{
-    opacity:0;
-    transition:.25s;
-}
-
-.stream-card:hover .stream-play{
-    opacity:1;
-}
-
-/* ----------------------------------------------------------
-   Overlay
----------------------------------------------------------- */
-
-.stream-overlay{
-    position:absolute;
-    top:0;right:0;bottom:0;left:0;
-    background:linear-gradient(
-        to top,
-        rgba(0,0,0,.85),
-        rgba(0,0,0,.2),
-        transparent
-    );
-}
-
-/* ----------------------------------------------------------
-   Live Badge
----------------------------------------------------------- */
-
-.live-badge{
-    position:absolute;
-    top:.75rem;
-    left:.75rem;
-    display:flex;
-    align-items:center;
-    gap:.35rem;
-    padding:.25rem .6rem;
-    background:#dc3545;
-    color:#fff;
-    border-radius:50rem;
-    font-size:.65rem;
-    font-weight:700;
-}
-
-.live-dot{
-    width:.35rem;
-    height:.35rem;
-    border-radius:50%;
-    background:#fff;
-    animation:pulse 1.2s infinite;
-}
-
-/* ----------------------------------------------------------
-   Viewer Count
----------------------------------------------------------- */
-
-.viewer-count{
-    position:absolute;
-    top:.75rem;
-    right:.75rem;
-    padding:.25rem .6rem;
-    border-radius:50rem;
-    background:rgba(0,0,0,.55);
-    backdrop-filter:blur(4px);
-    -webkit-backdrop-filter:blur(4px);
-    color:#fff;
-    font-size:.7rem;
-    font-weight:600;
-}
-
-/* ----------------------------------------------------------
-   Stream Info
----------------------------------------------------------- */
-
-.stream-info{
-    position:absolute;
-    left:0;
-    right:0;
-    bottom:0;
-    padding:.9rem;
-    color:#fff;
-}
-
-.stream-vendor{
-    font-size:.75rem;
-    font-weight:600;
-}
-
-.stream-title{
-    font-size:.8rem;
-    line-height:1.3;
-    color:#dee2e6;
-}
-
-/* ==========================================================
-   WATCH / BROADCAST FULLSCREEN TAKEOVER
-   ----------------------------------------------------------
-   Everything in this block is meant to apply ONLY to the
-   fullscreen watch.html / broadcast.html experience — not to
-   stream_list.html or go_live.html, which also load this
-   stylesheet but are ordinary scrollable pages with the normal
-   site header/footer/bottom-nav.
-
-   Both of the rules below were previously written with NO
-   scoping at all:
-
-     html, body { margin:0; padding:0; height:100%;
-                  overflow:hidden; background:#000; }
-     #mobile-nav, header#navbar { display:none !important; }
-
-   `html, body` is global by definition, so `overflow:hidden`
-   was killing page scroll on stream_list.html (a scrollable
-   grid of streams) and go_live.html (a scrollable form) too.
-   `#mobile-nav` also exists on every page via base.html, so the
-   bottom nav bar was being hidden site-wide on those two pages
-   as well — not just on the fullscreen ones.
-
-   `header#navbar` additionally never matched anything: the
-   site's actual navbar is `<nav id="main-navbar">` in
-   base.html, not a `<header>` with id="navbar". So even on
-   watch.html/broadcast.html, where hiding it WAS intended, the
-   top navbar was never actually hidden — it sat on top of the
-   custom #top-bar UI.
-
-   Fix: scope both rules with :has(#root), since #root only
-   exists in watch.html/broadcast.html's markup (nested inside
-   <main>, hence the descendant :has(#root) rather than a direct
-   child combinator), and correct the navbar selector to the id
-   base.html actually uses. If you need to support browsers
-   without :has() support, the safer alternative is adding a
-   `page-fullscreen` class to <body> in just those two templates
-   and swapping the selectors below for `body.page-fullscreen`.
-========================================================== */
-
-/* Primary: :has() scoping — Chrome 105+, Safari 15.4+, Firefox 121+ */
-body:has(#root){
-    margin:0;
-    padding:0;
-    height:100%;
-    overflow:hidden;
-    background:#000;
-}
+body:has(#root) #main-navbar,
 body:has(#root) #mobile-nav,
-body:has(#root) #main-navbar{
-    display:none !important;
+body.page-fullscreen #main-navbar,
+body.page-fullscreen #mobile-nav {
+    display: none !important;
 }
 
-/* Fallback: class-based scoping for older Android browsers.
-   Add class="page-fullscreen" to <body> in watch.html + broadcast.html */
-body.page-fullscreen{
-    margin:0;
-    padding:0;
-    height:100%;
-    overflow:hidden;
-    background:#000;
-}
-body.page-fullscreen #mobile-nav,
-body.page-fullscreen #main-navbar{
-    display:none !important;
+/* Root container — fixed full-screen */
+#root {
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: -webkit-flex;
+    display: flex;
+    background: #000;
+    z-index: 10;
+    overflow: hidden;
 }
 
-#root{
-    position:fixed;
-    top:0;right:0;bottom:0;left:0;
-    display:flex;
-    background:#000;
-    z-index:10;
-    /* Safe area: insets applied per-child (top-bar, chat-bar)
-       so the video itself can still fill edge-to-edge */
+/* Video section — takes all space on mobile, leaves room for desktop panel */
+#video-section {
+    position: relative;
+    -webkit-flex: 1;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
 }
 
-/* ----------------------------------------------------------
-   Video
----------------------------------------------------------- */
-
-#video-bg,
-#video-section{
-    position:relative;
-    -webkit-flex:1;
-    flex:1;
-    min-width:0;
-    overflow:hidden;
-    background:#000;
-    /* explicit height needed for Android flex child */
-    height:100%;
-}
-
+/* Raw video elements */
 #remote-video,
 #vod-video,
-#local-video{
-    width:100%;
-    height:100%;
-    object-fit:cover;
+#local-video {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
 }
 
-#local-video{
-    transform:scaleX(-1);
-}
+/* Mirror front camera for broadcaster */
+#local-video { -webkit-transform: scaleX(-1); transform: scaleX(-1); }
 
-/* Connecting / joining spinner overlay (watch.html) */
-#connecting-overlay,
-#cam-placeholder{
-    position:absolute;
-    top:0;right:0;bottom:0;left:0;
-    z-index:4;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    padding:24px;
-    background:#000;
-}
-
-/* Replay badge defaults to hidden — watch.html's initPlayback() only
-   flips it to inline-flex for ended streams with a saved recording.
-   Without this default, "▶ REPLAY" was showing on every stream,
-   live ones included, since nothing else set its initial display. */
-#replay-badge{
-    display:none;
-    align-items:center;
-    gap:.3rem;
-    background:#2563eb;
-    color:#fff;
-    font-size:11px;
-    font-weight:700;
-    padding:4px 10px;
-    border-radius:99px;
-    flex-shrink:0;
+/* Background video wrapper */
+#video-bg {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background: #000;
 }
 
 /* ----------------------------------------------------------
-   UI
+   CONNECTING OVERLAY
+---------------------------------------------------------- */
+
+#connecting-overlay {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .88);
+    z-index: 10;
+    padding: 24px;
+    text-align: center;
+}
+
+/* ----------------------------------------------------------
+   UI LAYER — stacks all HUD elements over the video
 ---------------------------------------------------------- */
 
 #ui-layer,
-#ui{
-    position:absolute;
-    top:0;right:0;bottom:0;left:0;
-    z-index:5;
-    pointer-events:none;
-}
-
-#ui-layer>*,
-#ui>*{
-    pointer-events:auto;
-}
-
-/* ----------------------------------------------------------
-   Top Bar
----------------------------------------------------------- */
-
-#top-bar{
-    position:absolute;
-    top:0;
-    left:0;
-    right:0;
-    display:flex;
-    align-items:center;
-    gap:.75rem;
-    /* Safe area: push content below iPhone notch / Dynamic Island */
-    padding: calc(env(safe-area-inset-top) + .6rem) 1rem .6rem;
-    background:linear-gradient(
-        to bottom,
-        rgba(0,0,0,.75),
-        transparent
-    );
-}
-
-/* Broadcaster-only status pills next to the timer/viewer count */
-#rec-badge{
-    display:flex;
-    align-items:center;
-    gap:.3rem;
-    background:rgba(220,53,69,.9);
-    color:#fff;
-    font-size:11px;
-    font-weight:700;
-    padding:4px 10px;
-    border-radius:99px;
-    flex-shrink:0;
-}
-.rec-dot{
-    width:.4rem;
-    height:.4rem;
-    border-radius:50%;
-    background:#fff;
-    animation:pulse 1.2s infinite;
-}
-.stat-pill{
-    display:flex;
-    align-items:center;
-    gap:.3rem;
-    background:rgba(255,255,255,.12);
-    backdrop-filter:blur(6px);
-    -webkit-backdrop-filter:blur(6px);
-    color:#fff;
-    font-size:11px;
-    font-weight:600;
-    padding:4px 10px;
-    border-radius:99px;
-    flex-shrink:0;
+#ui {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    pointer-events: none;
+    z-index: 20;
+    overflow: hidden;
 }
 
 /* ----------------------------------------------------------
-   Broadcaster bottom area wrapper (reactions row + chat bar)
+   TOP BAR — vendor info, viewer count, share
 ---------------------------------------------------------- */
 
-#bottom-area{
-    position:absolute;
-    left:0;
-    right:0;
-    bottom:0;
-    display:flex;
-    flex-direction:column;
-    /* Safe area already handled by #chat-bar padding-bottom */
+#top-bar {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    gap: .75rem;
+    /* Safe area: push below iPhone notch / Dynamic Island */
+    padding: calc(env(safe-area-inset-top) + .6rem) .75rem .6rem;
+    background: linear-gradient(to bottom, rgba(0,0,0,.75) 0%, transparent 100%);
+    pointer-events: auto;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
 }
 
 /* ----------------------------------------------------------
-   Poll widgets (viewer + broadcaster)
+   VIEWER POLL WIDGET
 ---------------------------------------------------------- */
 
-#viewer-poll-widget,
-#live-poll-widget{
-    position:absolute;
-    left:.75rem;
-    right:4.5rem;
-    top:5rem;
-    z-index:6;
-    background:rgba(0,0,0,.6);
-    backdrop-filter:blur(8px);
-    -webkit-backdrop-filter:blur(8px);
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:1rem;
-    padding:.75rem .9rem;
-    display:none;
+#viewer-poll-widget {
+    margin: 0 .75rem;
+    padding: .875rem;
+    background: rgba(0, 0, 0, .75);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.1);
+    display: none;
+    pointer-events: auto;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
 }
-#viewer-poll-widget.show,
-#live-poll-widget.show{
-    display:block;
-}
-/* broadcaster poll widget visibility is now controlled entirely by the
-   .show class (added/removed by startPoll() / endPoll() in livestream.js)
-   — no override needed here */
+#viewer-poll-widget.show { display: block; }
 
-.vp-option{
-    position:relative;
-    width:100%;
-    text-align:left;
-    background:rgba(255,255,255,.08);
-    border:1px solid rgba(255,255,255,.15);
-    border-radius:.6rem;
-    color:#fff;
-    font-size:12px;
-    font-weight:600;
-    padding:.5rem .75rem;
-    margin-top:.5rem;
-    overflow:hidden;
-    cursor:pointer;
+.vp-btn {
+    width: 100%;
+    position: relative;
+    background: rgba(255,255,255,.08);
+    border: 1.5px solid rgba(255,255,255,.15);
+    border-radius: 10px;
+    padding: 9px 12px;
+    color: rgba(255,255,255,.85);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    overflow: hidden;
+    text-align: left;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-transition: border-color .2s;
+    transition: border-color .2s;
 }
-.vp-option.voted{
-    border-color:#f5a623;
-    cursor:default;
+.vp-btn.voted { border-color: #F5A623; color: #F5A623; }
+.vp-fill {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    background: rgba(245,166,35,.18);
+    border-radius: 10px;
+    -webkit-transition: width .4s ease;
+    transition: width .4s ease;
+    pointer-events: none;
 }
-.vp-fill{
-    position:absolute;
-    top:0;right:0;bottom:0;left:0;
-    width:0%;
-    background:rgba(245,166,35,.35);
-    transition:width .3s ease;
-    z-index:0;
-}
-.vp-option span{
-    position:relative;
-    z-index:1;
-}
+.vp-text { position: relative; z-index: 1; }
 
-.poll-bar-track{
-    width:100%;
-    height:.5rem;
-    background:rgba(255,255,255,.1);
-    border-radius:99px;
-    overflow:hidden;
-    margin-top:.25rem;
+/* ----------------------------------------------------------
+   LIVE POLL WIDGET — Broadcaster
+---------------------------------------------------------- */
+
+#live-poll-widget {
+    margin: 0 .75rem;
+    padding: .875rem;
+    background: rgba(0,0,0,.75);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.1);
+    display: none;
+    pointer-events: auto;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
 }
-.poll-bar-fill{
-    height:100%;
-    background:#f5a623;
-    width:0%;
-    transition:width .3s ease;
+#live-poll-widget.show { display: block; }
+
+.poll-bar-track {
+    height: 4px;
+    background: rgba(255,255,255,.1);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+.poll-bar-fill {
+    height: 100%;
+    background: #F5A623;
+    border-radius: 2px;
+    -webkit-transition: width .4s ease;
+    transition: width .4s ease;
 }
 
 /* ----------------------------------------------------------
-   Action Rail (viewer: #action-rail/.rail-*, broadcaster:
-   #rail/.rbtn — two different naming conventions ended up in
-   the templates, so both are defined here rather than forcing
-   a markup rename)
+   PRODUCTS STRIP — pinned items during live
 ---------------------------------------------------------- */
 
-#action-rail,
-#rail{
-    position:absolute;
-    right:.75rem;
-    bottom:9rem;
-    display:flex;
-    flex-direction:column;
-    gap:1rem;
-    align-items:center;
-    z-index:6;
+#products-strip {
+    display: -webkit-flex;
+    display: flex;
+    gap: 8px;
+    padding: 6px .75rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    pointer-events: auto;
+}
+#products-strip::-webkit-scrollbar { display: none; }
+
+.live-product {
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    width: 80px;
+    background: rgba(0,0,0,.75);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1.5px solid rgba(255,255,255,.08);
+    text-decoration: none;
+    -webkit-transition: -webkit-transform .15s, border-color .15s;
+    transition: transform .15s, border-color .15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.live-product:active { -webkit-transform: scale(.94); transform: scale(.94); }
+.live-product.featured { border-color: #F5A623; }
+
+/* ----------------------------------------------------------
+   CHAT OVERLAY — messages float above video
+---------------------------------------------------------- */
+
+#chat-overlay {
+    -webkit-flex: 1;
+    flex: 1;
+    min-height: 0;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    -webkit-justify-content: flex-end;
+    justify-content: flex-end;
+    padding: 6px 0 6px .75rem;
+    pointer-events: none;
+    overflow: hidden;
 }
 
-.rail-btn,
-.rbtn{
-    border:none;
-    background:none;
-    color:#fff;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:.25rem;
-    cursor:pointer;
-    /* Remove tap highlight on iOS and Android */
-    -webkit-tap-highlight-color:transparent;
-    touch-action:manipulation;
-    min-width:44px;
-    min-height:44px;
-    justify-content:center;
+#chat-messages {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    gap: 5px;
+    overflow: hidden;
+    /* Show last ~8 messages — prevents old messages from
+       pushing new ones off screen on small phones */
+    max-height: 260px;
+    pointer-events: auto;
 }
 
-.rail-icon,
-.ricon{
-    width:3rem;
-    height:3rem;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    border-radius:50%;
-    background:rgba(255,255,255,.15);
-    backdrop-filter:blur(8px);
-    -webkit-backdrop-filter:blur(8px);
-    transition:.2s;
-    font-size:1.3rem;
+/* Chat bubble — overlay style */
+.chat-bubble {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: flex-start;
+    align-items: flex-start;
+    gap: 7px;
+    max-width: calc(100% - 60px);
+    -webkit-animation: slideUp .2s ease;
+    animation: slideUp .2s ease;
 }
 
-.rail-btn:active .rail-icon,
-.rbtn:active .ricon{
-    transform:scale(.9);
+@-webkit-keyframes slideUp {
+    from { opacity: 0; -webkit-transform: translateY(8px); transform: translateY(8px); }
+    to   { opacity: 1; -webkit-transform: translateY(0);   transform: translateY(0); }
+}
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
-.rail-label,
-.rlabel{
-    font-size:.7rem;
+.chat-avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
 }
-
-@media (min-width:992px){
-    #action-rail,
-    #rail{
-        right:1rem;
-        bottom:5rem;
-    }
+.chat-body {
+    background: rgba(0,0,0,.42);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    border-radius: 0 12px 12px 12px;
+    padding: 6px 10px;
+    max-width: 100%;
+    word-break: break-word;
+}
+.chat-name {
+    font-size: 11px; font-weight: 700;
+    margin: 0 0 2px;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    gap: 4px;
+}
+.chat-text {
+    font-size: 13px;
+    color: rgba(255,255,255,.95);
+    margin: 0; line-height: 1.4;
+}
+.vendor-badge {
+    font-size: 9px;
+    background: #F5A623; color: #0F1B2D;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 99px;
+}
+.chat-system {
+    text-align: left; padding: 2px 0;
+    display: -webkit-flex; display: flex;
+}
+.chat-system span {
+    font-size: 11px;
+    color: rgba(255,255,255,.4);
+    background: rgba(0,0,0,.28);
+    padding: 3px 10px;
+    border-radius: 99px;
+    display: inline-block;
 }
 
 /* ----------------------------------------------------------
-   Chat
+   ACTION RAIL — Like, Gift, Share, Fullscreen
 ---------------------------------------------------------- */
 
-#chat-overlay{
-    -webkit-flex:1;
-    flex:1;
-    min-height:0;
-    display:-webkit-flex;
-    display:flex;
-    -webkit-flex-direction:column;
-    flex-direction:column;
-    -webkit-justify-content:flex-end;
-    justify-content:flex-end;
-    padding:.5rem 0 .5rem .75rem;
-    pointer-events:none;
-    overflow:hidden;
+#action-rail {
+    position: absolute;
+    right: max(env(safe-area-inset-right), 10px);
+    bottom: 100px;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    gap: 16px;
+    -webkit-align-items: center;
+    align-items: center;
+    pointer-events: auto;
+    z-index: 25;
 }
 
-#chat-messages{
-    display:flex;
-    flex-direction:column;
-    gap:.35rem;
-    overflow-y:auto;
-    max-height:40vh;
-    scrollbar-width:none;
+.rail-btn {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    -webkit-align-items: center;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    min-width: 44px;
+    min-height: 44px;
+    -webkit-justify-content: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
-
-#chat-messages::-webkit-scrollbar{
-    display:none;
+.rail-icon {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.45);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 22px;
+    border: 1px solid rgba(255,255,255,.08);
+    -webkit-transition: -webkit-transform .15s;
+    transition: transform .15s;
 }
-
-.chat-bubble{
-    display:inline-flex;
-    max-width:85%;
+.rail-btn:active .rail-icon {
+    -webkit-transform: scale(.86);
+    transform: scale(.86);
 }
-
-.chat-text-wrap{
-    background:rgba(0,0,0,.5);
-    backdrop-filter:blur(6px);
-    -webkit-backdrop-filter:blur(6px);
-    color:#fff;
-    padding:.5rem .75rem;
-    border-radius:1rem;
+.rail-label {
+    font-size: 10px;
+    color: rgba(255,255,255,.8);
+    font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0,0,0,.6);
+}
+.heart-pop { -webkit-animation: heartPop .3s ease; animation: heartPop .3s ease; }
+@-webkit-keyframes heartPop {
+    0%   { -webkit-transform: scale(1); }
+    50%  { -webkit-transform: scale(1.5); }
+    100% { -webkit-transform: scale(1); }
+}
+@keyframes heartPop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.5); }
+    100% { transform: scale(1); }
 }
 
 /* ----------------------------------------------------------
-   Chat Bar
+   REACTION STRIP — emoji reactions above chat input
 ---------------------------------------------------------- */
 
-#chat-bar{
-    position:relative;
-    left:0;
-    right:0;
-    bottom:0;
-    display:flex;
-    gap:.5rem;
-    align-items:center;
-    /* Safe area: clear iPhone home indicator bar */
-    padding:.75rem .75rem max(env(safe-area-inset-bottom), .75rem);
-    background:linear-gradient(
-        to top,
-        rgba(0,0,0,.85),
-        transparent
-    );
+.reaction-strip {
+    display: -webkit-flex;
+    display: flex;
+    gap: 7px;
+    padding: 5px .75rem 2px;
+    pointer-events: auto;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.reaction-strip::-webkit-scrollbar { display: none; }
+
+.reaction-btn {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,.12);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: none; border-radius: 50%;
+    font-size: 17px; cursor: pointer;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    -webkit-transition: -webkit-transform .12s;
+    transition: transform .12s;
+}
+.reaction-btn:active {
+    -webkit-transform: scale(.8);
+    transform: scale(.8);
 }
 
-/* watch.html's #chat-bar sits directly in #ui-layer and needs its own
-   absolute positioning; broadcast.html's #chat-bar sits inside
-   #bottom-area (already positioned), so it stays position:relative
-   there via the rule above and only watch.html needs the override. */
-#video-section > #ui-layer > #chat-bar{position:relative;left:0;right:0;bottom:0;-webkit-flex-shrink:0;flex-shrink:0;}
+/* ----------------------------------------------------------
+   CHAT BAR — bottom input row
+---------------------------------------------------------- */
+
+#chat-bar {
+    pointer-events: auto;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    /* Safe area: clear iPhone home indicator */
+    padding: .5rem .75rem max(env(safe-area-inset-bottom), .75rem);
+    background: linear-gradient(to top, rgba(0,0,0,.8) 0%, transparent 100%);
+}
+
+.chat-bar-row {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    gap: 8px;
+}
 
 #chat-input-field,
 #chat-input,
-#desktop-chat-input{
-    flex:1;
-    border:1px solid rgba(255,255,255,.2);
-    background:rgba(255,255,255,.15);
-    color:#fff;
-    border-radius:50rem;
-    padding:.65rem 1rem;
-    outline:none;
-    /* iOS: font-size must be >= 16px to prevent auto-zoom on focus */
-    font-size:16px;
+#desktop-chat-input {
+    -webkit-flex: 1; flex: 1;
+    background: rgba(255,255,255,.12);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 24px;
+    padding: 10px 16px;
+    color: white;
+    /* font-size ≥ 16px prevents iOS Safari auto-zoom on focus */
+    font-size: 16px;
+    outline: none;
+    min-height: 44px;
 }
-
 #chat-input-field::placeholder,
-#chat-input::placeholder,
-#desktop-chat-input::placeholder{
-    color:rgba(255,255,255,.6);
+#chat-input::placeholder { color: rgba(255,255,255,.4); }
+
+.chat-send-btn {
+    width: 44px; height: 44px;
+    background: #F5A623;
+    border: none; border-radius: 50%;
+    color: #0F1B2D; font-size: 18px; font-weight: 700;
+    cursor: pointer; -webkit-flex-shrink: 0; flex-shrink: 0;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.gift-open-btn {
+    width: 44px; height: 44px;
+    background: rgba(255,255,255,.15);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border: none; border-radius: 50%;
+    font-size: 20px; cursor: pointer;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-transition: -webkit-transform .15s; transition: transform .15s;
+}
+.gift-open-btn:active { -webkit-transform: scale(.88); transform: scale(.88); }
+
+/* ----------------------------------------------------------
+   GIFT COMBO DISPLAY
+---------------------------------------------------------- */
+
+#gift-combo {
+    position: absolute;
+    left: 16px; bottom: 115px;
+    background: linear-gradient(135deg, rgba(245,166,35,.9), rgba(239,68,68,.9));
+    color: white;
+    font-size: 13px; font-weight: 800;
+    padding: 7px 16px; border-radius: 24px;
+    display: none; pointer-events: none; z-index: 30;
+    box-shadow: 0 4px 16px rgba(245,166,35,.4);
+}
+#gift-combo.show {
+    display: block;
+    -webkit-animation: comboIn .25s cubic-bezier(.4,0,.2,1);
+    animation: comboIn .25s cubic-bezier(.4,0,.2,1);
+}
+@-webkit-keyframes comboIn {
+    from { -webkit-transform: scale(.6); opacity: 0; }
+    to   { -webkit-transform: scale(1);  opacity: 1; }
+}
+@keyframes comboIn {
+    from { transform: scale(.6); opacity: 0; }
+    to   { transform: scale(1);  opacity: 1; }
 }
 
 /* ----------------------------------------------------------
-   Gift Sheet / Pin Sheet / Poll Sheet
-   (same sliding bottom-sheet pattern, three different ids)
+   GIFT SHEET — mobile bottom sheet
 ---------------------------------------------------------- */
 
-#gift-sheet,
-#pin-sheet,
-#poll-sheet{
-    position:absolute;
-    left:0;
-    right:0;
-    bottom:0;
-    background:#1a1a1a;
-    border-radius:1.5rem 1.5rem 0 0;
-    /* Safe area: clear home bar at bottom */
-    padding:1rem 1rem max(env(safe-area-inset-bottom), 1rem);
-    transform:translateY(100%);
-    transition:.35s;
-    z-index:41;
-    max-height:80vh;
-    display:flex;
-    flex-direction:column;
-    -webkit-overflow-scrolling:touch;
+#gift-sheet-backdrop {
+    display: none;
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background: rgba(0,0,0,.65);
+    z-index: 50;
 }
+#gift-sheet-backdrop.open { display: block; }
 
-#gift-sheet.open,
-#pin-sheet.open,
-#poll-sheet.open{
-    transform:translateY(0);
+#gift-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #0d0d0d;
+    border-radius: 24px 24px 0 0;
+    padding: 16px 16px max(env(safe-area-inset-bottom), 16px);
+    z-index: 51;
+    -webkit-transform: translateY(100%);
+    transform: translateY(100%);
+    -webkit-transition: -webkit-transform .3s cubic-bezier(.4,0,.2,1);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    border-top: 1px solid #1f1f1f;
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
+#gift-sheet.open { -webkit-transform: translateY(0); transform: translateY(0); }
 
-#gift-sheet-backdrop,
-#pin-backdrop,
-#poll-backdrop{
-    position:fixed;
-    top:0;right:0;bottom:0;left:0;
-    display:none;
-    background:rgba(0,0,0,.5);
-    z-index:40;
+.gift-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-top: 14px;
 }
+@media (max-width: 380px) { .gift-grid { grid-template-columns: repeat(4, 1fr); } }
 
-#gift-sheet-backdrop.open,
-#pin-backdrop.open,
-#poll-backdrop.open{
-    display:block;
+.gift-btn {
+    background: rgba(255,255,255,.06);
+    border: 1.5px solid rgba(255,255,255,.1);
+    border-radius: 16px;
+    padding: 12px 6px;
+    cursor: pointer;
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    -webkit-align-items: center; align-items: center;
+    gap: 5px; color: white;
+    -webkit-transition: all .18s; transition: all .18s;
+    min-height: 80px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
-
-#poll-sheet input{
-    width:100%;
-    background:rgba(255,255,255,.08);
-    border:1px solid rgba(255,255,255,.15);
-    border-radius:.6rem;
-    color:#fff;
-    font-size:13px;
-    padding:.6rem .8rem;
-    margin-top:.5rem;
-    outline:none;
-}
-#poll-sheet input:focus{
-    border-color:#f5a623;
-}
-
-.pin-btn:hover{
-    border-color:rgba(245,166,35,.4) !important;
-    background:rgba(245,166,35,.08) !important;
-}
+.gift-btn:active { -webkit-transform: scale(.88); transform: scale(.88); border-color: #F5A623; }
+.gift-btn .gift-emoji { font-size: 26px; line-height: 1; }
+.gift-btn .gift-price { font-size: 10px; font-weight: 700; color: #F5A623; }
+.gift-btn .gift-name  { font-size: 10px; color: rgba(255,255,255,.5); }
 
 /* ----------------------------------------------------------
-   Products
+   FLOATING HEARTS & GIFTS
 ---------------------------------------------------------- */
 
-#products-strip{
-    position:absolute;
-    left:0;
-    right:4.5rem;
-    bottom:5rem;
-    display:flex;
-    gap:.75rem;
-    overflow-x:auto;
-    padding:0 .75rem;
-    scrollbar-width:none;
+.like-float, .gift-float {
+    position: fixed;
+    font-size: 24px;
+    pointer-events: none;
+    -webkit-animation: floatUp 2.8s ease-out forwards;
+    animation: floatUp 2.8s ease-out forwards;
+    z-index: 40;
 }
-
-#products-strip::-webkit-scrollbar{
-    display:none;
+@-webkit-keyframes floatUp {
+    0%   { -webkit-transform: translateY(0)    scale(1);   opacity: 1; }
+    100% { -webkit-transform: translateY(-200px) scale(.3); opacity: 0; }
 }
-
-.live-product{
-    flex:0 0 110px;
-    border-radius:.9rem;
-    overflow:hidden;
-    background:rgba(0,0,0,.65);
-    border:1px solid rgba(255,255,255,.1);
-    text-decoration:none;
+@keyframes floatUp {
+    0%   { transform: translateY(0)    scale(1);   opacity: 1; }
+    100% { transform: translateY(-200px) scale(.3); opacity: 0; }
 }
-
-.live-product.featured{
-    border-color:#f5a623;
-}
-
-/* ----------------------------------------------------------
-   Floating reactions / gift-combo popup
-   (spawned dynamically by JS with no inline styles of their own —
-   these were entirely missing, so likes/gifts/reactions floated
-   with no size, color, position or animation at all)
----------------------------------------------------------- */
-
-.like-float,
-.gift-float{
-    position:fixed;
-    font-size:1.75rem;
-    pointer-events:none;
-    z-index:50;
-    animation:floatUp 2.6s ease-out forwards;
-}
-/* .emoji-float — broadcaster reaction floats. floatEmoji() in livestream.js
-   now correctly sets className='like-float' but this alias ensures any
-   older cached version of the script still works. */
 .emoji-float {
     position: fixed;
-    font-size: 1.75rem;
+    font-size: 22px;
     pointer-events: none;
-    z-index: 50;
-    animation: floatUp 2.6s ease-out forwards;
-}
-
-
-@keyframes floatUp{
-    0%   { transform:translateY(0) scale(.6);   opacity:0; }
-    15%  { transform:translateY(-20px) scale(1); opacity:1; }
-    100% { transform:translateY(-220px) scale(1); opacity:0; }
-}
-
-#gift-combo{
-    position:fixed;
-    left:50%;
-    bottom:180px;
-    transform:translateX(-50%) scale(.8);
-    background:rgba(245,166,35,.95);
-    color:#0F1B2D;
-    font-weight:800;
-    font-size:14px;
-    padding:.5rem 1.1rem;
-    border-radius:99px;
-    z-index:51;
-    opacity:0;
-    pointer-events:none;
-    transition:opacity .2s, transform .2s;
-}
-#gift-combo.show{
-    opacity:1;
-    transform:translateX(-50%) scale(1);
+    -webkit-animation: floatUp 2.4s ease-out forwards;
+    animation: floatUp 2.4s ease-out forwards;
+    z-index: 40;
 }
 
 /* ----------------------------------------------------------
-   Desktop
+   DESKTOP SIDE PANEL
+   Hidden on mobile, shown as 320px panel on desktop
 ---------------------------------------------------------- */
 
-#desktop-side{
-    display:none;
+#desktop-side {
+    width: 320px;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    background: #0d0d0d;
+    border-left: 1px solid #1f1f1f;
+    display: none;          /* hidden on mobile */
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
 }
 
-@media (min-width:992px){
+/* Show desktop panel on large screens */
+@media (min-width: 1024px) {
+    #desktop-side { display: -webkit-flex; display: flex; }
+}
 
-    #desktop-side{
-        display:flex;
-        width:360px;
-        background:#111;
-        border-left:1px solid #222;
-        flex-direction:column;
-    }
+.desktop-chat-bubble {
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: flex-start; align-items: flex-start;
+    gap: 8px;
+    -webkit-animation: fadeIn .2s ease; animation: fadeIn .2s ease;
+}
+@-webkit-keyframes fadeIn {
+    from { opacity: 0; -webkit-transform: translateY(4px); }
+    to   { opacity: 1; -webkit-transform: translateY(0); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.desktop-chat-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+.desktop-chat-body { -webkit-flex: 1; flex: 1; min-width: 0; }
+.desktop-chat-name {
+    font-size: 11px; font-weight: 700; margin: 0 0 2px;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center; gap: 4px;
+}
+.desktop-chat-text {
+    font-size: 13px; color: white; margin: 0;
+    word-break: break-word; line-height: 1.4;
+}
+.desktop-gift-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.desktop-gift-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    padding: 8px 4px; cursor: pointer;
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    -webkit-align-items: center; align-items: center;
+    gap: 3px; color: white;
+    -webkit-transition: all .18s; transition: all .18s;
+    -webkit-tap-highlight-color: transparent;
+}
+.desktop-gift-btn:hover  { background: rgba(245,166,35,.15); border-color: #F5A623; }
+.desktop-gift-btn:active { -webkit-transform: scale(.88); transform: scale(.88); }
 
+/* Stat pills — broadcaster top bar */
+.stat-pill {
+    background: rgba(0,0,0,.5);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    color: rgba(255,255,255,.8);
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 99px;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center; gap: 3px;
+}
+
+/* REC badge */
+#rec-badge {
+    display: none;
+    background: rgba(239,68,68,.2);
+    border: 1px solid #ef4444; color: #f87171;
+    font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: 6px;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    -webkit-align-items: center; align-items: center; gap: 4px;
+}
+.rec-dot {
+    width: 6px; height: 6px; background: #ef4444;
+    border-radius: 50%;
+    -webkit-animation: pulse 1.2s infinite; animation: pulse 1.2s infinite;
+}
+
+/* Broadcaster rail */
+#rail {
+    position: absolute;
+    right: max(env(safe-area-inset-right), 10px);
+    top: 50%;
+    -webkit-transform: translateY(-50%);
+    transform: translateY(-50%);
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    gap: 14px;
+    -webkit-align-items: center; align-items: center;
+    pointer-events: auto; z-index: 25;
+}
+.rbtn {
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    -webkit-align-items: center; align-items: center;
+    gap: 3px; background: none; border: none;
+    cursor: pointer; padding: 0;
+    min-width: 48px; min-height: 48px;
+    -webkit-justify-content: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.ricon {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(0,0,0,.5);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 22px;
+    border: 1px solid rgba(255,255,255,.1);
+    -webkit-transition: -webkit-transform .15s; transition: transform .15s;
+}
+.rbtn:active .ricon { -webkit-transform: scale(.86); transform: scale(.86); }
+.rlabel { font-size: 10px; color: rgba(255,255,255,.75); font-weight: 600; }
+
+/* Bottom area — broadcast */
+#bottom-area {
+    margin-top: auto;
+    pointer-events: auto;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    padding-bottom: max(env(safe-area-inset-bottom), 8px);
+    background: linear-gradient(to top, rgba(0,0,0,.8) 0%, transparent 100%);
+}
+
+/* Sheets — pin product and poll */
+#pin-sheet,
+#poll-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #111;
+    border-radius: 24px 24px 0 0;
+    padding: 16px 16px max(env(safe-area-inset-bottom), 16px);
+    z-index: 51;
+    -webkit-transform: translateY(100%); transform: translateY(100%);
+    -webkit-transition: -webkit-transform .3s cubic-bezier(.4,0,.2,1);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    border-top: 1px solid #222;
+    max-height: 75vh; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+#pin-sheet.open,
+#poll-sheet.open { -webkit-transform: translateY(0); transform: translateY(0); }
+
+#poll-sheet input {
+    width: 100%;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    padding: 11px 14px; color: white;
+    font-size: 16px; outline: none;
+    margin-bottom: 10px; box-sizing: border-box;
 }
 
 /* ----------------------------------------------------------
-   Animations
+   STREAM LIST PAGE — stream-card grid
+   Uses padding-bottom trick instead of aspect-ratio.
+   padding-bottom:177.78% = (16÷9)×100% = 9:16 portrait
+   Works on all Android versions (IE8+).
 ---------------------------------------------------------- */
 
-@keyframes pulse{
+.ls-card {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding-bottom: 177.78%;   /* 9:16 portrait */
+    overflow: hidden;
+    border-radius: 14px;
+    background: #1e293b;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-transition: opacity .15s; transition: opacity .15s;
+}
+.ls-card:active { opacity: .85; }
 
-    0%,100%{
-        opacity:1;
-    }
-
-    50%{
-        opacity:.4;
-    }
-
+/* At 768px+ switch to 4:5 ratio — tighter grid fits more cards */
+@media (min-width: 768px) {
+    .ls-card { padding-bottom: 125%; }
 }
 
-@keyframes heartPop{
-
-    0%,100%{
-        transform:scale(1);
-    }
-
-    50%{
-        transform:scale(1.4);
-    }
-
+/* All children fill the card */
+.ls-thumb,
+.ls-overlay,
+.ls-info,
+.ls-badge {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
 }
 
-.heart-pop{
-    animation:heartPop .3s ease;
+.ls-thumb {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+}
+.ls-overlay {
+    background: linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.15) 50%, transparent 70%);
+    pointer-events: none;
 }
 
-@media (prefers-reduced-motion: reduce){
-    .live-dot,
-    .rec-dot,
-    .heart-pop,
-    .like-float,
-    .gift-float{
-        animation:none !important;
+/* Info: only bottom strip — override the full inset */
+.ls-info {
+    top: auto;
+    padding: 10px;
+}
+
+/* Badge: only top-left */
+.ls-badge {
+    bottom: auto; right: auto;
+    width: auto; height: auto;
+    font-size: .62rem; font-weight: 800;
+    padding: 3px 8px; border-radius: 99px;
+    display: -webkit-inline-flex; display: inline-flex;
+    -webkit-align-items: center; align-items: center;
+    gap: 4px; line-height: 1;
+}
+
+.ls-viewers {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: rgba(0,0,0,.55);
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    color: rgba(255,255,255,.9);
+    font-size: .62rem; font-weight: 700;
+    padding: 3px 8px; border-radius: 99px;
+}
+.ls-replay {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    -webkit-transition: opacity .2s; transition: opacity .2s;
+}
+.ls-card:active .ls-replay { opacity: 1; }
+
+.ls-vendor { color: white; font-size: .78rem; font-weight: 700; margin: 0 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ls-title  { color: rgba(255,255,255,.65); font-size: .68rem; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; }
+.ls-meta   { color: rgba(255,255,255,.5); font-size: .65rem; margin: 2px 0 0; }
+.ls-logo   { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 1.5px solid rgba(255,255,255,.35); -webkit-flex-shrink: 0; flex-shrink: 0; }
+.ls-dot    {
+    width: 5px; height: 5px; background: white; border-radius: 50%;
+    -webkit-animation: lsDot 1.4s ease-in-out infinite;
+    animation: lsDot 1.4s ease-in-out infinite;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+@-webkit-keyframes lsDot {
+    0%,100% { opacity:1; -webkit-transform:scale(1); }
+    50%      { opacity:.4; -webkit-transform:scale(.7); }
+}
+@keyframes lsDot {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.4; transform:scale(.7); }
+}
+
+/* ----------------------------------------------------------
+   BROADCASTER — camera placeholder
+---------------------------------------------------------- */
+
+#cam-placeholder {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    background: #0a0a0a; z-index: 5;
+    text-align: center; padding: 24px;
+}
+
+/* ----------------------------------------------------------
+   ANIMATIONS
+---------------------------------------------------------- */
+
+@-webkit-keyframes spin    { to { -webkit-transform: rotate(360deg); } }
+@keyframes spin            { to { transform: rotate(360deg); } }
+@-webkit-keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:.5} }
+@keyframes pulse           { 0%,100%{opacity:1} 50%{opacity:.5} }
+@-webkit-keyframes liveGlow{ 0%,100%{box-shadow:0 0 8px rgba(239,68,68,.6)} 50%{box-shadow:0 0 20px rgba(239,68,68,.9)} }
+@keyframes liveGlow        { 0%,100%{box-shadow:0 0 8px rgba(239,68,68,.6)} 50%{box-shadow:0 0 20px rgba(239,68,68,.9)} }
+
+/* ----------------------------------------------------------
+   RESPONSIVENESS — tablet and desktop tweaks
+---------------------------------------------------------- */
+
+/* Tablet (768px+): larger action rail icons */
+@media (min-width: 768px) {
+    .rail-icon, .ricon { width: 50px; height: 50px; font-size: 24px; }
+    #chat-messages { max-height: 320px; }
+    .gift-grid { grid-template-columns: repeat(6, 1fr); }
+    .live-product { width: 88px; }
+}
+
+/* Desktop (1024px+): adjust for side panel presence */
+@media (min-width: 1024px) {
+    #action-rail { right: 16px; bottom: 100px; gap: 20px; }
+    #chat-messages { max-height: 400px; }
+    #top-bar { padding-top: calc(env(safe-area-inset-top) + .875rem); }
+}
+
+/* iOS Safari standalone (PWA) */
+@media (display-mode: standalone) {
+    #top-bar { padding-top: calc(env(safe-area-inset-top) + .6rem); }
+    #chat-bar { padding-bottom: max(env(safe-area-inset-bottom), 1rem); }
+    #gift-sheet { padding-bottom: max(env(safe-area-inset-bottom), 1.5rem); }
+}
+
+/* Touch-only devices — remove hover effects that don't apply */
+@media (hover: none) and (pointer: coarse) {
+    .ls-card:hover { opacity: 1; }
+    .desktop-gift-btn:hover { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        -webkit-animation-duration: .001ms !important;
+        animation-duration: .001ms !important;
+        -webkit-animation-iteration-count: 1 !important;
+        animation-iteration-count: 1 !important;
+        -webkit-transition-duration: .001ms !important;
+        transition-duration: .001ms !important;
     }
 }
