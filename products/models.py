@@ -58,6 +58,11 @@ class Category(models.Model):
         verbose_name_plural = "Categories"
         ordering = ["sort_order", "name"]
         unique_together = ("name", "parent")
+        indexes = [
+            # Covers Category.objects.filter(is_active=True)
+            models.Index(fields=['is_active', 'sort_order'],
+                         name='category_active_sort_idx'),
+        ]
 
     def save(self, *args, **kwargs):
 
@@ -176,6 +181,41 @@ class Product(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            # ── Covers the main product_list query ────────────────────────────
+            # Product.objects.filter(status='active').order_by('-created_at')
+            models.Index(fields=['status', '-created_at'],
+                         name='product_status_created_idx'),
+
+            # ── Covers featured products query ────────────────────────────────
+            # Product.objects.filter(is_featured=True, status='active')
+            models.Index(fields=['status', 'is_featured'],
+                         name='product_status_featured_idx'),
+
+            # ── Covers category filter on product list ─────────────────────────
+            # Product.objects.filter(category=..., status='active')
+            models.Index(fields=['category', 'status'],
+                         name='product_category_status_idx'),
+
+            # ── Covers price range filter ─────────────────────────────────────
+            # Product.objects.filter(selling_price__gte=x, selling_price__lte=y)
+            models.Index(fields=['selling_price'],
+                         name='product_selling_price_idx'),
+
+            # ── Covers flash sale queries ─────────────────────────────────────
+            # Product.objects.filter(flash_sale_ends__gt=now, flash_price__isnull=False)
+            models.Index(fields=['flash_sale_ends'],
+                         name='product_flash_sale_ends_idx'),
+
+            # ── Covers vendor product list ────────────────────────────────────
+            # Product.objects.filter(vendor=vendor, status='active')
+            models.Index(fields=['vendor', 'status'],
+                         name='product_vendor_status_idx'),
+
+            # ── Covers most-viewed ordering ───────────────────────────────────
+            models.Index(fields=['-views'],
+                         name='product_views_idx'),
+        ]
 
     def save(self, *args, **kwargs):
 
@@ -280,6 +320,11 @@ class ProductImage(models.Model):
 
     class Meta:
         ordering = ["order"]
+        indexes = [
+            # Covers product.images.filter(is_primary=True)
+            models.Index(fields=['product', 'is_primary'],
+                         name='productimage_primary_idx'),
+        ]
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
