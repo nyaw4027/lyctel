@@ -22,6 +22,19 @@ from cart.models import Cart
 from rest_framework.decorators import api_view
 
 
+def _cget(key, default=None):
+    try:
+        return _cget(key, default)
+    except Exception:
+        return default
+
+def _cset(key, val, ttl):
+    try:
+        _cset(key, val, ttl)
+    except Exception:
+        pass
+
+
 def get_or_create_cart(request):
     if request.user.is_authenticated:
         cart, _ = Cart.objects.get_or_create(user=request.user)
@@ -43,7 +56,7 @@ def search_autocomplete(request):
         return JsonResponse({'results': []})
 
     cache_key = f'autocomplete:{q.lower()}'
-    cached    = cache.get(cache_key)
+    cached    = _cget(cache_key)
     if cached is not None:
         return JsonResponse({'results': cached})
 
@@ -69,7 +82,7 @@ def search_autocomplete(request):
         for c in categories
     ]
 
-    cache.set(cache_key, results, 60)
+    _cset(cache_key, results, 60)
     return JsonResponse({'results': results})
 
 
@@ -89,7 +102,7 @@ def product_list(request):
         f'plist:{category_slug}:{search_query}:{sort_by}:'
         f'{price_min}:{price_max}:{in_stock_only}:{page_num}'
     )
-    ctx = cache.get(cache_key) if not search_query else None  # don't cache searches
+    ctx = _cget(cache_key) if not search_query else None  # don't cache searches
 
     if ctx is None:
         # ── single queryset with select_related — no N+1 ──────────────────────
@@ -133,12 +146,12 @@ def product_list(request):
         paginator = Paginator(products, 24)
         page_obj  = paginator.get_page(page_num)
 
-        categories = cache.get('categories:active')
+        categories = _cget('categories:active')
         if categories is None:
             categories = list(Category.objects.filter(is_active=True))
-            cache.set('categories:active', categories, 600)
+            _cset('categories:active', categories, 600)
 
-        flash_products = cache.get('flash:active')
+        flash_products = _cget('flash:active')
         if flash_products is None:
             flash_products = list(
                 Product.objects.filter(
@@ -147,7 +160,7 @@ def product_list(request):
                     flash_sale_ends__gt=timezone.now(),
                 ).prefetch_related('images').order_by('flash_sale_ends')[:8]
             )
-            cache.set('flash:active', flash_products, 120)
+            _cset('flash:active', flash_products, 120)
 
         featured = list(
             Product.objects.filter(is_featured=True, status='active')
@@ -169,7 +182,7 @@ def product_list(request):
             'in_stock_only':  in_stock_only,
         }
         if not search_query:
-            cache.set(cache_key, ctx, 120)   # 2-min cache for filtered views
+            _cset(cache_key, ctx, 120)   # 2-min cache for filtered views
 
     cart    = get_or_create_cart(request)
     ctx['cart_count'] = cart.total_items
@@ -227,8 +240,8 @@ def product_detail(request, slug):
     # Without caching: 1 DB write per product page view (high write load)
     # With caching: 1 DB write per 10 views (90% fewer writes)
     vc_key   = f'views:{product.pk}'
-    vc_count = cache.get(vc_key, 0) + 1
-    cache.set(vc_key, vc_count, 3600)
+    vc_count = _cget(vc_key, 0) + 1
+    _cset(vc_key, vc_count, 3600)
     if vc_count % 10 == 0:
         Product.objects.filter(pk=product.pk).update(views=F('views') + 10)
 
@@ -283,7 +296,7 @@ def product_list_api(request):
 
 
 def flash_sale_list(request):
-    flash_products = cache.get('flash:active')
+    flash_products = _cget('flash:active')
     if flash_products is None:
         flash_products = list(
             Product.objects.filter(
@@ -293,7 +306,7 @@ def flash_sale_list(request):
             ).select_related('vendor', 'category').prefetch_related('images')
             .order_by('flash_sale_ends')
         )
-        cache.set('flash:active', flash_products, 120)
+        _cset('flash:active', flash_products, 120)
     cart = get_or_create_cart(request)
     return render(request, 'products/flash_sale.html', {
         'flash_products': flash_products,
