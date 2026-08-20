@@ -126,7 +126,15 @@ if REDIS_URL:
             'BACKEND':  'django.core.cache.backends.redis.RedisCache',
             'LOCATION': REDIS_URL,
             'TIMEOUT':  300,
-            'OPTIONS':  {'MAX_ENTRIES': 10000},
+            'OPTIONS':  {
+                'MAX_ENTRIES':          10000,
+                # Connection pool — shared across cache + session requests
+                # Must not exhaust Railway Redis's connection limit
+                'max_connections':      30,
+                'socket_timeout':       5,
+                'socket_connect_timeout': 5,
+                'retry_on_timeout':     True,
+            },
         }
     }
 else:
@@ -382,7 +390,9 @@ if SENTRY_DSN:
 # Store sessions in Redis (same as cache) instead of the database.
 # This eliminates one DB query per authenticated request.
 # Requires CACHES to be configured with Redis (already done above).
-SESSION_ENGINE      = 'django.contrib.sessions.backends.cache'
+# cached_db: reads from Redis (fast), writes to DB (reliable)
+# If Redis pool is exhausted, sessions fall back to DB — no crash
+SESSION_ENGINE      = 'django.contrib.sessions.backends.cached_db'
 SESSION_CACHE_ALIAS = 'default'
 SESSION_COOKIE_AGE  = 1209600   # 2 weeks
 

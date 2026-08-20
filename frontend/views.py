@@ -5,6 +5,19 @@ from products.models import Product, Category, ProductVideo
 from order.models import OrderItem
 
 
+
+def _cget(key, default=None):
+    try:
+        return _cget(key, default)
+    except Exception:
+        return default
+
+def _cset(key, val, ttl):
+    try:
+        _cset(key, val, ttl)
+    except Exception:
+        pass
+
 def _cart_count(request):
     if request.user.is_authenticated:
         try:
@@ -20,7 +33,7 @@ def home(request):
     # Caching reduces DB load from ~6 queries/request to ~1 (just cart count).
     CACHE_TTL = 300   # 5 minutes — fast enough to show new products
 
-    hot_products = cache.get('home:hot_products')
+    hot_products = _cget('home:hot_products')
     if hot_products is None:
         valid_products = Product.objects.filter(status='active').exclude(
             slug__isnull=True).exclude(slug='')
@@ -47,31 +60,31 @@ def home(request):
             )
             hot_products = hot_products + fallback
 
-        cache.set('home:hot_products', hot_products, CACHE_TTL)
+        _cset('home:hot_products', hot_products, CACHE_TTL)
 
-    featured = cache.get('home:featured')
+    featured = _cget('home:featured')
     if featured is None:
         featured = list(
             Product.objects.filter(is_featured=True, status='active')
             .prefetch_related('images').select_related('vendor', 'category')[:4]
         )
-        cache.set('home:featured', featured, CACHE_TTL)
+        _cset('home:featured', featured, CACHE_TTL)
 
-    new_products = cache.get('home:new_products')
+    new_products = _cget('home:new_products')
     if new_products is None:
         new_products = list(
             Product.objects.filter(status='active')
             .prefetch_related('images', 'videos').select_related('vendor', 'category')
             .order_by('-created_at')[:10]
         )
-        cache.set('home:new_products', new_products, CACHE_TTL)
+        _cset('home:new_products', new_products, CACHE_TTL)
 
-    categories = cache.get('home:categories')
+    categories = _cget('home:categories')
     if categories is None:
         categories = list(Category.objects.filter(is_active=True))
-        cache.set('home:categories', categories, CACHE_TTL)
+        _cset('home:categories', categories, CACHE_TTL)
 
-    product_videos = cache.get('home:product_videos')
+    product_videos = _cget('home:product_videos')
     if product_videos is None:
         product_videos = list(
             ProductVideo.objects
@@ -81,7 +94,7 @@ def home(request):
             .exclude(product__slug='')
             .order_by('order', '-uploaded_at')[:12]
         )
-        cache.set('home:product_videos', product_videos, CACHE_TTL)
+        _cset('home:product_videos', product_videos, CACHE_TTL)
 
     return render(request, 'frontend/home.html', {
         'hot_products':   hot_products,
