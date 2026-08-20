@@ -120,30 +120,41 @@ else:
 REDIS_URL = os.environ.get('REDIS_URL', '')
 
 # ── Cache ──────────────────────────────────────────────────────────────────────
-if REDIS_URL:
-    CACHES = {
-        'default': {
-            'BACKEND':  'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': REDIS_URL,
-            'TIMEOUT':  300,
-            'OPTIONS':  {
-                'MAX_ENTRIES':          10000,
-                # Connection pool — shared across cache + session requests
-                # Must not exhaust Railway Redis's connection limit
-                'max_connections':      30,
-                'socket_timeout':       5,
-                'socket_connect_timeout': 5,
-                'retry_on_timeout':     True,
-            },
+def _build_caches(redis_url):
+    if not redis_url:
+        return {
+            'default': {
+                'BACKEND':  'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'lynctel-cache',
+            }
         }
-    }
-else:
-    CACHES = {
-        'default': {
-            'BACKEND':  'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'lynctel-cache',
+    try:
+        import redis as _r
+        _r.from_url(redis_url, socket_connect_timeout=2).ping()
+        return {
+            'default': {
+                'BACKEND':  'django.core.cache.backends.redis.RedisCache',
+                'LOCATION': redis_url,
+                'TIMEOUT':  300,
+                'OPTIONS':  {
+                    'MAX_ENTRIES':            10000,
+                    'max_connections':        20,
+                    'socket_timeout':         5,
+                    'socket_connect_timeout': 3,
+                    'retry_on_timeout':       True,
+                },
+            }
         }
-    }
+    except Exception:
+        # Redis unreachable (billing lapsed, etc.) — fall back silently
+        return {
+            'default': {
+                'BACKEND':  'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'lynctel-cache',
+            }
+        }
+
+CACHES = _build_caches(REDIS_URL)
 
 # ── Channel layers ─────────────────────────────────────────────────────────────
 # socket_keepalive + health_check_interval prevent Railway's idle-connection
@@ -392,7 +403,7 @@ if SENTRY_DSN:
 # Requires CACHES to be configured with Redis (already done above).
 # cached_db: reads from Redis (fast), writes to DB (reliable)
 # If Redis pool is exhausted, sessions fall back to DB — no crash
-SESSION_ENGINE      = 'django.contrib.sessions.backends.cached_db'
+SESSION_ENGINE      = 'django.contrib.sessions.backends.db'
 SESSION_CACHE_ALIAS = 'default'
 SESSION_COOKIE_AGE  = 1209600   # 2 weeks
 
