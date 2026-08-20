@@ -97,39 +97,54 @@ def signup(request):
 
 
 # ── LOGIN ─────────────────────────────────────────────────
+
 def login_view(request):
+    # Already logged in → go to next or home
     if request.user.is_authenticated:
-        return redirect('frontend:home')
-
+        next_url = request.GET.get('next', '/') or '/'
+        if not next_url.startswith('/'):
+            next_url = '/'
+        return redirect(next_url)
+ 
+    error    = None
+    next_url = (request.GET.get('next')
+                or request.POST.get('next')
+                or '/')
+ 
+    # Security: only allow relative-path redirects (prevent open redirect)
+    if not next_url.startswith('/'):
+        next_url = '/'
+ 
     if request.method == 'POST':
-        phone    = normalize_phone(request.POST.get('phone', '').strip())
-        password = request.POST.get('password', '')
-
-        try:
-            user_obj = User.objects.get(phone=phone)
-            if user_obj.check_password(password):
-                login(request, user_obj)
-                next_url = request.POST.get('next') or request.GET.get('next', '')
-                return redirect(next_url if next_url else 'frontend:home')
+        phone    = request.POST.get('phone', '').strip()
+        password = request.POST.get('password', '').strip()
+ 
+        if not phone or not password:
+            error = 'Please enter your phone number and password.'
+        else:
+            from django.contrib.auth import authenticate, login
+            user = authenticate(request, phone=phone, password=password)
+            if user is not None:
+                login(request, user)
+ 
+                # Merge guest cart
+                try:
+                    from cart.views import merge_guest_cart
+                    merge_guest_cart(request, user)
+                except Exception:
+                    pass
+ 
+                # ← THIS is the fix: redirect to next_url, not to settings.LOGIN_REDIRECT_URL
+                return redirect(next_url)
             else:
-                error = 'Incorrect password.'
-        except User.DoesNotExist:
-            error = 'No account found with this phone number.'
-        except Exception as e:
-            logger.error(
-                'Login error for phone=%s: %s', phone, str(e), exc_info=True
-            )
-            error = f'Login failed: {e}'
-
-        return render(request, 'accounts/login.html', {
-            'error': error,
-            'form_data': request.POST,
-        })
-
+                error = 'Incorrect phone number or password. Please try again.'
+ 
     return render(request, 'accounts/login.html', {
-        'next': request.GET.get('next', ''),
+        'error':     error,
+        'next':      next_url,        # ← pass to template so hidden field has value
+        'form_data': request.POST,
     })
-
+ 
 
 # ── LOGOUT ────────────────────────────────────────────────
 def logout_view(request):

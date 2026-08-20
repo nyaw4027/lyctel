@@ -377,3 +377,20 @@ if SENTRY_DSN:
         send_default_pii=False,
         environment=config('DJANGO_ENV', default='production'),
     )
+
+# ── Session performance ─────────────────────────────────────────────────────────
+# Store sessions in Redis (same as cache) instead of the database.
+# This eliminates one DB query per authenticated request.
+# Requires CACHES to be configured with Redis (already done above).
+SESSION_ENGINE      = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+SESSION_COOKIE_AGE  = 1209600   # 2 weeks
+
+# ── Template caching ──────────────────────────────────────────────────────────
+# Cache compiled templates in memory — avoids re-parsing on every request.
+# Already enabled via django.template.loaders.cached.Loader in production.
+# (Django auto-enables this when DEBUG=False with APP_DIRS=True.)
+
+# ── Database query optimisation ───────────────────────────────────────────────
+# conn_max_age=600 is set above (reuse DB connections for 10 min) ✓
+# ATOMIC_REQUESTS: False (default) — better for read-heavy pages
