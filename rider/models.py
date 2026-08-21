@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 from django.db.models import Sum
+import uuid
+from decimal import Decimal
 
 
 # ─────────────────────────────
@@ -153,3 +155,104 @@ class DeliveryAcceptance(models.Model):
 
     def __str__(self):
         return f"{self.rider} — {self.delivery} — {self.status}"
+
+
+class RiderLedgerEntry(models.Model):
+    """
+    Created automatically when a delivery is completed and the customer
+    paid the rider directly (cash or MoMo).
+ 
+    Records:
+      - gross_amount  : full delivery fee the customer paid
+      - rider_net     : what the rider keeps (gross × commission_rate%)
+      - app_commission: what the app is owed  (gross × app_rate%)
+      - is_settled    : True once the rider has paid the app their cut
+    """
+ 
+    class PaymentMethod(models.TextChoices):
+        CASH = 'cash', 'Cash'
+        MOMO = 'momo', 'Mobile Money'
+ 
+    id       = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    rider    = models.ForeignKey(
+        'rider.RiderProfile',
+        on_delete=models.CASCADE,
+        related_name='ledger_entries',
+    )
+    delivery = models.OneToOneField(
+        'delivery.Delivery',
+        on_delete=models.CASCADE,
+        related_name='ledger_entry',
+    )
+ 
+    gross_amount   = models.DecimalField(max_digits=10, decimal_places=2)
+    rider_net      = models.DecimalField(max_digits=10, decimal_places=2)
+    app_commission = models.DecimalField(max_digits=10, decimal_places=2)
+    commission_pct = models.DecimalField(max_digits=5,  decimal_places=2,
+                                          help_text="App % at time of delivery")
+ 
+    payment_method = models.CharField(
+        max_length=10,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.CASH,
+    )
+ 
+    is_settled  = models.BooleanField(default=False)
+    settled_at  = models.DateTimeField(null=True, blank=True)
+    settled_by  = models.ForeignKey(
+        settings.AUTH_USER_MODEL,     # staffmember who confirmed payment
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='settled_ledger_entries',
+    )
+    settlement_note = models.TextField(blank=True)
+ 
+    created_at = models.DateTimeField(auto_now_add=True)
+ 
+    class Meta:
+        ordering = ['-created_at']
+ 
+    def __str__(self):
+        status = '✓' if self.is_settled else '⏳'
+        return (f"{status} {self.rider} — GHS {self.app_commission} owed "
+                f"({'settled' if self.is_settled else 'pending'})")
+ 
+ 
+class RiderBalanceSummary(models.Model):
+    """
+    Running balance of how much each rider owes the app.
+    Updated atomically on every completed delivery.
+    Avoids re-aggregating ledger_entries on every page load.
+    """
+    rider           = models.OneToOneField(
+        'rider.RiderProfile',
+        on_delete=models.CASCADE,
+        related_name='balance',
+    )
+    total_earned    = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_app_cut   = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_settled   = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    outstanding     = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    updated_at      = models.DateTimeField(auto_now=True)
+ 
+    def recalculate(self):
+        from django.db.models import Sum, Q
+        entries = self.rider.ledger_entries
+        agg = entries.aggregate(
+            gross  = Sum('gross_amount'),
+            net    = Sum('rider_net'),
+            app    = Sum('app_commission'),
+            settled= Sum('app_commission', filter=Q(is_settled=True)),
+        )
+        self.total_earned  = agg['gross']  or Decimal('0')
+        self.total_app_cut = agg['app']    or Decimal('0')
+        self.total_settled = agg['settled']or Decimal('0')
+        self.outstanding   = self.total_app_cut - self.total_settled
+        self.save()
+ 
+    class Meta:
+        verbose_name_plural = 'Rider balance summaries'
+ 
+    def __str__(self):
+        return f"{self.rider} — owes GHS {self.outstanding}"
+    

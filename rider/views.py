@@ -23,9 +23,11 @@ def rider_required(view_func):
     """Ensures user has an approved RiderProfile."""
     @login_required
     def wrapper(request, *args, **kwargs):
+        # Query DB directly — never use cached related_name accessor
+        # This prevents stale is_verified=False after admin approves the rider
         try:
-            profile = request.user.rider_profile
-        except Exception:
+            profile = RiderProfile.objects.get(rider=request.user)
+        except RiderProfile.DoesNotExist:
             return redirect('rider:apply')
         if not profile.is_verified:
             return redirect('rider:pending')
@@ -40,12 +42,14 @@ def rider_required(view_func):
 @login_required
 def apply(request):
     """Rider application form."""
-    # Already a rider
-    if hasattr(request.user, 'rider_profile'):
-        profile = request.user.rider_profile
+    # Already a rider — check DB directly
+    try:
+        profile = RiderProfile.objects.get(rider=request.user)
         if profile.is_verified:
             return redirect('rider:dashboard')
         return redirect('rider:pending')
+    except RiderProfile.DoesNotExist:
+        pass
 
     if request.method == 'POST':
         vehicle_type  = request.POST.get('vehicle_type', '').strip()
@@ -72,6 +76,12 @@ def apply(request):
                 status        = RiderProfile.Status.OFFLINE,
                 is_verified   = False,
             )
+            # Notify all admin/staff users with sound alert
+            try:
+                from rider.admin_notify import notify_admins_new_rider
+                notify_admins_new_rider(profile)
+            except Exception:
+                pass
             messages.success(request, 'Application submitted! We\'ll review and get back to you soon.')
             return redirect('rider:pending')
 
@@ -83,11 +93,12 @@ def apply(request):
 def pending(request):
     """Waiting for approval page."""
     try:
-        profile = request.user.rider_profile
-        if profile.is_verified:
-            return redirect('rider:dashboard')
-    except Exception:
+        profile = RiderProfile.objects.get(rider=request.user)
+    except RiderProfile.DoesNotExist:
         return redirect('rider:apply')
+    # If already verified — go straight to dashboard
+    if profile.is_verified:
+        return redirect('rider:dashboard')
     return render(request, 'rider/pending.html', {'profile': profile})
 
 
@@ -231,13 +242,23 @@ def update_delivery(request, pk):
     old_status = delivery.status
     delivery.set_status(new_status)
 
-    # On delivery completion — pay rider
+    # On delivery completion
     if new_status == 'delivered' and old_status != 'delivered':
+        # Record commission split — customer paid rider directly
+        payment_method = request.POST.get('payment_method', 'cash')
+        try:
+            from rider.ledger_service import record_delivery_commission
+            record_delivery_commission(delivery, payment_method=payment_method)
+        except Exception as e:
+            log.warning("Ledger entry failed: %s", e)
+
+        # Legacy payout (if applicable)
         try:
             from delivery.services import pay_rider_for_delivery
             pay_rider_for_delivery(delivery)
         except Exception:
             pass
+
         # SMS customer
         try:
             from notifications.sms import sms_order_delivered
@@ -446,3 +467,125 @@ def notify_rider(rider_user, title, message, link='', notif_type='general'):
         send_push_notification(rider_user, title=title, body=message, url=link)
     except Exception:
         pass
+
+
+def staff_only(view_func):
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if request.user.role not in ('admin', 'staff'):
+            return redirect('frontend:home')
+        return view_func(request, *args, **kwargs)
+    wrapper.__name__ = view_func.__name__
+    return wrapper
+
+
+@staff_only
+def admin_balances(request):
+    """
+    Admin view: all rider balances — who owes what.
+    URL: /rider/admin/balances/
+    """
+    from rider.models import RiderBalanceSummary
+    from rider.models import RiderProfile
+
+    balances = (
+        RiderBalanceSummary.objects
+        .select_related('rider', 'rider__rider')
+        .order_by('-outstanding')
+    )
+    total_outstanding = sum(b.outstanding for b in balances)
+
+    return render(request, 'rider/admin_balances.html', {
+        'balances':         balances,
+        'total_outstanding': total_outstanding,
+    })
+
+
+@staff_only
+def rider_ledger_detail(request, rider_pk):
+    """
+    Admin: full ledger for one rider.
+    URL: /rider/admin/balances/<int:rider_pk>/
+    """
+    from rider.models import RiderProfile
+    from rider.models import RiderLedgerEntry, RiderBalanceSummary
+
+    rider_profile = get_object_or_404(RiderProfile, pk=rider_pk)
+    entries = (
+        RiderLedgerEntry.objects
+        .filter(rider=rider_profile)
+        .select_related('delivery', 'delivery__order', 'settled_by')
+        .order_by('-created_at')
+    )
+    try:
+        balance = rider_profile.balance
+    except Exception:
+        from rider.models import RiderBalanceSummary
+        balance, _ = RiderBalanceSummary.objects.get_or_create(rider=rider_profile)
+
+    return render(request, 'rider/ledger_detail.html', {
+        'rider_profile': rider_profile,
+        'entries':       entries,
+        'balance':       balance,
+    })
+
+
+@staff_only
+@require_POST
+def settle_rider_balance(request, rider_pk):
+    """
+    POST: mark one or all entries as settled.
+    URL: /rider/admin/balances/<int:rider_pk>/settle/
+    Body: entry_id=<uuid> (single) OR settle_all=1 (all outstanding)
+    """
+    from rider.models import RiderProfile
+    from rider.ledger_service import settle_entry, settle_all_for_rider
+    from rider.models import RiderLedgerEntry
+
+    rider_profile = get_object_or_404(RiderProfile, pk=rider_pk)
+    note          = request.POST.get('note', '')
+
+    if request.POST.get('settle_all'):
+        count = settle_all_for_rider(rider_profile, request.user, note)
+        msg = f'Settled {count} entries for {rider_profile}'
+    else:
+        entry_id = request.POST.get('entry_id')
+        entry    = get_object_or_404(RiderLedgerEntry, id=entry_id, rider=rider_profile)
+        settle_entry(entry, request.user, note)
+        msg = f'Entry settled — GHS {entry.app_commission}'
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'message': msg})
+
+    from django.contrib import messages as dj_messages
+    dj_messages.success(request, msg)
+    return redirect('rider:ledger_detail', rider_pk=rider_pk)
+
+
+@rider_required
+def my_balance(request):
+    """
+    Rider view: see their own balance / what they owe the app.
+    URL: /rider/balance/
+    """
+    from rider.models import RiderLedgerEntry, RiderBalanceSummary
+    profile = request.rider_profile
+
+    try:
+        balance = profile.balance
+    except Exception:
+        from rider.models import RiderBalanceSummary
+        balance, _ = RiderBalanceSummary.objects.get_or_create(rider=profile)
+
+    entries = (
+        RiderLedgerEntry.objects
+        .filter(rider=profile)
+        .select_related('delivery', 'delivery__order')
+        .order_by('-created_at')[:20]
+    )
+
+    return render(request, 'rider/my_balance.html', {
+        'profile': profile,
+        'balance': balance,
+        'entries': entries,
+    })

@@ -30,4 +30,9 @@ urlpatterns = [
 
     # Earnings
     path('earnings/',                      views.earnings,             name='earnings'),
+    # Commission ledger & balances
+    path('balance/',                          views.my_balance,           name='my_balance'),
+    path('admin/balances/',                   views.admin_balances,       name='admin_balances'),
+    path('admin/balances/<int:rider_pk>/',    views.rider_ledger_detail,  name='ledger_detail'),
+    path('admin/balances/<int:rider_pk>/settle/', views.settle_rider_balance, name='settle_balance'),
 ]

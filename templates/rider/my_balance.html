@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Rider Balances — Admin{% endblock %}
+{% block content %}
+<div class="container-xl px-3 py-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h1 class="fw-bold text-navy mb-0">💰 Rider Balances</h1>
+      <p class="text-muted small mb-0">Commission owed to Lynctel by each rider</p>
+    </div>
+    <div class="text-end">
+      <p class="text-muted small mb-0">Total Outstanding</p>
+      <p class="fw-bold text-danger mb-0" style="font-size:1.4rem">
+        GHS {{ total_outstanding|floatformat:2 }}
+      </p>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead style="background:#f9fafb">
+          <tr>
+            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">Rider</th>
+            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">Total Earned</th>
+            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">App Cut (Total)</th>
+            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">Settled</th>
+            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">Outstanding</th>
+            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in balances %}
+          <tr>
+            <td class="px-4 py-3">
+              <p class="fw-bold text-navy mb-0">{{ b.rider.rider.get_full_name|default:b.rider.rider.phone }}</p>
+              <p class="text-muted mb-0" style="font-size:.75rem">
+                {{ b.rider.get_vehicle_type_display }}
+                · {{ b.rider.commission_rate }}% commission
+              </p>
+            </td>
+            <td class="px-4 py-3 fw-semibold">GHS {{ b.total_earned|floatformat:2 }}</td>
+            <td class="px-4 py-3">GHS {{ b.total_app_cut|floatformat:2 }}</td>
+            <td class="px-4 py-3 text-success fw-semibold">GHS {{ b.total_settled|floatformat:2 }}</td>
+            <td class="px-4 py-3">
+              <span class="fw-bold {% if b.outstanding > 0 %}text-danger{% else %}text-success{% endif %}"
+                    style="font-size:.95rem">
+                GHS {{ b.outstanding|floatformat:2 }}
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <div class="d-flex gap-2">
+                <a href="{% url 'rider:ledger_detail' b.rider.pk %}"
+                   class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold">
+                  View
+                </a>
+                {% if b.outstanding > 0 %}
+                <form method="POST"
+                      action="{% url 'rider:settle_balance' b.rider.pk %}"
+                      onsubmit="return confirm('Mark all outstanding as settled?')">
+                  {% csrf_token %}
+                  <input type="hidden" name="settle_all" value="1"/>
+                  <button type="submit"
+                          class="btn btn-sm btn-success rounded-3 fw-semibold">
+                    ✓ Settle All
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-5 text-muted">
+              No rider balance records yet.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
