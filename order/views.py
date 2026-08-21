@@ -20,6 +20,22 @@ logger = logging.getLogger(__name__)
 
 # ── CART HELPER ───────────────────────────────────────────
 
+
+def _cget(key, default=None):
+    try:
+        from django.core.cache import cache
+        return _cget(key, default)
+    except Exception:
+        return default
+
+def _cset(key, val, ttl):
+    try:
+        from django.core.cache import cache
+        _cset(key, val, ttl)
+    except Exception:
+        pass
+
+
 def get_or_create_cart(request):
     if request.user.is_authenticated:
         cart, _ = Cart.objects.get_or_create(user=request.user)
@@ -675,7 +691,7 @@ def also_bought(request, product_id):
     from .models import OrderItem
  
     cache_key = f'also_bought:{product_id}'
-    cached    = cache.get(cache_key)
+    cached    = _cget(cache_key)
     if cached is not None:
         return JsonResponse({'products': cached})
  
@@ -724,11 +740,9 @@ def also_bought(request, product_id):
                 'vendor': p.vendor.shop_name if p.vendor else '',
             })
  
-        cache.set(cache_key, result, 3600)   # 1 hour
+        _cset(cache_key, result, 3600)   # 1 hour
         return JsonResponse({'products': result})
  
     except Exception as e:
         logger.error('also_bought error for product %s: %s', product_id, e)
         return JsonResponse({'products': []})
-
-    
