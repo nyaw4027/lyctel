@@ -33,39 +33,128 @@ def admin_required(view_func):
 # ── OVERVIEW DASHBOARD ────────────────────────────────────
 @admin_required
 def dashboard_home(request):
-    this_week = timezone.now() - timedelta(days=7)
+    from django.utils import timezone as tz
+    from datetime import timedelta
+    import json
 
+    now       = tz.now()
+    today     = now.date()
+    this_week = now - timedelta(days=7)
+
+    # ── Core stats ────────────────────────────────────────────────────────
     total_orders     = Order.objects.count()
     pending_orders   = Order.objects.filter(status='pending').count()
     total_revenue    = Order.objects.filter(payment_status='paid').aggregate(t=Sum('total_amount'))['t'] or 0
     week_revenue     = Order.objects.filter(payment_status='paid', created_at__gte=this_week).aggregate(t=Sum('total_amount'))['t'] or 0
+    today_revenue    = Order.objects.filter(payment_status='paid', created_at__date=today).aggregate(t=Sum('total_amount'))['t'] or 0
     total_products   = Product.objects.filter(status='active').count()
     low_stock        = Product.objects.filter(status='active', stock_qty__lte=5).count()
     total_customers  = User.objects.filter(role='customer').count()
+    new_customers    = User.objects.filter(role='customer', date_joined__gte=this_week).count()
     active_riders    = RiderProfile.objects.filter(status='available').count()
     total_vendors    = Vendor.objects.filter(status='active').count()
     pending_vendors  = Vendor.objects.filter(status='pending').count()
-    total_commission = AppCommission.objects.aggregate(t=Sum('amount'))['t'] or 0
 
+    # ── Commission ────────────────────────────────────────────────────────
+    try:
+        total_commission = AppCommission.objects.aggregate(t=Sum('amount'))['t'] or 0
+    except Exception:
+        total_commission = 0
+
+    # ── Rider balances (new ledger system) ────────────────────────────────
+    try:
+        from rider.models import RiderBalanceSummary
+        rider_outstanding = RiderBalanceSummary.objects.aggregate(
+            t=Sum('outstanding'))['t'] or 0
+        rider_balance_count = RiderBalanceSummary.objects.filter(
+            outstanding__gt=0).count()
+    except Exception:
+        rider_outstanding   = 0
+        rider_balance_count = 0
+
+    # ── Disputes ──────────────────────────────────────────────────────────
+    try:
+        from order.models import OrderDispute
+        open_disputes = OrderDispute.objects.filter(
+            status__in=['open', 'reviewing']).count()
+    except Exception:
+        open_disputes = 0
+
+    # ── Pending rider applications ─────────────────────────────────────────
+    pending_riders = RiderProfile.objects.filter(is_verified=False).count()
+
+    # ── Food stats ────────────────────────────────────────────────────────
+    try:
+        from food.models import FoodOrder
+        food_orders_today = FoodOrder.objects.filter(
+            created_at__date=today).count()
+        food_revenue_week = FoodOrder.objects.filter(
+            payment_status='paid',
+            created_at__gte=this_week
+        ).aggregate(t=Sum('total_amount'))['t'] or 0
+    except Exception:
+        food_orders_today = 0
+        food_revenue_week = 0
+
+    # ── 30-day revenue chart ───────────────────────────────────────────────
+    chart_labels  = []
+    chart_revenue = []
+    for i in range(29, -1, -1):
+        day = today - __import__('datetime').timedelta(days=i)
+        rev = Order.objects.filter(
+            payment_status='paid', created_at__date=day
+        ).aggregate(t=Sum('total_amount'))['t'] or 0
+        chart_labels.append(day.strftime('%b %d'))
+        chart_revenue.append(float(rev))
+
+    # ── Recent lists ──────────────────────────────────────────────────────
     recent_orders       = Order.objects.select_related('customer').order_by('-created_at')[:8]
-    low_stock_products  = Product.objects.filter(status='active', stock_qty__lte=5).order_by('stock_qty')[:5]
-    pending_vendor_list = Vendor.objects.filter(status='pending').select_related('owner').order_by('-joined_at')[:5]
+    low_stock_products  = Product.objects.filter(
+        status='active', stock_qty__lte=5).order_by('stock_qty')[:5]
+    pending_vendor_list = Vendor.objects.filter(
+        status='pending').select_related('owner').order_by('-joined_at')[:5]
+    pending_rider_list  = RiderProfile.objects.filter(
+        is_verified=False).select_related('rider').order_by('-joined_at')[:5]
+
+    try:
+        from order.models import OrderDispute
+        recent_disputes = OrderDispute.objects.select_related(
+            'order', 'customer').filter(
+            status__in=['open', 'reviewing']).order_by('-created_at')[:5]
+    except Exception:
+        recent_disputes = []
 
     return render(request, 'dashboard/home.html', {
+        # KPIs
         'total_orders':        total_orders,
         'pending_orders':      pending_orders,
         'total_revenue':       total_revenue,
         'week_revenue':        week_revenue,
+        'today_revenue':       today_revenue,
         'total_products':      total_products,
         'low_stock':           low_stock,
         'total_customers':     total_customers,
+        'new_customers':       new_customers,
         'active_riders':       active_riders,
         'total_vendors':       total_vendors,
         'pending_vendors':     pending_vendors,
         'total_commission':    total_commission,
+        # New
+        'rider_outstanding':   rider_outstanding,
+        'rider_balance_count': rider_balance_count,
+        'open_disputes':       open_disputes,
+        'pending_riders':      pending_riders,
+        'food_orders_today':   food_orders_today,
+        'food_revenue_week':   food_revenue_week,
+        # Chart
+        'chart_labels':        json.dumps(chart_labels),
+        'chart_revenue':       json.dumps(chart_revenue),
+        # Lists
         'recent_orders':       recent_orders,
         'low_stock_products':  low_stock_products,
         'pending_vendor_list': pending_vendor_list,
+        'pending_rider_list':  pending_rider_list,
+        'recent_disputes':     recent_disputes,
     })
 
 

@@ -12,6 +12,15 @@
 
   <link rel="stylesheet" href="{% static 'css/dashboard-admin.css' %}"/>
   {% block extra_head %}{% endblock %}
+<style>
+  .sidebar-badge {
+    background: #F5A623; color: #0F1B2D;
+    font-size: .6rem; font-weight: 800;
+    padding: 1px 6px; border-radius: 99px;
+    margin-left: 4px; display: inline-block;
+  }
+  .sidebar-badge-red { background: #ef4444; color: white; }
+</style>
 </head>
 <body class="bg-body-tertiary">
 
@@ -51,6 +60,9 @@
       </svg>
       Orders
     </a>
+      <a href="{% url 'order:staff_disputes' %}">
+        ⚠️ Disputes
+      </a>
 
     <!-- Products -->
     <a href="{% url 'dashboard:product_list' %}"
@@ -80,6 +92,9 @@
       </svg>
       Riders
     </a>
+      <a href="{% url 'rider:admin_balances' %}">
+        💰 Rider Balances
+      </a>
 
     <!-- Vendors -->
     <a href="{% url 'dashboard:vendor_list' %}"

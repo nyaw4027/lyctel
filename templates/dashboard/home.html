@@ -1,143 +1,497 @@
 {% extends "dashboard/base.html" %}
-{% block title %}Overview — Lynctel Admin{% endblock %}
-{% block page_title %}Overview{% endblock %}
-{% block page_title_lg %}Overview{% endblock %}
+{% load static %}
+{% block title %}Dashboard — Lynctel Admin{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  .kpi-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    padding: 20px;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    gap: 14px;
+    -webkit-transition: box-shadow .15s; transition: box-shadow .15s;
+  }
+  .kpi-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+  .kpi-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 1.5rem;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+  }
+  .kpi-val   { font-size: 1.4rem; font-weight: 800; color: #0F1B2D; line-height: 1; }
+  .kpi-label { font-size: .72rem; color: #6b7280; margin-top: 3px; }
+  .kpi-badge {
+    font-size: .65rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 99px; margin-top: 4px;
+    display: inline-block;
+  }
+
+  .alert-card {
+    border-radius: 14px; padding: 14px 16px;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: flex-start; align-items: flex-start;
+    gap: 10px; margin-bottom: 10px;
+  }
+
+  .section-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+  }
+  .section-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f3f4f6;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: space-between; justify-content: space-between;
+  }
+  .data-row {
+    padding: 11px 18px;
+    border-bottom: 1px solid #f9fafb;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    gap: 10px;
+    -webkit-transition: background .1s; transition: background .1s;
+  }
+  .data-row:last-child { border-bottom: none; }
+  .data-row:hover { background: #fafafa; }
+</style>
+{% endblock %}
 
 {% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="fw-bold mb-0" style="font-size:1.4rem;color:#0F1B2D">Dashboard</h1>
+    <p class="text-muted small mb-0">Welcome back — here's what's happening today</p>
+  </div>
+  <span class="badge rounded-3 px-3 py-2 fw-semibold"
+        style="background:#f0fdf4;color:#166534;font-size:.8rem">
+    🟢 Live
+  </span>
+</div>
 
-<!-- STAT CARDS -->
-<div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
+<!-- ── Alert bar ───────────────────────────────────────────────────────────── -->
+{% if pending_orders or low_stock or open_disputes or pending_vendors or pending_riders or rider_balance_count %}
+<div class="mb-4 d-flex flex-column gap-2">
+  {% if pending_orders %}
+  <div class="alert-card" style="background:#fef3c7;border:1px solid #fde68a">
+    <span>⚡</span>
+    <div class="flex-fill">
+      <strong>{{ pending_orders }} pending order{{ pending_orders|pluralize }}</strong>
+      waiting for processing.
+    </div>
+    <a href="{% url 'dashboard:order_list' %}" class="btn btn-sm btn-warning rounded-3 fw-semibold">View</a>
+  </div>
+  {% endif %}
+  {% if open_disputes %}
+  <div class="alert-card" style="background:#fee2e2;border:1px solid #fca5a5">
+    <span>⚠️</span>
+    <div class="flex-fill">
+      <strong>{{ open_disputes }} open dispute{{ open_disputes|pluralize }}</strong>
+      need staff review.
+    </div>
+    <a href="{% url 'order:staff_disputes' %}" class="btn btn-sm btn-danger rounded-3 fw-semibold">Review</a>
+  </div>
+  {% endif %}
+  {% if pending_riders %}
+  <div class="alert-card" style="background:#e0e7ff;border:1px solid #a5b4fc">
+    <span>🛵</span>
+    <div class="flex-fill">
+      <strong>{{ pending_riders }} rider application{{ pending_riders|pluralize }}</strong>
+      awaiting verification.
+    </div>
+    <a href="{% url 'dashboard:rider_list' %}" class="btn btn-sm btn-primary rounded-3 fw-semibold">Verify</a>
+  </div>
+  {% endif %}
+  {% if rider_balance_count %}
+  <div class="alert-card" style="background:#fff7ed;border:1px solid #fed7aa">
+    <span>💰</span>
+    <div class="flex-fill">
+      <strong>{{ rider_balance_count }} rider{{ rider_balance_count|pluralize }}</strong>
+      owe <strong>GHS {{ rider_outstanding|floatformat:2 }}</strong> in commissions.
+    </div>
+    <a href="{% url 'rider:admin_balances' %}" class="btn btn-sm fw-semibold rounded-3"
+       style="background:#F5A623;color:#0F1B2D">Collect</a>
+  </div>
+  {% endif %}
+  {% if low_stock %}
+  <div class="alert-card" style="background:#fef3c7;border:1px solid #fde68a">
+    <span>📦</span>
+    <div class="flex-fill">
+      <strong>{{ low_stock }} product{{ low_stock|pluralize }}</strong>
+      with stock ≤ 5 units.
+    </div>
+    <a href="{% url 'dashboard:product_list' %}" class="btn btn-sm btn-warning rounded-3 fw-semibold">View</a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
 
-  <div class="col">
-    <div class="card border-0 shadow-sm rounded-2xl h-100">
-      <div class="card-body p-4">
-        <p class="small fw-semibold text-secondary text-uppercase tracking-wide mb-1">Total Revenue</p>
-        <p class="fs-3 fw-bold text-dark mb-0">GHS {{ total_revenue|floatformat:2 }}</p>
-        <p class="small text-success mt-1 mb-0">+GHS {{ week_revenue|floatformat:2 }} this week</p>
+<!-- ── KPI cards ──────────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#dbeafe">💰</div>
+      <div>
+        <div class="kpi-val">GHS {{ total_revenue|floatformat:0 }}</div>
+        <div class="kpi-label">Total Revenue</div>
+        <span class="kpi-badge" style="background:#f0fdf4;color:#166534">
+          +GHS {{ week_revenue|floatformat:0 }} this week
+        </span>
       </div>
     </div>
   </div>
 
-  <div class="col">
-    <div class="card border-0 shadow-sm rounded-2xl h-100">
-      <div class="card-body p-4">
-        <p class="small fw-semibold text-secondary text-uppercase tracking-wide mb-1">Orders</p>
-        <p class="fs-3 fw-bold text-dark mb-0">{{ total_orders }}</p>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fef3c7">📋</div>
+      <div>
+        <div class="kpi-val">{{ total_orders }}</div>
+        <div class="kpi-label">Total Orders</div>
         {% if pending_orders %}
-        <p class="small text-warning mt-1 mb-0">{{ pending_orders }} pending</p>
-        {% else %}
-        <p class="small text-success mt-1 mb-0">All cleared ✓</p>
+        <span class="kpi-badge" style="background:#fef3c7;color:#92400e">
+          {{ pending_orders }} pending
+        </span>
         {% endif %}
       </div>
     </div>
   </div>
 
-  <div class="col">
-    <div class="card border-0 shadow-sm rounded-2xl h-100">
-      <div class="card-body p-4">
-        <p class="small fw-semibold text-secondary text-uppercase tracking-wide mb-1">Products</p>
-        <p class="fs-3 fw-bold text-dark mb-0">{{ total_products }}</p>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#d1fae5">👥</div>
+      <div>
+        <div class="kpi-val">{{ total_customers }}</div>
+        <div class="kpi-label">Customers</div>
+        {% if new_customers %}
+        <span class="kpi-badge" style="background:#d1fae5;color:#065f46">
+          +{{ new_customers }} this week
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#e0e7ff">📦</div>
+      <div>
+        <div class="kpi-val">{{ total_products }}</div>
+        <div class="kpi-label">Active Products</div>
         {% if low_stock %}
-        <p class="small text-danger mt-1 mb-0">{{ low_stock }} low stock</p>
-        {% else %}
-        <p class="small text-secondary mt-1 mb-0">Stock OK</p>
+        <span class="kpi-badge" style="background:#fee2e2;color:#991b1b">
+          {{ low_stock }} low stock
+        </span>
         {% endif %}
       </div>
     </div>
   </div>
 
-  <div class="col">
-    <div class="card border-0 shadow-sm rounded-2xl h-100">
-      <div class="card-body p-4">
-        <p class="small fw-semibold text-secondary text-uppercase tracking-wide mb-1">Customers</p>
-        <p class="fs-3 fw-bold text-dark mb-0">{{ total_customers }}</p>
-        <p class="small text-secondary mt-1 mb-0">{{ active_riders }} riders active</p>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#f3e8ff">🏪</div>
+      <div>
+        <div class="kpi-val">{{ total_vendors }}</div>
+        <div class="kpi-label">Active Vendors</div>
+        {% if pending_vendors %}
+        <span class="kpi-badge" style="background:#fef3c7;color:#92400e">
+          {{ pending_vendors }} pending
+        </span>
+        {% endif %}
       </div>
     </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#dcfce7">🛵</div>
+      <div>
+        <div class="kpi-val">{{ active_riders }}</div>
+        <div class="kpi-label">Riders Online</div>
+        {% if pending_riders %}
+        <span class="kpi-badge" style="background:#e0e7ff;color:#3730a3">
+          {{ pending_riders }} to verify
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fff7ed">💳</div>
+      <div>
+        <div class="kpi-val">GHS {{ rider_outstanding|floatformat:2 }}</div>
+        <div class="kpi-label">Rider Balances Due</div>
+        {% if rider_balance_count %}
+        <span class="kpi-badge" style="background:#fee2e2;color:#991b1b">
+          {{ rider_balance_count }} rider{{ rider_balance_count|pluralize }}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fee2e2">⚠️</div>
+      <div>
+        <div class="kpi-val">{{ open_disputes }}</div>
+        <div class="kpi-label">Open Disputes</div>
+        {% if food_orders_today %}
+        <span class="kpi-badge" style="background:#dbeafe;color:#1e40af">
+          {{ food_orders_today }} food orders today
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Revenue chart ──────────────────────────────────────────────────────── -->
+<div class="section-card mb-4">
+  <div class="section-header">
+    <h2 class="fw-bold mb-0" style="font-size:.95rem;color:#0F1B2D">Revenue — Last 30 Days</h2>
+    <span class="fw-bold" style="color:#F5A623">GHS {{ week_revenue|floatformat:2 }} this week</span>
+  </div>
+  <div class="p-4">
+    <canvas id="revenueChart" height="80"></canvas>
   </div>
 </div>
 
+<!-- ── Three column grid ──────────────────────────────────────────────────── -->
 <div class="row g-4">
 
-  <!-- RECENT ORDERS -->
-  <div class="col-lg-8">
-    <div class="card border-0 shadow-sm rounded-2xl h-100">
-      <div class="card-header bg-white d-flex align-items-center justify-content-between px-4 py-3">
-        <h2 class="fw-bold text-dark fs-6 mb-0">Recent Orders</h2>
-        <a href="{% url 'dashboard:order_list' %}" class="small link-brand">View all →</a>
+  <!-- Recent orders -->
+  <div class="col-12 col-lg-5">
+    <div class="section-card">
+      <div class="section-header">
+        <h2 class="fw-bold mb-0" style="font-size:.9rem;color:#0F1B2D">Recent Orders</h2>
+        <a href="{% url 'dashboard:order_list' %}" class="text-muted small">View all →</a>
       </div>
-      <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0 align-middle">
-          <thead class="table-light">
-            <tr class="small text-secondary text-uppercase tracking-wide">
-              <th class="px-4 py-2">Order</th>
-              <th class="px-4 py-2">Customer</th>
-              <th class="px-4 py-2">Amount</th>
-              <th class="px-4 py-2">Status</th>
-              <th class="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for order in recent_orders %}
-            <tr>
-              <td class="px-4 py-2 fw-bold text-brand">{{ order.order_ref }}</td>
-              <td class="px-4 py-2 text-secondary">
-                {{ order.customer.get_full_name|default:order.customer.phone|default:"—" }}
-              </td>
-              <td class="px-4 py-2 fw-semibold">GHS {{ order.total_amount }}</td>
-              <td class="px-4 py-2">
-                <span class="badge rounded-pill
-                             {% if order.status == 'delivered' %}text-bg-success
-                             {% elif order.status == 'dispatched' %}text-bg-primary
-                             {% elif order.status == 'cancelled' %}text-bg-danger
-                             {% elif order.status == 'pending' %}text-bg-warning
-                             {% else %}text-bg-secondary{% endif %}">
-                  {{ order.get_status_display }}
-                </span>
-              </td>
-              <td class="px-4 py-2">
-                <a href="{% url 'dashboard:order_detail' order.pk %}" class="small link-brand">View</a>
-              </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="5" class="px-4 py-4 text-center text-secondary small">No orders yet.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- LOW STOCK ALERTS -->
-  <div class="col-lg-4">
-    <div class="card border-0 shadow-sm rounded-2xl h-100">
-      <div class="card-header bg-white d-flex align-items-center justify-content-between px-4 py-3">
-        <h2 class="fw-bold text-dark fs-6 mb-0">Low Stock Alert</h2>
-        <a href="{% url 'dashboard:product_list' %}" class="small link-brand">Manage →</a>
-      </div>
-      <ul class="list-group list-group-flush">
-        {% for product in low_stock_products %}
-        <li class="list-group-item d-flex align-items-center justify-content-between px-4 py-3">
-          <div class="d-flex align-items-center gap-3 min-w-0">
-            {% with product.images.first as img %}
-            {% if img %}
-            <img src="{{ img.image.url }}" class="icon-9 rounded object-fit-cover flex-shrink-0"/>
-            {% else %}
-            <div class="icon-9 rounded bg-light flex-shrink-0 d-flex align-items-center justify-content-center fs-5">📦</div>
-            {% endif %}
-            {% endwith %}
-            <p class="small fw-medium text-dark text-truncate mb-0">{{ product.name }}</p>
-          </div>
-          <span class="flex-shrink-0 ms-2 small fw-bold {% if product.stock_qty == 0 %}text-danger{% else %}text-warning{% endif %}">
-            {{ product.stock_qty }} left
+      {% for order in recent_orders %}
+      <a href="{% url 'dashboard:order_detail' order.pk %}"
+         class="data-row text-decoration-none">
+        <div class="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+             style="width:34px;height:34px;background:#f3f4f6;font-size:.8rem;font-weight:700;color:#0F1B2D">
+          {{ order.customer.initials|default:"?" }}
+        </div>
+        <div class="flex-fill min-w-0">
+          <p class="fw-semibold text-navy mb-0 text-truncate" style="font-size:.83rem">
+            {{ order.order_ref }}
+          </p>
+          <p class="text-muted mb-0" style="font-size:.72rem">
+            {{ order.customer.display_name|default:order.customer.phone }}
+          </p>
+        </div>
+        <div class="text-end flex-shrink-0">
+          <p class="fw-bold mb-0" style="font-size:.83rem;color:#0F1B2D">
+            GHS {{ order.total_amount|floatformat:2 }}
+          </p>
+          <span class="badge rounded-pill
+            {% if order.status == 'delivered' %}text-bg-success
+            {% elif order.status == 'pending' %}text-bg-warning
+            {% elif order.status == 'cancelled' %}text-bg-danger
+            {% else %}text-bg-info{% endif %}"
+                style="font-size:.62rem">
+            {{ order.get_status_display }}
           </span>
-        </li>
-        {% empty %}
-        <li class="list-group-item px-4 py-4 text-center text-secondary small">All products well stocked ✓</li>
-        {% endfor %}
-      </ul>
+        </div>
+      </a>
+      {% empty %}
+      <div class="p-4 text-center text-muted small">No recent orders.</div>
+      {% endfor %}
     </div>
   </div>
 
+  <!-- Right column: disputes + pending riders + low stock -->
+  <div class="col-12 col-lg-7">
+
+    <!-- Open disputes -->
+    {% if recent_disputes %}
+    <div class="section-card mb-4">
+      <div class="section-header">
+        <h2 class="fw-bold mb-0" style="font-size:.9rem;color:#0F1B2D">
+          ⚠️ Open Disputes
+        </h2>
+        <a href="{% url 'order:staff_disputes' %}" class="text-muted small">View all →</a>
+      </div>
+      {% for d in recent_disputes %}
+      <a href="{% url 'order:dispute_detail' d.order.order_ref %}"
+         class="data-row text-decoration-none">
+        <div class="flex-fill min-w-0">
+          <p class="fw-semibold text-navy mb-0" style="font-size:.83rem">
+            {{ d.order.order_ref }} — {{ d.get_reason_display }}
+          </p>
+          <p class="text-muted mb-0" style="font-size:.72rem">
+            {{ d.customer.display_name|default:d.customer.phone }}
+            · {{ d.created_at|timesince }} ago
+          </p>
+        </div>
+        <span class="badge rounded-pill
+          {% if d.status == 'open' %}text-bg-danger{% else %}text-bg-warning{% endif %}"
+              style="font-size:.62rem;flex-shrink:0">
+          {{ d.get_status_display }}
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Pending riders -->
+    {% if pending_rider_list %}
+    <div class="section-card mb-4">
+      <div class="section-header">
+        <h2 class="fw-bold mb-0" style="font-size:.9rem;color:#0F1B2D">
+          🛵 Rider Applications
+        </h2>
+        <a href="{% url 'dashboard:rider_list' %}" class="text-muted small">View all →</a>
+      </div>
+      {% for r in pending_rider_list %}
+      <a href="{% url 'dashboard:rider_detail' r.pk %}"
+         class="data-row text-decoration-none">
+        <div class="flex-fill min-w-0">
+          <p class="fw-semibold text-navy mb-0" style="font-size:.83rem">
+            {{ r.rider.get_full_name|default:r.rider.phone }}
+          </p>
+          <p class="text-muted mb-0" style="font-size:.72rem">
+            {{ r.get_vehicle_type_display }} · Applied {{ r.joined_at|timesince }} ago
+          </p>
+        </div>
+        <form method="POST" action="{% url 'dashboard:rider_detail' r.pk %}"
+              onclick="event.stopPropagation()">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="verify"/>
+          <button type="submit"
+                  class="btn btn-sm btn-success rounded-3 fw-semibold"
+                  style="font-size:.75rem">
+            ✓ Verify
+          </button>
+        </form>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Low stock + pending vendors -->
+    <div class="row g-3">
+      {% if low_stock_products %}
+      <div class="col-12 col-md-6">
+        <div class="section-card">
+          <div class="section-header">
+            <h2 class="fw-bold mb-0" style="font-size:.88rem;color:#0F1B2D">📦 Low Stock</h2>
+          </div>
+          {% for p in low_stock_products %}
+          <div class="data-row">
+            <div class="flex-fill min-w-0">
+              <p class="fw-semibold text-navy mb-0 text-truncate" style="font-size:.82rem">
+                {{ p.name }}
+              </p>
+            </div>
+            <span class="badge {% if p.stock_qty == 0 %}text-bg-danger{% else %}text-bg-warning{% endif %} rounded-pill"
+                  style="font-size:.65rem">
+              {{ p.stock_qty }} left
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if pending_vendor_list %}
+      <div class="col-12 col-md-6">
+        <div class="section-card">
+          <div class="section-header">
+            <h2 class="fw-bold mb-0" style="font-size:.88rem;color:#0F1B2D">🏪 Pending Vendors</h2>
+          </div>
+          {% for v in pending_vendor_list %}
+          <a href="{% url 'dashboard:vendor_detail' v.pk %}"
+             class="data-row text-decoration-none">
+            <div class="flex-fill min-w-0">
+              <p class="fw-semibold text-navy mb-0 text-truncate" style="font-size:.82rem">
+                {{ v.shop_name }}
+              </p>
+              <p class="text-muted mb-0" style="font-size:.72rem">
+                {{ v.owner.display_name|default:v.owner.phone }}
+              </p>
+            </div>
+            <span class="badge text-bg-warning rounded-pill" style="font-size:.62rem">
+              Pending
+            </span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Revenue chart
+const ctx = document.getElementById('revenueChart');
+if (ctx) {
+  const labels  = {{ chart_labels|safe }};
+  const revenue = {{ chart_revenue|safe }};
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Revenue (GHS)',
+        data: revenue,
+        borderColor: '#F5A623',
+        backgroundColor: 'rgba(245,166,35,.08)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: .4,
+        pointRadius: 3,
+        pointBackgroundColor: '#F5A623',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return 'GHS ' + ctx.parsed.y.toFixed(2);
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: '#f3f4f6' },
+          ticks: {
+            callback: function(val) { return 'GHS ' + val; },
+            font: { size: 11 }
+          }
+        },
+        x: {
+          grid: { display: false },
+          ticks: {
+            maxTicksLimit: 10,
+            font: { size: 11 }
+          }
+        }
+      }
+    }
+  });
+}
+</script>
 {% endblock %}
