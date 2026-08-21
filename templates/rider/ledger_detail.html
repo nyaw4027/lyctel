@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Rider Ledger — {{ rider_profile }}{% endblock %}
+{% block content %}
+<div class="container-xl px-3 py-4" style="max-width:900px">
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'rider:admin_balances' %}"
+       class="text-muted text-decoration-none fw-semibold small">← All Riders</a>
+    <span class="text-muted">/</span>
+    <h1 class="fw-bold text-navy mb-0" style="font-size:1.2rem">
+      {{ rider_profile.rider.get_full_name|default:rider_profile.rider.phone }}
+    </h1>
+  </div>
+
+  <!-- Balance summary -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+        <p class="text-muted mb-1" style="font-size:.7rem;text-transform:uppercase">Total Earned</p>
+        <p class="fw-bold text-navy mb-0">GHS {{ balance.total_earned|floatformat:2 }}</p>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+        <p class="text-muted mb-1" style="font-size:.7rem;text-transform:uppercase">App Cut (Total)</p>
+        <p class="fw-bold text-navy mb-0">GHS {{ balance.total_app_cut|floatformat:2 }}</p>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+        <p class="text-muted mb-1" style="font-size:.7rem;text-transform:uppercase">Settled</p>
+        <p class="fw-bold text-success mb-0">GHS {{ balance.total_settled|floatformat:2 }}</p>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center
+                  {% if balance.outstanding > 0 %}border-danger{% endif %}">
+        <p class="text-muted mb-1" style="font-size:.7rem;text-transform:uppercase">Outstanding</p>
+        <p class="fw-bold mb-0 {% if balance.outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+          GHS {{ balance.outstanding|floatformat:2 }}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settle all button -->
+  {% if balance.outstanding > 0 %}
+  <div class="card border-0 shadow-sm rounded-3 p-4 mb-4"
+       style="background:#fff7ed;border:1px solid #fed7aa!important">
+    <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+      <div>
+        <p class="fw-bold text-navy mb-1">
+          {{ rider_profile.rider.get_full_name|default:rider_profile.rider.phone }}
+          owes <span class="text-danger">GHS {{ balance.outstanding|floatformat:2 }}</span>
+        </p>
+        <p class="text-muted small mb-0">
+          Commission rate: {{ rider_profile.commission_rate }}% to rider
+        </p>
+      </div>
+      <form method="POST" action="{% url 'rider:settle_balance' rider_profile.pk %}"
+            onsubmit="return confirm('Mark all outstanding as settled?')">
+        {% csrf_token %}
+        <input type="hidden" name="settle_all" value="1"/>
+        <input type="text" name="note" placeholder="Settlement note (optional)"
+               class="form-control form-control-sm rounded-3 mb-2"
+               style="font-size:16px"/>
+        <button type="submit"
+                class="btn btn-success fw-semibold rounded-3 w-100">
+          ✓ Mark All Settled — GHS {{ balance.outstanding|floatformat:2 }}
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Entries table -->
+  <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+    <div class="card-header bg-white border-0 py-3 px-4">
+      <h2 class="fw-bold text-navy mb-0" style="font-size:.95rem">
+        Delivery Ledger ({{ entries.count }} entries)
+      </h2>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle small">
+        <thead style="background:#f9fafb">
+          <tr>
+            <th class="px-4 py-3 text-muted fw-semibold">Date</th>
+            <th class="px-4 py-3 text-muted fw-semibold">Order</th>
+            <th class="px-4 py-3 text-muted fw-semibold">Payment</th>
+            <th class="px-4 py-3 text-muted fw-semibold text-end">Gross</th>
+            <th class="px-4 py-3 text-muted fw-semibold text-end">Rider Net</th>
+            <th class="px-4 py-3 text-muted fw-semibold text-end">App Cut</th>
+            <th class="px-4 py-3 text-muted fw-semibold text-center">Status</th>
+            <th class="px-4 py-3 text-muted fw-semibold"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entries %}
+          <tr id="entry-{{ e.id }}">
+            <td class="px-4 py-3">{{ e.created_at|date:"M d, Y" }}</td>
+            <td class="px-4 py-3 fw-semibold text-navy">
+              {% if e.delivery.order %}{{ e.delivery.order.order_ref }}
+              {% else %}#{{ e.delivery.pk }}{% endif %}
+            </td>
+            <td class="px-4 py-3">
+              <span class="badge rounded-pill
+                {% if e.payment_method == 'momo' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                {{ e.get_payment_method_display }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-end fw-semibold">GHS {{ e.gross_amount|floatformat:2 }}</td>
+            <td class="px-4 py-3 text-end text-success fw-semibold">GHS {{ e.rider_net|floatformat:2 }}</td>
+            <td class="px-4 py-3 text-end text-danger fw-semibold">GHS {{ e.app_commission|floatformat:2 }}</td>
+            <td class="px-4 py-3 text-center">
+              {% if e.is_settled %}
+              <span class="badge text-bg-success rounded-pill">✓ Settled</span>
+              {% else %}
+              <span class="badge text-bg-warning text-dark rounded-pill">⏳ Pending</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3">
+              {% if not e.is_settled %}
+              <form method="POST" action="{% url 'rider:settle_balance' rider_profile.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="entry_id" value="{{ e.id }}"/>
+                <button type="submit"
+                        class="btn btn-sm btn-outline-success rounded-3 fw-semibold"
+                        style="font-size:.75rem">
+                  Settle
+                </button>
+              </form>
+              {% else %}
+              <span class="text-muted" style="font-size:.75rem">
+                {{ e.settled_at|date:"M d" }}
+              </span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center py-5 text-muted">
+              No ledger entries yet.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

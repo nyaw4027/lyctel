@@ -16,6 +16,21 @@
       Thank you! Your order has been received and payment confirmed.
       We'll reach you on <strong class="text-navy">{{ order.delivery_phone }}</strong>.
     </p>
+
+  <!-- Direct payment info -->
+  {% if order.delivery_fee %}
+  <div class="mx-3 mb-4 rounded-3 p-3" style="background:#fffbeb;border:1px solid #fde68a">
+    <p class="fw-bold text-navy mb-2 small">💳 Pay Delivery Fee to Rider</p>
+    <div class="d-flex justify-content-between mb-1">
+      <span class="text-muted small">Delivery fee</span>
+      <span class="fw-bold text-navy">GHS {{ order.delivery_fee|floatformat:2 }}</span>
+    </div>
+    <p class="text-muted mb-0" style="font-size:.78rem">
+      Pay <strong>GHS {{ order.delivery_fee|floatformat:2 }}</strong>
+      directly to your rider (cash or MoMo) — not online.
+    </p>
+  </div>
+  {% endif %}
   </div>
 
   <!-- Order card -->

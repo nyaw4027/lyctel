@@ -1,38 +1,5 @@
 {% extends "base.html" %}
-{% block title %}My Earnings — Lynctel Rider
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script>
-{% if chart_data %}
-const chartData = {{ chart_data|safe }};
-const ctx = document.getElementById('earningsChart');
-if (ctx) {
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: chartData.map(d => d.date.slice(5)),
-      datasets: [{
-        label: 'GHS',
-        data: chartData.map(d => d.amount),
-        backgroundColor: 'rgba(245,166,35,.3)',
-        borderColor: '#F5A623',
-        borderWidth: 2,
-        borderRadius: 4,
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
-        x: { grid: { display: false } }
-      }
-    }
-  });
-}
-{% endif %}
-</script>
-
-{% endblock %}
+{% block title %}My Earnings — Lynctel Rider{% endblock %}
 {% block content %}
 <div class="container-xl px-3 py-4" style="max-width:900px">
 
@@ -84,6 +51,31 @@ if (ctx) {
     <div>
       <div class="fw-semibold text-navy small">Your Commission Rate: {{ profile.commission_rate }}%</div>
       <div class="text-muted" style="font-size:.75rem">You earn {{ profile.commission_rate }}% of every delivery fee. Contact admin to negotiate.</div>
+    </div>
+  </div>
+
+  
+  <!-- What you owe the app -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+    <div class="card-body p-0">
+      <div class="d-flex align-items-center gap-4 p-4 flex-wrap">
+        <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+             style="width:52px;height:52px;background:#fff7ed;font-size:1.5rem">💰</div>
+        <div class="flex-fill">
+          <p class="fw-bold text-navy mb-1">How direct payment works</p>
+          <p class="text-muted small mb-0">
+            Customers pay you directly (cash or MoMo).
+            You keep <strong>{{ profile.commission_rate }}%</strong> of each delivery fee.
+            The remaining <strong>{% widthratio 100 1 1 as full %}{{ 100|add:0 }}%</strong>
+            is Lynctel's commission — pay it to us on time.
+          </p>
+        </div>
+        <a href="{% url 'rider:my_balance' %}"
+           class="btn fw-bold rounded-3 flex-shrink-0"
+           style="background:#0F1B2D;color:white;white-space:nowrap">
+          View My Balance →
+        </a>
+      </div>
     </div>
   </div>
 

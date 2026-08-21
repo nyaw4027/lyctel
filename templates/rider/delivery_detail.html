@@ -109,6 +109,7 @@
   {% elif delivery.status == 'en_route' %}
   <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}">
     {% csrf_token %}<input type="hidden" name="status" value="delivered">
+      <input type="hidden" name="payment_method" id="pay-method-input" value="cash">
     <button class="btn btn-success w-100 rounded-3 py-3 fw-bold">🎉 Complete Delivery</button>
   </form>
 
@@ -119,7 +120,24 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js">
+function selectPay(method) {
+  var cash = document.getElementById('pay-cash');
+  var momo = document.getElementById('pay-momo');
+  var inp  = document.getElementById('pay-method-input') || document.getElementById('pay-method-val');
+  if (cash) {
+    cash.style.background = method==='cash' ? '#fef3c7' : '#f3f4f6';
+    cash.style.color      = method==='cash' ? '#92400e' : '#374151';
+    cash.style.borderColor= method==='cash' ? '#F5A623' : '#e5e7eb';
+  }
+  if (momo) {
+    momo.style.background = method==='momo' ? '#fef3c7' : '#f3f4f6';
+    momo.style.color      = method==='momo' ? '#92400e' : '#374151';
+    momo.style.borderColor= method==='momo' ? '#F5A623' : '#e5e7eb';
+  }
+  if (inp) inp.value = method;
+}
+</script>
 <script>
 /* Context vars safely passed from rider/views.live_map() */
 var CUSTOMER_LAT = {{ customer_lat|default:"5.6037" }};

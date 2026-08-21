@@ -1,84 +1,125 @@
 {% extends "base.html" %}
-{% block title %}Rider Balances — Admin{% endblock %}
+{% block title %}My Balance — Lynctel Rider{% endblock %}
 {% block content %}
-<div class="container-xl px-3 py-4">
+<div class="container px-3 py-4" style="max-width:680px">
 
   <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
-      <h1 class="fw-bold text-navy mb-0">💰 Rider Balances</h1>
-      <p class="text-muted small mb-0">Commission owed to Lynctel by each rider</p>
+      <h1 class="fw-bold text-navy mb-0">My Balance</h1>
+      <p class="text-muted small mb-0">Commission owed to Lynctel</p>
     </div>
-    <div class="text-end">
-      <p class="text-muted small mb-0">Total Outstanding</p>
-      <p class="fw-bold text-danger mb-0" style="font-size:1.4rem">
-        GHS {{ total_outstanding|floatformat:2 }}
-      </p>
+    <a href="{% url 'rider:dashboard' %}" class="text-muted small fw-semibold text-decoration-none">← Dashboard</a>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+        <p class="text-muted small fw-semibold mb-1" style="font-size:.72rem">TOTAL EARNED</p>
+        <p class="fw-bold text-navy mb-0" style="font-size:1.2rem">
+          GHS {{ balance.total_earned|floatformat:2 }}
+        </p>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+        <p class="text-muted small fw-semibold mb-1" style="font-size:.72rem">YOUR NET ({{ profile.commission_rate }}%)</p>
+        <p class="fw-bold text-success mb-0" style="font-size:1.2rem">
+          GHS {{ balance.total_earned|floatformat:2 }}
+        </p>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+        <p class="text-muted small fw-semibold mb-1" style="font-size:.72rem">PAID TO APP</p>
+        <p class="fw-bold text-secondary mb-0" style="font-size:1.2rem">
+          GHS {{ balance.total_settled|floatformat:2 }}
+        </p>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center
+                  {% if balance.outstanding > 0 %}border-danger{% endif %}">
+        <p class="text-muted small fw-semibold mb-1" style="font-size:.72rem">OUTSTANDING</p>
+        <p class="fw-bold mb-0 {% if balance.outstanding > 0 %}text-danger{% else %}text-success{% endif %}"
+           style="font-size:1.2rem">
+          GHS {{ balance.outstanding|floatformat:2 }}
+        </p>
+      </div>
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
-    <div class="table-responsive">
-      <table class="table table-hover mb-0 align-middle">
-        <thead style="background:#f9fafb">
-          <tr>
-            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">Rider</th>
-            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">Total Earned</th>
-            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">App Cut (Total)</th>
-            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">Settled</th>
-            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">Outstanding</th>
-            <th class="px-4 py-3 fw-semibold text-muted" style="font-size:.78rem">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for b in balances %}
-          <tr>
-            <td class="px-4 py-3">
-              <p class="fw-bold text-navy mb-0">{{ b.rider.rider.get_full_name|default:b.rider.rider.phone }}</p>
-              <p class="text-muted mb-0" style="font-size:.75rem">
-                {{ b.rider.get_vehicle_type_display }}
-                · {{ b.rider.commission_rate }}% commission
-              </p>
-            </td>
-            <td class="px-4 py-3 fw-semibold">GHS {{ b.total_earned|floatformat:2 }}</td>
-            <td class="px-4 py-3">GHS {{ b.total_app_cut|floatformat:2 }}</td>
-            <td class="px-4 py-3 text-success fw-semibold">GHS {{ b.total_settled|floatformat:2 }}</td>
-            <td class="px-4 py-3">
-              <span class="fw-bold {% if b.outstanding > 0 %}text-danger{% else %}text-success{% endif %}"
-                    style="font-size:.95rem">
-                GHS {{ b.outstanding|floatformat:2 }}
-              </span>
-            </td>
-            <td class="px-4 py-3">
-              <div class="d-flex gap-2">
-                <a href="{% url 'rider:ledger_detail' b.rider.pk %}"
-                   class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold">
-                  View
-                </a>
-                {% if b.outstanding > 0 %}
-                <form method="POST"
-                      action="{% url 'rider:settle_balance' b.rider.pk %}"
-                      onsubmit="return confirm('Mark all outstanding as settled?')">
-                  {% csrf_token %}
-                  <input type="hidden" name="settle_all" value="1"/>
-                  <button type="submit"
-                          class="btn btn-sm btn-success rounded-3 fw-semibold">
-                    ✓ Settle All
-                  </button>
-                </form>
-                {% endif %}
-              </div>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="6" class="text-center py-5 text-muted">
-              No rider balance records yet.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  {% if balance.outstanding > 0 %}
+  <!-- Payment instructions -->
+  <div class="rounded-3 p-4 mb-4"
+       style="background:#fff7ed;border:1px solid #fed7aa">
+    <p class="fw-bold text-navy mb-2">💳 How to pay your outstanding balance</p>
+    <p class="text-muted small mb-1">
+      Send <strong>GHS {{ balance.outstanding|floatformat:2 }}</strong> via MoMo to:
+    </p>
+    <p class="fw-bold text-navy mb-2" style="font-size:1.1rem">
+      0558040216 — Lynctel Deliveries
+    </p>
+    <p class="text-muted small mb-0">
+      After paying, WhatsApp us your MoMo reference:
+      <a href="https://wa.me/233558040216" class="fw-semibold text-navy">0558040216</a>
+    </p>
+  </div>
+  {% else %}
+  <div class="rounded-3 p-3 mb-4 text-center" style="background:#f0fdf4">
+    <p class="fw-bold text-success mb-0">✅ All settled — you owe nothing!</p>
+  </div>
+  {% endif %}
+
+  <!-- Commission explanation -->
+  <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+    <h2 class="fw-bold text-navy mb-3" style="font-size:.95rem">How it works</h2>
+    <div class="d-flex flex-column gap-2 small text-muted">
+      <div class="d-flex justify-content-between">
+        <span>Customer pays you</span>
+        <span class="fw-semibold text-navy">Full delivery fee</span>
+      </div>
+      <div class="d-flex justify-content-between">
+        <span>Your commission ({{ profile.commission_rate }}%)</span>
+        <span class="fw-semibold text-success">You keep this</span>
+      </div>
+      <div class="d-flex justify-content-between border-top pt-2">
+        <span>App commission ({{ 100|add:"-"|add:profile.commission_rate|floatformat:0 }}%)</span>
+        <span class="fw-semibold text-danger">Pay to Lynctel</span>
+      </div>
     </div>
   </div>
+
+  <!-- Recent entries -->
+  {% if entries %}
+  <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+    <div class="card-header bg-white border-0 py-3 px-4">
+      <h2 class="fw-bold text-navy mb-0" style="font-size:.95rem">Recent Deliveries</h2>
+    </div>
+    <div class="card-body p-0">
+      {% for e in entries %}
+      <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom">
+        <div>
+          <p class="fw-semibold text-navy mb-0 small">
+            {% if e.delivery.order %}{{ e.delivery.order.order_ref }}{% else %}Delivery #{{ e.delivery.pk }}{% endif %}
+          </p>
+          <p class="text-muted mb-0" style="font-size:.75rem">
+            {{ e.created_at|date:"M d, Y" }}
+            · {{ e.get_payment_method_display }}
+          </p>
+        </div>
+        <div class="text-end">
+          <p class="text-muted mb-0 small">GHS {{ e.gross_amount|floatformat:2 }} total</p>
+          <p class="fw-semibold mb-0 small {% if e.is_settled %}text-success{% else %}text-danger{% endif %}">
+            App: GHS {{ e.app_commission|floatformat:2 }}
+            {% if e.is_settled %}✓{% else %}⏳{% endif %}
+          </p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}
