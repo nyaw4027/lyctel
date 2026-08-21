@@ -1,592 +1,606 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Rider Dashboard — Lynctel{% endblock %}
 
 {% block extra_head %}
 <style>
-  @keyframes ring {
-    0%,100% { transform: rotate(0); }
-    20%     { transform: rotate(-15deg); }
-    40%     { transform: rotate(15deg); }
-    60%     { transform: rotate(-10deg); }
-    80%     { transform: rotate(10deg); }
-  }
-  .bell-ring { animation: ring .6s ease; }
+  :root { --navy:#0F1B2D; --gold:#F5A623; }
 
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
+  /* ── Status toggle ───────────────────────────────────────────────────── */
+  .status-toggle-wrap {
+    background: white;
+    border-radius: 20px;
+    border: 1.5px solid #e5e7eb;
+    padding: 16px 20px;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    gap: 14px;
   }
-  .notif-item { animation: slideDown .3s ease; }
-
-  @keyframes pulse-dot {
-    0%,100% { transform: scale(1); opacity: 1; }
-    50%     { transform: scale(1.4); opacity: .7; }
+  .toggle-switch {
+    width: 56px; height: 30px;
+    border-radius: 15px;
+    border: none; cursor: pointer;
+    position: relative;
+    -webkit-transition: background .25s; transition: background .25s;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
-  .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
-
-  @keyframes promptIn {
-    from { opacity: 0; transform: translateY(24px) scale(.97); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
+  .toggle-switch.online  { background: #22c55e; }
+  .toggle-switch.offline { background: #d1d5db; }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 24px; height: 24px;
+    border-radius: 50%; background: white;
+    -webkit-transition: -webkit-transform .25s; transition: transform .25s;
+    box-shadow: 0 2px 6px rgba(0,0,0,.2);
   }
-  #ride-prompt { animation: promptIn .35s cubic-bezier(.22,1,.36,1); }
+  .toggle-switch.online::after {
+    -webkit-transform: translateX(26px); transform: translateX(26px);
+  }
 
-  /* Countdown bar color transitions */
-  .countdown-bar { transition: width 1s linear, background-color .5s ease; }
+  /* ── Stat cards ─────────────────────────────────────────────────────── */
+  .stat-mini {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-mini-value { font-size: 1.3rem; font-weight: 800; color: var(--navy); }
+  .stat-mini-label { font-size: .72rem; color: #6b7280; margin-top: 2px; }
+
+  /* ── Active delivery banner ──────────────────────────────────────────── */
+  .active-delivery-card {
+    background: linear-gradient(135deg, var(--navy) 0%, #1e3a5f 100%);
+    border-radius: 20px;
+    padding: 20px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+  .active-delivery-card::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(245,166,35,.12);
+  }
+
+  /* ── Pending delivery card ───────────────────────────────────────────── */
+  .pending-card {
+    background: white;
+    border-radius: 16px;
+    border: 2px solid #fef3c7;
+    overflow: hidden;
+    -webkit-animation: pulseCard 2s ease-in-out infinite;
+    animation: pulseCard 2s ease-in-out infinite;
+  }
+  @-webkit-keyframes pulseCard {
+    0%,100% { border-color: #fef3c7; }
+    50%      { border-color: #F5A623; }
+  }
+  @keyframes pulseCard {
+    0%,100% { border-color: #fef3c7; }
+    50%      { border-color: #F5A623; }
+  }
+  .pending-card-header { background: #fffbeb; padding: 12px 16px; }
+  .pending-card-body   { padding: 14px 16px; }
+  .pending-card-footer {
+    background: #f9fafb;
+    padding: 12px 16px;
+    display: -webkit-flex; display: flex;
+    gap: 10px;
+    border-top: 1px solid #f3f4f6;
+  }
+
+  /* ── Countdown timer ─────────────────────────────────────────────────── */
+  .countdown-ring {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 800;
+    border: 3px solid #F5A623;
+    color: var(--navy);
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    -webkit-transition: border-color .5s; transition: border-color .5s;
+  }
+  .countdown-ring.urgent { border-color: #ef4444; color: #ef4444; }
+
+  /* ── Delivery history row ────────────────────────────────────────────── */
+  .delivery-row {
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .delivery-row:last-child { border-bottom: none; }
+  .delivery-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 1.1rem;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+  }
+
+  /* ── Notification dot ────────────────────────────────────────────────── */
+  .notif-dot {
+    position: absolute; top: -4px; right: -4px;
+    width: 18px; height: 18px;
+    background: #ef4444; color: white;
+    font-size: 10px; font-weight: 700;
+    border-radius: 50%;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    border: 2px solid white;
+  }
+
+  /* ── CTA action buttons ──────────────────────────────────────────────── */
+  .action-btn {
+    -webkit-flex: 1; flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 700; font-size: .88rem;
+    border: none; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-transition: opacity .15s; transition: opacity .15s;
+  }
+  .action-btn:active { opacity: .8; }
+  .accept-btn { background: #22c55e; color: white; }
+  .reject-btn { background: #f3f4f6; color: #374151; }
+
+  /* ── iOS safe area ───────────────────────────────────────────────────── */
+  .page-wrap {
+    padding-bottom: max(env(safe-area-inset-bottom), 24px);
+  }
+
+  /* ── GPS pulsing dot ─────────────────────────────────────────────────── */
+  .gps-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%; background: #22c55e;
+    display: inline-block;
+    -webkit-animation: gpsPulse 1.5s infinite; animation: gpsPulse 1.5s infinite;
+  }
+  @-webkit-keyframes gpsPulse {
+    0%,100%{-webkit-transform:scale(1);opacity:1}
+    50%{-webkit-transform:scale(1.4);opacity:.6}
+  }
+  @keyframes gpsPulse {
+    0%,100%{transform:scale(1);opacity:1}
+    50%{transform:scale(1.4);opacity:.6}
+  }
+
+  @media (prefers-reduced-motion:reduce) {
+    *, *::before, *::after {
+      -webkit-animation-duration:.001ms!important;
+      animation-duration:.001ms!important;
+    }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 md:px-6 py-8">
+<div class="container px-3 py-4 page-wrap" style="max-width:640px">
 
-  <!-- ── HEADER ─────────────────────────────────────────── -->
-  <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
-    <div class="flex items-center gap-4">
-      <div class="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-navy flex items-center justify-center">
-        {% if request.user.profile_pic %}
-          <img src="{{ request.user.profile_pic.url }}" alt="{{ request.user.display_name }}" class="w-full h-full object-cover"/>
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <p class="small text-muted mb-0">Good day 👋</p>
+      <h1 class="fw-bold text-navy mb-0" style="font-size:1.3rem">
+        {{ request.user.first_name|default:request.user.display_name }}
+      </h1>
+    </div>
+    <div class="position-relative">
+      <button class="btn btn-light rounded-circle d-flex align-items-center
+                     justify-content-center" style="width:44px;height:44px"
+              data-bs-toggle="offcanvas" data-bs-target="#notifPanel"
+              aria-label="Notifications">
+        🔔
+      </button>
+      {% if unread_count %}
+      <span class="notif-dot">{{ unread_count }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Online / Offline toggle -->
+  <div class="status-toggle-wrap mb-4">
+    <button id="status-toggle"
+            class="toggle-switch {% if profile.status == 'available' %}online{% else %}offline{% endif %}"
+            data-current="{{ profile.status }}"
+            aria-label="Toggle availability"
+            onclick="toggleStatus()">
+    </button>
+    <div class="flex-fill">
+      <p class="fw-bold text-navy mb-0" id="status-label">
+        {% if profile.status == 'available' %}🟢 You're Online{% else %}⚫ You're Offline{% endif %}
+      </p>
+      <p class="text-muted small mb-0" id="status-sub">
+        {% if profile.status == 'available' %}
+          Ready to receive deliveries
+          <span class="gps-dot ms-1"></span>
         {% else %}
-          <span class="text-white font-display font-700 text-xl">{{ request.user.first_name|first|upper|default:"R" }}</span>
+          Go online to start earning
         {% endif %}
+      </p>
+    </div>
+    {% if profile.vehicle_type %}
+    <span class="badge bg-light text-secondary fw-semibold"
+          style="font-size:.75rem">{{ profile.get_vehicle_type_display }}</span>
+    {% endif %}
+  </div>
+
+  <!-- Today's stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-4">
+      <div class="stat-mini">
+        <div class="stat-mini-value">{{ today_count }}</div>
+        <div class="stat-mini-label">Today</div>
       </div>
+    </div>
+    <div class="col-4">
+      <div class="stat-mini">
+        <div class="stat-mini-value">GHS {{ today_earnings|floatformat:2 }}</div>
+        <div class="stat-mini-label">Earned</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="stat-mini">
+        <div class="stat-mini-value">{{ profile.total_earnings|floatformat:0|default:"0" }}</div>
+        <div class="stat-mini-label">Total Earned (GHS)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active delivery -->
+  {% if active_delivery %}
+  <div class="active-delivery-card mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
       <div>
-        <h1 class="font-display font-700 text-2xl text-navy">{{ request.user.get_full_name|default:request.user.phone }}</h1>
-        <div class="flex items-center gap-2 mt-1">
-          <span class="w-2 h-2 rounded-full pulse-dot
-            {% if profile.status == 'available' %}bg-green-500
-            {% elif profile.status == 'on_delivery' %}bg-blue-500
-            {% else %}bg-gray-400{% endif %}"></span>
-          <span class="text-xs font-semibold
-            {% if profile.status == 'available' %}text-green-600
-            {% elif profile.status == 'on_delivery' %}text-blue-600
-            {% else %}text-gray-400{% endif %}">
-            {% if profile.status == 'available' %}Available
-            {% elif profile.status == 'on_delivery' %}On Delivery
-            {% else %}Offline{% endif %}
-          </span>
-          {% if profile.zone %}<span class="text-xs text-gray-400">· {{ profile.zone.name }}</span>{% endif %}
-        </div>
+        <p class="small mb-0" style="color:rgba(255,255,255,.6)">ACTIVE DELIVERY</p>
+        <p class="fw-bold mb-0" style="font-size:1.1rem">
+          #{{ active_delivery.order.order_ref|default:active_delivery.pk }}
+        </p>
       </div>
-    </div>
-
-    <div class="flex items-center gap-3">
-      <!-- Notification bell -->
-      <div class="relative" id="notif-wrapper">
-        <button onclick="toggleNotifications()"
-                class="relative w-11 h-11 bg-white border border-gray-200 rounded-xl
-                       flex items-center justify-center hover:border-navy transition-colors">
-          <svg id="bell-icon" class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-          </svg>
-          <span id="notif-badge"
-                class="{% if unread_count == 0 %}hidden{% endif %}
-                       absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold
-                       min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center px-1">
-            {{ unread_count|default:0 }}
-          </span>
-        </button>
-
-        <div id="notif-dropdown"
-             class="hidden absolute right-0 top-14 w-80 bg-white rounded-2xl shadow-2xl
-                    border border-gray-100 z-50 overflow-hidden">
-          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <h3 class="font-display font-700 text-navy text-sm">Notifications</h3>
-            <button onclick="markAllRead()" class="text-xs text-gold-dark font-semibold hover:underline">Mark all read</button>
-          </div>
-          <div id="notif-list" class="max-h-80 overflow-y-auto divide-y divide-gray-50">
-            {% for notif in notifications %}
-            <div id="notif-{{ notif.pk }}"
-                 class="notif-item px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer {% if not notif.is_read %}bg-blue-50{% endif %}"
-                 onclick="readNotif({{ notif.pk }}, '{{ notif.link|default:'' }}')">
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0
-                  {% if notif.notif_type == 'new_delivery' %}bg-green-100
-                  {% elif notif.notif_type == 'payment' %}bg-yellow-100
-                  {% else %}bg-blue-50{% endif %}">
-                  {% if notif.notif_type == 'new_delivery' %}🛵{% elif notif.notif_type == 'payment' %}💰{% else %}📢{% endif %}
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-semibold text-navy leading-snug">{{ notif.title }}</p>
-                  <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">{{ notif.message }}</p>
-                  <p class="text-xs text-gray-300 mt-1">{{ notif.created_at|timesince }} ago</p>
-                </div>
-                {% if not notif.is_read %}<div class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5"></div>{% endif %}
-              </div>
-            </div>
-            {% empty %}
-            <div class="px-4 py-8 text-center text-gray-400">
-              <p class="text-3xl mb-2">🔔</p>
-              <p class="text-sm">No notifications yet</p>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-
-      <!-- Online / Offline toggle -->
-      <form method="POST" action="{% url 'rider:toggle_status' %}">
-        {% csrf_token %}
-        {% if profile.status == 'on_delivery' %}
-        <button type="button" disabled
-                class="flex items-center gap-2 bg-blue-50 text-blue-600 font-semibold text-sm px-5 py-2.5 rounded-xl cursor-not-allowed">
-          🛵 On Delivery
-        </button>
-        {% elif profile.status == 'available' %}
-        <button type="submit"
-                class="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors btn-press">
-          <span class="w-2 h-2 bg-white rounded-full"></span> Go Offline
-        </button>
-        {% else %}
-        <button type="submit"
-                class="flex items-center gap-2 bg-navy hover:bg-navy-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors btn-press">
-          <span class="w-2 h-2 bg-green-400 rounded-full"></span> Go Online
-        </button>
-        {% endif %}
-      </form>
-    </div>
-  </div>
-
-  <!-- ── STATS ──────────────────────────────────────────── -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-    <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-      <p class="font-display font-700 text-2xl text-navy">{{ total_deliveries }}</p>
-      <p class="text-xs text-gray-400 mt-1">Deliveries</p>
-    </div>
-    <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-      <p class="font-display font-700 text-2xl text-green-600">GHS {{ total_earnings|floatformat:2 }}</p>
-      <p class="text-xs text-gray-400 mt-1">Total Earned</p>
-    </div>
-    <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-      <p class="font-display font-700 text-2xl text-orange-500">GHS {{ pending_payout|floatformat:2 }}</p>
-      <p class="text-xs text-gray-400 mt-1">Pending Payout</p>
-    </div>
-    <div class="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-      <p class="font-display font-700 text-2xl text-navy">{{ profile.commission_rate }}%</p>
-      <p class="text-xs text-gray-400 mt-1">My Commission</p>
-    </div>
-  </div>
-
-  <!-- ── PENDING RIDE REQUESTS (Uber-style) ─────────────── -->
-  {% if pending_requests %}
-  <div class="mb-8" id="pending-requests-section">
-    <div class="flex items-center gap-2 mb-4">
-      <span class="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
-      <h2 class="font-display font-700 text-lg text-navy">Incoming Request{{ pending_requests|length|pluralize }}</h2>
-      <span class="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full ml-auto">
-        {{ pending_requests|length }} new
+      <span class="badge rounded-3 px-3 py-2 fw-bold"
+            style="background:#F5A623;color:#0F1B2D;font-size:.8rem">
+        {{ active_delivery.get_status_display }}
       </span>
     </div>
-
-    <div class="space-y-4">
-    {% for acceptance in pending_requests %}
-    <div class="bg-white border-2 border-amber-400 rounded-2xl overflow-hidden shadow-lg request-card"
-         id="request-card-{{ acceptance.pk }}"
-         data-created="{{ acceptance.created_at.isoformat }}">
-
-      <!-- Countdown progress bar -->
-      <div class="h-1.5 bg-gray-100">
-        <div class="h-full bg-amber-400 countdown-bar" id="bar-{{ acceptance.pk }}" style="width:100%"></div>
-      </div>
-
-      <div class="p-4 md:p-5">
-        <div class="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-xl">🍔</span>
-              <span class="font-display font-700 text-navy">New Food Delivery</span>
-            </div>
-            <p class="text-xs text-gray-400">Requested <span class="font-semibold">{{ acceptance.created_at|timesince }} ago</span></p>
-          </div>
-          <div class="text-right flex-shrink-0">
-            <p class="font-display font-700 text-navy text-xl">GHS {{ acceptance.delivery.rider_commission }}</p>
-            <p class="text-xs text-gray-400">Your commission</p>
-          </div>
-        </div>
-
-        <!-- Route -->
-        <div class="bg-gray-50 rounded-xl p-3 mb-4 space-y-3">
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 bg-gold-light rounded-lg flex items-center justify-center flex-shrink-0">📍</div>
-            <div class="min-w-0">
-              <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Pickup</p>
-              <p class="text-sm font-semibold text-navy truncate">{{ acceptance.delivery.pickup_location }}</p>
-            </div>
-          </div>
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">🏠</div>
-            <div class="min-w-0">
-              <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Drop-off</p>
-              <p class="text-sm font-semibold text-navy truncate">{{ acceptance.delivery.dropoff_location }}</p>
-            </div>
-          </div>
-          {% if acceptance.delivery.distance_km %}
-          <div class="flex items-center gap-3 pt-2 border-t border-gray-100 text-xs text-gray-500">
-            <span>📏 {{ acceptance.delivery.distance_km|floatformat:1 }} km</span>
-            <span class="text-gray-300">·</span>
-            <span>💳 Total: GHS {{ acceptance.delivery.delivery_fee }}</span>
-          </div>
-          {% endif %}
-        </div>
-
-        <!-- Countdown text -->
-        <p class="text-center text-xs text-gray-400 mb-4">
-          Auto-declines in <span class="font-bold text-amber-600" id="countdown-{{ acceptance.pk }}">30</span>s
+    <div class="d-flex flex-column gap-2 mb-4">
+      <div class="d-flex gap-2">
+        <span style="color:#F5A623;font-size:.9rem;width:16px">📍</span>
+        <p class="small mb-0" style="color:rgba(255,255,255,.75)">
+          {{ active_delivery.pickup_location|truncatechars:50 }}
         </p>
-
-        <!-- Accept / Reject -->
-        <div class="grid grid-cols-2 gap-3">
-          <form method="POST" action="{% url 'rider:reject_delivery' acceptance.pk %}">
-            {% csrf_token %}
-            <button type="submit"
-                    class="w-full py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors">
-              ✕ Decline
-            </button>
-          </form>
-          <form method="POST" action="{% url 'rider:accept_delivery' acceptance.pk %}">
-            {% csrf_token %}
-            <button type="submit"
-                    class="w-full py-3.5 rounded-xl bg-navy text-white font-semibold text-sm hover:bg-navy-700 transition-colors">
-              ✓ Accept
-            </button>
-          </form>
-        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <span style="color:#22c55e;font-size:.9rem;width:16px">🏁</span>
+        <p class="small mb-0" style="color:rgba(255,255,255,.75)">
+          {{ active_delivery.dropoff_location|truncatechars:50 }}
+        </p>
       </div>
     </div>
-    {% endfor %}
+    <div class="d-flex gap-2">
+      <a href="{% url 'rider:live_map' active_delivery.pk %}"
+         class="btn fw-bold rounded-3 flex-fill py-3"
+         style="background:#F5A623;color:#0F1B2D;font-size:.9rem">
+        🗺 Open Map
+      </a>
+      {% if active_delivery.status == 'assigned' %}
+      <form method="POST" action="{% url 'rider:update_delivery' active_delivery.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="picked_up"/>
+        <button type="submit" class="btn btn-light fw-bold rounded-3 px-4 py-3"
+                style="font-size:.9rem">
+          ✓ Picked Up
+        </button>
+      </form>
+      {% elif active_delivery.status == 'picked_up' %}
+      <form method="POST" action="{% url 'rider:update_delivery' active_delivery.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="en_route"/>
+        <button type="submit" class="btn btn-light fw-bold rounded-3 px-4 py-3"
+                style="font-size:.9rem">
+          🚴 En Route
+        </button>
+      </form>
+      {% elif active_delivery.status == 'en_route' %}
+      <form method="POST" action="{% url 'rider:update_delivery' active_delivery.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="delivered"/>
+        <button type="submit"
+                class="btn fw-bold rounded-3 px-4 py-3"
+                style="background:#22c55e;color:white;font-size:.9rem">
+          ✓ Delivered
+        </button>
+      </form>
+      {% endif %}
     </div>
+    <p class="mt-3 mb-0 text-center" style="color:rgba(255,255,255,.5);font-size:.78rem">
+      Commission: <strong style="color:#F5A623">GHS {{ active_delivery.rider_commission|floatformat:2 }}</strong>
+      · {{ active_delivery.distance_km|floatformat:1|default:"—" }} km
+    </p>
   </div>
   {% endif %}
 
-  <!-- ── ACTIVE DELIVERIES ──────────────────────────────── -->
-  {% if active_deliveries %}
-  <div class="mb-8">
-    <div class="flex items-center gap-2 mb-4">
-      <div class="w-2 h-2 bg-blue-500 rounded-full pulse-dot"></div>
-      <h2 class="font-display font-700 text-lg text-navy">Active Deliveries</h2>
-      <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">{{ active_deliveries|length }}</span>
-    </div>
-    <div class="space-y-4">
-      {% for delivery in active_deliveries %}
-      <div class="bg-white rounded-2xl border-2 border-blue-200 overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 bg-blue-50 flex-wrap gap-3">
+  <!-- Pending deliveries queue -->
+  {% if pending_deliveries %}
+  <div class="mb-4">
+    <h2 class="fw-bold text-navy mb-3" style="font-size:1rem">
+      🔔 New Delivery Request{{ pending_deliveries|length|pluralize }}
+    </h2>
+    <div class="d-flex flex-column gap-3">
+      {% for d in pending_deliveries %}
+      <div class="pending-card" id="pending-{{ d.pk }}">
+        <div class="pending-card-header d-flex align-items-center justify-content-between">
           <div>
-            <p class="font-display font-700 text-navy">{{ delivery.order.order_ref }}</p>
-            <p class="text-xs text-gray-500 mt-0.5">Assigned {{ delivery.assigned_at|timesince }} ago</p>
+            <p class="fw-bold text-navy mb-0 small">
+              #{{ d.order.order_ref|default:d.pk }}
+              · GHS {{ d.delivery_fee|floatformat:2 }}
+            </p>
+            <p class="text-muted mb-0" style="font-size:.75rem">
+              {{ d.distance_km|floatformat:1|default:"?" }} km
+              · ~{{ d.estimated_duration|default:"?" }} min
+            </p>
           </div>
-          <span class="text-xs font-semibold px-3 py-1.5 rounded-full
-            {% if delivery.status == 'assigned' %}bg-yellow-100 text-yellow-700
-            {% elif delivery.status == 'picked_up' %}bg-blue-100 text-blue-700
-            {% elif delivery.status == 'en_route' %}bg-purple-100 text-purple-700{% endif %}">
-            {% if delivery.status == 'assigned' %}📦 Assigned
-            {% elif delivery.status == 'picked_up' %}🛵 Picked Up
-            {% elif delivery.status == 'en_route' %}🚀 En Route{% endif %}
-          </span>
+          <div class="countdown-ring" id="cd-{{ d.pk }}" data-seconds="120">60</div>
         </div>
-
-        <div class="px-5 py-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Deliver To</p>
-              <p class="text-sm font-semibold text-navy">{{ delivery.order.delivery_address }}</p>
-              <p class="text-sm text-gray-500">{{ delivery.order.delivery_city }}</p>
-              <a href="tel:{{ delivery.order.delivery_phone }}"
-                 class="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-green-600">
-                📞 {{ delivery.order.delivery_phone }}
-              </a>
-            </div>
-            <div>
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Your Cut</p>
-              <p class="font-display font-700 text-2xl text-green-600">GHS {{ delivery.rider_commission }}</p>
-              <p class="text-xs text-gray-400 mt-0.5">{{ delivery.zone.name }}</p>
-            </div>
+        <div class="pending-card-body">
+          <div class="d-flex gap-2 mb-2">
+            <span class="text-warning">📍</span>
+            <p class="small text-muted mb-0">{{ d.pickup_location|truncatechars:60 }}</p>
           </div>
-
-          <div class="bg-gray-50 rounded-xl p-3 mb-4">
-            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Items</p>
-            {% for item in delivery.order.items.all %}
-            <div class="flex justify-between text-sm text-gray-700">
-              <span>{{ item.product_name }} × {{ item.quantity }}</span>
-              <span class="text-gray-400">GHS {{ item.subtotal }}</span>
-            </div>
-            {% endfor %}
+          <div class="d-flex gap-2">
+            <span class="text-success">🏁</span>
+            <p class="small text-muted mb-0">{{ d.dropoff_location|truncatechars:60 }}</p>
           </div>
-
-          <div class="flex gap-3 flex-wrap">
-            {% if delivery.status == 'assigned' %}
-            <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}" class="flex-1">
-              {% csrf_token %}
-              <input type="hidden" name="status" value="picked_up"/>
-              <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors btn-press text-sm">✓ Mark Picked Up</button>
-            </form>
-            {% elif delivery.status == 'picked_up' %}
-            <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}" class="flex-1">
-              {% csrf_token %}
-              <input type="hidden" name="status" value="en_route"/>
-              <button class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-xl transition-colors btn-press text-sm">🛵 Mark En Route</button>
-            </form>
-            {% elif delivery.status == 'en_route' %}
-            <form method="POST" action="{% url 'rider:update_delivery' delivery.pk %}" class="flex-1">
-              {% csrf_token %}
-              <input type="hidden" name="status" value="delivered"/>
-              <button class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors btn-press text-sm">🎉 Mark Delivered</button>
-            </form>
-            {% endif %}
-            <a href="https://wa.me/233{{ delivery.order.delivery_phone|slice:'1:' }}?text=Hi!+I'm+your+Lynctel+rider+for+order+{{ delivery.order.order_ref }}.+I'm+on+my+way."
-               target="_blank"
-               class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm">💬</a>
-            <a href="{% url 'rider:live_map' delivery.pk %}"
-               class="bg-navy hover:bg-navy-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm">🗺️ Navigate</a>
-          </div>
+          <p class="mt-2 mb-0 small text-muted">
+            💰 Commission: <strong class="text-navy">GHS {{ d.rider_commission|floatformat:2 }}</strong>
+          </p>
+        </div>
+        <div class="pending-card-footer">
+          <form method="POST" action="{% url 'rider:accept_delivery' d.pk %}" class="flex-fill">
+            {% csrf_token %}
+            <button type="submit" class="action-btn accept-btn w-100">
+              ✓ Accept
+            </button>
+          </form>
+          <form method="POST" action="{% url 'rider:reject_delivery' d.pk %}" class="flex-fill">
+            {% csrf_token %}
+            <button type="submit" class="action-btn reject-btn w-100">
+              ✕ Reject
+            </button>
+          </form>
         </div>
       </div>
       {% endfor %}
     </div>
   </div>
+  {% endif %}
 
-  {% else %}
-  <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center mb-8">
-    <p class="text-5xl mb-3">🛵</p>
-    <p class="font-display font-700 text-navy mb-1">No active deliveries</p>
-    <p class="text-sm text-gray-400">
-      {% if profile.status == 'available' %}You're online. You'll be notified when a delivery is assigned.
-      {% else %}Go online to start receiving deliveries.{% endif %}
+  {% if not active_delivery and not pending_deliveries %}
+  <!-- Idle state -->
+  <div class="text-center py-4 mb-4">
+    <div style="font-size:3rem;margin-bottom:12px">🛵</div>
+    <p class="fw-semibold text-navy mb-1">
+      {% if profile.status == 'available' %}Waiting for orders…{% else %}Go online to start{% endif %}
     </p>
+    <p class="text-muted small">New deliveries will appear here automatically.</p>
   </div>
   {% endif %}
 
-  <!-- ── RECENT EARNINGS ────────────────────────────────── -->
-  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-50 flex justify-between items-center">
-      <h2 class="font-display font-700 text-navy">Recent Earnings</h2>
-      <span class="text-xs text-gray-400">{{ profile.commission_rate }}% per delivery</span>
+  <!-- Quick links -->
+  <div class="row g-2 mb-4">
+    <div class="col-6">
+      <a href="{% url 'rider:earnings' %}"
+         class="card border-0 shadow-sm rounded-3 p-3 text-decoration-none d-flex align-items-center gap-2">
+        <span style="font-size:1.4rem">💰</span>
+        <div>
+          <p class="fw-bold text-navy mb-0 small">Earnings</p>
+          <p class="text-muted mb-0" style="font-size:.72rem">View breakdown</p>
+        </div>
+      </a>
     </div>
-    {% if recent_earnings %}
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-xs text-gray-400 uppercase tracking-wider bg-gray-50">
-            <th class="px-5 py-3 text-left font-semibold">Order</th>
-            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Date</th>
-            <th class="px-5 py-3 text-left font-semibold hidden md:table-cell">Zone</th>
-            <th class="px-5 py-3 text-right font-semibold">Earned</th>
-            <th class="px-5 py-3 text-right font-semibold">Status</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-          {% for earning in recent_earnings %}
-          <tr class="hover:bg-gray-50">
-            <td class="px-5 py-3 font-bold text-gold-dark">{{ earning.delivery.order.order_ref }}</td>
-            <td class="px-5 py-3 text-gray-400 hidden md:table-cell">{{ earning.created_at|date:"M d, Y" }}</td>
-            <td class="px-5 py-3 text-gray-500 hidden md:table-cell">{{ earning.delivery.zone.name|default:"—" }}</td>
-            <td class="px-5 py-3 text-right font-display font-700 text-green-600">+GHS {{ earning.amount }}</td>
-            <td class="px-5 py-3 text-right">
-              <span class="text-xs font-semibold px-2.5 py-1 rounded-full
-                {% if earning.status == 'paid' %}bg-green-100 text-green-700{% else %}bg-orange-100 text-orange-700{% endif %}">
-                {{ earning.get_status_display }}
-              </span>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="col-6">
+      <a href="{% url 'rider:location_api' 'current' %}"
+         class="card border-0 shadow-sm rounded-3 p-3 text-decoration-none d-flex align-items-center gap-2"
+         onclick="shareLocation(event)">
+        <span style="font-size:1.4rem">📍</span>
+        <div>
+          <p class="fw-bold text-navy mb-0 small">Share Location</p>
+          <p class="text-muted mb-0" style="font-size:.72rem" id="gps-label">Update GPS</p>
+        </div>
+      </a>
     </div>
-    {% else %}
-    <div class="text-center py-12 text-gray-400">
-      <p class="text-4xl mb-3">💰</p>
-      <p class="text-sm">Complete deliveries to earn commissions.</p>
-    </div>
-    {% endif %}
   </div>
+
+  <!-- Recent deliveries -->
+  {% if recent_deliveries %}
+  <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+    <div class="card-header bg-white py-3 px-3 border-0">
+      <h2 class="fw-bold text-navy mb-0" style="font-size:.95rem">Recent Deliveries</h2>
+    </div>
+    <div class="card-body p-0 px-3">
+      {% for d in recent_deliveries %}
+      <div class="delivery-row">
+        <div class="delivery-icon
+          {% if d.status == 'delivered' %}bg-success bg-opacity-10
+          {% elif d.status == 'failed' %}bg-danger bg-opacity-10
+          {% else %}bg-warning bg-opacity-10{% endif %}">
+          {% if d.status == 'delivered' %}✅
+          {% elif d.status == 'failed' %}❌
+          {% else %}🔄{% endif %}
+        </div>
+        <div class="flex-fill min-w-0">
+          <p class="fw-semibold text-navy mb-0 text-truncate" style="font-size:.85rem">
+            {{ d.dropoff_location|truncatechars:40 }}
+          </p>
+          <p class="text-muted mb-0" style="font-size:.75rem">
+            {{ d.delivered_at|date:"M d, H:i"|default:d.created_at|date:"M d" }}
+          </p>
+        </div>
+        <div class="text-end flex-shrink-0">
+          <p class="fw-bold text-navy mb-0 small">
+            GHS {{ d.rider_commission|floatformat:2 }}
+          </p>
+          <p class="text-muted mb-0" style="font-size:.72rem">
+            {{ d.distance_km|floatformat:1|default:"—" }} km
+          </p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 
-<!-- ── FLOATING RIDE REQUEST PROMPT (WebSocket-triggered) ── -->
-<div id="ride-prompt"
-     class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50
-            w-[calc(100%-2rem)] max-w-md bg-white rounded-3xl shadow-2xl
-            border-2 border-gold overflow-hidden">
-  <div class="bg-gold px-5 py-3 flex items-center gap-3">
-    <span class="text-2xl">🛵</span>
-    <div>
-      <p class="font-display font-700 text-navy text-base leading-tight">New Ride Request!</p>
-      <p class="text-xs text-navy/70">Respond within <span id="prompt-timer" class="font-bold">60</span>s</p>
-    </div>
-    <div class="ml-auto">
-      <div class="w-3 h-3 bg-navy rounded-full pulse-dot"></div>
-    </div>
+<!-- Notifications offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="notifPanel">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title fw-bold">Notifications</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
   </div>
-  <div class="px-5 py-4 space-y-2">
-    <div class="flex items-start gap-2">
-      <span class="w-5 h-5 bg-green-100 text-green-600 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">A</span>
-      <p class="text-sm text-navy font-medium" id="prompt-pickup">—</p>
+  <div class="offcanvas-body p-0">
+    {% if notifications %}
+    {% for n in notifications %}
+    <div class="px-4 py-3 border-bottom {% if not n.is_read %}bg-warning bg-opacity-10{% endif %}">
+      <p class="fw-semibold text-navy mb-1 small">{{ n.title|default:"Notification" }}</p>
+      <p class="text-muted mb-0 small">{{ n.message }}</p>
+      <p class="text-muted mb-0" style="font-size:.72rem">{{ n.created_at|timesince }} ago</p>
     </div>
-    <div class="flex items-start gap-2">
-      <span class="w-5 h-5 bg-red-100 text-red-600 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">B</span>
-      <p class="text-sm text-navy font-medium" id="prompt-dropoff">—</p>
+    {% endfor %}
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <div style="font-size:2rem;margin-bottom:8px">🔔</div>
+      <p class="small">No notifications</p>
     </div>
-    <div class="flex items-center gap-4 pt-1">
-      <span class="text-xs text-gray-500">Fee: <span id="prompt-fee" class="font-semibold text-navy">—</span></span>
-      <span class="text-xs text-gray-500">Your cut: <span id="prompt-commission" class="font-bold text-green-600 text-sm">—</span></span>
-    </div>
-  </div>
-  <div class="flex gap-3 px-5 pb-5">
-    <form id="accept-form" method="POST" class="flex-1">
-      {% csrf_token %}
-      <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-display font-700 py-3.5 rounded-2xl transition-colors btn-press text-sm">✓ Accept</button>
-    </form>
-    <form id="reject-form" method="POST" class="flex-1">
-      {% csrf_token %}
-      <button type="submit" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3.5 rounded-2xl transition-colors text-sm">✗ Reject</button>
-    </form>
+    {% endif %}
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  // ── COUNTDOWN TIMERS for pending request cards ─────────
-  document.querySelectorAll('.request-card').forEach(card => {
-    const pk      = card.id.replace('request-card-', '');
-    const created = new Date(card.dataset.created);
-    const timeoutMs = 30000; // 30 seconds
+const CSRF = '{{ csrf_token }}';
 
-    function tick() {
-      const elapsed   = Date.now() - created.getTime();
-      const remaining = Math.max(0, Math.ceil((timeoutMs - elapsed) / 1000));
-      const pct       = Math.max(0, ((timeoutMs - elapsed) / timeoutMs) * 100);
+// ── Online/Offline toggle ──────────────────────────────────────────────
+function toggleStatus() {
+  const btn    = document.getElementById('status-toggle');
+  const label  = document.getElementById('status-label');
+  const sub    = document.getElementById('status-sub');
+  const isOn   = btn.classList.contains('online');
+  const newSt  = isOn ? 'offline' : 'available';
 
-      const countdownEl = document.getElementById(`countdown-${pk}`);
-      const barEl       = document.getElementById(`bar-${pk}`);
+  btn.classList.toggle('online',  !isOn);
+  btn.classList.toggle('offline',  isOn);
+  label.textContent = isOn ? '⚫ You\'re Offline' : '🟢 You\'re Online';
+  sub.innerHTML     = isOn
+    ? 'Go online to start earning'
+    : 'Ready to receive deliveries <span class="gps-dot ms-1"></span>';
 
-      if (countdownEl) countdownEl.textContent = remaining;
-      if (barEl) {
-        barEl.style.width = pct + '%';
-        barEl.style.backgroundColor =
-          pct > 60 ? '#f59e0b' : pct > 30 ? '#ef4444' : '#dc2626';
-      }
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', CSRF);
+  fd.append('status', newSt);
+  fetch("{% url 'rider:toggle_status' %}", {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    body: fd,
+  }).catch(function() {
+    // Revert on error
+    btn.classList.toggle('online',   isOn);
+    btn.classList.toggle('offline', !isOn);
+  });
 
-      if (remaining <= 0) {
-        const rejectForm = card.querySelector('form:first-of-type');
-        if (rejectForm) rejectForm.submit();
+  if (newSt === 'available') startLocationBroadcast();
+  else                       stopLocationBroadcast();
+}
+
+// ── Countdown timers on pending cards ─────────────────────────────────
+document.querySelectorAll('.countdown-ring').forEach(function(el) {
+  let secs = parseInt(el.dataset.seconds || '120');
+  const interval = setInterval(function() {
+    secs--;
+    el.textContent = secs;
+    if (secs <= 30) el.classList.add('urgent');
+    if (secs <= 0) {
+      clearInterval(interval);
+      const card = el.closest('[id^="pending-"]');
+      if (card) {
+        card.style.opacity = '.4';
+        card.style.pointerEvents = 'none';
       }
     }
-    tick();
-    setInterval(tick, 1000);
-  });
+  }, 1000);
+});
 
-  // ── WebSocket — real-time ride request prompt ───────────
-  const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const riderWs = new WebSocket(`${wsProto}://${location.host}/ws/rider/`);
-  let promptTimer = null;
+// ── Background GPS broadcasting while online ───────────────────────────
+let locationInterval = null;
 
-  riderWs.onmessage = e => {
-    try {
-      const msg = JSON.parse(e.data);
-      if (msg.type === 'ride_request') showPrompt(msg);
-    } catch {}
-  };
-  riderWs.onerror = () => {}; // suppress noise if WS not yet wired
+function startLocationBroadcast() {
+  if (locationInterval) return;
+  sendLocation();
+  locationInterval = setInterval(sendLocation, 30000);
+}
 
-  function showPrompt(msg) {
-    document.getElementById('prompt-pickup').textContent     = msg.pickup     || 'N/A';
-    document.getElementById('prompt-dropoff').textContent    = msg.dropoff    || 'N/A';
-    document.getElementById('prompt-fee').textContent        = 'GHS ' + (msg.fee        || '0');
-    document.getElementById('prompt-commission').textContent = 'GHS ' + (msg.commission || '0');
-    document.getElementById('accept-form').action = `/rider/accept/${msg.acceptance_id}/`;
-    document.getElementById('reject-form').action = `/rider/reject/${msg.acceptance_id}/`;
-    document.getElementById('ride-prompt').classList.remove('hidden');
+function stopLocationBroadcast() {
+  clearInterval(locationInterval);
+  locationInterval = null;
+}
 
-    let remaining = 60;
-    if (promptTimer) clearInterval(promptTimer);
-    promptTimer = setInterval(() => {
-      remaining--;
-      document.getElementById('prompt-timer').textContent = remaining;
-      if (remaining <= 0) {
-        clearInterval(promptTimer);
-        document.getElementById('ride-prompt').classList.add('hidden');
-      }
-    }, 1000);
-    ringBell();
-  }
-
-  // ── NOTIFICATIONS ──────────────────────────────────────
-  function ringBell() {
-    const bell = document.getElementById('bell-icon');
-    bell.classList.add('bell-ring');
-    setTimeout(() => bell.classList.remove('bell-ring'), 700);
-  }
-
-  function toggleNotifications() {
-    document.getElementById('notif-dropdown').classList.toggle('hidden');
-    ringBell();
-  }
-
-  document.addEventListener('click', e => {
-    if (!document.getElementById('notif-wrapper').contains(e.target))
-      document.getElementById('notif-dropdown').classList.add('hidden');
-  });
-
-  function readNotif(id, link) {
-    fetch(`/rider/notifications/${id}/read/`, {
+function sendLocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fd.append('lat', pos.coords.latitude);
+    fd.append('lng', pos.coords.longitude);
+    fd.append('accuracy', pos.coords.accuracy);
+    fetch("{% url 'rider:update_location' %}", {
       method: 'POST',
-      headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
-    .then(d => {
-      const el = document.getElementById('notif-' + id);
-      if (el) {
-        el.classList.remove('bg-blue-50');
-        const dot = el.querySelector('.w-2.h-2.bg-blue-500');
-        if (dot) dot.remove();
-      }
-      updateBadge(d.unread_count);
-      if (link) window.location.href = link;
-    });
-  }
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    }).then(function() {
+      document.getElementById('gps-label').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+    }).catch(function() {});
+  }, function() {}, { enableHighAccuracy: true, maximumAge: 0 });
+}
 
-  function markAllRead() {
-    fetch('/rider/notifications/read-all/', {
-      method: 'POST',
-      headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
-    .then(() => {
-      document.querySelectorAll('[id^="notif-"]').forEach(el => {
-        el.classList.remove('bg-blue-50');
-        const dot = el.querySelector('.w-2.h-2.bg-blue-500');
-        if (dot) dot.remove();
-      });
-      updateBadge(0);
-    });
-  }
+function shareLocation(e) {
+  e.preventDefault();
+  sendLocation();
+}
 
-  function updateBadge(count) {
-    const b = document.getElementById('notif-badge');
-    if (!b) return;
-    b.textContent = count;
-    count > 0 ? b.classList.remove('hidden') : b.classList.add('hidden');
-  }
+// Start broadcasting if already online
+{% if profile.status == 'available' %}
+startLocationBroadcast();
+{% endif %}
 
-  // ── POLL for new requests (fallback when WS not connected) ─
-  {% if not pending_requests %}
-  setInterval(() => {
-    fetch('/rider/notifications/count/', {
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
-    .then(d => {
-      const oldCount = parseInt(document.getElementById('notif-badge').textContent || 0);
-      if (d.count > oldCount) {
-        ringBell();
-        updateBadge(d.count);
+// ── Auto-refresh for new pending orders every 15s ──────────────────────
+let lastPendingCount = {{ pending_deliveries|length }};
+function pollPending() {
+  fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const newCards = doc.querySelectorAll('[id^="pending-"]');
+      if (newCards.length > lastPendingCount) {
+        // New order — reload page to show it with fresh countdown
+        location.reload();
       }
-      if (d.has_new_delivery) {
-        // New delivery appeared — reload so the countdown card shows
-        window.location.reload();
-      }
-    })
-    .catch(() => {});
-  }, 8000);
-  {% endif %}
+    }).catch(function() {});
+}
+setInterval(pollPending, 15000);
 </script>
 {% endblock %}

@@ -8,7 +8,7 @@
   body { overflow: hidden; }
   #rider-map {
     position: fixed;
-    inset: 0;
+    top:0;right:0;bottom:0;left:0;
     z-index: 0;
   }
 
@@ -430,5 +430,46 @@
     document.getElementById('bottom-sheet').classList.toggle('collapsed', sheetCollapsed);
   };
 })();
+
+  // ── WebSocket for real-time GPS broadcast to customer ────────────────
+  const WS_SCHEME = location.protocol === 'https:' ? 'wss' : 'ws';
+  let ws, wsReady = false;
+  (function connectWS() {
+    ws = new WebSocket(WS_SCHEME + '://' + location.host + '/ws/delivery/' + DELIVERY_ID + '/');
+    ws.onopen  = function() { wsReady = true; };
+    ws.onclose = function() { wsReady = false; setTimeout(connectWS, 3000); };
+  })();
+
+  // ── Override onGpsUpdate to also broadcast via WebSocket ────────────
+  const _origGpsUpdate = typeof onGpsUpdate === 'function' ? onGpsUpdate : null;
+  function onGpsUpdate(lat, lng, acc) {
+    // Run original update
+    if (_origGpsUpdate) _origGpsUpdate(lat, lng, acc);
+
+    // Accuracy circle
+    acc = acc || 0;
+    if (window._accCircle) {
+      window._accCircle.setLatLng([lat, lng]).setRadius(acc);
+    } else if (window.map) {
+      window._accCircle = L.circle([lat, lng], {
+        radius: acc, color: '#3b82f6', fillColor: '#3b82f6',
+        fillOpacity: .08, weight: 1.5,
+      }).addTo(window.map);
+    }
+
+    // WebSocket broadcast
+    if (wsReady) {
+      ws.send(JSON.stringify({ type: 'location_update', lat: lat, lng: lng }));
+    }
+
+    // HTTP persist to DB
+    if (typeof UPDATE_URL !== 'undefined') {
+      fetch(UPDATE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+        body: JSON.stringify({ lat: lat, lng: lng }),
+      }).catch(function() {});
+    }
+  }
 </script>
 {% endblock %}
