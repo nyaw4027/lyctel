@@ -419,3 +419,30 @@ def earnings(request):
         'chart_data':  chart_data,
         'recent':      recent,
     })
+
+# ── Notify rider (used by delivery, staff, vendor, dashboard) ──────────────────
+
+def notify_rider(rider_user, title, message, link='', notif_type='general'):
+    """
+    Create a RiderNotification and optionally send a push notification.
+    Called from: delivery/services.py, delivery/views.py,
+                 dashboard/views.py, staff/views.py, vendors/views.py
+    """
+    try:
+        from rider.notification_model import RiderNotification
+        RiderNotification.objects.create(
+            rider      = rider_user,
+            title      = title,
+            message    = message,
+            link       = link,
+            notif_type = notif_type,
+        )
+    except Exception:
+        pass
+
+    # Push notification (non-blocking)
+    try:
+        from push_notifications import send_push_notification
+        send_push_notification(rider_user, title=title, body=message, url=link)
+    except Exception:
+        pass
