@@ -285,8 +285,8 @@
           <div class="d-flex flex-column gap-1">
             {% for item in order.items.all %}
             <div class="d-flex justify-content-between" style="font-size:.82rem">
-              <span class="text-muted">{{ item.quantity }}× {{ item.name|default:item.item.name }}</span>
-              <span class="fw-semibold text-navy">GHS {{ item.subtotal|floatformat:2 }}</span>
+              <span class="text-muted">{{ item.quantity }}× {{ item.name }}</span>
+              <span class="fw-semibold text-navy">GHS {{ item.price|floatformat:2 }}</span>
             </div>
             {% endfor %}
           </div>
