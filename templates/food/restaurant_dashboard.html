@@ -154,7 +154,7 @@
       <p class="small text-muted mb-0">Welcome back 👋</p>
       <h1 class="fw-bold mb-0" style="font-size:1.4rem;color:var(--navy)">{{ vendor.name }}</h1>
     </div>
-    <a href="/food/restaurant/settings/"
+    <a href="{% url 'food:restaurant_settings' %}"
        class="btn btn-outline-secondary btn-sm rounded-3 fw-semibold">
       ⚙ Settings
     </a>
@@ -310,7 +310,7 @@
           </span>
           <div class="d-flex gap-2">
             {% if order.status == 'pending' %}
-            <form method="POST" action="/food/restaurant/order/{{ order.pk }}/update/">
+            <form method="POST" action="{% url 'food:restaurant_update_order' order.order_ref %}">
               {% csrf_token %}
               <input type="hidden" name="status" value="confirmed"/>
               <button type="submit"
@@ -319,7 +319,7 @@
                 ✓ Accept
               </button>
             </form>
-            <form method="POST" action="/food/restaurant/order/{{ order.pk }}/update/">
+            <form method="POST" action="{% url 'food:restaurant_update_order' order.order_ref %}">
               {% csrf_token %}
               <input type="hidden" name="status" value="cancelled"/>
               <button type="submit"
@@ -329,7 +329,7 @@
               </button>
             </form>
             {% elif order.status == 'confirmed' %}
-            <form method="POST" action="/food/restaurant/order/{{ order.pk }}/update/">
+            <form method="POST" action="{% url 'food:restaurant_update_order' order.order_ref %}">
               {% csrf_token %}
               <input type="hidden" name="status" value="preparing"/>
               <button type="submit"
@@ -339,7 +339,7 @@
               </button>
             </form>
             {% elif order.status == 'preparing' %}
-            <form method="POST" action="/food/restaurant/order/{{ order.pk }}/update/">
+            <form method="POST" action="{% url 'food:restaurant_update_order' order.order_ref %}">
               {% csrf_token %}
               <input type="hidden" name="status" value="ready"/>
               <button type="submit"
@@ -368,12 +368,12 @@
 
     <!-- Add item / category buttons -->
     <div class="d-flex gap-2 mb-4 flex-wrap">
-      <a href="/food/restaurant/item/add/"
+      <a href="{% url 'food:restaurant_add_item' %}"
          class="btn fw-semibold rounded-3"
          style="background:var(--navy);color:white">
         + Add Item
       </a>
-      <form method="POST" action="/food/restaurant/category/add/" class="d-flex gap-2">
+      <form method="POST" action="{% url 'food:restaurant_add_category' %}" class="d-flex gap-2">
         {% csrf_token %}
         <input type="text" name="name" placeholder="New category name…"
                class="form-control rounded-3"
@@ -422,7 +422,7 @@
                       aria-label="Toggle availability"
                       title="{{ item.name }} is {% if item.is_available %}available{% else %}unavailable{% endif %}">
               </button>
-              <a href="/food/restaurant/item/{{ item.pk }}/edit/"
+              <a href="{% url 'food:restaurant_edit_item' item.pk %}"
                  class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold"
                  style="font-size:.78rem">Edit</a>
             </div>
@@ -430,7 +430,7 @@
           {% empty %}
           <div class="px-4 py-3 text-muted small text-center">
             No items in this category yet.
-            <a href="/food/restaurant/item/add/" class="text-navy fw-semibold">Add one →</a>
+            <a href="{% url 'food:restaurant_add_item' %}" class="text-navy fw-semibold">Add one →</a>
           </div>
           {% endfor %}
         </div>
@@ -442,7 +442,7 @@
       <div style="font-size:3rem;margin-bottom:12px">🍽</div>
       <h3 class="h6 fw-bold text-navy mb-2">Your menu is empty</h3>
       <p class="text-muted small mb-4">Add categories and items to start receiving orders.</p>
-      <a href="/food/restaurant/item/add/"
+      <a href="{% url 'food:restaurant_add_item' %}"
          class="btn fw-semibold rounded-3 px-4"
          style="background:var(--navy);color:white">Add First Item</a>
     </div>
