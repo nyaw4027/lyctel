@@ -1,86 +1,176 @@
 {% extends "base.html" %}
 {% load i18n static %}
-{% block title %}Restaurant Dashboard — {{ vendor.name }}{% endblock %}
+{% block title %}Restaurant Dashboard{% endblock %}
+
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 {% endblock %}
 
 {% block content %}
 <div class="container-xl px-3 py-4">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h1 class="h5 mb-0 font-display">{{ vendor.name }} dashboard</h1>
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
-      <a href="{% url 'food:restaurant_settings' %}" class="btn btn-sm btn-outline-secondary">Settings</a>
+      <h1 class="h5 mb-0 fw-bold text-navy">{{ vendor.name }}</h1>
+      <p class="text-muted small mb-0">Restaurant Dashboard</p>
+    </div>
+    <a href="/food/restaurant/settings/" class="btn btn-sm btn-outline-secondary">
+      ⚙ Settings
+    </a>
+  </div>
+
+  <!-- Stats row -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+        <div class="fw-bold fs-4 text-navy">{{ total_orders }}</div>
+        <div class="small text-muted">Total Orders</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+        <div class="fw-bold fs-4 text-navy">{{ active_orders }}</div>
+        <div class="small text-muted">Active</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+        <div class="fw-bold fs-4 text-navy">{{ today_orders }}</div>
+        <div class="small text-muted">Today</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+        <div class="fw-bold fs-4 text-navy">GHS {{ earnings|floatformat:2 }}</div>
+        <div class="small text-muted">Earnings</div>
+      </div>
     </div>
   </div>
 
-  <div class="row g-3">
-    <div class="col-md-8">
-      <div class="card p-3 mb-3">
-        <h2 class="h6">Orders</h2>
-        <div class="list-group">
+  <div class="row g-4">
+
+    <!-- Orders list -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex align-items-center justify-content-between">
+          <h2 class="h6 fw-bold mb-0">Recent Orders</h2>
+          <!-- Status filter -->
+          <div class="d-flex gap-1 flex-wrap">
+            <a href="?" class="btn btn-sm {% if not status_filter %}btn-navy{% else %}btn-outline-secondary{% endif %}">All</a>
+            {% for val, label in status_choices %}
+            <a href="?status={{ val }}"
+               class="btn btn-sm {% if status_filter == val %}btn-navy{% else %}btn-outline-secondary{% endif %}">
+              {{ label }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="list-group list-group-flush rounded-bottom-3">
           {% for order in recent_orders %}
-          <div class="list-group-item d-flex justify-content-between" style="cursor:default">
-            <div>
-              <div class="fw-semibold">#{{ order.pk }}</div>
-              {# |naturaltime needs {% load humanize %} (django.contrib.humanize app) which
-                 this project doesn't load anywhere — using it here would raise a
-                 TemplateSyntaxError, not just render blank. A plain date filter needs
-                 nothing extra and matches how orders.html already shows dates. #}
-              <div class="small text-muted">{{ order.created_at|date:"M d, H:i" }}</div>
-            </div>
-            <div class="text-end">
-              {# |status_badge was a custom filter used without a matching {% load %} tag
-                 anywhere in this file — same class of bug as above, and it would break
-                 the whole page. Replaced with an inline status→color mapping that needs
-                 no external template library. Unrecognized statuses just fall back to
-                 a neutral badge instead of crashing. #}
-              {% if order.status == 'pending' %}
-              <span class="badge text-bg-warning">{{ order.get_status_display }}</span>
-              {% elif order.status == 'preparing' %}
-              <span class="badge text-bg-info">{{ order.get_status_display }}</span>
-              {% elif order.status == 'ready' %}
-              <span class="badge text-bg-primary">{{ order.get_status_display }}</span>
-              {% elif order.status == 'out_for_delivery' %}
-              <span class="badge text-bg-info">{{ order.get_status_display }}</span>
-              {% elif order.status == 'delivered' %}
-              <span class="badge text-bg-success">{{ order.get_status_display }}</span>
-              {% elif order.status == 'cancelled' %}
-              <span class="badge text-bg-danger">{{ order.get_status_display }}</span>
-              {% else %}
-              <span class="badge text-bg-secondary">{{ order.get_status_display }}</span>
-              {% endif %}
-              <div class="small mt-1">GHS {{ order.total_amount|floatformat:2 }}</div>
+          <div class="list-group-item px-4 py-3">
+            <div class="d-flex align-items-start justify-content-between gap-3">
+              <!-- Order info -->
+              <div class="flex-fill min-w-0">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <span class="fw-bold text-navy small">#{{ order.pk }}</span>
+                  {% if order.status == 'pending' %}
+                  <span class="badge text-bg-warning">{{ order.get_status_display }}</span>
+                  {% elif order.status == 'confirmed' or order.status == 'preparing' %}
+                  <span class="badge text-bg-info">{{ order.get_status_display }}</span>
+                  {% elif order.status == 'ready' or order.status == 'out_for_delivery' %}
+                  <span class="badge text-bg-primary">{{ order.get_status_display }}</span>
+                  {% elif order.status == 'delivered' %}
+                  <span class="badge text-bg-success">{{ order.get_status_display }}</span>
+                  {% elif order.status == 'cancelled' %}
+                  <span class="badge text-bg-danger">{{ order.get_status_display }}</span>
+                  {% else %}
+                  <span class="badge text-bg-secondary">{{ order.get_status_display }}</span>
+                  {% endif %}
+                </div>
+                <p class="small text-muted mb-1">
+                  {{ order.customer.display_name|default:order.customer.phone }}
+                  · {{ order.created_at|date:"M d, H:i" }}
+                </p>
+                <p class="small text-muted mb-0">
+                  {{ order.items.count }} item{{ order.items.count|pluralize }}
+                </p>
+              </div>
+              <!-- Amount + action -->
+              <div class="text-end flex-shrink-0">
+                <p class="fw-bold text-navy small mb-2">
+                  GHS {{ order.total_amount|floatformat:2 }}
+                </p>
+                {% if order.status == 'pending' %}
+                <form method="POST" action="/food/restaurant/order/{{ order.pk }}/update/" style="display:inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="confirmed"/>
+                  <button type="submit" class="btn btn-sm btn-success">Accept</button>
+                </form>
+                {% elif order.status == 'preparing' %}
+                <form method="POST" action="/food/restaurant/order/{{ order.pk }}/update/" style="display:inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="ready"/>
+                  <button type="submit" class="btn btn-sm btn-primary">Mark Ready</button>
+                </form>
+                {% endif %}
+              </div>
             </div>
           </div>
           {% empty %}
-          <div class="list-group-item text-muted">No recent orders</div>
+          <div class="list-group-item px-4 py-5 text-center text-muted">
+            <div style="font-size:2rem;margin-bottom:8px">📋</div>
+            No orders yet
+          </div>
           {% endfor %}
         </div>
       </div>
     </div>
 
-    <aside class="col-md-4">
-      <div class="card p-3">
-        <h2 class="h6">Stats</h2>
-        <div class="d-flex gap-4">
-          <div><div class="fw-semibold fs-5">{{ total_orders }}</div><div class="small text-muted">Orders</div></div>
-          <div><div class="fw-semibold fs-5">GHS {{ earnings|floatformat:2 }}</div><div class="small text-muted">Earnings</div></div>
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+
+      <!-- Menu categories -->
+      <div class="card border-0 shadow-sm rounded-3 mb-3">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex align-items-center justify-content-between">
+          <h2 class="h6 fw-bold mb-0">Menu</h2>
+          <a href="/food/restaurant/item/add/" class="btn btn-sm btn-navy">+ Add Item</a>
         </div>
-        <div class="mt-3">
-          {% if vendor.slug %}
-          {# The navbar in base.html links to vendors:dashboard with NO argument
-             ({% url 'vendors:dashboard' %}), while this page was passing a slug —
-             one of the two has to be wrong for the URL pattern actually registered.
-             Matched to base.html's zero-argument form since that's the one already
-             confirmed working across every page. If your vendors:dashboard URL is
-             in fact slug-based, change this back to
-             {% url 'vendors:dashboard' vendor.slug %}. #}
-          <a href="{% url 'vendors:dashboard' %}" class="btn btn-sm btn-outline-primary">Open public vendor page</a>
-          {% endif %}
+        <div class="card-body p-0">
+          {% for cat in categories %}
+          <div class="px-4 py-3 border-bottom">
+            <p class="fw-semibold small text-navy mb-2">{{ cat.name }}</p>
+            {% for item in cat.items.all %}
+            <div class="d-flex justify-content-between align-items-center py-1">
+              <span class="small {% if not item.is_available %}text-muted text-decoration-line-through{% endif %}">
+                {{ item.name }}
+              </span>
+              <div class="d-flex align-items-center gap-2">
+                <span class="small fw-semibold">GHS {{ item.price }}</span>
+                <a href="/food/restaurant/item/{{ item.pk }}/edit/" class="text-muted" style="font-size:.75rem">Edit</a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% empty %}
+          <div class="px-4 py-3 text-muted small">No menu items yet.</div>
+          {% endfor %}
         </div>
       </div>
-    </aside>
+
+      <!-- Quick links -->
+      <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-3">
+          <a href="/food/restaurant/settings/" class="d-flex align-items-center gap-2 text-navy text-decoration-none py-2 border-bottom small fw-semibold">
+            ⚙ Restaurant Settings
+          </a>
+          <a href="/food/restaurant/category/add/" class="d-flex align-items-center gap-2 text-navy text-decoration-none py-2 small fw-semibold">
+            ＋ Add Category
+          </a>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 {% endblock %}
