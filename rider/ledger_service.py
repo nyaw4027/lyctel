@@ -146,7 +146,6 @@ def record_delivery_commission(delivery, payment_method='cash'):
         payment_method: 'cash' or 'momo' (how customer paid rider)
     """
     from rider.models import RiderLedgerEntry, RiderBalanceSummary
-    from django.utils import timezone
 
     rider_profile = delivery.rider
     if not rider_profile:
