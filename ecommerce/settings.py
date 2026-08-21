@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'notifications',
     'corsheaders',
     'csp',
+    'django.contrib.humanize',
 ]
 
 # ── Middleware ─────────────────────────────────────────────────────────────────
