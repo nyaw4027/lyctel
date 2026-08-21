@@ -1,567 +1,389 @@
 """
-delivery/views.py
-
-FIXES in this version:
-  1. Imports from .utils (bridge) — no more ImportError crash
-  2. update_rider_location — auth check: only the assigned rider can POST
-  3. update_delivery_status — triggers SMS + push + rider payout on delivered
-  4. DeliveryAcceptance rejection — auto-reassigns to next nearest rider
-  5. track_delivery — passes correct context vars (no more TemplateSyntaxError)
+rider/views.py — Complete rider-facing views
 """
 import json
 import logging
-
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.timezone import now
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.utils import timezone
+from django.views.decorators.http import require_POST, require_GET
+from django.db.models import Sum, Count
 
-from order.models import Order
-from rider.models import DeliveryAcceptance, RiderProfile
-from .models import Delivery, DeliveryTracking, DeliveryZone
-from .utils import haversine_distance, calculate_distance, calculate_delivery_fee, estimate_eta_minutes
+from delivery.models import Delivery, DeliveryTracking, DeliveryZone
+from rider.models import RiderProfile, RiderEarning, DeliveryAcceptance
 
 log = logging.getLogger(__name__)
 
 
-# ── CREATE DELIVERY AFTER ORDER ────────────────────────────────────────────────
+# ── Decorator ─────────────────────────────────────────────────────────────────
 
-def create_delivery(order):
-    zone = DeliveryZone.objects.filter(is_active=True).first()
-    delivery, _ = Delivery.objects.get_or_create(
-        order=order,
-        defaults={'zone': zone, 'delivery_fee': zone.delivery_fee if zone else 0},
-    )
-    return delivery
-
-
-# ── CUSTOMER TRACKING PAGE ─────────────────────────────────────────────────────
-
-@login_required
-def track_delivery(request, order_ref):
-    delivery = get_object_or_404(
-        Delivery.objects.select_related('order', 'rider__rider'),
-        order__order_ref=order_ref,
-    )
-
-    if request.GET.get('live') == '1':
-        return JsonResponse({
-            'lat':    delivery.current_lat,
-            'lng':    delivery.current_lng,
-            'status': delivery.status,
-        })
-
-    # Build safe context — never use undefined variables in template
-    customer_lat = (delivery.dropoff_lat
-                    or getattr(delivery.order, 'delivery_lat', None)
-                    or 5.6037)
-    customer_lng = (delivery.dropoff_lng
-                    or getattr(delivery.order, 'delivery_lng', None)
-                    or -0.1870)
-
-    rider_name  = ''
-    rider_phone = ''
-    if delivery.rider:
-        rider_name  = delivery.rider.rider.get_full_name() or delivery.rider.rider.phone
-        rider_phone = getattr(delivery.rider.rider, 'phone', '')
-
-    return render(request, 'delivery/track.html', {
-        'delivery':    delivery,
-        'customer_lat': customer_lat,
-        'customer_lng': customer_lng,
-        'rider_name':  rider_name,
-        'rider_phone': rider_phone,
-    })
+def rider_required(view_func):
+    """Ensures user has an approved RiderProfile."""
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        try:
+            profile = request.user.rider_profile
+        except Exception:
+            return redirect('rider:apply')
+        if not profile.is_verified:
+            return redirect('rider:pending')
+        request.rider_profile = profile
+        return view_func(request, *args, **kwargs)
+    wrapper.__name__ = view_func.__name__
+    return wrapper
 
 
-# ── RIDER DASHBOARD (delivery app legacy) ─────────────────────────────────────
+# ── Application ────────────────────────────────────────────────────────────────
 
 @login_required
-def rider_dashboard(request):
-    from django.utils import timezone
-    from django.db.models import Sum, Count
-
-    # Get rider profile
-    try:
-        from rider.models import RiderProfile
+def apply(request):
+    """Rider application form."""
+    # Already a rider
+    if hasattr(request.user, 'rider_profile'):
         profile = request.user.rider_profile
+        if profile.is_verified:
+            return redirect('rider:dashboard')
+        return redirect('rider:pending')
+
+    if request.method == 'POST':
+        vehicle_type  = request.POST.get('vehicle_type', '').strip()
+        vehicle_plate = request.POST.get('vehicle_plate', '').strip()
+        zone_id       = request.POST.get('zone', '')
+        id_card       = request.FILES.get('id_card')
+
+        if not vehicle_type:
+            messages.error(request, 'Please select a vehicle type.')
+        else:
+            zone = None
+            if zone_id:
+                try:
+                    zone = DeliveryZone.objects.get(pk=zone_id)
+                except DeliveryZone.DoesNotExist:
+                    pass
+
+            profile = RiderProfile.objects.create(
+                rider         = request.user,
+                vehicle_type  = vehicle_type,
+                vehicle_plate = vehicle_plate,
+                zone          = zone,
+                id_card       = id_card,
+                status        = RiderProfile.Status.OFFLINE,
+                is_verified   = False,
+            )
+            messages.success(request, 'Application submitted! We\'ll review and get back to you soon.')
+            return redirect('rider:pending')
+
+    zones = DeliveryZone.objects.filter(is_active=True)
+    return render(request, 'rider/apply.html', {'zones': zones})
+
+
+@login_required
+def pending(request):
+    """Waiting for approval page."""
+    try:
+        profile = request.user.rider_profile
+        if profile.is_verified:
+            return redirect('rider:dashboard')
     except Exception:
         return redirect('rider:apply')
+    return render(request, 'rider/pending.html', {'profile': profile})
 
+
+# ── Dashboard ──────────────────────────────────────────────────────────────────
+
+@rider_required
+def dashboard(request):
+    profile = request.rider_profile
     today   = timezone.now().date()
 
-    # Active delivery (assigned/picked_up/en_route)
+    # Active delivery
     active_delivery = Delivery.objects.filter(
         rider=profile,
         status__in=['assigned', 'picked_up', 'en_route']
     ).select_related('order', 'order__customer').first()
 
-    # Pending deliveries waiting for acceptance
+    # Pending (offered but not yet accepted)
     pending_deliveries = Delivery.objects.filter(
         rider=profile,
         status='pending'
     ).select_related('order', 'order__customer').order_by('created_at')
 
-    # Today's stats
+    # Today stats
     today_qs       = Delivery.objects.filter(rider=profile, delivered_at__date=today)
     today_count    = today_qs.count()
     today_earnings = today_qs.aggregate(t=Sum('rider_commission'))['t'] or 0
 
-    # Recent deliveries (last 20)
-    recent = Delivery.objects.filter(
+    # Recent deliveries
+    recent_deliveries = Delivery.objects.filter(
         rider=profile
     ).select_related('order', 'order__customer').order_by('-created_at')[:20]
 
-    # Unread notifications
+    # Notifications
     try:
         from rider.notification_model import RiderNotification
-        unread_count = RiderNotification.objects.filter(
-            rider=request.user, is_read=False
-        ).count()
-        notifications = RiderNotification.objects.filter(
-            rider=request.user
-        ).order_by('-created_at')[:10]
+        unread_count  = RiderNotification.objects.filter(rider=request.user, is_read=False).count()
+        notifications = RiderNotification.objects.filter(rider=request.user).order_by('-created_at')[:10]
     except Exception:
         unread_count  = 0
         notifications = []
 
     return render(request, 'rider/dashboard.html', {
-        'profile':           profile,
-        'active_delivery':   active_delivery,
-        'pending_deliveries':pending_deliveries,
-        'today_count':       today_count,
-        'today_earnings':    today_earnings,
-        'recent_deliveries': recent,
-        'unread_count':      unread_count,
-        'notifications':     notifications,
+        'profile':            profile,
+        'active_delivery':    active_delivery,
+        'pending_deliveries': pending_deliveries,
+        'today_count':        today_count,
+        'today_earnings':     today_earnings,
+        'recent_deliveries':  recent_deliveries,
+        'unread_count':       unread_count,
+        'notifications':      notifications,
     })
 
 
-# ── UPDATE DELIVERY STATUS ─────────────────────────────────────────────────────
+# ── Status toggle ──────────────────────────────────────────────────────────────
 
-@login_required
+@rider_required
 @require_POST
-def update_delivery_status(request, delivery_id, status):
-    delivery = get_object_or_404(Delivery, id=delivery_id)
-
-    # Only the assigned rider may update status
-    if not delivery.rider or delivery.rider.rider != request.user:
-        return redirect('rider:dashboard')
-
-    valid = [s[0] for s in Delivery.Status.choices]
-    if status not in valid:
-        return redirect('rider:dashboard')
-
-    delivery.status = status
-    if status == Delivery.Status.PICKED_UP:
-        delivery.picked_up_at = now()
-    elif status == Delivery.Status.DELIVERED:
-        delivery.delivered_at = now()
-        # Mark rider available again
-        delivery.rider.status = RiderProfile.Status.AVAILABLE
-        delivery.rider.save(update_fields=['status'])
-    delivery.save()
-
-    # ── SMS + push to customer ────────────────────────────────────────────
-    try:
-        customer = None
-        if delivery.order:
-            customer = delivery.order.customer
-        elif hasattr(delivery, 'food_order') and delivery.food_order:
-            customer = delivery.food_order.customer
-
-        if customer:
-            _notify_customer_status_change(delivery, customer, status)
-    except Exception as exc:
-        log.error('[Delivery] Notification error after status change: %s', exc)
-
-    # ── Rider payout (product orders) ─────────────────────────────────────
-    if status == Delivery.Status.DELIVERED:
-        try:
-            _pay_rider_for_delivery(delivery)
-        except Exception as exc:
-            log.error('[Delivery] Rider payout error: %s', exc)
-
-    # ── Real-time WebSocket push to tracking page ──────────────────────────
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'delivery_{delivery.pk}',
-            {'type': 'delivery_status', 'status': status},
-        )
-    except Exception:
-        pass
-
+def toggle_status(request):
+    profile    = request.rider_profile
+    new_status = request.POST.get('status', '')
+    valid      = [s[0] for s in RiderProfile.Status.choices]
+    if new_status in valid:
+        profile.status = new_status
+        profile.save(update_fields=['status'])
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'status': profile.status})
     return redirect('rider:dashboard')
 
 
-# ── GPS LOCATION UPDATE (authenticated, assigned rider only) ──────────────────
+# ── Accept / Reject ────────────────────────────────────────────────────────────
 
-@login_required
+@rider_required
 @require_POST
-def update_rider_location(request, delivery_id):
-    """
-    Receives GPS coordinates from the rider's phone.
-    Only the rider assigned to this delivery may post.
-    """
-    delivery = get_object_or_404(Delivery, pk=delivery_id)
+def accept_delivery(request, pk):
+    delivery = get_object_or_404(Delivery, pk=pk, rider=request.rider_profile)
+    if delivery.status == 'pending':
+        delivery.set_status('assigned')
+        # Update acceptance record
+        DeliveryAcceptance.objects.filter(
+            delivery=delivery, rider=request.rider_profile
+        ).update(status='accepted', responded_at=timezone.now())
+        # Notify customer
+        try:
+            from notifications.sms import sms_rider_assigned
+            if delivery.order:
+                sms_rider_assigned(delivery.order, delivery)
+        except Exception:
+            pass
+        messages.success(request, 'Delivery accepted! Head to the pickup location.')
+    return redirect('rider:dashboard')
 
-    # Security: must be the assigned rider
-    if not delivery.rider or delivery.rider.rider != request.user:
-        return JsonResponse({'error': 'Not your delivery'}, status=403)
 
+@rider_required
+@require_POST
+def reject_delivery(request, pk):
+    delivery = get_object_or_404(Delivery, pk=pk, rider=request.rider_profile)
+    if delivery.status == 'pending':
+        DeliveryAcceptance.objects.filter(
+            delivery=delivery, rider=request.rider_profile
+        ).update(status='rejected', responded_at=timezone.now())
+        delivery.rider  = None
+        delivery.status = 'pending'
+        delivery.save(update_fields=['rider', 'status'])
+        # Try to assign another rider
+        try:
+            from delivery.services import assign_rider_to_delivery
+            assign_rider_to_delivery(delivery, notify=True)
+        except Exception:
+            pass
+    return redirect('rider:dashboard')
+
+
+# ── Live map ───────────────────────────────────────────────────────────────────
+
+@rider_required
+def live_map(request, pk):
+    delivery = get_object_or_404(
+        Delivery.objects.select_related('order', 'order__customer'),
+        pk=pk, rider=request.rider_profile
+    )
+    return render(request, 'rider/live_map.html', {
+        'delivery':    delivery,
+        'profile':     request.rider_profile,
+        'CSRF_TOKEN':  request.META.get('CSRF_COOKIE', ''),
+    })
+
+
+# ── Update delivery status ─────────────────────────────────────────────────────
+
+@rider_required
+@require_POST
+def update_delivery(request, pk):
+    delivery   = get_object_or_404(Delivery, pk=pk, rider=request.rider_profile)
+    new_status = request.POST.get('status', '').strip()
+    valid      = [s[0] for s in Delivery.Status.choices]
+
+    if new_status not in valid:
+        messages.error(request, 'Invalid status.')
+        return redirect('rider:dashboard')
+
+    old_status = delivery.status
+    delivery.set_status(new_status)
+
+    # On delivery completion — pay rider
+    if new_status == 'delivered' and old_status != 'delivered':
+        try:
+            from delivery.services import pay_rider_for_delivery
+            pay_rider_for_delivery(delivery)
+        except Exception:
+            pass
+        # SMS customer
+        try:
+            from notifications.sms import sms_order_delivered
+            if delivery.order:
+                sms_order_delivered(delivery.order)
+        except Exception:
+            pass
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'status': new_status})
+    messages.success(request, f'Status updated to {delivery.get_status_display()}')
+    return redirect('rider:dashboard')
+
+
+# ── Location update ────────────────────────────────────────────────────────────
+
+@rider_required
+@require_POST
+def update_location(request):
+    profile = request.rider_profile
     try:
         data = json.loads(request.body)
-        lat  = float(data['lat'])
-        lng  = float(data['lng'])
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-        return JsonResponse({'error': f'Invalid data: {e}'}, status=400)
-
-    # Save current position
-    delivery.current_lat = lat
-    delivery.current_lng = lng
-    delivery.save(update_fields=['current_lat', 'current_lng'])
-
-    # Also update rider profile location
-    try:
-        from rider.models import RiderLocation
-        RiderLocation.objects.update_or_create(
-            rider=request.user,
-            defaults={'latitude': lat, 'longitude': lng, 'is_active': True},
-        )
+        lat  = float(data.get('lat') or data.get('latitude'))
+        lng  = float(data.get('lng') or data.get('longitude'))
     except Exception:
-        pass
-
-    # Track history
-    DeliveryTracking.objects.create(delivery=delivery, latitude=lat, longitude=lng)
-
-    # Push via WebSocket to customer tracking page
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'delivery_{delivery_id}',
-            {'type': 'send_location', 'lat': lat, 'lng': lng, 'status': delivery.status},
-        )
-    except Exception:
-        pass
-
-    return JsonResponse({'success': True, 'status': delivery.status})
-
-
-# ── TRACKING DATA API ──────────────────────────────────────────────────────────
-
-@login_required
-def tracking_data(request, delivery_id):
-    delivery = get_object_or_404(Delivery, pk=delivery_id)
-    return JsonResponse({
-        'lat':    delivery.current_lat,
-        'lng':    delivery.current_lng,
-        'status': delivery.status,
-    })
-
-
-# ── AUTO-ASSIGN NEAREST RIDER ──────────────────────────────────────────────────
-
-@login_required
-def assign_nearest_rider(request, delivery_id):
-    delivery = get_object_or_404(Delivery, id=delivery_id)
-    from delivery.services import assign_rider_to_delivery
-    rider = assign_rider_to_delivery(delivery)
-    if not rider:
-        return JsonResponse({'error': 'No available rider'})
-    return JsonResponse({
-        'success': True,
-        'rider':   rider.rider.get_full_name() or rider.rider.phone,
-    })
-
-
-# ── BOOK A RIDE ────────────────────────────────────────────────────────────────
-
-@login_required
-def book_ride(request):
-    zones = DeliveryZone.objects.filter(is_active=True)
-    if request.method != 'POST':
-        return render(request, 'delivery/book_ride.html', {'zones': zones})
-
-    pickup  = request.POST.get('pickup_location', '').strip()
-    dropoff = request.POST.get('dropoff_location', '').strip()
-    if not pickup or not dropoff:
-        messages.error(request, 'Pickup and dropoff are required.')
-        return render(request, 'delivery/book_ride.html', {'zones': zones})
-
-    def _float(val):
-        try: return float(val) if val else None
-        except (TypeError, ValueError): return None
-
-    zone = DeliveryZone.objects.filter(
-        pk=request.POST.get('zone_id'), is_active=True
-    ).first()
-
-    delivery = Delivery.objects.create(
-        booker=request.user,
-        pickup_location=pickup,
-        dropoff_location=dropoff,
-        pickup_lat=_float(request.POST.get('pickup_lat')),
-        pickup_lng=_float(request.POST.get('pickup_lng')),
-        dropoff_lat=_float(request.POST.get('dropoff_lat')),
-        dropoff_lng=_float(request.POST.get('dropoff_lng')),
-        zone=zone,
-        delivery_type=Delivery.DeliveryType.EXPRESS,
-        delivery_note=request.POST.get('note', ''),
-        status=Delivery.Status.PENDING,
-    )
-    _auto_assign_and_notify(delivery)
-    messages.success(request, "Ride booked! Finding a rider…")
-    return redirect('delivery:track_ride', pk=delivery.pk)
-
-
-# ── LIVE TRACKING (STANDALONE RIDE) ───────────────────────────────────────────
-
-@login_required
-def track_ride(request, pk):
-    delivery = get_object_or_404(Delivery, pk=pk)
-    is_rider  = delivery.rider and delivery.rider.rider == request.user
-    is_booker = delivery.booker == request.user
-    if not is_booker and not is_rider and request.user.role not in ('admin', 'staff'):
-        messages.error(request, 'Access denied.')
-        return redirect('frontend:home')
-
-    customer_lat = delivery.dropoff_lat or 5.6037
-    customer_lng = delivery.dropoff_lng or -0.1870
-    return render(request, 'delivery/track_live.html', {
-        'delivery':    delivery,
-        'customer_lat': customer_lat,
-        'customer_lng': customer_lng,
-    })
-
-
-# ── VENDOR ASSIGNS RIDER MANUALLY ─────────────────────────────────────────────
-
-@login_required
-@require_POST
-def vendor_assign_rider(request, delivery_id, rider_id):
-    delivery = get_object_or_404(Delivery, pk=delivery_id, status=Delivery.Status.PENDING)
-    rider    = get_object_or_404(RiderProfile, pk=rider_id, status=RiderProfile.Status.AVAILABLE)
-
-    acceptance, created = DeliveryAcceptance.objects.get_or_create(
-        delivery=delivery,
-        defaults={'rider': rider, 'status': DeliveryAcceptance.Status.PENDING},
-    )
-    if not created:
-        acceptance.rider = rider
-        acceptance.status = DeliveryAcceptance.Status.PENDING
-        acceptance.responded_at = None
-        acceptance.save()
-
-    _push_prompt_to_rider(rider, delivery, acceptance)
-    _notify_rider_in_db(rider.rider, delivery)
-
-    return JsonResponse({'success': True, 'rider': rider.rider.get_full_name() or rider.rider.phone})
-
-
-# ── PRICE ESTIMATE ─────────────────────────────────────────────────────────────
-
-def price_estimate(request):
-    try:
-        dist = haversine_distance(
-            float(request.GET['olat']), float(request.GET['olng']),
-            float(request.GET['dlat']), float(request.GET['dlng']),
-        )
-        fee = calculate_delivery_fee(dist)
-        eta = estimate_eta_minutes(dist)
-        return JsonResponse({'success': True, 'distance_km': round(dist, 2),
-                             'fee': str(fee), 'eta_minutes': eta})
-    except (KeyError, TypeError, ValueError) as e:
-        return JsonResponse({'success': False, 'error': str(e)})
-
-
-# ── INTERNAL HELPERS ───────────────────────────────────────────────────────────
-
-def _auto_assign_and_notify(delivery):
-    from delivery.services import assign_rider_to_delivery
-    assign_rider_to_delivery(delivery, notify=True)
-
-
-def _push_prompt_to_rider(rider_profile, delivery, acceptance):
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'rider_{rider_profile.rider.id}',
-            {
-                'type':          'ride_request',
-                'delivery_id':   delivery.pk,
-                'acceptance_id': acceptance.pk,
-                'pickup':        delivery.pickup_location or '',
-                'dropoff':       delivery.dropoff_location or '',
-                'fee':           str(delivery.delivery_fee),
-                'commission':    str(delivery.calculate_commission()),
-            },
-        )
-    except Exception as exc:
-        log.warning('[Delivery] WebSocket push failed: %s', exc)
-
-
-def _notify_rider_in_db(rider_user, delivery):
-    try:
-        from rider.views import notify_rider
-        notify_rider(
-            rider_user, 'New Delivery Request',
-            f'Pickup: {delivery.pickup_location}  →  {delivery.dropoff_location}',
-            notif_type='new_delivery', link='/rider/',
-        )
-    except Exception:
-        pass
-
-
-def _notify_customer_status_change(delivery, customer, status):
-    """SMS + push notification to customer on delivery status change."""
-    from notifications.sms import send_sms
-
-    phone = ''
-    if delivery.order:
-        phone = delivery.order.delivery_phone
-    elif hasattr(delivery, 'food_order') and delivery.food_order:
-        phone = getattr(delivery.food_order, 'delivery_phone', '')
-
-    order_ref = ''
-    if delivery.order:
-        order_ref = delivery.order.order_ref
-    elif hasattr(delivery, 'food_order') and delivery.food_order:
-        order_ref = getattr(delivery.food_order, 'order_ref', '')
-
-    sms_map = {
-        'picked_up': f'Lynctel: Your order {order_ref} has been picked up! '
-                     f'Your rider is on the way.',
-        'en_route':  f'Lynctel: Your order {order_ref} is en route to you. '
-                     f'Rider will call on arrival.',
-        'delivered': f'Lynctel: Your order {order_ref} has been delivered! '
-                     f'Thank you for using Lynctel 🎉',
-    }
-    if phone and status in sms_map:
-        send_sms(phone, sms_map[status])
-
-    # Push notification
-    try:
-        from push_notifications import send_push_notification
-        push_map = {
-            'picked_up': ('Order Picked Up 📦', f'{order_ref} is on the way!'),
-            'delivered': ('Order Delivered 🎉', f'{order_ref} has arrived!'),
-        }
-        if status in push_map and customer:
-            title, body = push_map[status]
-            send_push_notification(customer, title, body)
-    except Exception:
-        pass
-
-
-def _pay_rider_for_delivery(delivery):
-    """
-    Trigger Hubtel MoMo payout to rider (95% of delivery fee).
-    Matches food/views.py _pay_rider_on_delivery() pattern.
-    """
-    if not delivery.rider:
-        return
-    from decimal import Decimal
-    RIDER_SHARE = Decimal('0.95')
-    delivery_fee = Decimal(str(delivery.delivery_fee or 0))
-    rider_payout = (delivery_fee * RIDER_SHARE).quantize(Decimal('0.01'))
-
-    rider_phone = (
-        getattr(delivery.rider.rider, 'momo_number', None)
-        or getattr(delivery.rider.rider, 'phone', None)
-        or ''
-    )
-    if not rider_phone or rider_payout <= 0:
-        log.warning('[Delivery] Rider payout skipped — no phone or zero amount')
-        return
-
-    try:
-        from food.views import _hubtel_transfer
-        order_ref = delivery.order.order_ref if delivery.order else str(delivery.pk)
-        ok = _hubtel_transfer(
-            phone=rider_phone,
-            amount=rider_payout,
-            reference=f'RIDER-PROD-{order_ref}',
-            description=f'Lynctel rider payout {order_ref} — 95% of GHS {delivery_fee}',
-        )
-        if ok:
-            # Record earning
-            try:
-                from rider.models import RiderEarning
-                RiderEarning.objects.get_or_create(
-                    delivery=delivery,
-                    defaults={'rider': delivery.rider, 'amount': rider_payout, 'status': 'paid'},
-                )
-            except Exception:
-                pass
-        else:
-            log.error('[Delivery] Rider Hubtel payout FAILED for %s — manual needed', order_ref)
-    except ImportError:
-        log.warning('[Delivery] _hubtel_transfer not available — payout skipped')
-
-# ── ACCEPTANCE TIMEOUT CRON (item 5) ──────────────────────────────────────────
-# Railway Cron: every minute → GET /delivery/timeout/?token=<CRON_TOKEN>
-# Set Header: X-Cron-Token in Railway Cron settings
-
-def acceptance_timeout(request):
-    """
-    Reassigns any DeliveryAcceptance pending > 60s without a rider response.
-    Called by Railway Cron job every minute.
-    """
-    import logging
-    from datetime import timedelta
-    from django.conf import settings as _s
-    from django.http import HttpResponse, JsonResponse
-    from django.utils import timezone as _tz
-
-    _log = logging.getLogger(__name__)
-
-    # Verify cron token
-    token = request.headers.get('X-Cron-Token', '')
-    if token != getattr(_s, 'CRON_TOKEN', ''):
-        return HttpResponse(status=401)
-
-    from rider.models import DeliveryAcceptance
-    from delivery.services import assign_rider_to_delivery
-
-    cutoff      = _tz.now() - timedelta(seconds=60)
-    stale       = DeliveryAcceptance.objects.filter(
-        status=DeliveryAcceptance.Status.PENDING,
-        created_at__lt=cutoff,
-    ).select_related('delivery', 'rider')
-    stale_count = stale.count()
-    reassigned  = 0
-
-    for acc in stale:
-        acc.status       = DeliveryAcceptance.Status.REJECTED
-        acc.responded_at = _tz.now()
-        acc.save(update_fields=['status', 'responded_at'])
+        lat = request.POST.get('lat') or request.POST.get('latitude')
+        lng = request.POST.get('lng') or request.POST.get('longitude')
         try:
-            assign_rider_to_delivery(acc.delivery, notify=True)
-            reassigned += 1
-            _log.info('[Timeout] Delivery %d reassigned after rider timeout', acc.delivery.pk)
-        except Exception as exc:
-            _log.error('[Timeout] Reassignment failed for delivery %d: %s', acc.delivery.pk, exc)
+            lat = float(lat)
+            lng = float(lng)
+        except Exception:
+            return JsonResponse({'error': 'Invalid coordinates'}, status=400)
 
-    return JsonResponse({'checked': stale_count, 'reassigned': reassigned})
+    # Update profile GPS
+    profile.current_lat = lat
+    profile.current_lng = lng
+    profile.save(update_fields=['current_lat', 'current_lng'])
 
-@login_required
-def earnings(request):
-    from django.db.models import Sum, Count
-    from django.utils import timezone
+    # Update active delivery tracking
+    active = Delivery.objects.filter(
+        rider=profile,
+        status__in=['assigned', 'picked_up', 'en_route']
+    ).first()
+    if active:
+        active.add_tracking(lat, lng)
+        # Broadcast via WebSocket
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            layer = get_channel_layer()
+            async_to_sync(layer.group_send)(
+                f'delivery_{active.pk}',
+                {'type': 'location_update', 'lat': lat, 'lng': lng}
+            )
+        except Exception:
+            pass
+
+    return JsonResponse({'success': True, 'lat': lat, 'lng': lng})
+
+
+# ── Location API ───────────────────────────────────────────────────────────────
+
+@require_GET
+def location_api(request, order_ref):
+    """Customer-facing: get rider's current location for tracking."""
     try:
-        from rider.models import RiderProfile
-        profile = RiderProfile.objects.get(rider=request.user)
-    except Exception:
-        return redirect('rider:apply')
+        delivery = Delivery.objects.select_related('rider').get(
+            order__order_ref=order_ref
+        )
+    except Delivery.DoesNotExist:
+        return JsonResponse({'error': 'Not found'}, status=404)
 
-    now   = timezone.now()
-    today = now.date()
+    rider = delivery.rider
+    if not rider or delivery.current_lat is None:
+        return JsonResponse({'available': False})
+
+    return JsonResponse({
+        'available': True,
+        'lat':       delivery.current_lat,
+        'lng':       delivery.current_lng,
+        'status':    delivery.status,
+    })
+
+
+# ── ETA API ────────────────────────────────────────────────────────────────────
+
+@require_GET
+def eta_api(request):
+    """Returns ETA estimate based on current rider location."""
+    try:
+        from delivery.services import calculate_distance
+        lat1 = float(request.GET['lat'])
+        lng1 = float(request.GET['lng'])
+        lat2 = float(request.GET['dest_lat'])
+        lng2 = float(request.GET['dest_lng'])
+        dist = calculate_distance(lat1, lng1, lat2, lng2)
+        eta  = max(5, int(dist * 3))   # ~3 min/km in Accra traffic
+        return JsonResponse({'distance_km': round(dist, 2), 'eta_minutes': eta})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+# ── Notifications ──────────────────────────────────────────────────────────────
+
+@rider_required
+@require_POST
+def notif_read(request, pk):
+    try:
+        from rider.notification_model import RiderNotification
+        n = get_object_or_404(RiderNotification, pk=pk, rider=request.user)
+        n.is_read = True
+        n.save(update_fields=['is_read'])
+    except Exception:
+        pass
+    return JsonResponse({'success': True})
+
+
+@rider_required
+@require_POST
+def notif_read_all(request):
+    try:
+        from rider.notification_model import RiderNotification
+        RiderNotification.objects.filter(rider=request.user, is_read=False).update(is_read=True)
+    except Exception:
+        pass
+    return JsonResponse({'success': True})
+
+
+@rider_required
+@require_GET
+def notif_count(request):
+    try:
+        from rider.notification_model import RiderNotification
+        count = RiderNotification.objects.filter(rider=request.user, is_read=False).count()
+    except Exception:
+        count = 0
+    return JsonResponse({'count': count})
+
+
+# ── Earnings ───────────────────────────────────────────────────────────────────
+
+@rider_required
+def earnings(request):
+    profile     = request.rider_profile
+    now         = timezone.now()
+    today       = now.date()
     week_start  = today - timezone.timedelta(days=today.weekday())
     month_start = today.replace(day=1)
 
@@ -569,32 +391,31 @@ def earnings(request):
 
     def stats(qs):
         agg = qs.aggregate(total=Sum('rider_commission'), count=Count('id'))
-        return {'total': agg['total'] or 0, 'count': agg['count'] or 0}
+        return {'total': float(agg['total'] or 0), 'count': agg['count'] or 0}
 
-    today_stats   = stats(base_qs.filter(delivered_at__date=today))
-    week_stats    = stats(base_qs.filter(delivered_at__date__gte=week_start))
-    month_stats   = stats(base_qs.filter(delivered_at__date__gte=month_start))
-    all_stats     = stats(base_qs)
+    today_stats  = stats(base_qs.filter(delivered_at__date=today))
+    week_stats   = stats(base_qs.filter(delivered_at__date__gte=week_start))
+    month_stats  = stats(base_qs.filter(delivered_at__date__gte=month_start))
+    all_stats    = stats(base_qs)
 
-    # Last 30 days chart data
+    # 30-day chart data
     chart_data = []
     for i in range(29, -1, -1):
-        day  = today - timezone.timedelta(days=i)
-        amt  = base_qs.filter(delivered_at__date=day).aggregate(
+        day = today - timezone.timedelta(days=i)
+        amt = base_qs.filter(delivered_at__date=day).aggregate(
             t=Sum('rider_commission'))['t'] or 0
         chart_data.append({'date': str(day), 'amount': float(amt)})
 
-    # Last 30 deliveries
     recent = base_qs.select_related(
         'order', 'order__customer'
     ).order_by('-delivered_at')[:30]
 
     return render(request, 'rider/earnings.html', {
-        'profile':      profile,
-        'today_stats':  today_stats,
-        'week_stats':   week_stats,
-        'month_stats':  month_stats,
-        'all_stats':    all_stats,
-        'chart_data':   chart_data,
-        'recent':       recent,
+        'profile':     profile,
+        'today_stats': today_stats,
+        'week_stats':  week_stats,
+        'month_stats': month_stats,
+        'all_stats':   all_stats,
+        'chart_data':  chart_data,
+        'recent':      recent,
     })
