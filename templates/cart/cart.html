@@ -1,249 +1,338 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Your Cart — Lynctel{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Prevent iOS Safari zoom on input focus */
+  input, select, textarea { font-size: 16px !important; }
+
+  .cart-item {
+    background: white; border-radius: 16px;
+    border: 1px solid #e5e7eb; padding: 14px;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    gap: 12px;
+    -webkit-transition: opacity .3s, -webkit-transform .3s;
+    transition: opacity .3s, transform .3s;
+  }
+  .cart-item.removing {
+    opacity: 0;
+    -webkit-transform: translateX(24px);
+    transform: translateX(24px);
+  }
+  .qty-btn {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: #f3f4f6; border: none;
+    font-size: 18px; font-weight: 700; color: #374151;
+    cursor: pointer;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    /* Extend tap target */
+    padding: 4px; box-sizing: content-box;
+  }
+  .qty-btn:active { background: #d1d5db; }
+  .qty-display { min-width: 36px; text-align: center; font-weight: 700; color: #0F1B2D; font-size: 15px; }
+  .summary-card { background: white; border-radius: 16px; border: 1px solid #e5e7eb; padding: 20px; }
+  @media (min-width: 992px) {
+    .summary-card { position: -webkit-sticky; position: sticky; top: calc(var(--navbar-h, 64px) + 16px); }
+  }
+  .checkout-btn {
+    display: block; width: 100%; padding: 15px;
+    background: #0F1B2D; color: white;
+    font-weight: 700; font-size: 15px;
+    text-align: center; text-decoration: none;
+    border-radius: 14px; border: none; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  .checkout-btn:active { opacity: .85; }
+  .checkout-btn:hover  { color: white; }
+  .skeleton {
+    background: linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);
+    background-size: 200% 100%;
+    -webkit-animation: shimmer 1.4s infinite; animation: shimmer 1.4s infinite;
+    border-radius: 10px;
+  }
+  @-webkit-keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  @keyframes shimmer           { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .mobile-checkout-bar {
+    display: none; position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: white;
+    padding: 12px 16px;
+    padding-bottom: max(env(safe-area-inset-bottom), 12px);
+    border-top: 1px solid #e5e7eb;
+    z-index: 100; box-shadow: 0 -4px 24px rgba(0,0,0,.08);
+  }
+  @media (max-width: 991px) {
+    .mobile-checkout-bar { display: block; }
+    .cart-page-wrap { padding-bottom: calc(env(safe-area-inset-bottom) + 100px); }
+  }
+  .remove-btn {
+    background: none; border: none; color: #ef4444;
+    font-size: 13px; padding: 4px 0; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; font-weight: 600;
+  }
+  .pay-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+  #cart-toast {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom) + 80px);
+    left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%);
+    background: #0F1B2D; color: white;
+    padding: 10px 20px; border-radius: 99px;
+    font-size: 13px; font-weight: 600;
+    z-index: 9999; white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    -webkit-transition: opacity .25s; transition: opacity .25s;
+  }
+  #cart-toast.show { opacity: 1; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container px-3 px-md-4 py-4" style="max-width: 64rem;">
+<div class="container px-3 px-md-4 py-4 cart-page-wrap" style="max-width:68rem">
 
   <div class="mb-4">
-    <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em;">Shopping</p>
-    <h1 class="font-display fw-bold fs-3 text-navy">Your Cart
-      <span id="page-count-wrap" class="{% if not cart.total_items %}d-none{% endif %}">
-        <span id="page-item-count" class="text-secondary fw-normal fs-5 ms-2">({{ cart.total_items }} item{{ cart.total_items|pluralize }})</span>
+    <p class="text-gold small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em">Shopping</p>
+    <h1 class="fw-bold text-navy mb-0" style="font-size:1.6rem">
+      Your Cart
+      <span id="page-count-wrap" class="d-none">
+        <span id="page-item-count" class="text-secondary fw-normal ms-2" style="font-size:1rem"></span>
       </span>
     </h1>
   </div>
 
-  <!-- CART HAS ITEMS -->
-  <div id="cart-page-content" class="{% if not cart_items %}d-none{% endif %}">
-    <div class="d-flex flex-column flex-lg-row gap-4">
-
-      <!-- ITEMS LIST -->
-      <div class="flex-fill d-flex flex-column gap-3" id="cart-items">
-        {% for item in cart_items %}
-        <div id="row-{{ item.pk }}"
-             class="bg-white rounded-2xl border p-3 d-flex align-items-center gap-3" style="transition:all .3s ease;">
-
-          <a href="{% url 'products:detail' item.product.slug %}" class="flex-shrink-0">
-            {% with item.product.images.first as img %}
-            {% if img %}
-            <img src="{{ img.image.url }}" alt="{{ item.product.name }}" class="rounded-xl object-fit-cover" style="width:5rem;height:5rem;"/>
-            {% else %}
-            <div class="rounded-xl bg-light d-flex align-items-center justify-content-center fs-2" style="width:5rem;height:5rem;" aria-hidden="true">📦</div>
-            {% endif %}
-            {% endwith %}
-          </a>
-
-          <div class="flex-fill min-w-0">
-            <a href="{% url 'products:detail' item.product.slug %}"
-               class="fw-semibold text-navy text-truncate-2 small text-decoration-none" style="line-height:1.35;">
-              {{ item.product.name }}
-            </a>
-            {% if item.product.vendor %}
-            <p class="small text-secondary mt-1 mb-0">🏪 {{ item.product.vendor.shop_name }}</p>
-            {% endif %}
-            <p class="font-display fw-bold text-navy mt-1 small mb-0">GHS {{ item.product.selling_price }}</p>
-          </div>
-
-          <!-- Qty controls -->
-          <div class="d-flex align-items-center gap-2 flex-shrink-0">
-            <button type="button" onclick="pageUpdateQty({{ item.pk }}, -1)" aria-label="Decrease quantity of {{ item.product.name }}"
-                    class="btn btn-light rounded-2 d-flex align-items-center justify-content-center fw-bold text-secondary border-0"
-                    style="width:2rem;height:2rem;">−</button>
-            <span id="qty-{{ item.pk }}" class="text-center fw-semibold text-navy small" style="width:2rem;">{{ item.quantity }}</span>
-            <button type="button" onclick="pageUpdateQty({{ item.pk }}, 1)" aria-label="Increase quantity of {{ item.product.name }}"
-                    class="btn btn-light rounded-2 d-flex align-items-center justify-content-center fw-bold text-secondary border-0"
-                    style="width:2rem;height:2rem;">+</button>
-          </div>
-
-          <!-- Subtotal + remove -->
-          <div class="text-end flex-shrink-0" style="min-width: 80px;">
-            <p id="sub-{{ item.pk }}" class="font-display fw-bold text-navy small mb-0">GHS {{ item.subtotal }}</p>
-            <button type="button" onclick="pageRemoveItem({{ item.pk }})" class="btn btn-link small text-danger p-0 mt-1 text-decoration-none">Remove</button>
-          </div>
-        </div>
-        {% endfor %}
-
-        <a href="{% url 'products:list' %}" class="d-inline-flex align-items-center gap-1 small text-secondary mt-2 text-decoration-none">
-          ← Continue Shopping
-        </a>
+  <!-- Loading skeletons -->
+  <div id="cart-loading" class="d-flex flex-column gap-3">
+    {% for i in "12" %}
+    <div class="cart-item">
+      <div class="skeleton flex-shrink-0" style="width:80px;height:80px;border-radius:12px"></div>
+      <div class="flex-fill d-flex flex-column gap-2">
+        <div class="skeleton" style="height:14px;width:70%"></div>
+        <div class="skeleton" style="height:12px;width:40%"></div>
+        <div class="skeleton" style="height:16px;width:25%"></div>
       </div>
+    </div>
+    {% endfor %}
+  </div>
 
-      <!-- ORDER SUMMARY -->
-      <div class="w-100 flex-shrink-0" style="max-width: 20rem;">
-        <div class="bg-white rounded-2xl border p-4 position-sticky" style="top:calc(var(--navbar-h) + 1rem);">
-          <h2 class="font-display fw-bold text-navy fs-5 mb-3">Order Summary</h2>
-
-          <div class="d-flex flex-column gap-2 small mb-4">
+  <!-- Cart content -->
+  <div id="cart-page-content" class="d-none">
+    <div class="d-flex flex-column flex-lg-row gap-4">
+      <div class="flex-fill d-flex flex-column gap-3" id="cart-items-list"></div>
+      <div class="d-none d-lg-block flex-shrink-0" style="width:320px">
+        <div class="summary-card">
+          <h2 class="fw-bold text-navy mb-3" style="font-size:1.1rem">Order Summary</h2>
+          <div class="d-flex flex-column gap-2 mb-4" style="font-size:.9rem">
             <div class="d-flex justify-content-between">
               <span class="text-secondary">Subtotal</span>
-              <span id="summary-subtotal" class="fw-semibold text-navy">GHS {{ cart.total_price }}</span>
+              <span id="summary-subtotal" class="fw-semibold text-navy"></span>
             </div>
             <div class="d-flex justify-content-between">
               <span class="text-secondary">Delivery fee</span>
-              <span class="text-secondary small">At checkout</span>
+              <span class="text-muted" style="font-size:.82rem">At checkout</span>
             </div>
-            <div class="border-top pt-3 d-flex justify-content-between">
-              <span class="font-display fw-bold text-navy">Total</span>
-              <span id="summary-total" class="font-display fw-bold text-navy">GHS {{ cart.total_price }}</span>
+            <div class="d-flex justify-content-between pt-3 border-top">
+              <span class="fw-bold text-navy">Total</span>
+              <span id="summary-total" class="fw-bold text-navy" style="font-size:1.05rem"></span>
             </div>
           </div>
-
           {% if user.is_authenticated %}
-          <a href="{% url 'order:checkout' %}" class="btn btn-navy w-100 fw-semibold text-center py-3 rounded-xl btn-press mb-3 small">
-            Proceed to Checkout →
-          </a>
+          <a href="{% url 'order:checkout' %}" class="checkout-btn mb-3">Proceed to Checkout →</a>
           {% else %}
-          <a href="{% url 'accounts:login' %}?next={% url 'order:checkout' %}" class="btn btn-navy w-100 fw-semibold text-center py-3 rounded-xl btn-press mb-3 small">
-            Sign In to Checkout →
-          </a>
-          <p class="text-center small text-secondary mb-3">
-            Don't have an account?
-            <a href="{% url 'accounts:signup' %}" class="text-gold-dark">Sign up free</a>
-          </p>
+          <a href="{% url 'accounts:login' %}?next={% url 'order:checkout' %}" class="checkout-btn mb-3">Sign In to Checkout →</a>
+          <p class="text-center text-muted mb-3" style="font-size:.8rem">No account? <a href="{% url 'accounts:signup' %}" class="text-navy fw-semibold">Sign up free</a></p>
           {% endif %}
-
-          <!-- Clear cart -->
-          <button type="button" onclick="clearCart()" class="btn btn-link w-100 text-center small text-danger py-1 fw-medium text-decoration-none">
-            🗑 Clear Cart
-          </button>
-
-          <div class="border-top pt-3 mt-3">
-            <p class="small text-center text-secondary mb-2">Secure payment via</p>
+          <button onclick="clearCart()" class="d-block w-100 text-center text-danger small fw-semibold py-2 bg-transparent border-0" style="-webkit-tap-highlight-color:transparent;cursor:pointer">🗑 Clear Cart</button>
+          <div class="border-top pt-3 mt-3 text-center">
+            <p class="text-muted mb-2" style="font-size:.75rem">Secure payment via</p>
             <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
-              <span class="small fw-semibold bg-warning bg-opacity-25 text-warning-emphasis px-2 py-1 rounded-pill">MTN MoMo</span>
-              <span class="small fw-semibold bg-danger bg-opacity-10 text-danger px-2 py-1 rounded-pill">Vodafone</span>
-              <span class="small fw-semibold bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-pill">AirtelTigo</span>
-              <span class="small fw-semibold bg-light text-secondary px-2 py-1 rounded-pill">Card</span>
+              <span class="pay-badge bg-warning bg-opacity-25 text-warning-emphasis">MTN MoMo</span>
+              <span class="pay-badge bg-danger bg-opacity-10 text-danger">Vodafone</span>
+              <span class="pay-badge bg-primary bg-opacity-10 text-primary">AirtelTigo</span>
+              <span class="pay-badge bg-light text-secondary">Card</span>
             </div>
           </div>
         </div>
+        <a href="{% url 'products:list' %}" class="d-inline-flex align-items-center gap-1 text-muted mt-3 text-decoration-none" style="font-size:.85rem">← Continue Shopping</a>
       </div>
-
     </div>
   </div>
 
-  <!-- EMPTY STATE -->
-  <div id="cart-page-empty" class="{% if cart_items %}d-none{% endif %} d-flex flex-column align-items-center justify-content-center py-5 text-center">
-    <div class="bg-light rounded-3xl d-flex align-items-center justify-content-center display-4 mb-4" style="width:6rem;height:6rem;" aria-hidden="true">🛒</div>
-    <h2 class="font-display fw-bold fs-2 text-navy mb-2">Your cart is empty</h2>
-    <p class="text-secondary small mb-4" style="max-width: 20rem;">Browse our products and add items you love.</p>
-    <a href="{% url 'products:list' %}" class="btn btn-navy fw-semibold px-4 py-3 rounded-2xl btn-press">
-      Start Shopping
-    </a>
+  <!-- Empty state -->
+  <div id="cart-page-empty" class="d-none py-5 text-center">
+    <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-4" style="width:96px;height:96px;font-size:2.5rem">🛒</div>
+    <h2 class="fw-bold text-navy mb-2">Your cart is empty</h2>
+    <p class="text-muted mb-4" style="max-width:280px;margin:0 auto 1.5rem">Browse our products and add items you love.</p>
+    <a href="{% url 'products:list' %}" class="btn btn-navy fw-semibold px-4 py-3 rounded-3">Start Shopping</a>
   </div>
 
 </div>
+
+<!-- Mobile fixed checkout bar -->
+<div class="mobile-checkout-bar" id="mobile-bar" style="display:none">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <span class="text-muted small">Total</span>
+    <span id="mobile-total" class="fw-bold text-navy" style="font-size:1.1rem"></span>
+  </div>
+  {% if user.is_authenticated %}
+  <a href="{% url 'order:checkout' %}" class="checkout-btn">Checkout →</a>
+  {% else %}
+  <a href="{% url 'accounts:login' %}?next={% url 'order:checkout' %}" class="checkout-btn">Sign In to Checkout →</a>
+  {% endif %}
+</div>
+
+<div id="cart-toast"></div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  // ── Page-level cart actions (sync with drawer) ─────────────────────────────
+const CSRF = '{{ csrf_token }}';
 
-  function pageUpdateQty(itemId, delta) {
-    const qtyEl  = document.getElementById('qty-' + itemId);
-    const newQty = Math.max(1, parseInt(qtyEl.textContent) + delta);
-    const fd     = new FormData();
-    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
-    fd.append('quantity', newQty);
+function showToast(msg) {
+  var t = document.getElementById('cart-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
 
-    fetch(`/cart/update/${itemId}/`, {
-      method: 'POST',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      body: fd,
-    })
-    .then(r => r.json())
-    .then(d => {
-      if (!d.success) return;
-      qtyEl.textContent = newQty;
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
-      // Recalculate subtotal from server total and current items
-      fetch('/cart/data/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(r => r.json())
-        .then(data => {
-          // Update individual subtotals
-          data.items.forEach(item => {
-            const sub = document.getElementById('sub-' + item.id);
-            if (sub) sub.textContent = 'GHS ' + parseFloat(item.subtotal).toFixed(2);
-          });
-          const total = 'GHS ' + parseFloat(data.total).toFixed(2);
-          document.getElementById('summary-subtotal').textContent = total;
-          document.getElementById('summary-total').textContent    = total;
-          updateCartBadge(data.count);
-          updatePageCount(data.count);
-        });
-    });
-  }
+function buildItemRow(item) {
+  var div = document.createElement('div');
+  div.className = 'cart-item';
+  div.id = 'row-' + item.id;
+  div.innerHTML =
+    '<a href="/products/'+esc(item.slug)+'/" class="flex-shrink-0" style="text-decoration:none">' +
+      (item.image
+        ? '<img src="'+esc(item.image)+'" alt="" loading="lazy" style="width:80px;height:80px;border-radius:12px;object-fit:cover"/>'
+        : '<div style="width:80px;height:80px;border-radius:12px;background:#f3f4f6;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;font-size:2rem">📦</div>'
+      ) +
+    '</a>' +
+    '<div class="flex-fill min-w-0">' +
+      '<a href="/products/'+esc(item.slug)+'/" class="fw-semibold text-navy text-decoration-none" style="font-size:.88rem;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+esc(item.name)+'</a>' +
+      (item.vendor ? '<p class="text-muted mb-1 mt-1" style="font-size:.78rem">🏪 '+esc(item.vendor)+'</p>' : '') +
+      '<p class="fw-bold text-navy mb-0 mt-1" style="font-size:.88rem">GHS '+parseFloat(item.price).toFixed(2)+'</p>' +
+    '</div>' +
+    '<div style="display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;-webkit-align-items:flex-end;align-items:flex-end;gap:8px;-webkit-flex-shrink:0;flex-shrink:0">' +
+      '<div style="display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:4px">' +
+        '<button class="qty-btn" onclick="updateQty('+item.id+',-1)" aria-label="Decrease">−</button>' +
+        '<span class="qty-display" id="qty-'+item.id+'">'+item.quantity+'</span>' +
+        '<button class="qty-btn" onclick="updateQty('+item.id+',1)" aria-label="Increase">+</button>' +
+      '</div>' +
+      '<p id="sub-'+item.id+'" class="fw-bold text-navy mb-0" style="font-size:.9rem">GHS '+parseFloat(item.subtotal).toFixed(2)+'</p>' +
+      '<button class="remove-btn" onclick="removeItem('+item.id+')">Remove</button>' +
+    '</div>';
+  return div;
+}
 
-  function pageRemoveItem(itemId) {
-    const fd = new FormData();
-    fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
+function setTotal(total) {
+  ['summary-subtotal','summary-total','mobile-total'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.textContent = total;
+  });
+}
+function setCount(count) {
+  var wrap = document.getElementById('page-count-wrap');
+  var el   = document.getElementById('page-item-count');
+  if(count>0){ wrap.classList.remove('d-none'); el.textContent='('+count+' item'+(count!==1?'s':'')+')'; }
+  else        { wrap.classList.add('d-none'); }
+}
+function showEmptyState() {
+  document.getElementById('cart-loading').classList.add('d-none');
+  document.getElementById('cart-page-content').classList.add('d-none');
+  document.getElementById('cart-page-empty').classList.remove('d-none');
+  var bar=document.getElementById('mobile-bar'); if(bar) bar.style.display='none';
+  document.getElementById('page-count-wrap').classList.add('d-none');
+  if(typeof updateCartBadge==='function') updateCartBadge(0);
+}
+function renderCart(data) {
+  var list = document.getElementById('cart-items-list');
+  list.innerHTML = '';
+  if(!data.items||data.items.length===0){ showEmptyState(); return; }
+  data.items.forEach(function(item){ list.appendChild(buildItemRow(item)); });
+  var total = 'GHS '+parseFloat(data.total).toFixed(2);
+  var count = data.count||data.items.length;
+  setTotal(total); setCount(count);
+  document.getElementById('cart-loading').classList.add('d-none');
+  document.getElementById('cart-page-content').classList.remove('d-none');
+  var bar=document.getElementById('mobile-bar'); if(bar) bar.style.display='block';
+  if(typeof updateCartBadge==='function') updateCartBadge(count);
+}
 
-    fetch(`/cart/remove/${itemId}/`, {
-      method: 'POST',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      body: fd,
-    })
-    .then(r => r.json())
-    .then(d => {
-      if (!d.success) return;
-      const row = document.getElementById('row-' + itemId);
-      if (row) {
-        row.style.opacity    = '0';
-        row.style.transform  = 'translateX(20px)';
-        row.style.transition = 'all .3s ease';
-        setTimeout(() => {
-          row.remove();
-          const total = 'GHS ' + parseFloat(d.cart_total).toFixed(2);
-          document.getElementById('summary-subtotal').textContent = total;
-          document.getElementById('summary-total').textContent    = total;
-          updateCartBadge(d.cart_count);
-          updatePageCount(d.cart_count);
-          if (d.cart_count === 0) showEmptyState();
-        }, 300);
-      }
-    });
-  }
-
-  function clearCart() {
-    if (!confirm('Remove all items from your cart?')) return;
-    const items = document.querySelectorAll('[id^="row-"]');
-    // Was firing every remove request and then just guessing 400ms was
-    // "probably enough" before declaring the cart empty — on a slow
-    // connection some removes might not have landed yet, so a refresh
-    // right after could still show leftover items. Waiting on the actual
-    // fetch promises means the UI only flips to "empty" once the server
-    // has confirmed every item is gone.
-    const requests = Array.from(items).map(row => {
-      const id = row.id.replace('row-', '');
-      const fd = new FormData();
-      fd.append('csrfmiddlewaretoken', CSRF_TOKEN);
-      return fetch(`/cart/remove/${id}/`, {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        body: fd,
-      }).catch(() => null);
-    });
-    Promise.all(requests).then(() => {
-      updateCartBadge(0);
+/* ── Load cart on page load — ALWAYS fresh from server ──────────────────── */
+document.addEventListener('DOMContentLoaded', function() {
+  fetch('/cart/data/', {headers:{'X-Requested-With':'XMLHttpRequest'}})
+    .then(function(r){return r.json();})
+    .then(function(data){renderCart(data);})
+    .catch(function(){
+      document.getElementById('cart-loading').classList.add('d-none');
+      {% if cart_items %}
+      document.getElementById('cart-page-content').classList.remove('d-none');
+      var bar=document.getElementById('mobile-bar'); if(bar) bar.style.display='block';
+      {% else %}
       showEmptyState();
+      {% endif %}
     });
-  }
+});
 
-  function showEmptyState() {
-    document.getElementById('cart-page-content').classList.add('d-none');
-    document.getElementById('cart-page-empty').classList.remove('d-none');
-    document.getElementById('page-count-wrap').classList.add('d-none');
-  }
+function updateQty(itemId, delta) {
+  var qtyEl=document.getElementById('qty-'+itemId);
+  var newQty=Math.max(1,parseInt(qtyEl.textContent||'1')+delta);
+  qtyEl.textContent=newQty;
+  var fd=new FormData(); fd.append('csrfmiddlewaretoken',CSRF); fd.append('quantity',newQty);
+  fetch('/cart/update/'+itemId+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success){qtyEl.textContent=newQty-delta;return;}
+      fetch('/cart/data/',{headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(function(r){return r.json();})
+        .then(function(data){
+          data.items.forEach(function(item){
+            var sub=document.getElementById('sub-'+item.id);
+            if(sub) sub.textContent='GHS '+parseFloat(item.subtotal).toFixed(2);
+          });
+          setTotal('GHS '+parseFloat(data.total).toFixed(2));
+          setCount(data.count);
+          if(typeof updateCartBadge==='function') updateCartBadge(data.count);
+        });
+    })
+    .catch(function(){qtyEl.textContent=newQty-delta;});
+}
 
-  function updatePageCount(count) {
-    const wrap = document.getElementById('page-count-wrap');
-    const el   = document.getElementById('page-item-count');
-    if (count > 0) {
-      wrap.classList.remove('d-none');
-      el.textContent = `(${count} item${count !== 1 ? 's' : ''})`;
-    } else {
-      wrap.classList.add('d-none');
-    }
-  }
+function removeItem(itemId) {
+  var row=document.getElementById('row-'+itemId);
+  if(row) row.classList.add('removing');
+  var fd=new FormData(); fd.append('csrfmiddlewaretoken',CSRF);
+  fetch('/cart/remove/'+itemId+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success){if(row)row.classList.remove('removing');return;}
+      setTimeout(function(){
+        if(row) row.remove();
+        setTotal('GHS '+parseFloat(d.cart_total||0).toFixed(2));
+        setCount(d.cart_count||0);
+        if(typeof updateCartBadge==='function') updateCartBadge(d.cart_count||0);
+        if(!d.cart_count||d.cart_count===0) showEmptyState();
+        else showToast('Item removed');
+      },300);
+    })
+    .catch(function(){if(row)row.classList.remove('removing');});
+}
+
+function clearCart() {
+  if(!confirm('Remove all items from your cart?')) return;
+  var rows=document.querySelectorAll('[id^="row-"]');
+  var reqs=Array.from(rows).map(function(row){
+    var id=row.id.replace('row-','');
+    var fd=new FormData(); fd.append('csrfmiddlewaretoken',CSRF);
+    return fetch('/cart/remove/'+id+'/',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:fd}).catch(function(){});
+  });
+  Promise.all(reqs).then(function(){showEmptyState();});
+}
 </script>
 {% endblock %}
