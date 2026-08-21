@@ -193,3 +193,75 @@ class OrderStatusHistory(models.Model):
 
     def __str__(self):
         return f"{self.order.order_ref}: {self.old_status} → {self.new_status}"
+
+     
+class OrderDispute(models.Model):
+ 
+    class Reason(models.TextChoices):
+        NOT_DELIVERED = 'not_delivered', 'Item Not Delivered'
+        WRONG_ITEM    = 'wrong_item',    'Wrong Item Received'
+        DAMAGED       = 'damaged',       'Item Arrived Damaged'
+        NOT_AS_DESC   = 'not_as_desc',   'Not As Described'
+        MISSING_ITEM  = 'missing',       'Missing Item(s)'
+        OVERCHARGED   = 'overcharged',   'Overcharged'
+        OTHER         = 'other',         'Other'
+ 
+    class Status(models.TextChoices):
+        OPEN      = 'open',      'Open'
+        REVIEWING = 'reviewing', 'Under Review'
+        RESOLVED  = 'resolved',  'Resolved — Refund Approved'
+        CLOSED    = 'closed',    'Closed — No Action'
+ 
+    id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order       = models.OneToOneField(
+        'Order', on_delete=models.CASCADE, related_name='dispute'
+    )
+    customer    = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='disputes'
+    )
+ 
+    reason           = models.CharField(max_length=20, choices=Reason.choices)
+    description      = models.TextField(help_text='Describe the issue in detail')
+    evidence         = models.ImageField(
+        upload_to='disputes/%Y/%m/', null=True, blank=True,
+        help_text='Optional photo evidence'
+    )
+    refund_requested = models.BooleanField(default=False)
+ 
+    # Vendor response
+    vendor_response  = models.TextField(blank=True)
+    vendor_responded_at = models.DateTimeField(null=True, blank=True)
+ 
+    # Staff fields
+    staff_notes      = models.TextField(blank=True)
+    assigned_to      = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='assigned_disputes'
+    )
+    resolution       = models.TextField(blank=True)
+ 
+    status      = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.OPEN
+    )
+ 
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+ 
+    class Meta:
+        ordering = ['-created_at']
+ 
+    def __str__(self):
+        return f"Dispute: {self.order.order_ref} — {self.get_reason_display()} ({self.status})"
+ 
+    @property
+    def is_open(self):
+        return self.status in (self.Status.OPEN, self.Status.REVIEWING)
+ 
+    @property
+    def vendor(self):
+        """Convenience: get vendor from first order item."""
+        item = self.order.items.select_related('product__vendor').first()
+        return item.product.vendor if item and item.product else None
+ 

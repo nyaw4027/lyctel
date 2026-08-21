@@ -1,18 +1,22 @@
 import json
+import logging
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from cart.models import Cart
 from delivery.models import Delivery
 from delivery.services import ACCRA_CENTER, assign_rider_to_delivery, estimate_fee_for_request
 
-from .models import Order
+from .models import Order, OrderDispute
 
+logger = logging.getLogger(__name__)
 
 # ── CART HELPER ───────────────────────────────────────────
 
@@ -411,3 +415,320 @@ def estimate_delivery_fee(request):
 
     except (ValueError, TypeError) as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+
+@login_required
+def open_dispute(request, order_ref):
+    order = get_object_or_404(
+        Order, order_ref=order_ref, customer=request.user
+    )
+ 
+    # Only paid orders can be disputed
+    if not order.is_paid:
+        messages.error(request, 'Only paid orders can be disputed.')
+        return redirect('order:history')
+ 
+    # One dispute per order
+    if hasattr(order, 'dispute'):
+        messages.info(request, 'A dispute is already open for this order.')
+        return redirect('order:dispute_detail', order_ref=order_ref)
+ 
+    if request.method == 'POST':
+        reason           = request.POST.get('reason', '')
+        description      = request.POST.get('description', '').strip()
+        refund_requested = request.POST.get('refund_requested') == '1'
+        evidence         = request.FILES.get('evidence')
+ 
+        if not reason or not description:
+            messages.error(request, 'Please select a reason and describe the issue.')
+        elif len(description) < 20:
+            messages.error(request, 'Please describe the issue in more detail (at least 20 characters).')
+        else:
+            dispute = OrderDispute.objects.create(
+                order            = order,
+                customer         = request.user,
+                reason           = reason,
+                description      = description,
+                refund_requested = refund_requested,
+                evidence         = evidence,
+            )
+            # Notify staff via SMS
+            try:
+                from notifications.sms import send_sms
+                from django.conf import settings
+                admin_phone = getattr(settings, 'ADMIN_PHONE', '')
+                if admin_phone:
+                    send_sms(
+                        admin_phone,
+                        f'Lynctel: New dispute opened on order {order.order_ref} '
+                        f'by {request.user.display_name}. Reason: {dispute.get_reason_display()}'
+                    )
+            except Exception:
+                pass
+ 
+            messages.success(
+                request,
+                'Your dispute has been submitted. Our team will review it within 24 hours.'
+            )
+            return redirect('order:dispute_detail', order_ref=order_ref)
+ 
+    return render(request, 'order/open_dispute.html', {
+        'order':   order,
+        'reasons': OrderDispute.Reason.choices,
+    })
+ 
+ 
+# ── Customer: view dispute status ─────────────────────────────────────────────
+ 
+@login_required
+def dispute_detail(request, order_ref):
+    order   = get_object_or_404(Order, order_ref=order_ref, customer=request.user)
+    dispute = get_object_or_404(OrderDispute, order=order)
+    return render(request, 'order/dispute_detail.html', {
+        'order':   order,
+        'dispute': dispute,
+    })
+ 
+ 
+# ── Vendor: respond to dispute ────────────────────────────────────────────────
+ 
+@login_required
+@require_POST
+def vendor_respond_dispute(request, dispute_id):
+    dispute = get_object_or_404(OrderDispute, id=dispute_id)
+ 
+    # Verify this vendor owns the order
+    vendor = getattr(request.user, 'vendor', None)
+    if not vendor:
+        messages.error(request, 'Vendor access required.')
+        return redirect('vendors:dashboard')
+ 
+    order_items = dispute.order.items.filter(product__vendor=vendor)
+    if not order_items.exists():
+        messages.error(request, 'Permission denied.')
+        return redirect('vendors:dashboard')
+ 
+    response = request.POST.get('vendor_response', '').strip()
+    if response:
+        dispute.vendor_response    = response
+        dispute.vendor_responded_at = timezone.now()
+        if dispute.status == OrderDispute.Status.OPEN:
+            dispute.status = OrderDispute.Status.REVIEWING
+        dispute.save(update_fields=['vendor_response', 'vendor_responded_at', 'status'])
+        messages.success(request, 'Your response has been submitted.')
+    return redirect('vendors:dashboard')
+ 
+ 
+# ── Staff: mediation page ─────────────────────────────────────────────────────
+ 
+@login_required
+def staff_dispute_list(request):
+    if not (request.user.is_staff or request.user.role in ('admin', 'staff')):
+        return redirect('frontend:home')
+ 
+    disputes = (
+        OrderDispute.objects
+        .select_related('order', 'customer', 'assigned_to')
+        .prefetch_related('order__items__product__vendor')
+        .order_by('status', '-created_at')
+    )
+ 
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        disputes = disputes.filter(status=status_filter)
+ 
+    return render(request, 'order/staff_disputes.html', {
+        'disputes':       disputes,
+        'status_choices': OrderDispute.Status.choices,
+        'status_filter':  status_filter,
+    })
+ 
+ 
+@login_required
+@require_POST
+def staff_resolve_dispute(request, dispute_id):
+    if not (request.user.is_staff or request.user.role in ('admin', 'staff')):
+        return redirect('frontend:home')
+ 
+    dispute    = get_object_or_404(OrderDispute, id=dispute_id)
+    action     = request.POST.get('action', '')
+    resolution = request.POST.get('resolution', '').strip()
+    staff_notes = request.POST.get('staff_notes', '').strip()
+ 
+    dispute.staff_notes  = staff_notes
+    dispute.resolution   = resolution
+    dispute.assigned_to  = request.user
+ 
+    if action == 'approve_refund':
+        dispute.status      = OrderDispute.Status.RESOLVED
+        dispute.resolved_at = timezone.now()
+        # Update order status
+        dispute.order.status         = Order.Status.REFUNDED
+        dispute.order.payment_status = Order.PaymentStatus.REFUNDED
+        dispute.order.save(update_fields=['status', 'payment_status'])
+        # Notify customer
+        try:
+            from notifications.sms import send_sms
+            send_sms(
+                dispute.customer.phone,
+                f'Lynctel: Your dispute for order {dispute.order.order_ref} '
+                f'has been resolved. Refund approved. '
+                f'{resolution}'
+            )
+        except Exception:
+            pass
+        messages.success(request, 'Dispute resolved — refund approved.')
+ 
+    elif action == 'close':
+        dispute.status      = OrderDispute.Status.CLOSED
+        dispute.resolved_at = timezone.now()
+        try:
+            from notifications.sms import send_sms
+            send_sms(
+                dispute.customer.phone,
+                f'Lynctel: Your dispute for order {dispute.order.order_ref} '
+                f'has been reviewed and closed. {resolution}'
+            )
+        except Exception:
+            pass
+        messages.success(request, 'Dispute closed.')
+ 
+    dispute.save()
+    return redirect('order:staff_disputes')
+
+
+ 
+@login_required
+@require_POST
+def reorder(request, order_ref):
+    """
+    POST /orders/<order_ref>/reorder/
+    Adds all items from a past order back into the customer's current cart.
+    Only adds items that are still active and in stock.
+    """
+    from .models import Order
+    from cart.models import Cart, CartItem
+ 
+    order = get_object_or_404(
+        Order.objects.prefetch_related('items__product'),
+        order_ref=order_ref,
+        customer=request.user
+    )
+ 
+    # Get or create cart
+    if request.user.is_authenticated:
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+    else:
+        return redirect('accounts:login')
+ 
+    added    = 0
+    skipped  = 0
+ 
+    for item in order.items.all():
+        product = item.product
+        if not product or product.status != 'active':
+            skipped += 1
+            continue
+ 
+        cart_item, created = CartItem.objects.get_or_create(
+            cart=cart, product=product
+        )
+        if created:
+            cart_item.quantity = item.quantity
+        else:
+            cart_item.quantity += item.quantity
+        cart_item.save()
+        added += 1
+ 
+    # Update cart timestamp
+    from django.utils import timezone
+    cart.updated_at = timezone.now()
+    cart.save(update_fields=['updated_at'])
+ 
+    if added:
+        msg = f'✓ {added} item{"s" if added > 1 else ""} added to your cart'
+        if skipped:
+            msg += f' ({skipped} unavailable item{"s" if skipped > 1 else ""} skipped)'
+        messages.success(request, msg)
+    else:
+        messages.warning(request, 'None of the items from this order are currently available.')
+ 
+    # Return JSON for AJAX or redirect for normal request
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'added': added, 'skipped': skipped,
+                             'cart_count': cart.total_items})
+    return redirect('cart:detail')
+ 
+ 
+# ── Also Bought ────────────────────────────────────────────────────────────────
+ 
+def also_bought(request, product_id):
+    """
+    GET /products/<id>/also-bought/
+    Returns products frequently bought together with the given product.
+    Uses co-purchase data from paid OrderItems.
+    Cached for 1 hour.
+    """
+    from django.core.cache import cache
+    from products.models import Product
+    from .models import OrderItem
+ 
+    cache_key = f'also_bought:{product_id}'
+    cached    = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({'products': cached})
+ 
+    try:
+        product = get_object_or_404(Product, pk=product_id, status='active')
+ 
+        # Step 1: orders that contain this product (paid only)
+        order_ids = (
+            OrderItem.objects
+            .filter(product=product, order__payment_status='paid')
+            .values_list('order_id', flat=True)
+        )
+ 
+        # Step 2: other products in those orders, ranked by co-occurrence
+        related = (
+            OrderItem.objects
+            .filter(order_id__in=order_ids, order__payment_status='paid')
+            .exclude(product=product)
+            .exclude(product__isnull=True)
+            .values('product')
+            .annotate(count=Count('product'))
+            .order_by('-count')[:8]
+        )
+ 
+        product_ids = [r['product'] for r in related]
+        products    = (
+            Product.objects
+            .filter(pk__in=product_ids, status='active')
+            .prefetch_related('images')
+            .select_related('vendor')
+        )
+        product_map = {p.pk: p for p in products}
+ 
+        result = []
+        for pk in product_ids:
+            p = product_map.get(pk)
+            if not p:
+                continue
+            img = p.images.first()
+            result.append({
+                'id':    p.pk,
+                'name':  p.name,
+                'price': str(p.final_price),
+                'url':   f'/products/{p.slug}/',
+                'image': img.image.url if img else '',
+                'vendor': p.vendor.shop_name if p.vendor else '',
+            })
+ 
+        cache.set(cache_key, result, 3600)   # 1 hour
+        return JsonResponse({'products': result})
+ 
+    except Exception as e:
+        logger.error('also_bought error for product %s: %s', product_id, e)
+        return JsonResponse({'products': []})
+
+    

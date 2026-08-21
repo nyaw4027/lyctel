@@ -73,12 +73,46 @@
           <p class="mb-0">📍 {{ order.delivery_city }}</p>
           <p class="mb-0">📞 {{ order.delivery_phone }}</p>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
           {% if order.status == 'pending' and order.payment_status == 'unpaid' %}
-          <a href="{% url 'payment:page' %}" class="btn btn-gold btn-sm small fw-semibold rounded-2">
+          <a href="{% url 'payment:page' %}"
+             class="btn btn-gold btn-sm small fw-semibold rounded-2">
             Pay Now
           </a>
           {% endif %}
+
+          {% if order.payment_status == 'paid' and order.status == 'delivered' %}
+          <!-- Smart Reorder -->
+          <form method="POST" action="{% url 'order:reorder' order.order_ref %}"
+                style="display:inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="btn btn-sm small fw-semibold rounded-2 btn-outline-navy">
+              🔄 Order Again
+            </button>
+          </form>
+          {% endif %}
+
+          {% if order.payment_status == 'paid' and order.status != 'refunded' %}
+          {% if not order.dispute %}
+          <!-- Open Dispute -->
+          <a href="{% url 'order:open_dispute' order.order_ref %}"
+             class="btn btn-sm small fw-semibold rounded-2 btn-outline-danger">
+            ⚠ Dispute
+          </a>
+          {% else %}
+          <!-- View existing dispute -->
+          <a href="{% url 'order:dispute_detail' order.order_ref %}"
+             class="btn btn-sm small fw-semibold rounded-2
+                    {% if order.dispute.status == 'resolved' %}btn-outline-success
+                    {% else %}btn-outline-warning{% endif %}">
+            {% if order.dispute.status == 'resolved' %}✓ Resolved
+            {% elif order.dispute.status == 'closed' %}Closed
+            {% else %}View Dispute{% endif %}
+          </a>
+          {% endif %}
+          {% endif %}
+
           <a href="{% url 'order:tracking' order.order_ref %}"
              class="btn btn-sm small fw-semibold rounded-2
                     {% if order.status not in 'delivered,cancelled,refunded' %}btn-navy{% else %}btn-light{% endif %}">

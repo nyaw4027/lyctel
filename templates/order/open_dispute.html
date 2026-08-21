@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Open Dispute — {{ order.order_ref }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:640px">
+
+  <a href="{% url 'order:history' %}" class="text-navy text-decoration-none small fw-semibold">
+    ← Back to orders
+  </a>
+
+  <div class="mt-3 mb-4">
+    <h1 class="fw-bold text-navy mb-1" style="font-size:1.4rem">⚠ Open a Dispute</h1>
+    <p class="text-muted small mb-0">Order {{ order.order_ref }}</p>
+  </div>
+
+  {% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} rounded-3 small mb-3">
+    {{ message }}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <div class="card border-0 shadow-sm rounded-3 mb-3">
+    <div class="card-body p-4">
+      <!-- Order summary -->
+      <div class="rounded-3 p-3 mb-4 bg-light">
+        <p class="fw-semibold text-navy mb-1" style="font-size:.9rem">📦 {{ order.order_ref }}</p>
+        <p class="text-muted mb-0 small">
+          {{ order.items.count }} item{{ order.items.count|pluralize }}
+          · GHS {{ order.total_amount }}
+          · {{ order.created_at|date:"M d, Y" }}
+        </p>
+      </div>
+
+      <form method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-4">
+        {% csrf_token %}
+
+        <!-- Reason -->
+        <div>
+          <label class="form-label fw-semibold">What's the issue? *</label>
+          {% for value, label in reasons %}
+          <div class="form-check py-2 px-3 rounded-3 mb-1"
+               style="border:1.5px solid #e5e7eb;cursor:pointer">
+            <input class="form-check-input" type="radio"
+                   name="reason" value="{{ value }}" id="r_{{ value }}" required/>
+            <label class="form-check-label w-100 fw-semibold small"
+                   for="r_{{ value }}" style="cursor:pointer">
+              {{ label }}
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label for="description" class="form-label fw-semibold">
+            Describe the problem *
+          </label>
+          <textarea id="description" name="description" rows="4" required
+                    minlength="20" maxlength="2000"
+                    placeholder="Please describe exactly what happened, including any relevant details…"
+                    class="form-control rounded-3"
+                    style="font-size:16px;resize:none"></textarea>
+          <div class="form-text">Minimum 20 characters. Be specific — it helps resolve faster.</div>
+        </div>
+
+        <!-- Evidence -->
+        <div>
+          <label class="form-label fw-semibold">
+            Photo Evidence
+            <span class="fw-normal text-muted">(optional)</span>
+          </label>
+          <input type="file" name="evidence" accept="image/*"
+                 class="form-control rounded-3" style="font-size:16px"/>
+          <div class="form-text">Upload a photo of the item, packaging, or anything relevant.</div>
+        </div>
+
+        <!-- Refund -->
+        <div class="rounded-3 p-3" style="background:#fff7ed;border:1px solid #fed7aa">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox"
+                   name="refund_requested" value="1" id="refund_check"/>
+            <label class="form-check-label fw-semibold small text-orange-800"
+                   for="refund_check" style="color:#9a3412">
+              I am requesting a refund for this order
+            </label>
+          </div>
+        </div>
+
+        <button type="submit"
+                class="btn btn-danger w-100 fw-bold rounded-3 py-3">
+          Submit Dispute
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <p class="text-center text-muted small">
+    Our team reviews all disputes within 24 hours.
+    You'll receive an SMS update on your case.
+  </p>
+</div>
+{% endblock %}

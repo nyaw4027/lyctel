@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Chat with {{ room.buyer.display_name }} — {{ vendor.shop_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  #chat-box { height: calc(100vh - 260px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .msg-bubble { max-width: 75%; }
+  .msg-mine   .msg-bubble { background: #0F1B2D; color: white; border-radius: 18px 18px 4px 18px; }
+  .msg-theirs .msg-bubble { background: #f3f4f6; color: #0F1B2D; border-radius: 18px 18px 18px 4px; }
+  #chat-input { font-size: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:680px">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 py-3 border-bottom sticky-top bg-white">
+    <a href="{% url 'chat:vendor_inbox' %}" class="text-navy text-decoration-none fw-bold">←</a>
+    {% if room.buyer.profile_pic %}
+    <img src="{{ room.buyer.profile_pic.url }}" alt=""
+         class="rounded-circle object-fit-cover" style="width:40px;height:40px"/>
+    {% else %}
+    <div class="rounded-circle bg-navy d-flex align-items-center justify-content-center
+                fw-bold text-white flex-shrink-0" style="width:40px;height:40px">
+      {{ room.buyer.initials|default:"?" }}
+    </div>
+    {% endif %}
+    <div>
+      <p class="fw-bold text-navy mb-0" style="font-size:.95rem">
+        {{ room.buyer.display_name }}
+      </p>
+      <p class="text-muted mb-0" style="font-size:.75rem">Customer</p>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div id="chat-box" class="py-3 d-flex flex-column gap-2">
+    {% for msg in messages %}
+    <div class="d-flex {% if msg.sender == request.user %}justify-content-end msg-mine{% else %}msg-theirs{% endif %}">
+      <div class="msg-bubble px-3 py-2">
+        <p class="mb-0" style="font-size:.9rem">{{ msg.content }}</p>
+        {% if msg.attachment %}
+        <img src="{{ msg.attachment.url }}" alt="attachment"
+             class="rounded mt-1" style="max-width:200px"/>
+        {% endif %}
+        <p class="mb-0 mt-1 {% if msg.sender == request.user %}text-white-50{% else %}text-muted{% endif %}"
+           style="font-size:.7rem">
+          {{ msg.created_at|time:"H:i" }}
+          {% if msg.sender == request.user and msg.is_read %}✓✓{% endif %}
+        </p>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-center text-muted small py-4">No messages yet. Start the conversation!</p>
+    {% endfor %}
+  </div>
+
+  <!-- Input -->
+  <div class="border-top py-2 bg-white sticky-bottom">
+    <div class="d-flex gap-2 align-items-center">
+      <input type="text" id="chat-input"
+             class="form-control rounded-pill"
+             placeholder="Type a message…"
+             maxlength="2000"
+             autocomplete="off"/>
+      <button id="send-btn"
+              class="btn btn-navy rounded-circle fw-bold d-flex align-items-center
+                     justify-content-center flex-shrink-0"
+              style="width:44px;height:44px">
+        ↑
+      </button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ROOM_ID   = '{{ room.id }}';
+const WS_SCHEME = location.protocol === 'https:' ? 'wss' : 'ws';
+const wsUrl     = `${WS_SCHEME}://${location.host}/ws/chat/${ROOM_ID}/`;
+const CSRF      = '{{ csrf_token }}';
+const ME_ID     = {{ request.user.id }};
+
+let ws;
+
+function connectWS() {
+  ws = new WebSocket(wsUrl);
+  ws.onopen = () => console.log('WS connected');
+  ws.onmessage = ({ data }) => {
+    const msg = JSON.parse(data);
+    if (msg.type === 'message') appendMessage(msg);
+  };
+  ws.onclose = () => setTimeout(connectWS, 3000);
+}
+
+function appendMessage(msg) {
+  const box   = document.getElementById('chat-box');
+  const isMine = msg.sender_id === ME_ID;
+  const div   = document.createElement('div');
+  div.className = `d-flex ${isMine ? 'justify-content-end msg-mine' : 'msg-theirs'}`;
+  div.innerHTML = `
+    <div class="msg-bubble px-3 py-2">
+      <p class="mb-0" style="font-size:.9rem">${esc(msg.content)}</p>
+      <p class="mb-0 mt-1 ${isMine ? 'text-white-50' : 'text-muted'}" style="font-size:.7rem">
+        ${msg.created_at}
+      </p>
+    </div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  if (ws?.readyState === 1) {
+    ws.send(JSON.stringify({ type: 'message', content: text }));
+    input.value = '';
+  } else {
+    // HTTP fallback
+    fetch(`/chat/${ROOM_ID}/send/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      body: new URLSearchParams({ content: text }),
+    }).then(r => r.json()).then(d => {
+      if (d.success) {
+        appendMessage({ sender_id: ME_ID, content: text, created_at: 'now', type: 'message' });
+        input.value = '';
+      }
+    });
+  }
+}
+
+document.getElementById('send-btn').addEventListener('click', sendMessage);
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+});
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Scroll to bottom on load
+document.addEventListener('DOMContentLoaded', () => {
+  const box = document.getElementById('chat-box');
+  box.scrollTop = box.scrollHeight;
+  connectWS();
+});
+</script>
+{% endblock %}

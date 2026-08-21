@@ -290,3 +290,126 @@ def upload_attachment(request, room_type, room_id):
         'message_id':   message.id,
         'attachment_url': message.attachment.url,
     })
+
+
+
+@login_required
+def vendor_inbox(request):
+    """
+    Vendor sees all customer conversations sorted by latest activity.
+    Accessed from vendor dashboard → "Messages" tab.
+    """
+    vendor = getattr(request.user, 'vendor', None)
+    if not vendor:
+        return redirect('frontend:home')
+ 
+    rooms = (
+        ChatRoom.objects
+        .filter(vendor=vendor)
+        .select_related('buyer')
+        .prefetch_related('messages')
+        .order_by('-updated_at')
+    )
+ 
+    # Attach unread count and last message to each room
+    room_data = []
+    total_unread = 0
+    for room in rooms:
+        unread = room.unread_count_for(request.user)
+        total_unread += unread
+        room_data.append({
+            'room':         room,
+            'last_message': room.last_message(),
+            'unread':       unread,
+        })
+ 
+    return render(request, 'chat/vendor_inbox.html', {
+        'room_data':     room_data,
+        'total_unread':  total_unread,
+        'vendor':        vendor,
+    })
+ 
+ 
+# ── Vendor: open a specific conversation ──────────────────────────────────────
+ 
+@login_required
+def vendor_chat_room(request, room_id):
+    """
+    Vendor reads and replies to a specific customer conversation.
+    """
+    vendor = getattr(request.user, 'vendor', None)
+    if not vendor:
+        return redirect('frontend:home')
+ 
+    room = get_object_or_404(ChatRoom, id=room_id, vendor=vendor)
+ 
+    # Mark all buyer messages as read
+    Message.objects.filter(
+        room=room, is_read=False
+    ).exclude(sender=request.user).update(is_read=True)
+ 
+    messages_qs = room.messages.select_related('sender').order_by('created_at')
+ 
+    return render(request, 'chat/vendor_room.html', {
+        'room':     room,
+        'messages': messages_qs,
+        'vendor':   vendor,
+    })
+ 
+ 
+# ── AJAX: send message fallback (if WebSocket disconnects) ────────────────────
+ 
+@login_required
+@require_POST
+def send_message(request, room_id):
+    """
+    POST /chat/<room_id>/send/ — AJAX fallback when WebSocket is unavailable.
+    The WebSocket consumer handles the real-time path; this is the HTTP fallback.
+    """
+    from django.utils import timezone
+ 
+    room    = get_object_or_404(ChatRoom, id=room_id)
+    content = request.POST.get('content', '').strip()
+ 
+    # Access check
+    user   = request.user
+    vendor = getattr(user, 'vendor', None)
+    is_buyer  = room.buyer == user
+    is_vendor = vendor and room.vendor == vendor
+ 
+    if not (is_buyer or is_vendor):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+ 
+    if not content or len(content) > 2000:
+        return JsonResponse({'error': 'Invalid message'}, status=400)
+ 
+    msg = Message.objects.create(
+        room    = room,
+        sender  = user,
+        content = content,
+    )
+ 
+    # Update room timestamp
+    ChatRoom.objects.filter(pk=room.pk).update(updated_at=timezone.now())
+ 
+    # Push notification to recipient
+    try:
+        recipient = room.vendor.owner if is_buyer else room.buyer
+        from push_notifications import send_push_notification
+        send_push_notification(
+            recipient,
+            title=f'New message from {user.display_name}',
+            body=content[:120],
+            url=f'/chat/{room.id}/',
+        )
+    except Exception:
+        pass
+ 
+    return JsonResponse({
+        'success':    True,
+        'message_id': str(msg.id),
+        'content':    msg.content,
+        'sender':     user.display_name,
+        'created_at': msg.created_at.strftime('%H:%M'),
+    })
+ 

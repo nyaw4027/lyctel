@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from chat.views import vendor_inbox, vendor_chat_room, send_message
 from order.pdf import vendor_invoice_pdf
 
 app_name = 'vendors'
@@ -38,4 +39,9 @@ urlpatterns = [
     # ── Monthly invoice PDF ───────────────────────────────────────────────────
     path('vendor/invoice/<int:year>/<int:month>/',
                                                 vendor_invoice_pdf,     name='invoice_pdf'),
+
+    path('vendor/messages/',               vendor_inbox,      name='vendor_inbox'),
+    path('vendor/messages/<uuid:room_id>/', vendor_chat_room, name='vendor_room'),
+    path('vendor/messages/<uuid:room_id>/send/', send_message, name='vendor_send_message'),
+
 ]
