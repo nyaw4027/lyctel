@@ -20,7 +20,7 @@
         <h2 class="h6">Orders</h2>
         <div class="list-group">
           {% for order in recent_orders %}
-          <a href="{% url 'food:restaurant_order' order.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between">
+          <div class="list-group-item d-flex justify-content-between" style="cursor:default">
             <div>
               <div class="fw-semibold">#{{ order.pk }}</div>
               {# |naturaltime needs {% load humanize %} (django.contrib.humanize app) which
@@ -52,7 +52,7 @@
               {% endif %}
               <div class="small mt-1">GHS {{ order.total_amount|floatformat:2 }}</div>
             </div>
-          </a>
+          </div>
           {% empty %}
           <div class="list-group-item text-muted">No recent orders</div>
           {% endfor %}
