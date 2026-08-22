@@ -1,26 +1,70 @@
 {% extends "staff/base.html" %}
+{% load static %}
 {% block title %}Orders — Staff{% endblock %}
+
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
-  <h1 class="fw-bold mb-0" style="font-size:1.3rem;color:#0F1B2D">Orders</h1>
+  <h1 class="fw-bold mb-0" style="font-size:1.3rem;color:#0F1B2D">
+    Orders
+    {% if status_counts.pending %}
+    <span class="badge text-bg-warning rounded-pill ms-2"
+          style="font-size:.75rem">{{ status_counts.pending }} pending</span>
+    {% endif %}
+  </h1>
   <form class="d-flex gap-2" method="GET">
-    <input type="text" name="q" value="{{ query }}" placeholder="Search ref / phone…"
-           class="form-control rounded-3" style="font-size:16px;max-width:220px"/>
+    <input type="hidden" name="status" value="{{ filter_status }}"/>
+    <input type="text" name="q" value="{{ query }}"
+           placeholder="Search ref / phone…"
+           class="form-control rounded-3"
+           style="font-size:16px;max-width:220px"/>
     <button class="btn btn-navy rounded-3 fw-semibold">Search</button>
   </form>
 </div>
 
-<!-- Status filter -->
-<div class="d-flex gap-2 mb-3 flex-wrap">
-  {% for val, lbl in filter_status %}
-  <a href="?status={{ val }}{% if query %}&q={{ query }}{% endif %}"
+<!-- Status filter pills (filter_status = current selected string) -->
+<div class="d-flex gap-2 mb-4 flex-wrap">
+  <a href="?{% if query %}q={{ query }}{% endif %}"
      class="btn btn-sm rounded-3 fw-semibold
-            {% if request.GET.status == val %}btn-navy{% else %}btn-outline-secondary{% endif %}">
-    {{ lbl }}
+            {% if not filter_status %}btn-navy{% else %}btn-outline-secondary{% endif %}">
+    All
   </a>
-  {% endfor %}
+  <a href="?status=pending{% if query %}&q={{ query }}{% endif %}"
+     class="btn btn-sm rounded-3 fw-semibold
+            {% if filter_status == 'pending' %}btn-navy{% else %}btn-outline-secondary{% endif %}">
+    ⏳ Pending
+    {% if status_counts.pending %}
+    <span class="badge rounded-pill ms-1
+                 {% if filter_status == 'pending' %}bg-white text-navy{% else %}bg-warning text-dark{% endif %}"
+          style="font-size:.6rem">{{ status_counts.pending }}</span>
+    {% endif %}
+  </a>
+  <a href="?status=confirmed{% if query %}&q={{ query }}{% endif %}"
+     class="btn btn-sm rounded-3 fw-semibold
+            {% if filter_status == 'confirmed' %}btn-navy{% else %}btn-outline-secondary{% endif %}">
+    ✓ Confirmed
+    {% if status_counts.confirmed %}<span class="badge rounded-pill bg-secondary ms-1" style="font-size:.6rem">{{ status_counts.confirmed }}</span>{% endif %}
+  </a>
+  <a href="?status=dispatched{% if query %}&q={{ query }}{% endif %}"
+     class="btn btn-sm rounded-3 fw-semibold
+            {% if filter_status == 'dispatched' %}btn-navy{% else %}btn-outline-secondary{% endif %}">
+    🚴 Dispatched
+    {% if status_counts.dispatched %}<span class="badge rounded-pill bg-info ms-1" style="font-size:.6rem">{{ status_counts.dispatched }}</span>{% endif %}
+  </a>
+  <a href="?status=delivered{% if query %}&q={{ query }}{% endif %}"
+     class="btn btn-sm rounded-3 fw-semibold
+            {% if filter_status == 'delivered' %}btn-navy{% else %}btn-outline-secondary{% endif %}">
+    ✅ Delivered
+    {% if status_counts.delivered %}<span class="badge rounded-pill bg-success ms-1" style="font-size:.6rem">{{ status_counts.delivered }}</span>{% endif %}
+  </a>
+  <a href="?status=cancelled{% if query %}&q={{ query }}{% endif %}"
+     class="btn btn-sm rounded-3 fw-semibold
+            {% if filter_status == 'cancelled' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}">
+    ✕ Cancelled
+    {% if status_counts.cancelled %}<span class="badge rounded-pill bg-danger ms-1" style="font-size:.6rem">{{ status_counts.cancelled }}</span>{% endif %}
+  </a>
 </div>
 
+<!-- Orders table -->
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
   <div class="table-responsive">
     <table class="table table-hover mb-0 align-middle small">
@@ -49,7 +93,8 @@
               {% if o.status == 'delivered' %}text-bg-success
               {% elif o.status == 'pending' %}text-bg-warning
               {% elif o.status == 'cancelled' %}text-bg-danger
-              {% else %}text-bg-info{% endif %}">
+              {% elif o.status == 'dispatched' %}text-bg-info
+              {% else %}text-bg-secondary{% endif %}">
               {{ o.get_status_display }}
             </span>
           </td>
@@ -62,11 +107,18 @@
           <td class="px-4 py-3 text-muted">{{ o.created_at|date:"M d, Y" }}</td>
           <td class="px-4 py-3">
             <a href="{% url 'staff:order_detail' o.pk %}"
-               class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold">View</a>
+               class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold">
+              View
+            </a>
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="text-center py-5 text-muted">No orders found.</td></tr>
+        <tr>
+          <td colspan="7" class="text-center py-5 text-muted">
+            <div style="font-size:2rem;margin-bottom:8px">📋</div>
+            No orders found{% if filter_status %} with status "{{ filter_status }}"{% endif %}.
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>

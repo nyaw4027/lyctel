@@ -5,8 +5,17 @@
   <h1 class="fw-bold mb-0" style="font-size:1.3rem;color:#0F1B2D">🍔 Food Orders</h1>
 </div>
 <div class="d-flex gap-2 mb-3 flex-wrap">
-  {% for val, lbl in filter_status %}<a href="?status={{ val }}" class="btn btn-sm rounded-3 fw-semibold {% if request.GET.status == val %}btn-navy{% else %}btn-outline-secondary{% endif %}">{{ lbl }}</a>{% endfor %}
+  
 </div>
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  <a href="?" class="btn btn-sm rounded-3 fw-semibold {% if not filter_status %}btn-navy{% else %}btn-outline-secondary{% endif %}">All</a>
+  <a href="?status=pending" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'pending' %}btn-navy{% else %}btn-outline-secondary{% endif %}">⏳ Pending {% if status_counts.pending %}<span class="badge rounded-pill bg-warning text-dark ms-1" style="font-size:.6rem">{{ status_counts.pending }}</span>{% endif %}</a>
+  <a href="?status=confirmed" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'confirmed' %}btn-navy{% else %}btn-outline-secondary{% endif %}">✓ Confirmed</a>
+  <a href="?status=preparing" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'preparing' %}btn-navy{% else %}btn-outline-secondary{% endif %}">🍳 Preparing</a>
+  <a href="?status=delivered" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'delivered' %}btn-navy{% else %}btn-outline-secondary{% endif %}">✅ Delivered</a>
+  <a href="?status=cancelled" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'cancelled' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}">✕ Cancelled</a>
+</div>
+
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
   <div class="table-responsive">
     <table class="table table-hover mb-0 align-middle small">

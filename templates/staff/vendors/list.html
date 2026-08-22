@@ -10,8 +10,16 @@
   </form>
 </div>
 <div class="d-flex gap-2 mb-3 flex-wrap">
-  {% for val, lbl in filter_status %}<a href="?status={{ val }}" class="btn btn-sm rounded-3 fw-semibold {% if request.GET.status == val %}btn-navy{% else %}btn-outline-secondary{% endif %}">{{ lbl }}</a>{% endfor %}
+  
 </div>
+<!-- Status filter -->
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  <a href="?" class="btn btn-sm rounded-3 fw-semibold {% if not filter_status %}btn-navy{% else %}btn-outline-secondary{% endif %}">All</a>
+  <a href="?status=pending" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'pending' %}btn-navy{% else %}btn-outline-secondary{% endif %}">⏳ Pending {% if counts.pending %}<span class="badge rounded-pill bg-warning text-dark ms-1" style="font-size:.6rem">{{ counts.pending }}</span>{% endif %}</a>
+  <a href="?status=active" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'active' %}btn-navy{% else %}btn-outline-secondary{% endif %}">✓ Active</a>
+  <a href="?status=suspended" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'suspended' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}">✕ Suspended</a>
+</div>
+
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
   <div class="table-responsive">
     <table class="table table-hover mb-0 align-middle small">
