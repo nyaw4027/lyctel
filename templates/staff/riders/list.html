@@ -1,25 +1,51 @@
 {% extends "staff/base.html" %}
-{% load i18n %}
-{% block staff_title %}Riders — Staff{% endblock %}
-{% block page_heading %}Riders{% endblock %}
-
-{% block staff_content %}
-<div class="table-responsive">
-  <table class="table table-hover align-middle">
-    <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Active</th><th class="text-end">Actions</th></tr></thead>
-    <tbody>
-      {% for r in riders %}
-      <tr>
-        <td>{{ forloop.counter }}</td>
-        <td><a href="{% url 'staff:riders_detail' r.pk %}" class="fw-semibold text-decoration-none">{{ r.get_full_name|default:r.phone }}</a></td>
-        <td>{{ r.phone }}</td>
-        <td>{% if r.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
-        <td class="text-end"><a href="{% url 'staff:riders_detail' r.pk %}" class="btn btn-sm btn-light">View</a></td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5" class="text-center text-muted py-3">No riders found.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{% block title %}Riders — Staff{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="fw-bold mb-0" style="font-size:1.3rem;color:#0F1B2D">Riders</h1>
+  <form class="d-flex gap-2" method="GET">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search rider…" class="form-control rounded-3" style="font-size:16px;max-width:200px"/>
+    <button class="btn btn-navy rounded-3 fw-semibold">Search</button>
+  </form>
+</div>
+<div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle small">
+      <thead style="background:#f9fafb">
+        <tr>
+          <th class="px-4 py-3 fw-semibold text-muted">Rider</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Vehicle</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Zone</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Status</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Verified</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Deliveries</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in riders %}
+        <tr>
+          <td class="px-4 py-3">
+            <p class="fw-bold text-navy mb-0">{{ r.rider.get_full_name|default:r.rider.phone }}</p>
+            <p class="text-muted mb-0" style="font-size:.72rem">{{ r.rider.phone }}</p>
+          </td>
+          <td class="px-4 py-3">{{ r.get_vehicle_type_display }}</td>
+          <td class="px-4 py-3">{{ r.zone.name|default:"—" }}</td>
+          <td class="px-4 py-3">
+            <span class="badge rounded-pill {% if r.status == 'available' %}text-bg-success{% elif r.status == 'on_delivery' %}text-bg-info{% else %}text-bg-secondary{% endif %}">{{ r.get_status_display }}</span>
+          </td>
+          <td class="px-4 py-3">
+            {% if r.is_verified %}<span class="badge text-bg-success rounded-pill">✓ Verified</span>
+            {% else %}<span class="badge text-bg-warning rounded-pill">⏳ Pending</span>{% endif %}
+          </td>
+          <td class="px-4 py-3 fw-semibold">{{ r.total_deliveries|default:0 }}</td>
+          <td class="px-4 py-3"><a href="{% url 'staff:rider_detail' r.pk %}" class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold">View</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center py-5 text-muted">No riders found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

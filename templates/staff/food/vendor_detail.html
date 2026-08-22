@@ -1,42 +1,42 @@
 {% extends "staff/base.html" %}
-{% load i18n %}
-{% block staff_title %}Vendor — Staff{% endblock %}
-{% block page_heading %}Vendor: {{ vendor.shop_name }}{% endblock %}
-
-{% block staff_content %}
-<div class="mb-3">
-  <a href="{% url 'staff:food_vendor_list' %}" class="btn btn-sm btn-outline-secondary">Back to vendors</a>
+{% block title %}{{ vendor.name }} — Staff{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{% url 'staff:food_vendor_list' %}" class="text-muted text-decoration-none fw-semibold small">← Restaurants</a>
+  <h1 class="fw-bold mb-0" style="font-size:1.2rem;color:#0F1B2D">{{ vendor.name }}</h1>
+  <span class="badge rounded-3 px-2 py-1 {% if vendor.status == 'open' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ vendor.get_status_display }}</span>
 </div>
-
-<div class="row g-3">
-  <div class="col-md-4">
-    <div class="card">
-      <div class="card-body text-center">
-        {% if vendor.logo %}<img src="{{ vendor.logo.url }}" alt="{{ vendor.shop_name }}" class="rounded mb-3" width="96" height="96" style="object-fit:cover;"/>{% endif %}
-        <h5 class="mb-0">{{ vendor.shop_name }}</h5>
-        <p class="small text-muted mb-0">{{ vendor.owner.get_full_name|default:vendor.owner.phone }}</p>
-        <p class="small text-muted">{{ vendor.city }}</p>
-      </div>
+<div class="row g-4">
+  <div class="col-12 col-lg-4">
+    <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Info</h2>
+      <p class="small mb-1"><strong>Owner:</strong> {{ vendor.owner.display_name|default:vendor.owner.phone }}</p>
+      <p class="small mb-1"><strong>Phone:</strong> {{ vendor.owner.phone }}</p>
+    </div>
+    <div class="card border-0 shadow-sm rounded-3 p-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Actions</h2>
+      {% if vendor.status != 'suspended' %}
+      <form method="POST" class="mb-2">{% csrf_token %}<input type="hidden" name="action" value="suspend"/>
+        <button type="submit" class="btn btn-danger fw-semibold rounded-3 w-100">Suspend</button>
+      </form>
+      {% else %}
+      <form method="POST">{% csrf_token %}<input type="hidden" name="action" value="reactivate"/>
+        <button type="submit" class="btn btn-success fw-semibold rounded-3 w-100">Reactivate</button>
+      </form>
+      {% endif %}
     </div>
   </div>
-
-  <div class="col-md-8">
-    <div class="card">
-      <div class="card-body">
-        <h6>Details</h6>
-        <p class="small text-muted mb-2">Address</p>
-        <p class="mb-3">{{ vendor.address }}</p>
-
-        <h6>Stats</h6>
-        <div class="d-flex gap-3">
-          <div><div class="fw-semibold">{{ vendor.total_orders }}</div><div class="small text-muted">Orders</div></div>
-          <div><div class="fw-semibold">GHS {{ vendor.earnings|floatformat:2 }}</div><div class="small text-muted">Earnings</div></div>
-        </div>
-
-        <div class="mt-3">
-          <a href="{% url 'vendors:dashboard' vendor.slug %}" class="btn btn-sm btn-outline-primary">Open vendor dashboard</a>
-        </div>
-      </div>
+  <div class="col-12 col-lg-8">
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+      <div class="card-header bg-white border-0 py-3 px-4"><h2 class="fw-bold mb-0" style="font-size:.9rem">Recent Orders</h2></div>
+      {% for o in recent_orders %}
+      <a href="{% url 'staff:food_order_detail' o.order_ref %}" class="d-flex gap-3 px-4 py-3 border-bottom text-decoration-none">
+        <span class="fw-semibold text-navy small">{{ o.order_ref }}</span>
+        <span class="flex-fill text-muted small">{{ o.customer.display_name|default:o.customer.phone }}</span>
+        <span class="fw-bold small">GHS {{ o.total_amount|floatformat:2 }}</span>
+        <span class="badge rounded-pill {% if o.status == 'delivered' %}text-bg-success{% else %}text-bg-warning{% endif %}" style="font-size:.6rem">{{ o.get_status_display }}</span>
+      </a>
+      {% empty %}<div class="p-4 text-center text-muted small">No orders yet.</div>{% endfor %}
     </div>
   </div>
 </div>

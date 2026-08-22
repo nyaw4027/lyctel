@@ -38,7 +38,7 @@
           <a class="nav-link {% if request.resolver_match.app_name == 'food' and request.resolver_match.url_name == 'order_list' %}active{% endif %}" href="{% url 'staff:food_order_list' %}">🍽 Food Orders</a>
         </li>
         <li>
-          <a class="nav-link {% if request.resolver_match.app_name == 'vendors' %}active{% endif %}" href="{% url 'staff:vendors_list' %}">🏪 Vendors</a>
+          <a class="nav-link {% if request.resolver_match.app_name == 'vendors' %}active{% endif %}" href="{% url 'staff:vendor_list' %}">🏪 Vendors</a>
         </li>
         <li>
           <a class="nav-link {% if request.resolver_match.app_name == 'products' %}active{% endif %}" href="{% url 'staff:products_list' %}">📦 Products</a>

@@ -1,59 +1,31 @@
 {% extends "staff/base.html" %}
-{% load i18n %}
-{% block staff_title %}Customer — Staff{% endblock %}
-{% block page_heading %}Customer Detail{% endblock %}
-
-{% block staff_content %}
-<div class="row g-3">
-  <div class="col-md-4">
-    <div class="card">
-      <div class="card-body text-center">
-        {% if customer.profile_pic %}
-          <img src="{{ customer.profile_pic.url }}" alt="{{ customer.get_full_name }}" class="rounded-circle mb-3" width="96" height="96" style="object-fit:cover;border:2px solid var(--gold)"/>
-        {% else %}
-          <div class="rounded-circle bg-navy text-white d-inline-flex align-items-center justify-content-center mb-3" style="width:96px;height:96px;font-size:28px">{{ customer.first_name|default:customer.phone|first|upper }}</div>
-        {% endif %}
-        <h5 class="mb-0">{{ customer.get_full_name|default:customer.username }}</h5>
-        <p class="text-muted small mb-0">{{ customer.email }}</p>
-        <p class="text-muted small mb-0">{{ customer.phone }}</p>
-      </div>
-      <ul class="list-group list-group-flush">
-        <li class="list-group-item"><strong>Registered</strong><div class="small text-muted">{{ customer.date_joined|date:"Y-m-d H:i" }}</div></li>
-        <li class="list-group-item"><strong>Orders</strong><div class="small">{{ customer.order_count|default:0 }}</div></li>
-        <li class="list-group-item"><strong>Last order</strong><div class="small text-muted">{{ customer.last_order_date|default:"—" }}</div></li>
-      </ul>
+{% block title %}Customer — {{ customer.get_full_name|default:customer.phone }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{% url 'staff:customer_list' %}" class="text-muted text-decoration-none fw-semibold small">← Customers</a>
+  <h1 class="fw-bold mb-0" style="font-size:1.2rem;color:#0F1B2D">{{ customer.get_full_name|default:customer.phone }}</h1>
+</div>
+<div class="row g-4">
+  <div class="col-12 col-lg-4">
+    <div class="card border-0 shadow-sm rounded-3 p-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Customer Info</h2>
+      <p class="small mb-1"><strong>Phone:</strong> {{ customer.phone }}</p>
+      <p class="small mb-1"><strong>Email:</strong> {{ customer.email|default:"—" }}</p>
+      <p class="small mb-1"><strong>Joined:</strong> {{ customer.date_joined|date:"M d, Y" }}</p>
+      <p class="small mb-1"><strong>Total Orders:</strong> {{ orders.count }}</p>
+      <p class="small mb-0"><strong>Total Spent:</strong> <span class="fw-bold text-navy">GHS {{ total_spent|floatformat:2 }}</span></p>
     </div>
   </div>
-
-  <div class="col-md-8">
-    <div class="card">
-      <div class="card-body">
-        <h6 class="mb-3">Recent Orders</h6>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle">
-            <thead>
-              <tr><th>#</th><th>Order</th><th>Status</th><th>Total</th><th>Date</th><th class="text-end">Actions</th></tr>
-            </thead>
-            <tbody>
-              {% for order in recent_orders %}
-              <tr>
-                <td>{{ forloop.counter }}</td>
-                <td><a href="{% url 'staff:orders_detail' order.pk %}" class="text-decoration-none fw-semibold">#{{ order.pk }}</a></td>
-                <td><span class="badge text-bg-{{ order.status|status_badge }}">{{ order.get_status_display }}</span></td>
-                <td>GHS {{ order.total|floatformat:2 }}</td>
-                <td class="small text-muted">{{ order.created_at|date:"Y-m-d" }}</td>
-                <td class="text-end">
-                  <a href="{% url 'staff:orders_detail' order.pk %}" class="btn btn-sm btn-light">View</a>
-                </td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="6" class="text-center text-muted py-3">No recent orders</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        <a href="{% url 'staff:orders_list' %}" class="btn btn-sm btn-outline-secondary">View all orders</a>
-      </div>
+  <div class="col-12 col-lg-8">
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+      <div class="card-header bg-white border-0 py-3 px-4"><h2 class="fw-bold mb-0" style="font-size:.9rem">Order History</h2></div>
+      {% for o in orders %}
+      <a href="{% url 'staff:order_detail' o.pk %}" class="d-flex align-items-center gap-3 px-4 py-3 border-bottom text-decoration-none">
+        <div class="flex-fill"><p class="fw-semibold text-navy mb-0 small">{{ o.order_ref }}</p><p class="text-muted mb-0" style="font-size:.72rem">{{ o.created_at|date:"M d, Y" }}</p></div>
+        <span class="fw-bold small">GHS {{ o.total_amount|floatformat:2 }}</span>
+        <span class="badge rounded-pill {% if o.status == 'delivered' %}text-bg-success{% elif o.status == 'cancelled' %}text-bg-danger{% else %}text-bg-warning{% endif %}" style="font-size:.6rem">{{ o.get_status_display }}</span>
+      </a>
+      {% empty %}<div class="p-4 text-center text-muted small">No orders yet.</div>{% endfor %}
     </div>
   </div>
 </div>

@@ -1,40 +1,61 @@
 {% extends "staff/base.html" %}
-{% load i18n %}
-{% block staff_title %}Products — Staff{% endblock %}
-{% block page_heading %}Products{% endblock %}
-
-{% block staff_content %}
-<div class="d-flex justify-content-between mb-3">
-  <div>
-    <form class="d-flex" method="get" action="">
-      <input class="form-control form-control-sm me-2" name="q" placeholder="Search products..." value="{{ request.GET.q|default:'' }}">
-      <button class="btn btn-sm btn-outline-secondary">Search</button>
-    </form>
-  </div>
-  <div>
-    <a href="{% url 'products:create' %}" class="btn btn-sm btn-primary">Add product</a>
-  </div>
+{% block title %}Products — Staff{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="fw-bold mb-0" style="font-size:1.3rem;color:#0F1B2D">Products</h1>
+  <form class="d-flex gap-2" method="GET">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search products…" class="form-control rounded-3" style="font-size:16px;max-width:200px"/>
+    <select name="category" class="form-select rounded-3" style="font-size:16px;max-width:160px">
+      <option value="">All Categories</option>
+      {% for cat in categories %}<option value="{{ cat.slug }}" {% if filter_cat == cat.slug %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-navy rounded-3 fw-semibold">Filter</button>
+  </form>
 </div>
-
-<div class="table-responsive">
-  <table class="table table-hover align-middle">
-    <thead><tr><th>#</th><th>Product</th><th>Vendor</th><th>Price</th><th>Stock</th><th class="text-end">Actions</th></tr></thead>
-    <tbody>
-      {% for p in products %}
-      <tr>
-        <td>{{ forloop.counter }}</td>
-        <td><a class="fw-semibold text-decoration-none" href="{% url 'products:detail' p.slug %}">{{ p.name }}</a></td>
-        <td>{{ p.vendor.shop_name }}</td>
-        <td>GHS {{ p.final_price|floatformat:2 }}</td>
-        <td>{{ p.stock_display }}</td>
-        <td class="text-end">
-          <a href="{% url 'products:edit' p.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="6" class="text-center text-muted py-3">No products found.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle small">
+      <thead style="background:#f9fafb">
+        <tr>
+          <th class="px-4 py-3 fw-semibold text-muted">Product</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Vendor</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Price</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Stock</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Status</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td class="px-4 py-3">
+            <p class="fw-bold text-navy mb-0">{{ p.name }}</p>
+            <p class="text-muted mb-0" style="font-size:.72rem">{{ p.category.name }}</p>
+          </td>
+          <td class="px-4 py-3">{{ p.vendor.shop_name }}</td>
+          <td class="px-4 py-3 fw-semibold">GHS {{ p.selling_price }}</td>
+          <td class="px-4 py-3">
+            <span class="fw-bold {% if p.stock_qty == 0 %}text-danger{% elif p.stock_qty <= 5 %}text-warning{% else %}text-success{% endif %}">
+              {{ p.stock_qty }}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <span class="badge rounded-pill {% if p.status == 'active' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ p.status|title }}</span>
+          </td>
+          <td class="px-4 py-3">
+            <form method="POST" action="{% url 'staff:product_toggle' p.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm {% if p.status == 'active' %}btn-outline-danger{% else %}btn-outline-success{% endif %} rounded-3 fw-semibold">
+                {% if p.status == 'active' %}Disable{% else %}Enable{% endif %}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-5 text-muted">No products found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

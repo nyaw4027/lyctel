@@ -1,32 +1,88 @@
 {% extends "staff/base.html" %}
-{% load i18n %}
-{% block staff_title %}Rider — Staff{% endblock %}
-{% block page_heading %}Rider: {{ rider.get_full_name|default:rider.phone }}{% endblock %}
+{% block title %}Rider — {{ profile.rider.get_full_name|default:profile.rider.phone }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{% url 'staff:rider_list' %}" class="text-muted text-decoration-none fw-semibold small">← Riders</a>
+  <h1 class="fw-bold mb-0" style="font-size:1.2rem;color:#0F1B2D">{{ profile.rider.get_full_name|default:profile.rider.phone }}</h1>
+  {% if profile.is_verified %}<span class="badge text-bg-success rounded-3 px-2 py-1">✓ Verified</span>
+  {% else %}<span class="badge text-bg-warning rounded-3 px-2 py-1">⏳ Pending</span>{% endif %}
+</div>
+<div class="row g-4">
+  <div class="col-12 col-lg-4">
+    <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Profile</h2>
+      <p class="small mb-1"><strong>Phone:</strong> {{ profile.rider.phone }}</p>
+      <p class="small mb-1"><strong>Vehicle:</strong> {{ profile.get_vehicle_type_display }}</p>
+      <p class="small mb-1"><strong>Plate:</strong> {{ profile.vehicle_plate|default:"—" }}</p>
+      <p class="small mb-1"><strong>Zone:</strong> {{ profile.zone.name|default:"—" }}</p>
+      <p class="small mb-1"><strong>Commission:</strong> {{ profile.commission_rate }}%</p>
+      <p class="small mb-0"><strong>Joined:</strong> {{ profile.joined_at|date:"M d, Y" }}</p>
+    </div>
 
-{% block staff_content %}
-<div class="row g-3">
-  <div class="col-md-4">
-    <div class="card text-center p-3">
-      {% if rider.profile_pic %}<img src="{{ rider.profile_pic.url }}" class="rounded-circle mb-2" width="96" height="96" style="object-fit:cover"/>{% endif %}
-      <h6 class="mb-0">{{ rider.get_full_name|default:rider.phone }}</h6>
-      <p class="small text-muted">{{ rider.phone }}</p>
-      <p><span class="badge text-bg-{{ rider.status|status_badge }}">{{ rider.get_status_display }}</span></p>
+    <!-- Rider balance -->
+    {% if profile.balance %}
+    <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">💰 Commission Balance</h2>
+      <div class="d-flex justify-content-between mb-1 small">
+        <span class="text-muted">Total earned</span>
+        <span class="fw-semibold">GHS {{ profile.balance.total_earned|floatformat:2 }}</span>
+      </div>
+      <div class="d-flex justify-content-between mb-1 small">
+        <span class="text-muted">App cut (total)</span>
+        <span class="fw-semibold">GHS {{ profile.balance.total_app_cut|floatformat:2 }}</span>
+      </div>
+      <div class="d-flex justify-content-between small border-top pt-2 mt-2">
+        <span class="fw-bold">Outstanding</span>
+        <span class="fw-bold {% if profile.balance.outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+          GHS {{ profile.balance.outstanding|floatformat:2 }}
+        </span>
+      </div>
+      {% if profile.balance.outstanding > 0 %}
+      <a href="{% url 'rider:ledger_detail' profile.pk %}" class="btn btn-sm btn-outline-danger rounded-3 fw-semibold w-100 mt-3">View Ledger →</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm rounded-3 p-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Actions</h2>
+      <form method="POST" class="mb-2">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="verify"/>
+        <button type="submit" class="btn {% if profile.is_verified %}btn-outline-danger{% else %}btn-success{% endif %} fw-semibold rounded-3 w-100">
+          {% if profile.is_verified %}✕ Unverify{% else %}✓ Verify Rider{% endif %}
+        </button>
+      </form>
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_zone"/>
+        <select name="zone_id" class="form-select rounded-3 mb-2" style="font-size:16px">
+          <option value="">— Change Zone —</option>
+          {% for z in zones %}<option value="{{ z.pk }}" {% if profile.zone == z %}selected{% endif %}>{{ z.name }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn btn-outline-secondary fw-semibold rounded-3 w-100">Update Zone</button>
+      </form>
     </div>
   </div>
 
-  <div class="col-md-8">
-    <div class="card">
-      <div class="card-body">
-        <h6 class="mb-2">Earnings & Stats</h6>
-        <div class="d-flex gap-4">
-          <div><div class="fw-semibold">GHS {{ rider.earnings|floatformat:2 }}</div><div class="small text-muted">Earnings</div></div>
-          <div><div class="fw-semibold">{{ rider.completed_orders }}</div><div class="small text-muted">Completed</div></div>
+  <div class="col-12 col-lg-8">
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+      <div class="card-header bg-white border-0 py-3 px-4">
+        <h2 class="fw-bold mb-0" style="font-size:.9rem">Recent Deliveries</h2>
+      </div>
+      {% for d in deliveries %}
+      <div class="d-flex align-items-center gap-3 px-4 py-3 border-bottom">
+        <div class="flex-fill min-w-0">
+          <p class="fw-semibold text-navy mb-0 small">{% if d.order %}{{ d.order.order_ref }}{% else %}Delivery #{{ d.pk }}{% endif %}</p>
+          <p class="text-muted mb-0" style="font-size:.72rem">{{ d.dropoff_location|truncatechars:40 }} · {{ d.created_at|date:"M d" }}</p>
         </div>
-
-        <div class="mt-3">
-          <a href="{% url 'staff:riders_edit' rider.pk %}" class="btn btn-sm btn-outline-secondary">Edit rider</a>
+        <div class="text-end flex-shrink-0">
+          <p class="fw-bold mb-0 small">GHS {{ d.rider_commission|floatformat:2 }}</p>
+          <span class="badge rounded-pill {% if d.status == 'delivered' %}text-bg-success{% elif d.status == 'assigned' %}text-bg-info{% else %}text-bg-secondary{% endif %}" style="font-size:.6rem">{{ d.get_status_display }}</span>
         </div>
       </div>
+      {% empty %}
+      <div class="p-4 text-center text-muted small">No deliveries yet.</div>
+      {% endfor %}
     </div>
   </div>
 </div>

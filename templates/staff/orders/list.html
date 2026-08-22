@@ -1,30 +1,75 @@
 {% extends "staff/base.html" %}
-{% load i18n %}
-{% block staff_title %}Orders — Staff{% endblock %}
-{% block page_heading %}Orders{% endblock %}
-
-{% block staff_content %}
-<div class="table-responsive">
-  <table class="table table-hover align-middle">
-    <thead>
-      <tr><th>#</th><th>Order</th><th>Customer</th><th>Type</th><th>Status</th><th>Total</th><th class="text-end">Actions</th></tr>
-    </thead>
-    <tbody>
-      {% for order in orders %}
-      <tr>
-        <td>{{ forloop.counter }}</td>
-        <td><a class="fw-semibold text-decoration-none" href="{% url 'staff:orders_detail' order.pk %}">#{{ order.pk }}</a></td>
-        <td>{{ order.customer.get_full_name|default:order.customer.phone }}</td>
-        <td>{{ order.get_order_type_display }}</td>
-        <td><span class="badge text-bg-{{ order.status|status_badge }}">{{ order.get_status_display }}</span></td>
-        <td>GHS {{ order.total|floatformat:2 }}</td>
-        <td class="text-end"><a href="{% url 'staff:orders_detail' order.pk %}" class="btn btn-sm btn-light">View</a></td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="7" class="text-center text-muted py-3">No orders found.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{% block title %}Orders — Staff{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="fw-bold mb-0" style="font-size:1.3rem;color:#0F1B2D">Orders</h1>
+  <form class="d-flex gap-2" method="GET">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search ref / phone…"
+           class="form-control rounded-3" style="font-size:16px;max-width:220px"/>
+    <button class="btn btn-navy rounded-3 fw-semibold">Search</button>
+  </form>
 </div>
 
+<!-- Status filter -->
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  {% for val, lbl in filter_status %}
+  <a href="?status={{ val }}{% if query %}&q={{ query }}{% endif %}"
+     class="btn btn-sm rounded-3 fw-semibold
+            {% if request.GET.status == val %}btn-navy{% else %}btn-outline-secondary{% endif %}">
+    {{ lbl }}
+  </a>
+  {% endfor %}
+</div>
+
+<div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle small">
+      <thead style="background:#f9fafb">
+        <tr>
+          <th class="px-4 py-3 fw-semibold text-muted">Ref</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Customer</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Amount</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Status</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Payment</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Date</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td class="px-4 py-3 fw-bold text-navy">{{ o.order_ref }}</td>
+          <td class="px-4 py-3">
+            <p class="fw-semibold mb-0">{{ o.customer.display_name|default:o.customer.phone }}</p>
+            <p class="text-muted mb-0" style="font-size:.72rem">{{ o.customer.phone }}</p>
+          </td>
+          <td class="px-4 py-3 fw-bold">GHS {{ o.total_amount|floatformat:2 }}</td>
+          <td class="px-4 py-3">
+            <span class="badge rounded-pill
+              {% if o.status == 'delivered' %}text-bg-success
+              {% elif o.status == 'pending' %}text-bg-warning
+              {% elif o.status == 'cancelled' %}text-bg-danger
+              {% else %}text-bg-info{% endif %}">
+              {{ o.get_status_display }}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <span class="badge rounded-pill
+              {% if o.payment_status == 'paid' %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+              {{ o.payment_status|title }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-muted">{{ o.created_at|date:"M d, Y" }}</td>
+          <td class="px-4 py-3">
+            <a href="{% url 'staff:order_detail' o.pk %}"
+               class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold">View</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center py-5 text-muted">No orders found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

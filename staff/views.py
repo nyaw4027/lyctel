@@ -37,34 +37,83 @@ def staff_required(view_func):
 
 @staff_required
 def dashboard(request):
+    import json
     today     = timezone.now().date()
     this_week = timezone.now() - timedelta(days=7)
 
-    # Key stats
+    # ── Orders ────────────────────────────────────────────────────────────
     total_orders    = Order.objects.count()
     orders_today    = Order.objects.filter(created_at__date=today).count()
     pending_orders  = Order.objects.filter(status='pending').count()
     dispatched      = Order.objects.filter(status='dispatched').count()
-    delivered_today = Order.objects.filter(
-        status='delivered', delivered_at__date=today
-    ).count()
+    delivered_today = Order.objects.filter(status='delivered', delivered_at__date=today).count()
+    week_revenue    = Order.objects.filter(
+        payment_status='paid', created_at__gte=this_week
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
+    today_revenue   = Order.objects.filter(
+        payment_status='paid', created_at__date=today
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
 
+    # ── Products ──────────────────────────────────────────────────────────
     total_products  = Product.objects.filter(status='active').count()
     low_stock       = Product.objects.filter(status='active', stock_qty__lte=5).count()
+
+    # ── Vendors ───────────────────────────────────────────────────────────
     total_vendors   = Vendor.objects.filter(status='active').count()
     pending_vendors = Vendor.objects.filter(status='pending').count()
-    total_riders    = RiderProfile.objects.count()
-    online_riders   = RiderProfile.objects.filter(status='available').count()
 
-    recent_orders = Order.objects.select_related('customer').order_by('-created_at')[:10]
+    # ── Riders ────────────────────────────────────────────────────────────
+    total_riders   = RiderProfile.objects.count()
+    online_riders  = RiderProfile.objects.filter(status='available').count()
+    pending_riders = RiderProfile.objects.filter(is_verified=False).count()
 
-    pending_vendor_list = Vendor.objects.filter(
-        status='pending'
-    ).select_related('owner').order_by('-joined_at')[:5]
+    # ── Rider balances ────────────────────────────────────────────────────
+    try:
+        from rider.models import RiderBalanceSummary
+        rider_outstanding   = RiderBalanceSummary.objects.aggregate(t=Sum('outstanding'))['t'] or 0
+        rider_balance_count = RiderBalanceSummary.objects.filter(outstanding__gt=0).count()
+    except Exception:
+        rider_outstanding   = 0
+        rider_balance_count = 0
 
-    low_stock_products = Product.objects.filter(
-        status='active', stock_qty__lte=5
-    ).select_related('vendor').order_by('stock_qty')[:6]
+    # ── Disputes ──────────────────────────────────────────────────────────
+    try:
+        from order.models import OrderDispute
+        open_disputes = OrderDispute.objects.filter(status__in=['open', 'reviewing']).count()
+        recent_disputes = list(OrderDispute.objects.select_related(
+            'order', 'customer').filter(status__in=['open', 'reviewing']).order_by('-created_at')[:5])
+    except Exception:
+        open_disputes   = 0
+        recent_disputes = []
+
+    # ── Food stats ────────────────────────────────────────────────────────
+    try:
+        from food.models import FoodOrder
+        food_today = FoodOrder.objects.filter(created_at__date=today).count()
+        food_week  = FoodOrder.objects.filter(
+            payment_status='paid', created_at__gte=this_week
+        ).aggregate(t=Sum('total_amount'))['t'] or 0
+    except Exception:
+        food_today = 0
+        food_week  = 0
+
+    # ── 30-day revenue chart ──────────────────────────────────────────────
+    chart_labels  = []
+    chart_revenue = []
+    for i in range(29, -1, -1):
+        import datetime
+        day = today - datetime.timedelta(days=i)
+        rev = Order.objects.filter(
+            payment_status='paid', created_at__date=day
+        ).aggregate(t=Sum('total_amount'))['t'] or 0
+        chart_labels.append(day.strftime('%b %d'))
+        chart_revenue.append(float(rev))
+
+    # ── Lists ─────────────────────────────────────────────────────────────
+    recent_orders       = Order.objects.select_related('customer').order_by('-created_at')[:10]
+    pending_vendor_list = Vendor.objects.filter(status='pending').select_related('owner').order_by('-joined_at')[:5]
+    low_stock_products  = Product.objects.filter(status='active', stock_qty__lte=5).select_related('vendor').order_by('stock_qty')[:6]
+    pending_rider_list  = RiderProfile.objects.filter(is_verified=False).select_related('rider').order_by('-joined_at')[:5]
 
     return render(request, 'staff/dashboard.html', {
         'total_orders':        total_orders,
@@ -72,22 +121,30 @@ def dashboard(request):
         'pending_orders':      pending_orders,
         'dispatched':          dispatched,
         'delivered_today':     delivered_today,
+        'week_revenue':        week_revenue,
+        'today_revenue':       today_revenue,
         'total_products':      total_products,
         'low_stock':           low_stock,
         'total_vendors':       total_vendors,
         'pending_vendors':     pending_vendors,
         'total_riders':        total_riders,
         'online_riders':       online_riders,
+        'pending_riders':      pending_riders,
+        'rider_outstanding':   rider_outstanding,
+        'rider_balance_count': rider_balance_count,
+        'open_disputes':       open_disputes,
+        'food_today':          food_today,
+        'food_week':           food_week,
+        'chart_labels':        json.dumps(chart_labels),
+        'chart_revenue':       json.dumps(chart_revenue),
         'recent_orders':       recent_orders,
         'pending_vendor_list': pending_vendor_list,
         'low_stock_products':  low_stock_products,
+        'pending_rider_list':  pending_rider_list,
+        'recent_disputes':     recent_disputes,
         'cart_count':          0,
     })
 
-
-# ── ORDERS ────────────────────────────────────────────────
-
-@staff_required
 def order_list(request):
     status = request.GET.get('status', '')
     query  = request.GET.get('q', '').strip()
@@ -557,3 +614,29 @@ def food_order_detail(request, ref):
         'status_choices': FoodOrder.Status.choices,
         'cart_count':     0,
     })
+
+@staff_required
+def food_order_update_status(request, ref):
+    """Update food order status from staff panel."""
+    try:
+        from food.models import FoodOrder
+        order = get_object_or_404(FoodOrder, order_ref=ref)
+    except Exception:
+        messages.error(request, 'Food order not found.')
+        return redirect('staff:food_order_list')
+
+    if request.method == 'POST':
+        new_status = request.POST.get('status', '').strip()
+        valid = ['pending', 'confirmed', 'preparing', 'ready',
+                 'out_for_delivery', 'delivered', 'cancelled']
+        if new_status in valid:
+            old_status = order.status
+            order.status = new_status
+            if new_status == 'delivered' and old_status != 'delivered':
+                order.delivered_at   = timezone.now()
+                order.payment_status = 'paid'
+            order.save()
+            messages.success(request, f'Order status → {order.get_status_display()}')
+        else:
+            messages.error(request, 'Invalid status.')
+    return redirect('staff:food_order_detail', ref=ref)

@@ -1,43 +1,42 @@
 {% extends "staff/base.html" %}
-{% load i18n %}
-{% block staff_title %}Food Orders — Staff{% endblock %}
-{% block page_heading %}Food Orders{% endblock %}
-
-{% block staff_content %}
-<div class="table-responsive">
-  <table class="table table-hover align-middle">
-    <thead>
-      <tr>
-        <th>#</th><th>Order</th><th>Vendor</th><th>Customer</th><th>Status</th><th>Date</th><th class="text-end">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for order in orders %}
-      <tr>
-        <td>{{ forloop.counter }}</td>
-        <td><a class="text-decoration-none fw-semibold" href="{% url 'staff:food_order_detail' order.pk %}">#{{ order.pk }}</a></td>
-        <td>{{ order.vendor.shop_name }}</td>
-        <td>{{ order.customer.get_full_name|default:order.customer.phone }}</td>
-        <td><span class="badge text-bg-{{ order.status|status_badge }}">{{ order.get_status_display }}</span></td>
-        <td class="small text-muted">{{ order.created_at|date:"Y-m-d H:i" }}</td>
-        <td class="text-end">
-          <a href="{% url 'staff:food_order_detail' order.pk %}" class="btn btn-sm btn-light">View</a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="7" class="text-center text-muted py-4">No food orders.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{% block title %}Food Orders — Staff{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="fw-bold mb-0" style="font-size:1.3rem;color:#0F1B2D">🍔 Food Orders</h1>
 </div>
-
-<nav aria-label="pagination">
-  {% if page_obj.has_other_pages %}
-  <ul class="pagination justify-content-center">
-    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
-    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
-    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
-  </ul>
-  {% endif %}
-</nav>
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  {% for val, lbl in filter_status %}<a href="?status={{ val }}" class="btn btn-sm rounded-3 fw-semibold {% if request.GET.status == val %}btn-navy{% else %}btn-outline-secondary{% endif %}">{{ lbl }}</a>{% endfor %}
+</div>
+<div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle small">
+      <thead style="background:#f9fafb">
+        <tr>
+          <th class="px-4 py-3 fw-semibold text-muted">Ref</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Customer</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Restaurant</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Amount</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Status</th>
+          <th class="px-4 py-3 fw-semibold text-muted">Date</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td class="px-4 py-3 fw-bold text-navy">{{ o.order_ref }}</td>
+          <td class="px-4 py-3">{{ o.customer.display_name|default:o.customer.phone }}</td>
+          <td class="px-4 py-3">{{ o.vendor.name }}</td>
+          <td class="px-4 py-3 fw-bold">GHS {{ o.total_amount|floatformat:2 }}</td>
+          <td class="px-4 py-3"><span class="badge rounded-pill {% if o.status == 'delivered' %}text-bg-success{% elif o.status == 'cancelled' %}text-bg-danger{% elif o.status == 'pending' %}text-bg-warning{% else %}text-bg-info{% endif %}">{{ o.get_status_display }}</span></td>
+          <td class="px-4 py-3 text-muted">{{ o.created_at|date:"M d, Y" }}</td>
+          <td class="px-4 py-3"><a href="{% url 'staff:food_order_detail' o.order_ref %}" class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold">View</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center py-5 text-muted">No food orders found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

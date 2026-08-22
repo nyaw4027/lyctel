@@ -1,74 +1,47 @@
 {% extends "staff/base.html" %}
-{% load i18n %}
-{% block staff_title %}Food Order — Staff{% endblock %}
-{% block page_heading %}Food Order #{{ order.pk }}{% endblock %}
-
-{% block staff_content %}
-<div class="mb-3 d-flex justify-content-between align-items-start">
-  <div>
-    <h5 class="mb-1">Order #{{ order.pk }}</h5>
-    <div class="small text-muted">Placed {{ order.created_at|naturaltime }} — {{ order.get_payment_method_display }}</div>
-  </div>
-  <div class="text-end">
-    <a href="{% url 'staff:food_order_list' %}" class="btn btn-sm btn-outline-secondary">Back</a>
-  </div>
+{% block title %}Food Order {{ order.order_ref }} — Staff{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{% url 'staff:food_order_list' %}" class="text-muted text-decoration-none fw-semibold small">← Food Orders</a>
+  <h1 class="fw-bold mb-0" style="font-size:1.2rem;color:#0F1B2D">{{ order.order_ref }}</h1>
+  <span class="badge rounded-3 px-2 py-1 {% if order.status == 'delivered' %}text-bg-success{% elif order.status == 'cancelled' %}text-bg-danger{% elif order.status == 'pending' %}text-bg-warning{% else %}text-bg-info{% endif %}">{{ order.get_status_display }}</span>
 </div>
-
-<div class="row g-3">
-  <div class="col-md-6">
-    <div class="card mb-3">
-      <div class="card-body">
-        <h6 class="mb-2">Customer</h6>
-        <p class="mb-0">{{ order.customer.get_full_name|default:order.customer.phone }}</p>
-        <p class="small text-muted mb-0">{{ order.customer.email }}</p>
-        <p class="small text-muted">Delivery: {{ order.delivery_address }}</p>
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+      <div class="card-header bg-white border-0 py-3 px-4"><h2 class="fw-bold mb-0" style="font-size:.9rem">Items</h2></div>
+      {% for item in order.items.all %}
+      <div class="d-flex align-items-center gap-3 px-4 py-2 border-bottom">
+        <span class="text-muted small">{{ item.quantity }}×</span>
+        <span class="fw-semibold text-navy small flex-fill">{{ item.name }}</span>
+        <span class="fw-bold small">GHS {{ item.price|floatformat:2 }}</span>
       </div>
-    </div>
-
-    <div class="card">
-      <div class="card-body">
-        <h6 class="mb-2">Items</h6>
-        <ul class="list-group list-group-flush">
-          {% for item in order.items %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <div>
-              <div class="fw-semibold">{{ item.name }}</div>
-              <div class="small text-muted">{{ item.quantity }} × GHS {{ item.unit_price|floatformat:2 }}</div>
-            </div>
-            <div>GHS {{ item.total_price|floatformat:2 }}</div>
-          </li>
-          {% endfor %}
-        </ul>
+      {% endfor %}
+      <div class="d-flex justify-content-between px-4 py-3" style="background:#f9fafb">
+        <span class="fw-bold">Total</span>
+        <span class="fw-bold text-navy">GHS {{ order.total_amount|floatformat:2 }}</span>
       </div>
     </div>
   </div>
-
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-body">
-        <h6 class="mb-2">Summary</h6>
-        <dl class="row">
-          <dt class="col-6 small text-muted">Subtotal</dt><dd class="col-6 text-end">GHS {{ order.subtotal|floatformat:2 }}</dd>
-          <dt class="col-6 small text-muted">Delivery</dt><dd class="col-6 text-end">GHS {{ order.delivery_fee|floatformat:2 }}</dd>
-          <dt class="col-6 small text-muted">Total</dt><dd class="col-6 text-end fw-semibold">GHS {{ order.total|floatformat:2 }}</dd>
-        </dl>
-
-        <form method="post" action="{% url 'staff:food_order_update_status' order.pk %}">
-          {% csrf_token %}
-          <div class="mb-3">
-            <label class="form-label small">Update status</label>
-            <select name="status" class="form-select form-select-sm">
-              {% for key, label in order.STATUS_CHOICES %}
-                <option value="{{ key }}" {% if order.status == key %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-primary">Save</button>
-            <a href="#" class="btn btn-sm btn-outline-secondary">Print</a>
-          </div>
-        </form>
-      </div>
+  <div class="col-12 col-lg-5">
+    <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Info</h2>
+      <p class="small mb-1"><strong>Customer:</strong> {{ order.customer.display_name|default:order.customer.phone }}</p>
+      <p class="small mb-1"><strong>Restaurant:</strong> {{ order.vendor.name }}</p>
+      <p class="small mb-1"><strong>Address:</strong> {{ order.delivery_address }}</p>
+      <p class="small mb-0"><strong>Payment:</strong> {{ order.get_payment_method_display }} · {{ order.payment_status|title }}</p>
+    </div>
+    <div class="card border-0 shadow-sm rounded-3 p-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Update Status</h2>
+      <form method="POST" action="{% url 'staff:food_order_update_status' order.order_ref %}">
+        {% csrf_token %}
+        <select name="status" class="form-select rounded-3 mb-3" style="font-size:16px">
+          {% for val, lbl in status_choices %}
+          <option value="{{ val }}" {% if order.status == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-navy fw-semibold rounded-3 w-100">Update</button>
+      </form>
     </div>
   </div>
 </div>

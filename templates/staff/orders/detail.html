@@ -1,45 +1,143 @@
 {% extends "staff/base.html" %}
-{% load i18n %}
-{% block staff_title %}Order — Staff{% endblock %}
-{% block page_heading %}Order #{{ order.pk }}{% endblock %}
-
-{% block staff_content %}
-<div class="mb-3 d-flex justify-content-between">
-  <div><h5>Order #{{ order.pk }}</h5><div class="small text-muted">{{ order.created_at|date:"Y-m-d H:i" }}</div></div>
-  <div><a href="{% url 'staff:orders_list' %}" class="btn btn-sm btn-outline-secondary">Back</a></div>
+{% block title %}Order {{ order.order_ref }} — Staff{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{% url 'staff:order_list' %}" class="text-muted text-decoration-none fw-semibold small">← Orders</a>
+  <h1 class="fw-bold mb-0" style="font-size:1.2rem;color:#0F1B2D">{{ order.order_ref }}</h1>
+  <span class="badge rounded-3 px-2 py-1
+    {% if order.status == 'delivered' %}text-bg-success
+    {% elif order.status == 'pending' %}text-bg-warning
+    {% elif order.status == 'cancelled' %}text-bg-danger
+    {% else %}text-bg-info{% endif %}">
+    {{ order.get_status_display }}
+  </span>
 </div>
 
-<div class="card mb-3">
-  <div class="card-body">
-    <h6>Items</h6>
-    <ul class="list-group list-group-flush">
-      {% for item in order.items %}
-      <li class="list-group-item d-flex justify-content-between align-items-center">
-        <div><div class="fw-semibold">{{ item.name }}</div><div class="small text-muted">{{ item.quantity }} × GHS {{ item.unit_price|floatformat:2 }}</div></div>
-        <div>GHS {{ item.total_price|floatformat:2 }}</div>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-</div>
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
 
-<div class="row g-3">
-  <div class="col-md-6">
-    <div class="card p-3">
-      <h6>Customer</h6>
-      <p class="mb-0">{{ order.customer.get_full_name|default:order.customer.phone }}</p>
-      <p class="small text-muted">{{ order.customer.email }}</p>
-      <p class="small text-muted">{{ order.delivery_address }}</p>
+    <!-- Order items -->
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+      <div class="card-header bg-white border-0 py-3 px-4">
+        <h2 class="fw-bold mb-0" style="font-size:.95rem">Order Items</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle small">
+          <thead style="background:#f9fafb">
+            <tr>
+              <th class="px-4 py-2 text-muted fw-semibold">Product</th>
+              <th class="px-4 py-2 text-muted fw-semibold">Qty</th>
+              <th class="px-4 py-2 text-muted fw-semibold text-end">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in order.items.all %}
+            <tr>
+              <td class="px-4 py-2">
+                <p class="fw-semibold mb-0">{{ item.product.name }}</p>
+                <p class="text-muted mb-0" style="font-size:.72rem">{{ item.product.vendor.shop_name }}</p>
+              </td>
+              <td class="px-4 py-2">{{ item.quantity }}</td>
+              <td class="px-4 py-2 text-end fw-semibold">GHS {{ item.subtotal|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr style="background:#f9fafb">
+              <td colspan="2" class="px-4 py-2 fw-bold text-end">Total</td>
+              <td class="px-4 py-2 fw-bold text-end">GHS {{ order.total_amount|floatformat:2 }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
+
+    <!-- Status history -->
+    {% if history %}
+    <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Status History</h2>
+      <div class="d-flex flex-column gap-2">
+        {% for h in history %}
+        <div class="d-flex gap-3 align-items-start">
+          <div class="rounded-circle bg-navy flex-shrink-0 mt-1" style="width:8px;height:8px;margin-top:6px"></div>
+          <div>
+            <p class="fw-semibold text-navy mb-0 small">{{ h.get_status_display }}</p>
+            <p class="text-muted mb-0" style="font-size:.72rem">
+              {{ h.created_at|date:"M d, Y H:i" }}
+              {% if h.changed_by %} by {{ h.changed_by.display_name }}{% endif %}
+            </p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
   </div>
 
-  <div class="col-md-6">
-    <div class="card p-3">
-      <h6>Summary</h6>
-      <p class="mb-0">Subtotal: GHS {{ order.subtotal|floatformat:2 }}</p>
-      <p class="mb-0">Delivery: GHS {{ order.delivery_fee|floatformat:2 }}</p>
-      <p class="fw-semibold">Total: GHS {{ order.total|floatformat:2 }}</p>
+  <div class="col-12 col-lg-5">
+
+    <!-- Customer info -->
+    <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Customer</h2>
+      <p class="fw-bold text-navy mb-1">{{ order.customer.get_full_name|default:order.customer.phone }}</p>
+      <p class="text-muted small mb-1">📞 {{ order.customer.phone }}</p>
+      <p class="text-muted small mb-1">📍 {{ order.delivery_address|default:"—" }}</p>
+      {% if order.delivery_phone %}
+      <p class="text-muted small mb-0">📱 Delivery: {{ order.delivery_phone }}</p>
+      {% endif %}
     </div>
+
+    <!-- Update status -->
+    <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Update Status</h2>
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_status"/>
+        <select name="status" class="form-select rounded-3 mb-3" style="font-size:16px">
+          {% for val, lbl in order.Status.choices %}
+          <option value="{{ val }}" {% if order.status == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-navy fw-semibold rounded-3 w-100">Update Status</button>
+      </form>
+    </div>
+
+    <!-- Assign rider -->
+    {% if riders %}
+    <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Assign Rider</h2>
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="assign_rider"/>
+        <select name="rider_id" class="form-select rounded-3 mb-3" style="font-size:16px">
+          <option value="">— Select Rider —</option>
+          {% for r in riders %}
+          <option value="{{ r.pk }}">{{ r.rider.get_full_name|default:r.rider.phone }} ({{ r.get_vehicle_type_display }})</option>
+          {% endfor %}
+        </select>
+        <select name="zone_id" class="form-select rounded-3 mb-3" style="font-size:16px">
+          <option value="">— Zone (optional) —</option>
+          {% for z in zones %}<option value="{{ z.pk }}">{{ z.name }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn fw-semibold rounded-3 w-100"
+                style="background:#F5A623;color:#0F1B2D">Assign Rider</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Delivery info -->
+    {% if order.delivery %}
+    <div class="card border-0 shadow-sm rounded-3 p-4">
+      <h2 class="fw-bold mb-3" style="font-size:.95rem">Delivery</h2>
+      <p class="small mb-1"><strong>Rider:</strong>
+        {{ order.delivery.rider.rider.get_full_name|default:"Unassigned" }}
+      </p>
+      <p class="small mb-1"><strong>Status:</strong> {{ order.delivery.get_status_display }}</p>
+      <p class="small mb-0"><strong>Fee:</strong> GHS {{ order.delivery.delivery_fee|floatformat:2 }}</p>
+    </div>
+    {% endif %}
+
   </div>
 </div>
 {% endblock %}
