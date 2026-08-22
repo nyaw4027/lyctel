@@ -1,10 +1,11 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{% block title %}Staff — Lynctel{% endblock %}</title>
-  {% load static %}
+  
   <!-- Bootstrap 5.3 -->
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css"/>
@@ -203,8 +204,8 @@
   <!-- Logo -->
   <div class="sidebar-logo">
     <a href="{% url 'staff:home' %}" class="text-decoration-none d-flex align-items-center gap-2">
-      <div class="rounded-2 d-flex align-items-center justify-content-center fw-black text-navy"
-           style="width:36px;height:36px;background:var(--gold);font-size:1rem;font-weight:900">L</div>
+      <img src="{% static 'logo.png' %}" alt="Lynctel"
+           style="height:36px;width:auto;object-fit:contain"/>
       <div>
         <div class="sidebar-logo-text">Lynctel</div>
         <div class="sidebar-logo-sub">Staff Panel</div>
