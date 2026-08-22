@@ -89,6 +89,7 @@ TEMPLATES = [
                 'django.template.context_processors.i18n',
                 'ecommerce.context_processors.google_maps',
                 'ecommerce.context_processors.rbac_context',
+                'staff.context_processors.staff_alerts',
             ],
         },
     },

@@ -1,116 +1,362 @@
-{% extends "base.html" %}
-{% load static i18n %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Staff — Lynctel{% endblock %}</title>
+  {% load static %}
+  <!-- Bootstrap 5.3 -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css"/>
+  <style>
+    :root {
+      --navy: #0F1B2D;
+      --gold: #F5A623;
+      --sidebar-w: 240px;
+    }
 
-{% block title %}{% block staff_title %}Staff — Lynctel{% endblock %}{% endblock %}
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      min-height: 100vh;
+    }
 
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/staff.css' %}"/>
-{% endblock %}
+    /* ── Sidebar ──────────────────────────────────────────────── */
+    #staff-sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--navy);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      z-index: 200;
+      transition: transform .25s ease;
+      -webkit-overflow-scrolling: touch;
+    }
+    #staff-sidebar::-webkit-scrollbar { width: 4px; }
+    #staff-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
 
-{% block content %}
-<div class="container-fluid">
-  <div class="row g-0">
+    .sidebar-logo {
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      flex-shrink: 0;
+    }
+    .sidebar-logo-text { font-size: 1.1rem; font-weight: 800; color: white; }
+    .sidebar-logo-sub  { font-size: .7rem; color: rgba(255,255,255,.4); margin-top: 1px; }
 
-    <!-- SIDEBAR -->
-    <nav id="staff-sidebar" class="col-auto col-md-3 col-xl-2 vh-100 bg-white border-end d-flex flex-column p-3">
-      <div class="d-flex align-items-center mb-4">
-        <a href="{% url 'staff:dashboard' %}" class="d-flex align-items-center text-decoration-none">
-          <img src="{% static 'logo.png' %}" alt="Lynctel" height="36" class="me-2"/>
-          <div>
-            <div class="fw-bold mb-0">Lynctel</div>
-            <small class="text-muted">Staff panel</small>
-          </div>
-        </a>
+    .sidebar-section-label {
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      color: rgba(255,255,255,.3);
+      text-transform: uppercase;
+      padding: 16px 16px 6px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      color: rgba(255,255,255,.65);
+      text-decoration: none;
+      font-size: .85rem;
+      font-weight: 500;
+      border-radius: 10px;
+      margin: 1px 8px;
+      transition: all .15s;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .sidebar-link:hover {
+      background: rgba(255,255,255,.07);
+      color: white;
+    }
+    .sidebar-link.active {
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 700;
+    }
+    .sidebar-link .icon { font-size: 1rem; flex-shrink: 0; width: 20px; text-align: center; }
+
+    .sidebar-badge {
+      margin-left: auto;
+      background: #ef4444;
+      color: white;
+      font-size: .6rem;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 99px;
+      flex-shrink: 0;
+    }
+    .sidebar-badge-gold {
+      background: var(--gold);
+      color: var(--navy);
+    }
+
+    .sidebar-user {
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      margin-top: auto;
+      flex-shrink: 0;
+    }
+    .sidebar-user-name  { font-size: .82rem; font-weight: 700; color: white; }
+    .sidebar-user-email { font-size: .7rem;  color: rgba(255,255,255,.4); }
+
+    /* ── Main content ─────────────────────────────────────────── */
+    #staff-main {
+      margin-left: var(--sidebar-w);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top bar */
+    #staff-topbar {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-title {
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin: 0;
+    }
+
+    /* Content area */
+    #staff-content {
+      padding: 24px;
+      flex: 1;
+    }
+
+    /* Mobile hamburger */
+    #sidebar-toggle {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px;
+      color: var(--navy);
+    }
+
+    /* Mobile overlay */
+    #sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 199;
+    }
+
+    /* Responsive */
+    @media (max-width: 991px) {
+      #staff-sidebar {
+        transform: translateX(-100%);
+      }
+      #staff-sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0,0,0,.3);
+      }
+      #staff-sidebar.open ~ #sidebar-overlay {
+        display: block;
+      }
+      #staff-main   { margin-left: 0; }
+      #sidebar-toggle { display: block; }
+      #staff-content  { padding: 16px; }
+    }
+
+    /* Bootstrap overrides */
+    .btn-navy {
+      background: var(--navy);
+      color: white;
+      border: none;
+    }
+    .btn-navy:hover { background: #1e3a5f; color: white; }
+    .text-navy { color: var(--navy) !important; }
+    .bg-navy   { background: var(--navy) !important; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition-duration: .001ms !important; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────── -->
+<aside id="staff-sidebar">
+
+  <!-- Logo -->
+  <div class="sidebar-logo">
+    <a href="{% url 'staff:home' %}" class="text-decoration-none d-flex align-items-center gap-2">
+      <div class="rounded-2 d-flex align-items-center justify-content-center fw-black text-navy"
+           style="width:36px;height:36px;background:var(--gold);font-size:1rem;font-weight:900">L</div>
+      <div>
+        <div class="sidebar-logo-text">Lynctel</div>
+        <div class="sidebar-logo-sub">Staff Panel</div>
       </div>
-
-      <hr/>
-
-      <ul class="nav nav-pills flex-column mb-auto" role="menu">
-        <li class="nav-item">
-          <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'staff:dashboard' %}">
-            📊 Dashboard
-          </a>
-        </li>
-        <li>
-          <a class="nav-link {% if request.resolver_match.app_name == 'orders' %}active{% endif %}" href="{% url 'staff:orders_list' %}">📦 Orders</a>
-        </li>
-        <li>
-          <a class="nav-link {% if request.resolver_match.app_name == 'food' and request.resolver_match.url_name == 'order_list' %}active{% endif %}" href="{% url 'staff:food_order_list' %}">🍽 Food Orders</a>
-        </li>
-        <li>
-          <a class="nav-link {% if request.resolver_match.app_name == 'vendors' %}active{% endif %}" href="{% url 'staff:vendor_list' %}">🏪 Vendors</a>
-        </li>
-        <li>
-          <a class="nav-link {% if request.resolver_match.app_name == 'products' %}active{% endif %}" href="{% url 'staff:products_list' %}">📦 Products</a>
-        </li>
-        <li>
-          <a class="nav-link {% if request.resolver_match.app_name == 'riders' %}active{% endif %}" href="{% url 'staff:riders_list' %}">🛵 Riders</a>
-        </li>
-        <li>
-          <a class="nav-link {% if request.resolver_match.app_name == 'customers' %}active{% endif %}" href="{% url 'staff:customers_list' %}">👥 Customers</a>
-        </li>
-        <li>
-          <a class="nav-link {% if request.resolver_match.app_name == 'chat' %}active{% endif %}" href="{% url 'chat:support_admin_inbox' %}">💬 Support</a>
-        </li>
-        <li>
-          <a class="nav-link text-danger" href="{% url 'accounts:logout' %}">⎋ Sign out</a>
-        </li>
-      </ul>
-
-      <div class="mt-auto">
-        <hr/>
-        <div class="small text-muted">Signed in as</div>
-        <div class="d-flex align-items-center gap-2 mt-1">
-          {% if user.profile_pic %}
-            <img src="{{ user.profile_pic.url }}" alt="{{ user.get_full_name }}" class="rounded-circle" width="36" height="36" style="object-fit:cover;border:2px solid var(--gold)"/>
-          {% else %}
-            <div class="rounded-circle bg-navy text-white d-inline-flex align-items-center justify-content-center" style="width:36px;height:36px;font-weight:700">{{ user.first_name|default:user.phone|first|upper }}</div>
-          {% endif %}
-          <div class="lh-1">
-            <div class="fw-semibold">{{ user.get_full_name|default:user.phone }}</div>
-            <small class="text-muted">{{ user.email }}</small>
-          </div>
-        </div>
-      </div>
-    </nav>
-
-    <!-- MAIN -->
-    <main class="col p-3" id="staff-main">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="h5 mb-0">{% block page_heading %}Staff Dashboard{% endblock %}</h1>
-        <div class="d-flex align-items-center gap-2">
-          <button class="btn btn-outline-secondary btn-sm d-md-none" id="toggle-sidebar" aria-expanded="true" aria-controls="staff-sidebar">☰</button>
-          <div class="d-none d-md-flex align-items-center gap-2">
-            <button class="btn btn-sm btn-light" onclick="toggleTheme()"><span id="theme-icon">🌙</span></button>
-          </div>
-        </div>
-      </div>
-
-      <!-- page content -->
-      <div class="card shadow-sm">
-        <div class="card-body">
-          {% block staff_content %}
-          <!-- Child templates put their content here -->
-          {% endblock %}
-        </div>
-      </div>
-    </main>
+    </a>
   </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
+  <!-- Nav -->
+  <nav style="flex:1;padding:8px 0">
+
+    <div class="sidebar-section-label">Overview</div>
+    <a href="{% url 'staff:home' %}"
+       class="sidebar-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+      <span class="icon">📊</span> Dashboard
+    </a>
+
+    <div class="sidebar-section-label">Commerce</div>
+    <a href="{% url 'staff:order_list' %}"
+       class="sidebar-link {% if 'order' in request.resolver_match.url_name and 'food' not in request.resolver_match.url_name %}active{% endif %}">
+      <span class="icon">📋</span> Orders
+      {% if pending_orders %}<span class="sidebar-badge">{{ pending_orders }}</span>{% endif %}
+    </a>
+    <a href="{% url 'staff:vendor_list' %}"
+       class="sidebar-link {% if 'vendor' in request.resolver_match.url_name and 'food' not in request.resolver_match.url_name %}active{% endif %}">
+      <span class="icon">🏪</span> Vendors
+      {% if pending_vendors %}<span class="sidebar-badge sidebar-badge-gold">{{ pending_vendors }}</span>{% endif %}
+    </a>
+    <a href="{% url 'staff:product_list' %}"
+       class="sidebar-link {% if 'product' in request.resolver_match.url_name %}active{% endif %}">
+      <span class="icon">📦</span> Products
+    </a>
+    <a href="{% url 'staff:customer_list' %}"
+       class="sidebar-link {% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
+      <span class="icon">👥</span> Customers
+    </a>
+
+    <div class="sidebar-section-label">Delivery</div>
+    <a href="{% url 'staff:rider_list' %}"
+       class="sidebar-link {% if 'rider' in request.resolver_match.url_name %}active{% endif %}">
+      <span class="icon">🛵</span> Riders
+      {% if pending_riders %}<span class="sidebar-badge">{{ pending_riders }}</span>{% endif %}
+    </a>
+    <a href="{% url 'rider:admin_balances' %}"
+       class="sidebar-link {% if 'balance' in request.path %}active{% endif %}">
+      <span class="icon">💰</span> Rider Balances
+      {% if rider_balance_count %}<span class="sidebar-badge">{{ rider_balance_count }}</span>{% endif %}
+    </a>
+
+    <div class="sidebar-section-label">Food</div>
+    <a href="{% url 'staff:food_order_list' %}"
+       class="sidebar-link {% if 'food_order' in request.resolver_match.url_name %}active{% endif %}">
+      <span class="icon">🍔</span> Food Orders
+    </a>
+    <a href="{% url 'staff:food_vendor_list' %}"
+       class="sidebar-link {% if 'food_vendor' in request.resolver_match.url_name %}active{% endif %}">
+      <span class="icon">🍽️</span> Restaurants
+    </a>
+
+    <div class="sidebar-section-label">Support</div>
+    <a href="{% url 'order:staff_disputes' %}"
+       class="sidebar-link {% if 'dispute' in request.path %}active{% endif %}">
+      <span class="icon">⚠️</span> Disputes
+      {% if open_disputes %}<span class="sidebar-badge">{{ open_disputes }}</span>{% endif %}
+    </a>
+    <a href="{% url 'chat:support_admin_inbox' %}"
+       class="sidebar-link {% if 'support' in request.path %}active{% endif %}">
+      <span class="icon">💬</span> Support Chat
+    </a>
+
+  </nav>
+
+  <!-- User -->
+  <div class="sidebar-user">
+    <div class="d-flex align-items-center gap-2">
+      {% if user.profile_pic %}
+      <img src="{{ user.profile_pic.url }}" alt=""
+           class="rounded-circle object-fit-cover flex-shrink-0"
+           style="width:34px;height:34px;border:2px solid rgba(255,255,255,.2)"/>
+      {% else %}
+      <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+           style="width:34px;height:34px;background:var(--gold);font-size:.85rem;font-weight:800;color:var(--navy)">
+        {{ user.first_name|first|default:user.phone|first|upper }}
+      </div>
+      {% endif %}
+      <div class="min-w-0">
+        <div class="sidebar-user-name text-truncate">{{ user.get_full_name|default:user.phone }}</div>
+        <div class="sidebar-user-email text-truncate">{{ user.email|default:"Staff" }}</div>
+      </div>
+    </div>
+    <a href="{% url 'accounts:logout' %}"
+       class="sidebar-link mt-2" style="margin-left:0;margin-right:0;padding:8px 0;color:rgba(255,255,255,.4)">
+      <span class="icon">⎋</span> Sign out
+    </a>
+  </div>
+
+</aside>
+
+<!-- Mobile overlay -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ── Main ──────────────────────────────────────────────────────── -->
+<div id="staff-main">
+
+  <!-- Top bar -->
+  <header id="staff-topbar">
+    <div class="d-flex align-items-center gap-3">
+      <button id="sidebar-toggle" onclick="openSidebar()" aria-label="Open menu">☰</button>
+      <h1 class="topbar-title">{% block page_title %}Staff Dashboard{% endblock %}</h1>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% if pending_orders %}
+      <a href="{% url 'staff:order_list' %}?status=pending"
+         class="btn btn-sm rounded-3 fw-semibold"
+         style="background:#fef3c7;color:#92400e;border:none;font-size:.78rem">
+        ⚡ {{ pending_orders }} pending
+      </a>
+      {% endif %}
+      {% if open_disputes %}
+      <a href="{% url 'order:staff_disputes' %}"
+         class="btn btn-sm btn-danger rounded-3 fw-semibold"
+         style="font-size:.78rem">
+        ⚠️ {{ open_disputes }}
+      </a>
+      {% endif %}
+      <a href="{% url 'frontend:home' %}" target="_blank"
+         class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold"
+         style="font-size:.78rem">
+        🌐 View Site
+      </a>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <div id="staff-content">
+    {% block content %}{% endblock %}
+  </div>
+
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
 <script>
-  // Sidebar toggle for small screens
-  document.addEventListener('DOMContentLoaded', function () {
-    const sidebar = document.getElementById('staff-sidebar');
-    const toggleBtn = document.getElementById('toggle-sidebar');
-    if (!toggleBtn || !sidebar) return;
-    toggleBtn.addEventListener('click', function () {
-      const shown = sidebar.classList.toggle('d-none');
-      // ensure the main area gets focusable to allow screen readers to navigate
-      document.getElementById('staff-main')?.focus();
-    });
-  });
+function openSidebar() {
+  document.getElementById('staff-sidebar').classList.add('open');
+  document.getElementById('sidebar-overlay').style.display = 'block';
+}
+function closeSidebar() {
+  document.getElementById('staff-sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').style.display = 'none';
+}
 </script>
-{% endblock %}
+{% block extra_js %}{% endblock %}
+
+</body>
+</html>
