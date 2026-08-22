@@ -683,7 +683,7 @@
       else{userMarker=L.marker([lat,lng],{icon:userIcon,zIndexOffset:-100}).addTo(map).bindTooltip('You',{direction:'top'});}
       placePin(lat,lng,true);
       map.setView([lat,lng],acc<80?17:acc<200?15:13);
-      var t=acc<=15?'Very precise (±'+acc+'m)':acc<=50?'Accurate (±'+acc+'m)':acc<=150?'Good (±'+acc+'m) — drag pin':('Weak signal (±'+acc+'m) — drag pin');
+      var t=acc<=15?'Very precise (±'+acc+'m)':acc<=50?'Accurate (±'+acc+'m)':acc<=100?'Good (±'+acc+'m) — drag pin':('Weak signal (±'+acc+'m) — drag pin');
       setGPSBanner('📍 '+t, acc<=100?'green':'blue');
     }
     function stopWatch(){if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}resetBtn();}
@@ -700,7 +700,7 @@
   // ── FARE CALCULATION ──────────────────────────────────
   function scheduleFareCalc() {
     clearTimeout(fareDebounce);
-    fareDebounce = setTimeout(calculateFare, 200);
+    fareDebounce = setTimeout(calculateFare, 100);
   }
 
   function formatEtaClock(minutesFromNow) {
@@ -857,20 +857,63 @@
   function reverseGeocode(lat, lng) {
     clearTimeout(geocodeTimer);
     geocodeTimer = setTimeout(function() {
-      var addrF=document.getElementById('delivery_address');
-      var cityF=document.getElementById('delivery_city');
-      if(addrF&&!addrF.value) addrF.placeholder='Detecting address…';
-      var url=LOCATIONIQ_KEY
-        ?('https://us1.locationiq.com/v1/reverse?key='+LOCATIONIQ_KEY+'&lat='+lat+'&lon='+lng+'&format=json&addressdetails=1')
-        :('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&addressdetails=1');
-      fetch(url,{headers:{'Accept-Language':'en'}})
-        .then(function(r){return r.json();})
-        .then(function(d){
-          if(d.display_name&&addrF){addrF.value=d.display_name;addrF.placeholder='House number, street, area';addrF.style.background='#f0fdf4';setTimeout(function(){addrF.style.background='';},800);}
-          var a=d.address||{};var city=a.city||a.town||a.suburb||a.county||a.region||'';
-          if(city&&cityF)cityF.value=city;
-        }).catch(function(){if(addrF)addrF.placeholder='House number, street, area';});
-    }, 150);
+      var addrF = document.getElementById('delivery_address');
+      var cityF = document.getElementById('delivery_city');
+
+      // Show loading immediately
+      if (addrF && !addrF.value) addrF.placeholder = '📍 Detecting address…';
+
+      // Cancel any in-flight request
+      if (window._rgAbort) { try { window._rgAbort.abort(); } catch(e) {} }
+      var ctl = new AbortController();
+      window._rgAbort = ctl;
+      var killTimer = setTimeout(function() { try { ctl.abort(); } catch(e) {} }, 3000);
+
+      function applyResult(d) {
+        clearTimeout(killTimer);
+        if (!d || !d.display_name) return false;
+        if (addrF) {
+          addrF.value = d.display_name;
+          addrF.placeholder = 'House number, street, area';
+          addrF.style.background = '#f0fdf4';
+          setTimeout(function() { addrF.style.background = ''; }, 800);
+        }
+        var a = d.address || {};
+        var city = a.city || a.town || a.suburb || a.county || a.region || '';
+        if (city && cityF) cityF.value = city;
+        return true;
+      }
+
+      var opts = { headers: { 'Accept-Language': 'en' }, signal: ctl.signal };
+      var osmUrl = 'https://nominatim.openstreetmap.org/reverse?lat=' + lat
+                 + '&lon=' + lng + '&format=json&addressdetails=1';
+
+      function tryOSM() {
+        return fetch(osmUrl, opts)
+          .then(function(r) { return r.json(); })
+          .then(function(d) { if (!applyResult(d) && addrF) addrF.placeholder = 'House number, street, area'; })
+          .catch(function() {
+            clearTimeout(killTimer);
+            if (addrF && !addrF.value) {
+              addrF.value = lat.toFixed(5) + ', ' + lng.toFixed(5);
+              addrF.placeholder = 'House number, street, area';
+            }
+          });
+      }
+
+      if (LOCATIONIQ_KEY) {
+        var liqUrl = 'https://us1.locationiq.com/v1/reverse?key=' + LOCATIONIQ_KEY
+                   + '&lat=' + lat + '&lon=' + lng + '&format=json&addressdetails=1';
+        // LocationIQ first; if slow (>3s) or fails, fall back to Nominatim
+        var liqFallback = setTimeout(tryOSM, 800);
+        fetch(liqUrl, opts)
+          .then(function(r) { return r.json(); })
+          .then(function(d) { clearTimeout(liqFallback); if (!applyResult(d)) tryOSM(); })
+          .catch(function()  { clearTimeout(liqFallback); tryOSM(); });
+      } else {
+        tryOSM();
+      }
+    }, 50);
   }
 
   // ── SMART ADDRESS AUTOCOMPLETE ────────────────────────
@@ -903,14 +946,20 @@
     }).join('');
   }
 
-  function fetchLIQ(q) {
+  function fetchLIQ(q, sig) {
     if (!LOCATIONIQ_KEY) return Promise.reject('no key');
-    return fetch('https://api.locationiq.com/v1/autocomplete?key='+LOCATIONIQ_KEY+'&q='+encodeURIComponent(q)+'&countrycodes=gh&limit=7&format=json&dedupe=1')
-      .then(function(r){return r.json();}).then(function(d){return Array.isArray(d)?d:[];});
+    return fetch(
+      'https://api.locationiq.com/v1/autocomplete?key=' + LOCATIONIQ_KEY
+      + '&q=' + encodeURIComponent(q) + '&countrycodes=gh&limit=7&format=json&dedupe=1',
+      { signal: sig, headers: { 'Accept-Language': 'en' } }
+    ).then(function(r){return r.json();}).then(function(d){return Array.isArray(d)?d:[];});
   }
-  function fetchOSM(q) {
-    return fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+' Ghana')+'&format=json&addressdetails=1&limit=7&countrycodes=gh',{headers:{'Accept-Language':'en'}})
-      .then(function(r){return r.json();}).then(function(d){return Array.isArray(d)?d:[];});
+  function fetchOSM(q, sig) {
+    return fetch(
+      'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q + ' Ghana')
+      + '&format=json&addressdetails=1&limit=7&countrycodes=gh',
+      { signal: sig, headers: { 'Accept-Language': 'en' } }
+    ).then(function(r){return r.json();}).then(function(d){return Array.isArray(d)?d:[];});
   }
 
   if (searchInput) searchInput.addEventListener('input', function() {
@@ -922,17 +971,36 @@
       suggestBox.classList.add('show');
     }
     searchTimer = setTimeout(function() {
-      var primary = LOCATIONIQ_KEY ? fetchLIQ(q) : fetchOSM(q);
-      primary.then(function(results) {
-        if (!results.length) return fetchOSM(q);
-        return results;
-      }).then(function(results) {
-        if (!suggestBox) return;
-        suggestBox.innerHTML = results.length ? buildSuggItems(results) : '<div class="sugg-loader">No results for "'+q+'" in Ghana</div>';
-        suggestBox.classList.add('show'); kbIndex=-1;
+      // Cancel previous search
+      if (window._saAbort) { try { window._saAbort.abort(); } catch(e) {} }
+      var sctl = new AbortController();
+      window._saAbort = sctl;
+      setTimeout(function() { try { sctl.abort(); } catch(e) {} }, 3000);
+
+      // Fire both APIs simultaneously — use whichever answers first
+      var jobs = [];
+      if (LOCATIONIQ_KEY) jobs.push(fetchLIQ(q, sctl.signal).catch(function(){return [];}));
+      jobs.push(fetchOSM(q, sctl.signal).catch(function(){return [];}));
+
+      Promise.race(jobs).then(function(results) {
+        if (!results || !results.length) {
+          // Winner was empty — wait for the other
+          return Promise.all(jobs).then(function(all) {
+            var merged = [].concat.apply([], all);
+            if (suggestBox) {
+              suggestBox.innerHTML = merged.length
+                ? buildSuggItems(merged)
+                : '<div class="sugg-loader">No results for "' + q + '" in Ghana</div>';
+              suggestBox.classList.add('show'); kbIndex = -1;
+            }
+          });
+        }
+        if (suggestBox) {
+          suggestBox.innerHTML = buildSuggItems(results);
+          suggestBox.classList.add('show'); kbIndex = -1;
+        }
       }).catch(function() {
-        fetchOSM(q).then(function(r){ if(suggestBox&&r.length){suggestBox.innerHTML=buildSuggItems(r);suggestBox.classList.add('show');} });
-      });
+        fetchOSM(q, sctl.signal).then(function(r){ if(suggestBox&&r.length){suggestBox.innerHTML=buildSuggItems(r);suggestBox.classList.add('show');}})
     }, 250);
   });
 
