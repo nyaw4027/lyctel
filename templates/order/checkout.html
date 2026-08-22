@@ -200,6 +200,10 @@
   .map-btn:hover { background: #f8fafc; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
   .map-btn:active { transform: scale(.97); }
   #locate-me-btn { bottom: 12px; right: 12px; }
+  /* iOS safe area */
+  @supports (padding: max(0px)) {
+    .checkout-sticky { padding-top: max(env(safe-area-inset-top), 0px); }
+  }
 </style>
 {% endblock %}
 
@@ -567,12 +571,12 @@
 
     // High-quality styled tiles via LocationIQ (falls back to OSM)
     const tileUrl = LOCATIONIQ_KEY
-      ? `https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`
+      ? 'https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=' + LOCATIONIQ_KEY
       : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-    L.tileLayer(tileUrl, {
+    L.tileLayer(tileUrl, { errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
       maxZoom: 19,
-      subdomains: ['a', 'b', 'c'],
+      subdomains: ['a', 'b', 'c'], // only for OSM
     }).addTo(map);
 
     // Small attribution bottom-left
@@ -696,7 +700,7 @@
   // ── FARE CALCULATION ──────────────────────────────────
   function scheduleFareCalc() {
     clearTimeout(fareDebounce);
-    fareDebounce = setTimeout(calculateFare, 400);
+    fareDebounce = setTimeout(calculateFare, 200);
   }
 
   function formatEtaClock(minutesFromNow) {
@@ -985,7 +989,7 @@
       requestAnimationFrame(function() {
         requestAnimationFrame(function() {
           initMap();
-          if (map) map.invalidateSize();
+          setTimeout(function() { if (map) map.invalidateSize({ animate: false }); }, 200);
           setTimeout(function() { if (map) map.invalidateSize(); }, 400);
         });
       });

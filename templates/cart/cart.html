@@ -5,6 +5,8 @@
 {% block extra_head %}
 <style>
   /* Prevent iOS Safari zoom on input focus */
+  :root { --mobile-nav-h: 60px; }
+  @media (min-width: 992px) { :root { --mobile-nav-h: 0px; } }
   input, select, textarea { font-size: 16px !important; }
 
   .cart-item {
@@ -65,11 +67,11 @@
     padding: 12px 16px;
     padding-bottom: max(env(safe-area-inset-bottom), 12px);
     border-top: 1px solid #e5e7eb;
-    z-index: 100; box-shadow: 0 -4px 24px rgba(0,0,0,.08);
+    z-index: 1000; box-shadow: 0 -4px 24px rgba(0,0,0,.08);
   }
   @media (max-width: 991px) {
-    .mobile-checkout-bar { display: block; }
-    .cart-page-wrap { padding-bottom: calc(env(safe-area-inset-bottom) + 100px); }
+    .mobile-checkout-bar { display: block; bottom: var(--mobile-nav-h, 60px); padding-bottom: 12px; }
+    .cart-page-wrap { padding-bottom: calc(env(safe-area-inset-bottom) + var(--mobile-nav-h, 60px) + 90px); }
   }
   .remove-btn {
     background: none; border: none; color: #ef4444;
@@ -79,7 +81,7 @@
   .pay-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
   #cart-toast {
     position: fixed;
-    bottom: calc(env(safe-area-inset-bottom) + 80px);
+    bottom: calc(env(safe-area-inset-bottom) + var(--mobile-nav-h, 60px) + 16px);
     left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%);
     background: #0F1B2D; color: white;
     padding: 10px 20px; border-radius: 99px;
