@@ -1000,7 +1000,13 @@
           suggestBox.classList.add('show'); kbIndex = -1;
         }
       }).catch(function() {
-        fetchOSM(q, sctl.signal).then(function(r){ if(suggestBox&&r.length){suggestBox.innerHTML=buildSuggItems(r);suggestBox.classList.add('show');}})
+        fetchOSM(q, sctl.signal).then(function(r){
+          if (suggestBox && r.length) {
+            suggestBox.innerHTML = buildSuggItems(r);
+            suggestBox.classList.add('show');
+          }
+        });
+      });
     }, 250);
   });
 
