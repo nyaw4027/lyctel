@@ -574,10 +574,16 @@
       ? 'https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=' + LOCATIONIQ_KEY
       : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-    L.tileLayer(tileUrl, { errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
-      maxZoom: 19,
-      subdomains: ['a', 'b', 'c'], // only for OSM
-    }).addTo(map);
+    L.tileLayer(
+      LOCATIONIQ_KEY
+        ? 'https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=' + LOCATIONIQ_KEY
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        subdomains: LOCATIONIQ_KEY ? ['a'] : ['a', 'b', 'c'],
+        attribution: LOCATIONIQ_KEY ? '© LocationIQ © OSM' : '© OpenStreetMap contributors',
+      }
+    ).addTo(map);
 
     // Small attribution bottom-left
     L.control.attribution({ position: 'bottomleft', prefix: false })
@@ -859,24 +865,21 @@
     geocodeTimer = setTimeout(function() {
       var addrF = document.getElementById('delivery_address');
       var cityF = document.getElementById('delivery_city');
+      if (addrF) addrF.placeholder = '📍 Detecting address…';
 
-      // Show loading immediately
-      if (addrF && !addrF.value) addrF.placeholder = '📍 Detecting address…';
+      // Abort controller with 5s timeout
+      var ctrl = new AbortController();
+      var kill = setTimeout(function() { ctrl.abort(); }, 5000);
 
-      // Cancel any in-flight request
-      if (window._rgAbort) { try { window._rgAbort.abort(); } catch(e) {} }
-      var ctl = new AbortController();
-      window._rgAbort = ctl;
-      var killTimer = setTimeout(function() { try { ctl.abort(); } catch(e) {} }, 3000);
-
-      function applyResult(d) {
-        clearTimeout(killTimer);
+      function applyAddr(d) {
+        clearTimeout(kill);
         if (!d || !d.display_name) return false;
         if (addrF) {
           addrF.value = d.display_name;
           addrF.placeholder = 'House number, street, area';
+          addrF.style.transition = 'background .4s';
           addrF.style.background = '#f0fdf4';
-          setTimeout(function() { addrF.style.background = ''; }, 800);
+          setTimeout(function() { addrF.style.background = ''; }, 1200);
         }
         var a = d.address || {};
         var city = a.city || a.town || a.suburb || a.county || a.region || '';
@@ -884,36 +887,47 @@
         return true;
       }
 
-      var opts = { headers: { 'Accept-Language': 'en' }, signal: ctl.signal };
-      var osmUrl = 'https://nominatim.openstreetmap.org/reverse?lat=' + lat
-                 + '&lon=' + lng + '&format=json&addressdetails=1';
-
-      function tryOSM() {
-        return fetch(osmUrl, opts)
-          .then(function(r) { return r.json(); })
-          .then(function(d) { if (!applyResult(d) && addrF) addrF.placeholder = 'House number, street, area'; })
-          .catch(function() {
-            clearTimeout(killTimer);
-            if (addrF && !addrF.value) {
-              addrF.value = lat.toFixed(5) + ', ' + lng.toFixed(5);
-              addrF.placeholder = 'House number, street, area';
-            }
-          });
+      function showFallback() {
+        clearTimeout(kill);
+        if (addrF) {
+          if (!addrF.value) addrF.value = '';
+          addrF.placeholder = 'Type your delivery address here';
+        }
       }
 
+      // Always try Nominatim (no API key needed, always works)
+      var osmUrl = 'https://nominatim.openstreetmap.org/reverse'
+        + '?lat=' + lat + '&lon=' + lng
+        + '&format=json&addressdetails=1&zoom=18';
+
+      fetch(osmUrl, { signal: ctrl.signal, headers: { 'Accept-Language': 'en' } })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (!applyAddr(d)) showFallback();
+        })
+        .catch(function(e) {
+          // If aborted, try once more without signal
+          if (e.name === 'AbortError') return;
+          // Retry without abort signal
+          fetch(osmUrl, { headers: { 'Accept-Language': 'en' } })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { if (!applyAddr(d)) showFallback(); })
+            .catch(showFallback);
+        });
+
+      // Also try LocationIQ in parallel if key is available (faster if working)
       if (LOCATIONIQ_KEY) {
-        var liqUrl = 'https://us1.locationiq.com/v1/reverse?key=' + LOCATIONIQ_KEY
-                   + '&lat=' + lat + '&lon=' + lng + '&format=json&addressdetails=1';
-        // LocationIQ first; if slow (>3s) or fails, fall back to Nominatim
-        var liqFallback = setTimeout(tryOSM, 800);
-        fetch(liqUrl, opts)
-          .then(function(r) { return r.json(); })
-          .then(function(d) { clearTimeout(liqFallback); if (!applyResult(d)) tryOSM(); })
-          .catch(function()  { clearTimeout(liqFallback); tryOSM(); });
-      } else {
-        tryOSM();
+        fetch(
+          'https://us1.locationiq.com/v1/reverse?key=' + LOCATIONIQ_KEY
+          + '&lat=' + lat + '&lon=' + lng + '&format=json&addressdetails=1',
+          { headers: { 'Accept-Language': 'en' } }
+        ).then(function(r) { return r.json(); })
+         .then(function(d) {
+           // Only apply if address field still shows placeholder (OSM hasn't responded yet)
+           if (addrF && !addrF.value) applyAddr(d);
+         }).catch(function() {});
       }
-    }, 50);
+    }, 300);
   }
 
   // ── SMART ADDRESS AUTOCOMPLETE ────────────────────────
@@ -946,20 +960,22 @@
     }).join('');
   }
 
-  function fetchLIQ(q, sig) {
+  function fetchLIQ(q) {
     if (!LOCATIONIQ_KEY) return Promise.reject('no key');
     return fetch(
       'https://api.locationiq.com/v1/autocomplete?key=' + LOCATIONIQ_KEY
       + '&q=' + encodeURIComponent(q) + '&countrycodes=gh&limit=7&format=json&dedupe=1',
-      { signal: sig, headers: { 'Accept-Language': 'en' } }
-    ).then(function(r){return r.json();}).then(function(d){return Array.isArray(d)?d:[];});
+      { headers: { 'Accept-Language': 'en' } }
+    ).then(function(r) { return r.json(); })
+     .then(function(d)  { return Array.isArray(d) ? d : []; });
   }
-  function fetchOSM(q, sig) {
+  function fetchOSM(q) {
     return fetch(
       'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q + ' Ghana')
       + '&format=json&addressdetails=1&limit=7&countrycodes=gh',
-      { signal: sig, headers: { 'Accept-Language': 'en' } }
-    ).then(function(r){return r.json();}).then(function(d){return Array.isArray(d)?d:[];});
+      { headers: { 'Accept-Language': 'en' } }
+    ).then(function(r) { return r.json(); })
+     .then(function(d)  { return Array.isArray(d) ? d : []; });
   }
 
   if (searchInput) searchInput.addEventListener('input', function() {
@@ -971,44 +987,31 @@
       suggestBox.classList.add('show');
     }
     searchTimer = setTimeout(function() {
-      // Cancel previous search
-      if (window._saAbort) { try { window._saAbort.abort(); } catch(e) {} }
-      var sctl = new AbortController();
-      window._saAbort = sctl;
-      setTimeout(function() { try { sctl.abort(); } catch(e) {} }, 3000);
+      var primary   = LOCATIONIQ_KEY ? fetchLIQ(q) : null;
+      var fallback  = fetchOSM(q);
 
-      // Fire both APIs simultaneously — use whichever answers first
-      var jobs = [];
-      if (LOCATIONIQ_KEY) jobs.push(fetchLIQ(q, sctl.signal).catch(function(){return [];}));
-      jobs.push(fetchOSM(q, sctl.signal).catch(function(){return [];}));
-
-      Promise.race(jobs).then(function(results) {
-        if (!results || !results.length) {
-          // Winner was empty — wait for the other
-          return Promise.all(jobs).then(function(all) {
-            var merged = [].concat.apply([], all);
-            if (suggestBox) {
-              suggestBox.innerHTML = merged.length
-                ? buildSuggItems(merged)
-                : '<div class="sugg-loader">No results for "' + q + '" in Ghana</div>';
-              suggestBox.classList.add('show'); kbIndex = -1;
-            }
-          });
-        }
-        if (suggestBox) {
+      function showResults(results) {
+        if (!suggestBox) return;
+        if (results && results.length) {
           suggestBox.innerHTML = buildSuggItems(results);
-          suggestBox.classList.add('show'); kbIndex = -1;
+          suggestBox.classList.add('show');
+          kbIndex = -1;
+        } else {
+          suggestBox.innerHTML = '<div class="sugg-loader">No results for "' + q + '" in Ghana</div>';
+          suggestBox.classList.add('show');
         }
-      }).catch(function() {
-        fetchOSM(q, sctl.signal).then(function(r){
-          if (suggestBox && r.length) {
-            suggestBox.innerHTML = buildSuggItems(r);
-            suggestBox.classList.add('show');
-          }
-        });
-      });
-    }, 250);
-  });
+      }
+
+      if (primary) {
+        primary.then(function(r) {
+          if (r && r.length) { showResults(r); }
+          else { return fallback.then(showResults); }
+        }).catch(function() { fallback.then(showResults).catch(function() {}); });
+      } else {
+        fallback.then(showResults).catch(function() {});
+      }
+    }, 350);
+  });  // end input event listener
 
   function selectSugg(item) {
     if (!item) return;
@@ -1060,13 +1063,13 @@
     const banner = document.getElementById('gps-banner');
     if (choice === 'rider') {
       banner.classList.remove('d-none');
-      requestAnimationFrame(function() {
-        requestAnimationFrame(function() {
-          initMap();
-          setTimeout(function() { if (map) map.invalidateSize({ animate: false }); }, 200);
-          setTimeout(function() { if (map) map.invalidateSize(); }, 400);
-        });
-      });
+      // Wait for section to be fully visible before initialising map
+      setTimeout(function() {
+        initMap();
+        // Staggered invalidateSize — catches both fast and slow paint
+        setTimeout(function() { if (map) map.invalidateSize(); }, 50);
+        setTimeout(function() { if (map) map.invalidateSize(); }, 300);
+      }, 50);
       // GPS triggered only by user tapping 'My Location' button
     } else {
       banner.classList.add('d-none');
