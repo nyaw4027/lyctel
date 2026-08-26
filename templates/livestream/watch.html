@@ -127,7 +127,7 @@
     border-radius: 24px;
     padding: 10px 16px;
     color: white;
-    font-size: 14px;
+    font-size: 16px; /* iOS no-zoom */
     outline: none;
     min-height: 44px;
   }
@@ -453,7 +453,9 @@ document.body.classList.add('page-fullscreen');
           <input type="text" id="chat-input-field"
                  placeholder="Say something…"
                  maxlength="300"
-                 onkeydown="if(event.key==='Enter')sendChat()"/>
+                 onkeydown="if(event.key==='Enter')sendChat()"
+               oninput="updateCharCount(this.value)"
+               maxlength="300"/>
           <button class="chat-send-btn" onclick="sendChat()" aria-label="Send">↑</button>
           <button class="gift-open-btn" onclick="openGiftSheet()" aria-label="Send gift">🎁</button>
         </div>
@@ -708,14 +710,56 @@ async function handleVendorOffer(sdp) {
 }
 
 // ── CHAT ───────────────────────────────────────────────────
+// Comment rate limiting — prevent spam (1 per 2s)
+let _lastChatSent = 0;
+const CHAT_COOLDOWN_MS = 2000;
+
 function sendChat() {
   const mobile  = document.getElementById('chat-input-field');
   const desktop = document.getElementById('desktop-chat-input');
   const msg = (mobile?.value || desktop?.value || '').trim();
-  if(!msg || ws?.readyState!==1) return;
-  ws.send(JSON.stringify({type:'chat',message:msg}));
-  if(mobile)  mobile.value  = '';
-  if(desktop) desktop.value = '';
+  if (!msg) return;
+  if (ws?.readyState !== 1) {
+    showChatStatus('⚡ Connecting…', '#F5A623'); return;
+  }
+
+  // Rate limit
+  const now = Date.now();
+  const wait = CHAT_COOLDOWN_MS - (now - _lastChatSent);
+  if (wait > 0) {
+    showChatStatus(`⏳ Wait ${(wait/1000).toFixed(1)}s`, '#ef4444'); return;
+  }
+
+  ws.send(JSON.stringify({ type: 'chat', message: msg.slice(0, 300) }));
+  _lastChatSent = now;
+
+  if (mobile)  mobile.value  = '';
+  if (desktop) desktop.value = '';
+
+  // Update char counter
+  updateCharCount('');
+}
+
+function showChatStatus(text, color) {
+  const btn = document.getElementById('chat-send-btn') ||
+              document.getElementById('desktop-chat-send-btn');
+  if (!btn) return;
+  const orig = btn.textContent;
+  btn.style.color  = color;
+  btn.textContent  = text;
+  setTimeout(() => {
+    btn.textContent = orig;
+    btn.style.color = '';
+  }, 1500);
+}
+
+function updateCharCount(val) {
+  const counter = document.getElementById('chat-char-count');
+  if (counter) {
+    const rem = 300 - val.length;
+    counter.textContent = rem <= 50 ? rem : '';
+    counter.style.color = rem <= 20 ? '#ef4444' : '#9ca3af';
+  }
 }
 
 function appendChat(data) {
@@ -839,35 +883,144 @@ function closeGiftSheet() {
   document.getElementById('gift-sheet-backdrop').classList.remove('open');
 }
 
-async function sendGift(giftType, btn) {
-  if(!IS_AUTH){ location.href='/accounts/login/'; return; }
-  btn.style.transform = 'scale(.82)';
-  setTimeout(()=>btn.style.transform='',200);
+async async function sendGift(giftType, btn) {
+  if (!IS_AUTH) { location.href = '/accounts/login/?next=' + location.pathname; return; }
+
+  // Bounce animation
+  if (btn) { btn.style.transform = 'scale(.82)'; setTimeout(() => btn.style.transform = '', 200); }
   closeGiftSheet();
-  try {
-    const res  = await fetch(`/livestream/${STREAM_ID}/send-gift/`,{
-      method:'POST',
-      headers:{'X-CSRFToken':CSRF_TOKEN,'X-Requested-With':'XMLHttpRequest'},
-      body: new URLSearchParams({gift_type:giftType,quantity:1}),
-    });
-    const data = await res.json();
-    if(data.success){
-      handleGift({emoji:data.emoji,username:'You',total_value:data.total_value});
-      ws?.readyState===1 && ws.send(JSON.stringify({type:'gift',gift_type:giftType,quantity:1}));
-    }
-  } catch(e){ console.error(e); }
+
+  // Show payment loading overlay
+  showGiftPaymentUI(giftType);
 }
 
-function handleGift(data) {
-  const emoji = data.emoji;
-  for(let i=0;i<4;i++) setTimeout(()=>spawnFloat(emoji,'gift'),i*90);
-  if(emoji===lastGiftEmoji){ giftCombo++; } else { giftCombo=1; lastGiftEmoji=emoji; }
-  clearTimeout(giftComboTimer);
-  const el = document.getElementById('gift-combo');
-  el.textContent = `${emoji} ×${giftCombo} COMBO!`;
-  el.classList.add('show');
-  giftComboTimer = setTimeout(()=>{ el.classList.remove('show'); giftCombo=0; }, 2200);
-  appendSystem(`🎁 ${esc(data.username||'Someone')} sent ${emoji}${data.total_value?` · GHS ${data.total_value}`:''}`);
+// Gift values (mirrors models.py GIFT_VALUES)
+const GIFT_VALUES = { rose: 1, fire: 2, diamond: 5, crown: 10, rocket: 20 };
+const GIFT_EMOJIS = { rose: '🌹', fire: '🔥', diamond: '💎', crown: '👑', rocket: '🚀' };
+
+async function initiateGiftPayment(giftType, quantity) {
+  quantity = quantity || 1;
+  const amount = (GIFT_VALUES[giftType] || 1) * quantity;
+
+  const payBtn = document.getElementById('gift-pay-btn');
+  if (payBtn) { payBtn.disabled = true; payBtn.textContent = '⏳ Connecting to Hubtel…'; }
+
+  try {
+    const res  = await fetch(`/livestream/${STREAM_ID}/gift-payment/initiate/`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body:    JSON.stringify({ gift_type: giftType, quantity: quantity }),
+    });
+    const data = await res.json();
+
+    if (data.success && data.redirect_url) {
+      // Redirect to Hubtel checkout (MoMo / Card)
+      window.location.href = data.redirect_url;
+    } else if (data.code === 'no_keys') {
+      // API keys not configured yet — show message
+      showGiftError('💳 Payment gateway coming soon! API keys are being set up.');
+    } else {
+      showGiftError('Payment could not be started. Please try again.');
+    }
+  } catch(e) {
+    console.error('[gift payment]', e);
+    showGiftError('Network error. Please check your connection.');
+  } finally {
+    if (payBtn) { payBtn.disabled = false; payBtn.textContent = `Pay GHS ${(GIFT_VALUES[giftType]||1) * quantity}`; }
+  }
+}
+
+function showGiftPaymentUI(giftType) {
+  const emoji  = GIFT_EMOJIS[giftType] || '🎁';
+  const amount = GIFT_VALUES[giftType]  || 1;
+
+  let modal = document.getElementById('gift-pay-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'gift-pay-modal';
+    modal.style.cssText = 'position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;background:rgba(0,0,0,.85);display:flex;align-items:flex-end;justify-content:center;padding-bottom:max(env(safe-area-inset-bottom),20px);';
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="background:#0d0d0d;border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:480px;border-top:1px solid #222;">
+      <div style="width:40px;height:4px;background:#333;border-radius:99px;margin:0 auto 18px;"></div>
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:52px;margin-bottom:8px;">${emoji}</div>
+        <p style="color:white;font-weight:700;font-size:17px;margin:0 0 4px;">Send ${giftType.charAt(0).toUpperCase()+giftType.slice(1)} Gift</p>
+        <p style="color:#9ca3af;font-size:13px;margin:0;">50% goes to the streamer</p>
+      </div>
+
+      <!-- Quantity selector -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:18px;">
+        <button onclick="changeGiftQty(-1,'${giftType}')"
+                style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.08);border:none;color:white;font-size:20px;cursor:pointer;-webkit-tap-highlight-color:transparent;">−</button>
+        <div style="text-align:center;">
+          <span id="gift-qty-display" style="color:white;font-weight:700;font-size:22px;">1</span>
+          <p style="color:#F5A623;font-size:13px;font-weight:700;margin:2px 0 0;">GHS <span id="gift-total-display">${amount.toFixed(2)}</span></p>
+        </div>
+        <button onclick="changeGiftQty(1,'${giftType}')"
+                style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.08);border:none;color:white;font-size:20px;cursor:pointer;-webkit-tap-highlight-color:transparent;">+</button>
+      </div>
+
+      <!-- Split info -->
+      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:12px 16px;margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="color:#9ca3af;font-size:12px;">Streamer receives (50%)</span>
+          <span id="vendor-share" style="color:#4ade80;font-weight:700;font-size:12px;">GHS ${(amount*0.5).toFixed(2)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:#9ca3af;font-size:12px;">Platform fee (50%)</span>
+          <span style="color:#9ca3af;font-size:12px;">GHS ${(amount*0.5).toFixed(2)}</span>
+        </div>
+      </div>
+
+      <p id="gift-error-msg" style="color:#ef4444;font-size:12px;text-align:center;margin-bottom:10px;display:none;"></p>
+
+      <!-- Pay button -->
+      <button id="gift-pay-btn"
+              onclick="initiateGiftPayment('${giftType}', parseInt(document.getElementById('gift-qty-display').textContent))"
+              style="width:100%;background:#F5A623;border:none;border-radius:16px;color:#0F1B2D;
+                     font-weight:800;font-size:16px;padding:16px;cursor:pointer;margin-bottom:10px;
+                     -webkit-tap-highlight-color:transparent;">
+        Pay GHS ${amount.toFixed(2)} with MoMo / Card
+      </button>
+      <button onclick="closeGiftPayModal()"
+              style="width:100%;background:rgba(255,255,255,.06);border:none;border-radius:16px;
+                     color:#9ca3af;font-weight:600;font-size:14px;padding:12px;cursor:pointer;
+                     -webkit-tap-highlight-color:transparent;">
+        Cancel
+      </button>
+    </div>`;
+
+  modal.style.display = 'flex';
+  window._currentGiftType = giftType;
+  window._currentGiftQty  = 1;
+}
+
+function changeGiftQty(delta, giftType) {
+  const qty  = Math.max(1, Math.min(50, (window._currentGiftQty || 1) + delta));
+  window._currentGiftQty = qty;
+  const unit  = GIFT_VALUES[giftType] || 1;
+  const total = unit * qty;
+  const qtyEl   = document.getElementById('gift-qty-display');
+  const totalEl = document.getElementById('gift-total-display');
+  const vendorEl = document.getElementById('vendor-share');
+  const payBtn  = document.getElementById('gift-pay-btn');
+  if (qtyEl)   qtyEl.textContent   = qty;
+  if (totalEl) totalEl.textContent = total.toFixed(2);
+  if (vendorEl)vendorEl.textContent = 'GHS ' + (total * 0.5).toFixed(2);
+  if (payBtn)  payBtn.textContent   = `Pay GHS ${total.toFixed(2)} with MoMo / Card`;
+}
+
+function closeGiftPayModal() {
+  const modal = document.getElementById('gift-pay-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function showGiftError(msg) {
+  const el = document.getElementById('gift-error-msg');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
 }
 
 function spawnFloat(emoji, kind) {

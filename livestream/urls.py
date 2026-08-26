@@ -14,4 +14,9 @@ urlpatterns = [
     path('<uuid:stream_id>/send-gift/',        views.send_gift,        name='send_gift'),
     path('<uuid:stream_id>/stats/',            views.stream_stats,     name='stats'),
     path('<uuid:stream_id>/upload-recording/', views.upload_recording, name='upload_recording'),
+
+    # Gift real-money payment (Hubtel MoMo)
+    path('<uuid:stream_id>/gift-payment/initiate/', views.gift_payment_initiate, name='gift_payment_initiate'),
+    path('<uuid:stream_id>/gift-payment/callback/', views.gift_payment_callback, name='gift_payment_callback'),
+    path('<uuid:stream_id>/gift-payment/verify/',   views.gift_payment_verify,   name='gift_payment_verify'),
 ]

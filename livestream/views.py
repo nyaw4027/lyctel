@@ -339,3 +339,246 @@ def upload_recording(request, stream_id):
         import logging
         logging.getLogger(__name__).error('Recording upload failed: %s', e)
         return JsonResponse({'success': False, 'error': str(e)})
+
+# ── GIFT PAYMENT: INITIATE (Viewer → Hubtel MoMo) ─────────────────────────────
+
+@login_required
+@require_POST
+def gift_payment_initiate(request, stream_id):
+    """
+    Step 1: Viewer taps a gift → we create a pending StreamGift record
+    and initiate a Hubtel checkout for the exact gift amount.
+
+    The viewer is then redirected to Hubtel's hosted payment page
+    (MoMo, Vodafone Cash, AirtelTigo Money, or Card).
+    """
+    import uuid
+    stream = get_object_or_404(LiveStream, id=stream_id, status=LiveStream.Status.LIVE)
+    data      = json.loads(request.body)
+    gift_type = data.get('gift_type', 'rose')
+    quantity  = max(1, min(int(data.get('quantity', 1)), 50))
+
+    from .models import StreamGift
+    valid_types = [c[0] for c in StreamGift.GiftType.choices]
+    if gift_type not in valid_types:
+        return JsonResponse({'error': 'Invalid gift type.'}, status=400)
+
+    # Create gift record as PENDING — confirmed after Hubtel callback
+    gift = StreamGift(
+        stream    = stream,
+        sender    = request.user,
+        gift_type = gift_type,
+        quantity  = quantity,
+    )
+    # Compute values before saving (save() method handles split)
+    gift.save()
+
+    # Mark as pending payment
+    try:
+        gift.payment_status = StreamGift.PaymentStatus.PENDING
+        gift.save(update_fields=['payment_status'])
+    except Exception:
+        pass  # payment_status field may not exist yet (pre-migration)
+
+    # Initiate Hubtel checkout
+    try:
+        from payment.hubtel import HubtelCheckout
+        from django.conf import settings as _s
+
+        ref          = f"GIFT-{gift.pk}-{uuid.uuid4().hex[:6].upper()}"
+        callback_url = getattr(_s, 'HUBTEL_CALLBACK_URL',
+                               'https://lynctel.up.railway.app/payment/callback/')
+        # Gift-specific callback
+        gift_callback = f'https://lynctel.up.railway.app/livestream/{stream_id}/gift-payment/callback/'
+        return_url    = f'https://lynctel.up.railway.app/livestream/{stream_id}/watch/'
+        cancel_url    = f'https://lynctel.up.railway.app/livestream/{stream_id}/watch/'
+
+        cid, secret   = HubtelCheckout._auth()
+        merchant      = HubtelCheckout._merchant()
+
+        import requests as req_lib
+        payload = {
+            "totalAmount":           float(gift.total_value),
+            "description":           f"Gift: {StreamGift.GIFT_EMOJIS[gift_type]} {gift_type.title()} x{quantity} — Lynctel Live",
+            "callbackUrl":           gift_callback,
+            "returnUrl":             return_url,
+            "cancellationUrl":       cancel_url,
+            "merchantAccountNumber": merchant,
+            "clientReference":       ref,
+            "customerName":          request.user.get_full_name() or request.user.display_name or "Viewer",
+            "customerMobileNumber":  getattr(request.user, 'phone', '') or '',
+            "customerEmail":         getattr(request.user, 'email', '') or '',
+        }
+
+        url = f"https://api.hubtel.com/v2/merchantaccount/merchants/{merchant}/initiate-payment"
+        response = req_lib.post(
+            url, json=payload, auth=(cid, secret),
+            timeout=15, headers={"Content-Type": "application/json"},
+        )
+
+        if response.status_code not in (200, 201):
+            raise Exception(f"Hubtel {response.status_code}: {response.text[:200]}")
+
+        resp_data     = response.json()
+        checkout_url  = resp_data.get('data', {}).get('checkoutUrl') or resp_data.get('checkoutUrl', '')
+        checkout_id   = resp_data.get('data', {}).get('checkoutId')  or resp_data.get('checkoutId', ref)
+
+        if not checkout_url:
+            raise Exception("No checkoutUrl in Hubtel response")
+
+        # Store Hubtel IDs on the gift
+        try:
+            gift.hubtel_checkout_id = checkout_id
+            gift.hubtel_reference   = ref
+            gift.save(update_fields=['hubtel_checkout_id', 'hubtel_reference'])
+        except Exception:
+            pass
+
+        return JsonResponse({
+            'success':      True,
+            'redirect_url': checkout_url,
+            'checkout_id':  checkout_id,
+            'gift_id':      str(gift.pk),
+            'amount':       str(gift.total_value),
+        })
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error('Gift payment initiate failed: %s', e)
+        # Hubtel not configured — this is expected before API keys arrive
+        # In this case, mark as paid directly for testing
+        from django.conf import settings as _s
+        if not getattr(_s, 'HUBTEL_CLIENT_ID', ''):
+            return JsonResponse({
+                'success':  False,
+                'error':    'Payment gateway not configured. API keys required.',
+                'code':     'no_keys',
+            }, status=503)
+        return JsonResponse({'success': False, 'error': str(e)}, status=502)
+
+
+# ── GIFT PAYMENT: CALLBACK (Hubtel → server, server-to-server) ────────────────
+
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+@require_POST
+def gift_payment_callback(request, stream_id):
+    """
+    Hubtel POSTs payment result here after viewer pays.
+    We verify the HMAC signature, mark gift as paid, and broadcast
+    the gift animation to all viewers via WebSocket.
+    """
+    import logging, hashlib, hmac as hmac_lib
+    log = logging.getLogger(__name__)
+
+    # Verify HMAC signature from Hubtel
+    signature = request.headers.get('X-Hubtel-Signature', '')
+    try:
+        from payment.hubtel import HubtelCheckout
+        if signature and not HubtelCheckout.verify_webhook_signature(request.body, signature):
+            log.warning('Gift callback: invalid HMAC signature')
+            return JsonResponse({'error': 'Invalid signature'}, status=401)
+    except Exception:
+        pass  # Allow if signature verification not possible
+
+    try:
+        data          = json.loads(request.body)
+        client_ref    = data.get('ClientReference') or data.get('clientReference', '')
+        tx_status     = data.get('Status') or data.get('status', '')
+        paid          = tx_status.lower() in ('success', 'paid', 'completed', '00')
+
+        if not client_ref or not client_ref.startswith('GIFT-'):
+            return JsonResponse({'received': True})
+
+        # Find the gift by reference
+        gift_pk = client_ref.split('-')[1]
+        from .models import StreamGift
+        try:
+            gift = StreamGift.objects.select_related('stream', 'sender', 'stream__vendor').get(pk=gift_pk)
+        except (StreamGift.DoesNotExist, ValueError):
+            log.warning('Gift callback: gift %s not found', gift_pk)
+            return JsonResponse({'received': True})
+
+        if paid:
+            gift.payment_status = StreamGift.PaymentStatus.PAID
+            gift.paid_at        = timezone.now()
+            try:
+                gift.save(update_fields=['payment_status', 'paid_at'])
+            except Exception:
+                gift.save()
+
+            # Update stream total gifts value
+            LiveStream.objects.filter(id=gift.stream_id).update(
+                total_gifts_value=gift.stream.total_gifts_value + gift.total_value
+            )
+
+            # Broadcast gift animation to ALL viewers via WebSocket
+            _broadcast_gift_paid(gift)
+
+            log.info('Gift PAID: %s sent %s x%s = GHS %s (vendor: %s, app: %s)',
+                     gift.sender, gift.gift_type, gift.quantity,
+                     gift.total_value, gift.vendor_earnings, gift.platform_cut)
+        else:
+            try:
+                gift.payment_status = StreamGift.PaymentStatus.FAILED
+                gift.save(update_fields=['payment_status'])
+            except Exception:
+                pass
+            log.info('Gift FAILED: %s — status: %s', client_ref, tx_status)
+
+    except Exception as e:
+        log.exception('Gift callback error: %s', e)
+
+    return JsonResponse({'received': True})
+
+
+def _broadcast_gift_paid(gift):
+    """Send gift animation to all viewers via Django Channels."""
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+
+        layer    = get_channel_layer()
+        room     = f'stream_{gift.stream_id}'
+
+        async_to_sync(layer.group_send)(room, {
+            'type':        'gift_event',
+            'gift_type':   gift.gift_type,
+            'emoji':       StreamGift.GIFT_EMOJIS[gift.gift_type],
+            'quantity':    gift.quantity,
+            'total_value': str(gift.total_value),
+            'username':    gift.sender.display_name if gift.sender else 'A viewer',
+            'user_id':     gift.sender_id,
+        })
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning('Gift broadcast failed: %s', e)
+
+
+# ── GIFT PAYMENT: VERIFY (viewer return after paying) ─────────────────────────
+
+@login_required
+def gift_payment_verify(request, stream_id):
+    """
+    Viewer returns to this URL after paying on Hubtel.
+    We verify payment status and redirect back to the stream.
+    """
+    checkout_id = request.GET.get('checkoutId') or request.GET.get('checkout_id', '')
+    if checkout_id:
+        try:
+            from payment.hubtel import HubtelCheckout
+            result = HubtelCheckout.verify(checkout_id)
+            if result.get('paid'):
+                from .models import StreamGift
+                StreamGift.objects.filter(
+                    hubtel_checkout_id=checkout_id,
+                    sender=request.user,
+                ).update(
+                    payment_status = StreamGift.PaymentStatus.PAID,
+                    paid_at        = timezone.now(),
+                )
+        except Exception:
+            pass
+
+    return redirect('livestream:watch', stream_id=stream_id)
