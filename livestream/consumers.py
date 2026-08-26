@@ -450,7 +450,9 @@ class StreamConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def _end_stream(self):
         from livestream.models import LiveStream
+        from django.db.models import Max
+        # Update status and get current viewer count for peak update
         LiveStream.objects.filter(id=self.stream_id).update(
-            status=LiveStream.Status.ENDED,
-            ended_at=timezone.now(),
+            status   = LiveStream.Status.ENDED,
+            ended_at = timezone.now(),
         )

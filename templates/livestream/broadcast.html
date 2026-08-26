@@ -3,7 +3,7 @@
 {% block title %}🔴 Live — {{ stream.title }}{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/pages/livestream.css' %}">
+<link rel="stylesheet" href="{% static 'css/livestream.css' %}">
 <meta name="theme-color" content="#000000">
 <style>
   #main-navbar, #mobile-nav { display: none !important; }
@@ -318,6 +318,8 @@ document.body.classList.add('page-fullscreen');
   context; the JS file itself is static and cannot use template tags.
 -->
 <script>
+// CSRF_TOKEN fallback — base.html should define this globally
+window.CSRF_TOKEN = window.CSRF_TOKEN || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 window.STREAM_ID            = '{{ stream.id }}';
 window.WS_URL               = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws/stream/{{ stream.id }}/';
 window.END_URL              = '/livestream/{{ stream.id }}/end/';

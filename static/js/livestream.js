@@ -44,18 +44,38 @@ function startRecording() {
 function stopRecordingAndUpload() {
   return new Promise((resolve) => {
     if (!mediaRecorder || mediaRecorder.state === 'inactive') { resolve(null); return; }
+
+    // Safety timeout — never block endStream for more than 25s
+    const bail = setTimeout(() => {
+      console.warn('[recording] upload timed out — proceeding without replay');
+      resolve(null);
+    }, 25000);
+
     mediaRecorder.onstop = async () => {
-      document.getElementById('rec-badge').style.display = 'none';
-      if (recordedChunks.length === 0) { resolve(null); return; }
+      const badge = document.getElementById('rec-badge');
+      if (badge) badge.style.display = 'none';
+
+      if (recordedChunks.length === 0) { clearTimeout(bail); resolve(null); return; }
+
       const blob = new Blob(recordedChunks, { type: 'video/webm' });
       try {
         const fd = new FormData();
-        fd.append('recording', blob, `${STREAM_ID}.webm`);
-        const res = await fetch(UPLOAD_URL, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN }, body: fd });
+        fd.append('recording', blob, STREAM_ID + '.webm');
+        const controller = new AbortController();
+        const uploadKill  = setTimeout(() => controller.abort(), 20000);
+        const res  = await fetch(UPLOAD_URL, {
+          method:  'POST',
+          headers: { 'X-CSRFToken': CSRF_TOKEN },
+          body:    fd,
+          signal:  controller.signal,
+        });
+        clearTimeout(uploadKill);
         const data = await res.json();
+        clearTimeout(bail);
         resolve(data.success ? data.recording_url : null);
       } catch (e) {
         console.error('[recording] upload failed:', e);
+        clearTimeout(bail);
         resolve(null);
       }
     };
@@ -77,20 +97,72 @@ const iceConfig = {
 
 // ── CAMERA ────────────────────────────────────────────────
 async function startCamera() {
+  const placeholder = document.getElementById('cam-placeholder');
+  const startBtn    = placeholder ? placeholder.querySelector('button') : null;
+
+  // Show loading state
+  if (startBtn) {
+    startBtn.disabled    = true;
+    startBtn.textContent = '⏳ Requesting camera…';
+  }
+
   try {
+    // Check getUserMedia is available (HTTPS required)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Camera access requires HTTPS. Make sure you are on a secure connection.');
+    }
+
     localStream = await navigator.mediaDevices.getUserMedia({
-      video:{width:{ideal:1280},height:{ideal:720},facingMode},
-      audio:{echoCancellation:true,noiseSuppression:true},
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode },
+      audio: { echoCancellation: true, noiseSuppression: true },
     });
-    document.getElementById('local-video').srcObject = localStream;
-    document.getElementById('cam-placeholder').style.display = 'none';
-    document.getElementById('live-badge').style.display = 'inline-flex';
+
+    const video = document.getElementById('local-video');
+    if (video) video.srcObject = localStream;
+
+    if (placeholder) placeholder.style.display = 'none';
+
+    const badge = document.getElementById('live-badge');
+    if (badge) badge.style.display = 'inline-flex';
+
     startTime = Date.now();
     startTimer();
     connectWS();
     startRecording();
+
   } catch(err) {
-    alert('Camera error: ' + err.message);
+    // Restore button
+    if (startBtn) {
+      startBtn.disabled    = false;
+      startBtn.textContent = '🔴 Start Camera';
+    }
+
+    // Show friendly in-page error (no alert() — blocked on mobile Safari)
+    let msg = 'Could not access camera.';
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      msg = '📵 Camera permission denied. Please allow camera access in your browser settings and try again.';
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      msg = '📷 No camera found on this device.';
+    } else if (err.name === 'NotReadableError') {
+      msg = '🔒 Camera is already in use by another app. Close other apps and try again.';
+    } else if (err.message.includes('HTTPS')) {
+      msg = err.message;
+    } else {
+      msg = '⚠️ Camera error: ' + err.message;
+    }
+
+    if (placeholder) {
+      const errDiv = document.createElement('p');
+      errDiv.style.cssText = 'color:#fca5a5;font-size:14px;margin:12px 0 0;max-width:300px;text-align:center;';
+      errDiv.textContent   = msg;
+      // Remove any previous error
+      const prev = placeholder.querySelector('.cam-error');
+      if (prev) prev.remove();
+      errDiv.className = 'cam-error';
+      placeholder.appendChild(errDiv);
+    }
+
+    console.error('[camera]', err);
   }
 }
 
@@ -305,7 +377,11 @@ function startPoll() {
   const question = document.getElementById('poll-question-input').value.trim();
   const labelA   = document.getElementById('poll-option-a-input').value.trim() || 'Option A';
   const labelB   = document.getElementById('poll-option-b-input').value.trim() || 'Option B';
-  if (!question) { alert('Add a question first.'); return; }
+  if (!question) {
+    const inp = document.getElementById('poll-question-input');
+    if (inp) { inp.style.borderColor='#ef4444'; inp.focus(); }
+    return;
+  }
 
   activePoll = { question, options: { a: { label: labelA, votes: 0 }, b: { label: labelB, votes: 0 } } };
   document.getElementById('poll-question').textContent = question;
@@ -404,29 +480,77 @@ function confirmEnd() {
 
 async function endStream() {
   const btn = document.getElementById('end-stream-btn');
-  btn.disabled = true;
-  btn.textContent = 'Saving recording…';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Ending stream…'; }
 
-  ws?.readyState===1 && ws.send(JSON.stringify({type:'end_stream'}));
+  // 1. Tell WebSocket the stream is ending (broadcasts to all viewers)
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'end_stream' }));
+  }
 
+  // 2. Null localStream BEFORE closing WS — prevents auto-reconnect
+  const streamToStop = localStream;
+  localStream = null;
+
+  // 3. Upload recording (max 25s wait, see stopRecordingAndUpload)
+  if (btn) btn.textContent = '⏳ Saving replay…';
   const recordingUrl = await stopRecordingAndUpload();
 
-  localStream?.getTracks().forEach(t=>t.stop());
-  Object.values(peerConnections).forEach(pc=>pc.close());
+  // 4. Stop all tracks and peer connections
+  streamToStop?.getTracks().forEach(t => t.stop());
+  Object.values(peerConnections).forEach(pc => pc.close());
+  peerConnections = {};
   clearInterval(timerInterval);
 
+  // 5. Close WebSocket cleanly
+  try { ws?.close(1000, 'Stream ended'); } catch(e) {}
+
+  // 6. Tell the server the stream has ended (saves peak_viewers, recording_url)
   try {
-    const res  = await fetch(END_URL,{
-      method:'POST',
-      headers:{'X-CSRFToken':CSRF_TOKEN,'Content-Type':'application/json'},
-      body: JSON.stringify({ peak_viewers: peakViewers, recording_url: recordingUrl }),
+    const res = await fetch(END_URL, {
+      method:  'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ peak_viewers: peakViewers, recording_url: recordingUrl }),
     });
     const data = await res.json();
-    if(data.success){
-      alert(`Stream ended!\nPeak viewers: ${peakViewers}\nGifts: GHS ${data.gifts_value}\nDuration: ${data.duration||0} mins` + (recordingUrl ? '\nReplay saved ✅' : '\nReplay could not be saved.'));
+
+    // 7. Show in-page summary (no alert!)
+    if (data.success) {
+      const modal = document.getElementById('end-modal');
+      if (modal) {
+        modal.innerHTML = `
+          <div style="background:#1a1a1a;border-radius:24px;padding:28px;max-width:360px;width:100%;text-align:center;border:1px solid #333;">
+            <p style="font-size:44px;margin-bottom:12px">🎉</p>
+            <p style="color:white;font-weight:700;font-size:18px;margin-bottom:16px">Stream Ended!</p>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
+              <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;">
+                <span style="color:rgba(255,255,255,.6);font-size:13px;">Peak viewers</span>
+                <span style="color:white;font-weight:700;">${peakViewers}</span>
+              </div>
+              <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;">
+                <span style="color:rgba(255,255,255,.6);font-size:13px;">Gifts received</span>
+                <span style="color:#4ade80;font-weight:700;">GHS ${data.gifts_value || '0.00'}</span>
+              </div>
+              <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;">
+                <span style="color:rgba(255,255,255,.6);font-size:13px;">Duration</span>
+                <span style="color:white;font-weight:700;">${data.duration || 0} mins</span>
+              </div>
+              ${recordingUrl ? '<div style="color:#4ade80;font-size:12px;margin-top:4px;">✅ Replay saved</div>' : '<div style="color:#9ca3af;font-size:12px;margin-top:4px;">Replay not saved</div>'}
+            </div>
+            <button onclick="window.location.href=window.VENDOR_DASHBOARD_URL||'/vendors/dashboard/'"
+                    style="width:100%;background:#F5A623;border:none;border-radius:14px;color:#0F1B2D;font-weight:700;padding:14px;cursor:pointer;font-size:15px;">
+              Back to Dashboard →
+            </button>
+          </div>`;
+      } else {
+        window.location.href = window.VENDOR_DASHBOARD_URL || '/vendors/dashboard/';
+      }
+    } else {
+      window.location.href = window.VENDOR_DASHBOARD_URL || '/vendors/dashboard/';
     }
-  } catch(e){console.error(e);}
-  window.location.href = window.VENDOR_DASHBOARD_URL || '/vendors/dashboard/';
+  } catch(e) {
+    console.error('[endStream]', e);
+    window.location.href = window.VENDOR_DASHBOARD_URL || '/vendors/dashboard/';
+  }
 }
 
 // ── HELPERS ───────────────────────────────────────────────

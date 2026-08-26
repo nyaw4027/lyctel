@@ -172,16 +172,38 @@ def end_stream(request, stream_id):
         return JsonResponse({'error': 'Not a vendor.'}, status=403)
 
     stream = get_object_or_404(LiveStream, id=stream_id, vendor=vendor)
+
+    # Read peak_viewers and recording_url from the JS client
+    try:
+        body          = json.loads(request.body)
+        peak_viewers  = int(body.get('peak_viewers', 0))
+        recording_url = body.get('recording_url', '') or ''
+    except (json.JSONDecodeError, TypeError, ValueError):
+        peak_viewers  = 0
+        recording_url = ''
+
+    update_fields = ['status', 'ended_at']
+
     stream.status   = LiveStream.Status.ENDED
     stream.ended_at = timezone.now()
-    stream.save(update_fields=['status', 'ended_at'])
+
+    if peak_viewers > stream.peak_viewers:
+        stream.peak_viewers = peak_viewers
+        update_fields.append('peak_viewers')
+
+    if recording_url and hasattr(stream, 'recording_url'):
+        stream.recording_url = recording_url
+        update_fields.append('recording_url')
+
+    stream.save(update_fields=update_fields)
 
     return JsonResponse({
-        'success':        True,
-        'total_viewers':  stream.total_viewers,
-        'gifts_value':    str(stream.total_gifts_value),
-        'sales_value':    str(stream.total_sales_value),
-        'duration':       stream.duration_minutes,
+        'success':       True,
+        'total_viewers': stream.total_viewers,
+        'peak_viewers':  stream.peak_viewers,
+        'gifts_value':   str(stream.total_gifts_value),
+        'sales_value':   str(stream.total_sales_value),
+        'duration':      stream.duration_minutes,
     })
 
 
@@ -271,3 +293,49 @@ def _cart_count(request):
         except Exception:
             pass
     return 0
+
+# ── API: UPLOAD RECORDING ─────────────────────────────────
+
+@login_required
+@require_POST
+def upload_recording(request, stream_id):
+    """
+    Receives the client-side MediaRecorder blob and saves it via Cloudinary.
+    Called by livestream.js stopRecordingAndUpload() when the stream ends.
+    """
+    try:
+        vendor = request.user.vendor
+    except Exception:
+        return JsonResponse({'error': 'Not a vendor.'}, status=403)
+
+    stream = get_object_or_404(LiveStream, id=stream_id, vendor=vendor)
+
+    recording = request.FILES.get('recording')
+    if not recording:
+        return JsonResponse({'success': False, 'error': 'No file received.'})
+
+    # Size guard — 500MB max
+    if recording.size > 500 * 1024 * 1024:
+        return JsonResponse({'success': False, 'error': 'Recording too large (max 500MB).'})
+
+    try:
+        import cloudinary.uploader
+        result = cloudinary.uploader.upload(
+            recording,
+            resource_type = 'video',
+            folder        = 'lynctel/recordings',
+            public_id     = f'stream_{stream_id}',
+            overwrite     = True,
+        )
+        recording_url = result.get('secure_url', '')
+
+        if hasattr(stream, 'recording_url') and recording_url:
+            stream.recording_url = recording_url
+            stream.save(update_fields=['recording_url'])
+
+        return JsonResponse({'success': True, 'recording_url': recording_url})
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error('Recording upload failed: %s', e)
+        return JsonResponse({'success': False, 'error': str(e)})
