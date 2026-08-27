@@ -216,7 +216,7 @@ def _mark_paid(order, transaction_id: str = '') -> None:
         pass
 
     try:
-        from push_notifications import push_order_confirmed, push_new_order_to_vendor
+        from push_notify import push_order_confirmed, push_new_order_to_vendor
         push_order_confirmed(order)
         push_new_order_to_vendor(order)
     except Exception:
@@ -319,7 +319,7 @@ def hubtel_init(request, order_pk):
 
     try:
         resp = http_requests.post(
-            'https://api.hubtel.com/v2/pos/onlinecheckout/items/initiate',
+            'https://payproxyapi.hubtel.com/items/initiate',
             headers={'Authorization': _hubtel_auth(), 'Content-Type': 'application/json'},
             json={
                 'totalAmount':           float(order.total_amount),
