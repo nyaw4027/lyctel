@@ -396,7 +396,7 @@ def _notify_customer_status_change(delivery, customer, status):
 
     # Push notification
     try:
-        from push_notifications import send_push_notification
+        from push_notify import send_push_notification
         push_map = {
             'picked_up': ('Order Picked Up 📦', f'{order_ref} is on the way!'),
             'delivered': ('Order Delivered 🎉', f'{order_ref} has arrived!'),

@@ -6,7 +6,7 @@ import asyncio
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-from push_notifications import send_push_notification
+from push_notify import send_push_notification
 
 
 import logging as _logging

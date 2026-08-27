@@ -395,7 +395,7 @@ def send_message(request, room_id):
     # Push notification to recipient
     try:
         recipient = room.vendor.owner if is_buyer else room.buyer
-        from push_notifications import send_push_notification
+        from push_notify import send_push_notification
         send_push_notification(
             recipient,
             title=f'New message from {user.display_name}',

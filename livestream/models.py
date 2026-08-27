@@ -111,7 +111,7 @@ class StreamGift(models.Model):
         CROWN   = 'crown',   '👑 Crown'
         ROCKET  = 'rocket',  '🚀 Rocket'
 
-    # GHS value of each gift — Lynctel keeps 20%, vendor gets 80%
+    # GHS value of each gift — 50% platform / 50% vendor (auto-split after payment)
     GIFT_VALUES = {
         'rose':    Decimal('1.00'),
         'fire':    Decimal('2.00'),
@@ -149,6 +149,22 @@ class StreamGift(models.Model):
     platform_cut    = models.DecimalField(max_digits=8, decimal_places=2)
     vendor_earnings = models.DecimalField(max_digits=8, decimal_places=2)
 
+    # ── Payment status (real MoMo / card payment via Hubtel) ──────────────
+    class PaymentStatus(models.TextChoices):
+        PENDING = 'pending', 'Pending Payment'
+        PAID    = 'paid',    'Paid'
+        FAILED  = 'failed',  'Failed'
+
+    payment_status     = models.CharField(
+        max_length=10,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING,
+        db_index=True,
+    )
+    hubtel_checkout_id = models.CharField(max_length=200, blank=True, default='')
+    hubtel_reference   = models.CharField(max_length=200, blank=True, default='')
+    paid_at            = models.DateTimeField(null=True, blank=True)
+
     sent_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -157,7 +173,7 @@ class StreamGift(models.Model):
     def save(self, *args, **kwargs):
         self.unit_value      = self.GIFT_VALUES.get(self.gift_type, Decimal('1.00'))
         self.total_value     = self.unit_value * self.quantity
-        self.platform_cut    = (self.total_value * Decimal('0.20')).quantize(Decimal('0.01'))
+        self.platform_cut    = (self.total_value * Decimal('0.50')).quantize(Decimal('0.01'))
         self.vendor_earnings = self.total_value - self.platform_cut
         super().save(*args, **kwargs)
 

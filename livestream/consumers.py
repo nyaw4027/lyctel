@@ -160,35 +160,16 @@ class StreamConsumer(AsyncWebsocketConsumer):
                 'sent_at':    comment.sent_at.strftime('%H:%M'),
             })
 
-        # ── Gift ──────────────────────────────────────────
+        # ── Gift (payment-required) ───────────────────────────────
+        # Gifts now go through Hubtel payment (views.gift_payment_initiate).
+        # The WS 'gift' message type is only sent by the server after payment
+        # is confirmed via the callback. Clients should NOT send 'gift' directly.
+        # This handler is kept so vendor broadcast.html can receive gift events.
         elif msg_type == 'gift':
-            if not self.user.is_authenticated:
-                await self.send(text_data=json.dumps({
-                    'type':    'error',
-                    'message': 'You must be logged in to send gifts.',
-                }))
-                return
-
-            gift_type = data.get('gift_type', 'rose')
-            quantity  = max(1, min(int(data.get('quantity', 1)), 100))
-
-            gift = await self._save_gift(gift_type, quantity)
-            if not gift:
-                await self.send(text_data=json.dumps({
-                    'type':    'error',
-                    'message': 'Invalid gift type.',
-                }))
-                return
-
-            await self.channel_layer.group_send(self.room_group, {
-                'type':        'gift_event',
-                'gift_type':   gift_type,
-                'emoji':       gift['emoji'],
-                'quantity':    quantity,
-                'total_value': str(gift['total_value']),
-                'username':    self.user.display_name,
-                'user_id':     self.user.id,
-            })
+            # Server-sent gift events (from _broadcast_gift_paid in views.py)
+            # are relayed to all clients. Client-originated 'gift' messages
+            # are silently ignored — they must use the HTTP payment endpoint.
+            pass
 
         # ── Pin product (vendor only) ──────────────────────
         elif msg_type == 'pin_product':
@@ -369,25 +350,20 @@ class StreamConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _save_gift(self, gift_type, quantity):
-        from livestream.models import StreamGift, LiveStream
+        """
+        NOTE: Gifts now require real payment via Hubtel (views.gift_payment_initiate).
+        The WebSocket gift message type is kept for backward compat but does NOT
+        create a DB record or update totals — that only happens after payment
+        callback confirms the transaction.
+        """
+        from livestream.models import StreamGift
         valid_types = [c[0] for c in StreamGift.GiftType.choices]
         if gift_type not in valid_types:
             return None
-
-        gift = StreamGift.objects.create(
-            stream_id=self.stream_id,
-            sender=self.user,
-            gift_type=gift_type,
-            quantity=quantity,
-        )
-
-        LiveStream.objects.filter(id=self.stream_id).update(
-            total_gifts_value=gift.total_value
-        )
-
+        # Return emoji/value for the animation only (no DB write here)
         return {
-            'emoji':       StreamGift.GIFT_EMOJIS[gift_type],
-            'total_value': gift.total_value,
+            'emoji':       StreamGift.GIFT_EMOJIS.get(gift_type, '🎁'),
+            'total_value': StreamGift.GIFT_VALUES.get(gift_type, 0),
         }
 
     @database_sync_to_async
@@ -450,9 +426,7 @@ class StreamConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def _end_stream(self):
         from livestream.models import LiveStream
-        from django.db.models import Max
-        # Update status and get current viewer count for peak update
         LiveStream.objects.filter(id=self.stream_id).update(
-            status   = LiveStream.Status.ENDED,
-            ended_at = timezone.now(),
+            status=LiveStream.Status.ENDED,
+            ended_at=timezone.now(),
         )

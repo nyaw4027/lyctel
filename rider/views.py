@@ -463,7 +463,7 @@ def notify_rider(rider_user, title, message, link='', notif_type='general'):
 
     # Push notification (non-blocking)
     try:
-        from push_notifications import send_push_notification
+        from push_notify import send_push_notification
         send_push_notification(rider_user, title=title, body=message, url=link)
     except Exception:
         pass
