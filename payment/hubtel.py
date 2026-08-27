@@ -81,7 +81,7 @@ class HubtelCheckout:
         Strip anything that isn't alphanumeric or hyphen, then truncate.
         """
         cleaned = re.sub(r'[^A-Za-z0-9\-]', '', str(text))
-        return cleaned[:32]
+        return cleaned[:36]
 
     @staticmethod
     def _clean_desc(text):
@@ -301,14 +301,21 @@ class HubtelCheckout:
         paid = d_status in ("success", "paid", "completed") or code == "0000"
 
         return {
-            "paid":             paid,
-            "response_code":    code,
-            "status":           d_status,
-            "checkout_id":      d_data.get("CheckoutId")          or d_data.get("checkoutId",       ""),
-            "client_reference": d_data.get("ClientReference")     or d_data.get("clientReference",  ""),
-            "amount":           d_data.get("Amount")              or d_data.get("amount"),
-            "phone":            d_data.get("CustomerPhoneNumber") or d_data.get("customerPhoneNumber", ""),
-            "description":      d_data.get("Description")         or d_data.get("description",      ""),
+            "paid":                paid,
+            "response_code":       code,
+            "status":              d_status,
+            "checkout_id":         d_data.get("CheckoutId")            or d_data.get("checkoutId",           ""),
+            "client_reference":    d_data.get("ClientReference")       or d_data.get("clientReference",      ""),
+            "transaction_id":      d_data.get("TransactionId")         or d_data.get("transactionId",        ""),
+            "external_tx_id":      d_data.get("ExternalTransactionId") or d_data.get("externalTransactionId",""),
+            "amount":              d_data.get("Amount")                or d_data.get("amount"),
+            "amount_charged":      d_data.get("AmountCharged")         or d_data.get("amountCharged"),
+            "charges":             d_data.get("Charges")               or d_data.get("charges"),
+            "amount_after_charges":d_data.get("AmountAfterCharges")    or d_data.get("amountAfterCharges"),
+            "phone":               d_data.get("CustomerPhoneNumber")   or d_data.get("customerPhoneNumber",  ""),
+            "description":         d_data.get("Description")           or d_data.get("description",         ""),
+            "order_id":            d_data.get("OrderId")               or d_data.get("orderId",              ""),
+            "payment_date":        d_data.get("PaymentDate")           or d_data.get("paymentDate",          ""),
         }
 
     # ── Webhook HMAC signature verification ───────────────────────────────────

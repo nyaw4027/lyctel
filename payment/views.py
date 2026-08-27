@@ -310,45 +310,28 @@ def hubtel_init(request, order_pk):
 
     if not HUBTEL_CLIENT_ID:
         messages.error(request, 'Payment gateway not configured. Contact support.')
-        return redirect('order:tracking', order_ref=order.order_ref)
+        return redirect('order:history')
 
-    base_url    = request.build_absolute_uri('/').rstrip('/')
-    return_url  = f'{base_url}/checkout/hubtel/callback/?ref={order.order_ref}'
-    cancel_url  = f'{base_url}/checkout/hubtel/cancel/?ref={order.order_ref}'
-    webhook_url = f'{base_url}/checkout/hubtel/webhook/'
+    from .hubtel import HubtelCheckout
 
-    try:
-        resp = http_requests.post(
-            'https://payproxyapi.hubtel.com/items/initiate',
-            headers={'Authorization': _hubtel_auth(), 'Content-Type': 'application/json'},
-            json={
-                'totalAmount':           float(order.total_amount),
-                'description':           f'Lynctel order {order.order_ref}',
-                'clientReference':       order.order_ref,
-                'callbackUrl':           webhook_url,
-                'returnUrl':             return_url,
-                'cancellationUrl':       cancel_url,
-                'merchantAccountNumber': HUBTEL_MERCHANT_ACCT,
-            },
-            timeout=20,
-        )
-        data = resp.json()
-        checkout_url = data.get('paylinkUrl') or data.get('checkoutUrl')
+    result = HubtelCheckout.initiate(order, request)
 
-        if checkout_url:
-            paylink_id = data.get('paylinkId', '')
-            if paylink_id and hasattr(order, 'payment_reference'):
-                order.payment_reference = paylink_id
-                order.save(update_fields=['payment_reference'])
-            return redirect(checkout_url)
+    if not result.get('success'):
+        logger.error('[Hubtel] Init failed for order %s: %s',
+                     order.order_ref, result.get('error'))
+        messages.error(request, result.get('error', 'Payment error. Please try again.'))
+        return redirect('order:history')
 
-        logger.error('[Hubtel] No checkout URL for order %s: %s', order.order_ref, data)
+    checkout_url = result.get('redirect_url', '')
+    direct_url   = result.get('direct_url', '')
 
-    except Exception as exc:
-        logger.error('[Hubtel] Init error for order %s: %s', order.order_ref, exc)
-
-    messages.error(request, 'Could not reach Hubtel. Please try again.')
-    return redirect('order:tracking', order_ref=order.order_ref)
+    # Render pay.html with iFrame (direct_url) or redirect fallback (checkout_url)
+    return render(request, 'payment/pay.html', {
+        'order':       order,
+        'checkout_url': checkout_url,
+        'direct_url':   direct_url,   # used by iFrame embed in pay.html
+        'cart_count':   0,
+    })
 
 
 @login_required

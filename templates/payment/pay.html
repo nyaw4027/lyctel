@@ -1,140 +1,185 @@
 {% extends "base.html" %}
-{% block title %}Complete Payment — Lynctel{% endblock %}
+{% load static %}
+{% block title %}Pay — {{ order.order_ref }} — Lynctel{% endblock %}
+
+{% block extra_head %}
+<style>
+  body { background: #0F1B2D; }
+  .pay-wrap {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .pay-card {
+    background: white; border-radius: 20px;
+    width: 100%; max-width: 480px;
+    overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,.4);
+  }
+  .pay-header {
+    background: linear-gradient(135deg, #0F1B2D 0%, #1e3a5f 100%);
+    padding: 20px 24px; color: white;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  /* iFrame container */
+  #hubtel-iframe-wrap {
+    position: relative;
+    width: 100%;
+    min-height: 560px;
+    background: #f9fafb;
+  }
+  #hubtel-iframe-wrap iframe {
+    width: 100%; height: 100%;
+    min-height: 560px; border: none;
+    display: block;
+  }
+  /* Loading state */
+  .iframe-loader {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: #f9fafb; gap: 12px;
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #F5A623;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .method-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .7rem; font-weight: 700;
+    padding: 4px 10px; border-radius: 99px;
+  }
+  /* Fallback: redirect mode */
+  .redirect-card {
+    padding: 32px 24px; text-align: center;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-center bg-cream px-3" style="min-height: 100vh;">
-  <div class="bg-white rounded-3xl shadow p-4 w-100 text-center" style="max-width: 24rem;">
+<div class="pay-wrap">
+  <div class="pay-card">
 
-    <!-- Icon -->
-    <div class="bg-success bg-opacity-10 rounded-2xl d-flex align-items-center justify-content-center mx-auto mb-4" style="width:4rem;height:4rem;">
-      <span class="fs-2">📱</span>
-    </div>
-
-    <h1 class="font-display fw-bold text-navy fs-4 mb-2">Complete Your Payment</h1>
-    <p class="text-secondary small mb-1">
-      Order <strong class="text-navy">{{ order.order_ref }}</strong>
-    </p>
-    <p class="font-display fw-bold fs-2 text-navy mb-2">GHS {{ order.total_amount }}</p>
-    <p class="small text-secondary mb-4">
-      Pay with MTN MoMo, Vodafone Cash, AirtelTigo Money, or Card
-    </p>
-
-    <!-- Status banner -->
-    <div id="pay-status" class="alert-info rounded-2xl px-3 py-3 small mb-4">
-      <div class="d-flex align-items-center justify-content-center gap-2">
-        <svg class="spin-anim" style="width:1rem;height:1rem;" fill="none" viewBox="0 0 24 24">
-          <circle style="opacity:.25;" cx="12" cy="12" r="10"
-                  stroke="currentColor" stroke-width="4"/>
-          <path style="opacity:.75;" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-        </svg>
-        Opening payment window...
+    <!-- Header -->
+    <div class="pay-header">
+      <div>
+        <p style="color:rgba(255,255,255,.5);font-size:.7rem;margin:0;text-transform:uppercase;letter-spacing:.08em">Secure Payment</p>
+        <p style="color:white;font-weight:700;font-size:1rem;margin:2px 0 0">{{ order.order_ref }}</p>
+      </div>
+      <div style="text-align:right">
+        <p style="color:rgba(255,255,255,.5);font-size:.7rem;margin:0">Total</p>
+        <p style="color:#F5A623;font-weight:900;font-size:1.4rem;margin:0">GHS {{ order.total_amount }}</p>
       </div>
     </div>
 
-    <!-- Fallback button (shown if popup blocked or closed) -->
-    <button id="open-pay-btn" onclick="openPayment()"
-            class="btn btn-navy w-100 fw-semibold py-3 rounded-2xl small d-none mb-3">
-      📱 Open Payment Window
-    </button>
-
-    <!-- Cancel link -->
-    <a href="{% url 'order:detail' pk=order.pk %}" class="d-block small text-secondary mt-2 text-decoration-none">
-      ← Cancel and return to order
-    </a>
-
-    <!-- Payment method icons -->
-    <div class="d-flex align-items-center justify-content-center gap-2 mt-4 pt-3 border-top">
-      <span class="small text-secondary">Accepted:</span>
-      <span class="small bg-warning bg-opacity-10 text-warning-emphasis fw-semibold px-2 py-1 rounded-2">MTN MoMo</span>
-      <span class="small bg-danger bg-opacity-10 text-danger fw-semibold px-2 py-1 rounded-2">Vodafone</span>
-      <span class="small bg-primary bg-opacity-10 text-primary fw-semibold px-2 py-1 rounded-2">AirtelTigo</span>
+    {% if direct_url %}
+    <!-- ── iFrame mode (Hubtel hosted page embedded) ─────────── -->
+    <div id="hubtel-iframe-wrap">
+      <!-- Loading indicator (hidden once iframe loads) -->
+      <div class="iframe-loader" id="iframe-loader">
+        <div class="spinner"></div>
+        <p style="color:#6b7280;font-size:.85rem;margin:0">Loading payment page…</p>
+      </div>
+      <iframe
+        id="hubtel-iframe"
+        src="{{ direct_url }}"
+        title="Hubtel Checkout"
+        allow="payment"
+        scrolling="yes"
+        onload="iframeLoaded()"
+      ></iframe>
     </div>
 
-    <p class="small text-secondary mt-3 mb-0">
-      🔒 Secured by Paystack · Your details are never stored by Lynctel
+    <!-- Payment method badges -->
+    <div style="padding:14px 20px;border-top:1px solid #f3f4f6;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;">
+      <span class="method-pill" style="background:#fef3c7;color:#92400e">📱 MTN MoMo</span>
+      <span class="method-pill" style="background:#fee2e2;color:#991b1b">📱 Vodafone</span>
+      <span class="method-pill" style="background:#dbeafe;color:#1e40af">📱 AirtelTigo</span>
+      <span class="method-pill" style="background:#f3f4f6;color:#374151">💳 Card</span>
+    </div>
+
+    <!-- Cancel -->
+    <div style="padding:10px 20px 16px;text-align:center">
+      <a href="{% url 'order:history' %}" style="font-size:.78rem;color:#9ca3af;text-decoration:none">
+        ← Cancel and return to orders
+      </a>
+    </div>
+
+    {% elif checkout_url %}
+    <!-- ── Redirect mode (fallback if no direct_url) ──────────── -->
+    <div class="redirect-card">
+      <div class="spinner" style="margin:0 auto 16px"></div>
+      <h1 style="font-size:1.1rem;font-weight:700;color:#0F1B2D;margin-bottom:8px">Redirecting to Hubtel…</h1>
+      <p style="font-size:.85rem;color:#6b7280;margin-bottom:20px">You'll be taken to the payment page in a moment.</p>
+      <a id="pay-btn" href="{{ checkout_url }}"
+         style="display:block;background:#F5A623;color:#0F1B2D;font-weight:700;font-size:.95rem;
+                padding:14px 24px;border-radius:14px;text-decoration:none;margin-bottom:12px">
+        Pay GHS {{ order.total_amount }} →
+      </a>
+      <a href="{% url 'order:history' %}" style="font-size:.78rem;color:#9ca3af;text-decoration:none">
+        ← Cancel
+      </a>
+    </div>
+
+    {% else %}
+    <!-- ── Error state ────────────────────────────────────────── -->
+    <div class="redirect-card">
+      <div style="font-size:3rem;margin-bottom:12px">⚠️</div>
+      <h1 style="font-size:1.1rem;font-weight:700;color:#0F1B2D;margin-bottom:8px">Payment unavailable</h1>
+      <p style="font-size:.85rem;color:#6b7280;margin-bottom:20px">Could not load the payment page. Please try again.</p>
+      <a href="{% url 'order:checkout' %}"
+         style="display:block;background:#0F1B2D;color:white;font-weight:700;font-size:.95rem;
+                padding:14px 24px;border-radius:14px;text-decoration:none;margin-bottom:12px">
+        ← Back to Checkout
+      </a>
+    </div>
+    {% endif %}
+
+    <p style="text-align:center;font-size:.68rem;color:#d1d5db;padding:8px 16px 14px;background:white">
+      🔒 Secured by Hubtel · Payments processed by Hubtel Payment Services · Lynctel never stores your card details
     </p>
+
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<style>.spin-anim{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>
-<!-- Paystack Inline JS -->
-<script src="https://js.paystack.co/v1/inline.js"></script>
 <script>
-  const PAYSTACK_PUBLIC_KEY = "{{ public_key }}";
-  const ORDER_REF           = "{{ order.order_ref }}";
-  const AMOUNT_KOBO         = {{ amount_kobo }};  // amount in kobo (GHS × 100)
-  const EMAIL               = "{{ email }}";
-  const VERIFY_URL          = "{% url 'payment:paystack_verify' order_pk=order.pk %}";
-  const CALLBACK_URL        = "{% url 'payment:paystack-callback' tx_ref=order.order_ref %}";
+// Hide iframe loader once iframe content loads
+function iframeLoaded() {
+  var loader = document.getElementById('iframe-loader');
+  var frame  = document.getElementById('hubtel-iframe');
+  if (loader) loader.style.display = 'none';
+  if (frame)  frame.style.opacity  = '1';
+}
 
-  function setStatus(html, type) {
-    const classes = {
-      blue:   'alert-info',
-      green:  'alert-success',
-      red:    'alert-danger',
-      orange: 'alert-warning',
-    };
-    const el = document.getElementById('pay-status');
-    el.className = `rounded-2xl px-3 py-3 small mb-4 ${classes[type] || classes.blue}`;
-    el.innerHTML = html;
+// Auto-redirect in redirect mode
+{% if checkout_url and not direct_url %}
+setTimeout(function() {
+  window.location.href = "{{ checkout_url|escapejs }}";
+}, 1200);
+{% endif %}
+
+// Listen for messages from Hubtel iframe (postMessage API)
+window.addEventListener('message', function(event) {
+  // Only trust Hubtel domains
+  if (!event.origin || !event.origin.includes('hubtel.com')) return;
+
+  var data = event.data || {};
+  var type = data.type || data.action || '';
+
+  if (type === 'payment_success' || data.status === 'success') {
+    // Redirect to processing page to confirm server-side
+    window.location.href = "{% url 'payment:processing' %}?order={{ order.order_ref }}";
+  } else if (type === 'payment_failed' || data.status === 'failed') {
+    window.location.href = "{% url 'payment:failed' order.order_ref %}";
+  } else if (type === 'checkout_closed' || type === 'cancel') {
+    window.location.href = "{% url 'order:history' %}";
   }
-
-  function showRetryBtn() {
-    document.getElementById('open-pay-btn').classList.remove('d-none');
-  }
-
-  function openPayment() {
-    document.getElementById('open-pay-btn').classList.add('d-none');
-    setStatus(
-      '<div class="d-flex align-items-center justify-content-center gap-2">'
-      + '<svg class="spin-anim" style="width:1rem;height:1rem;" fill="none" viewBox="0 0 24 24">'
-      + '<circle style="opacity:.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>'
-      + '<path style="opacity:.75;" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>'
-      + '</svg>Opening payment window...</div>',
-      'blue'
-    );
-
-    const handler = PaystackPop.setup({
-      key:       PAYSTACK_PUBLIC_KEY,
-      email:     EMAIL,
-      amount:    AMOUNT_KOBO,
-      currency:  'GHS',
-      ref:       ORDER_REF,
-      // Ghana Mobile Money channels
-      channels:  ['mobile_money', 'card', 'bank_transfer'],
-      metadata: {
-        custom_fields: [
-          { display_name: 'Order Ref',    variable_name: 'order_ref',    value: ORDER_REF },
-          { display_name: 'Lynctel Order', variable_name: 'platform',    value: 'Lynctel' },
-        ],
-        order_ref: ORDER_REF,
-      },
-
-      callback: function(response) {
-        if (response.status === 'success') {
-          setStatus('✅ Payment received! Verifying...', 'green');
-          // Redirect to verify endpoint so Django confirms with Paystack
-          window.location.href = `${VERIFY_URL}?reference=${response.reference}`;
-        } else {
-          setStatus('❌ Payment was not completed. Please try again.', 'red');
-          showRetryBtn();
-        }
-      },
-
-      onClose: function() {
-        setStatus('⚠ Payment window closed. Click below to try again.', 'orange');
-        showRetryBtn();
-      },
-    });
-
-    handler.openIframe();
-  }
-
-  // Auto-open after short delay so page renders first
-  window.addEventListener('load', function() {
-    setTimeout(openPayment, 600);
-  });
+});
 </script>
 {% endblock %}

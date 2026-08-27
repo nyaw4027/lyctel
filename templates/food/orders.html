@@ -22,7 +22,7 @@
       FIX: was food:order_detail order.pk — URL does not exist.
       Changed to food:order_track which IS registered.
     -->
-    <a href="{% url 'food:order_track' order.pk %}"
+    <a href="{% url 'food:order_track' order.order_ref %}"
        class="list-group-item list-group-item-action rounded-3 border p-3 text-decoration-none">
       <div class="d-flex align-items-start justify-content-between gap-3">
 
