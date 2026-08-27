@@ -532,7 +532,7 @@ def gift_payment_callback(request, stream_id):
                 gift.save(update_fields=['payment_status'])
             except Exception:
                 pass
-            log.info('Gift FAILED: %s — status: %s', client_ref, tx_status)
+            log.info('Gift FAILED: %s — status: %s', client_ref, parsed.get('status', 'unknown'))
 
     except Exception as e:
         log.exception('Gift callback error: %s', e)
