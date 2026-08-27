@@ -397,20 +397,26 @@ def gift_payment_initiate(request, stream_id):
         merchant      = HubtelCheckout._merchant()
 
         import requests as req_lib
+        # clientReference max 32 chars; strip special chars from description
+        import re as _re
+        safe_desc = _re.sub(r"[^a-zA-Z0-9 .,\-]", "", f"Gift {gift_type.title()} x{quantity} Lynctel Live")[:100]
         payload = {
-            "totalAmount":           float(gift.total_value),
-            "description":           f"Gift: {StreamGift.GIFT_EMOJIS[gift_type]} {gift_type.title()} x{quantity} — Lynctel Live",
+            "totalAmount":           float(round(gift.total_value, 2)),
+            "description":           safe_desc,
             "callbackUrl":           gift_callback,
             "returnUrl":             return_url,
             "cancellationUrl":       cancel_url,
             "merchantAccountNumber": merchant,
-            "clientReference":       ref,
-            "customerName":          request.user.get_full_name() or request.user.display_name or "Viewer",
-            "customerMobileNumber":  getattr(request.user, 'phone', '') or '',
-            "customerEmail":         getattr(request.user, 'email', '') or '',
+            "clientReference":       ref[:32],
         }
+        name  = request.user.get_full_name() or getattr(request.user, 'display_name', '') or ''
+        phone = getattr(request.user, 'phone', '') or ''
+        email = getattr(request.user, 'email', '') or ''
+        if name:  payload['payeeName']        = name[:50]
+        if phone: payload['payeeMobileNumber'] = phone[:20]
+        if email: payload['payeeEmail']        = email[:80]
 
-        url = f"https://api.hubtel.com/v2/merchantaccount/merchants/{merchant}/initiate-payment"
+        url = 'https://payproxyapi.hubtel.com/items/initiate'
         response = req_lib.post(
             url, json=payload, auth=(cid, secret),
             timeout=15, headers={"Content-Type": "application/json"},
@@ -483,10 +489,11 @@ def gift_payment_callback(request, stream_id):
         pass  # Allow if signature verification not possible
 
     try:
-        data          = json.loads(request.body)
-        client_ref    = data.get('ClientReference') or data.get('clientReference', '')
-        tx_status     = data.get('Status') or data.get('status', '')
-        paid          = tx_status.lower() in ('success', 'paid', 'completed', '00')
+        raw_data   = json.loads(request.body)
+        from payment.hubtel import HubtelCheckout as HC
+        parsed     = HC.parse_callback(raw_data)
+        client_ref = parsed["client_reference"]
+        paid       = parsed["paid"]
 
         if not client_ref or not client_ref.startswith('GIFT-'):
             return JsonResponse({'received': True})

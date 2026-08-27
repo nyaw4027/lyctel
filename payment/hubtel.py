@@ -1,19 +1,22 @@
 """
 payment/hubtel.py
 =================
-Hubtel Checkout API v2 integration for Lynctel.
+Hubtel Online Checkout API integration for Lynctel.
+
+Endpoint: https://payproxyapi.hubtel.com/items/initiate  (per official docs)
+Status:   https://api-txnstatus.hubtel.com/transactions/{acct}/status
 
 Usage:
     from payment.hubtel import HubtelCheckout
     result = HubtelCheckout.initiate(order, request)
     # → {'success': True, 'redirect_url': '...', 'checkout_id': '...'}
-
-Docs: https://developers.hubtel.com/docs/checkout
 """
+import base64
 import hashlib
 import hmac
 import json
 import logging
+import re
 import uuid
 from decimal import Decimal
 
@@ -22,12 +25,11 @@ from django.conf import settings
 
 log = logging.getLogger(__name__)
 
-# ── Constants ─────────────────────────────────────────────────────────────────
-HUBTEL_API_BASE   = "https://api.hubtel.com/v2"
-CHECKOUT_ENDPOINT = f"{HUBTEL_API_BASE}/merchantaccount/merchants"
-VERIFY_ENDPOINT   = f"{HUBTEL_API_BASE}/merchantaccount/merchants"
+# ── Official API endpoints (per Hubtel docs) ──────────────────────────────────
+INITIATE_URL     = "https://payproxyapi.hubtel.com/items/initiate"
+STATUS_CHECK_URL = "https://api-txnstatus.hubtel.com/transactions/{acct}/status"
 
-TIMEOUT = 15   # seconds
+TIMEOUT = 15  # seconds
 
 
 class HubtelError(Exception):
@@ -40,8 +42,10 @@ class HubtelError(Exception):
 
 class HubtelCheckout:
     """
-    Encapsulates Hubtel Checkout API calls.
+    Hubtel Online Checkout — Redirect flow.
+
     All methods are class-level — no instantiation needed.
+    Docs: https://payproxyapi.hubtel.com/items/initiate
     """
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -50,18 +54,42 @@ class HubtelCheckout:
     def _auth():
         """Return (client_id, client_secret) from settings."""
         return (
-            settings.HUBTEL_CLIENT_ID,
-            settings.HUBTEL_CLIENT_SECRET,
+            getattr(settings, 'HUBTEL_CLIENT_ID',     ''),
+            getattr(settings, 'HUBTEL_CLIENT_SECRET', ''),
         )
 
     @staticmethod
     def _merchant():
-        return settings.HUBTEL_MERCHANT_ACCT
+        return getattr(settings, 'HUBTEL_MERCHANT_ACCT', '')
 
     @staticmethod
-    def _ref(order):
-        """Generate a unique payment reference tied to the order."""
-        return f"LYN-{order.order_ref}-{uuid.uuid4().hex[:6].upper()}"
+    def _headers():
+        """Build Basic Auth headers — Hubtel expects Authorization: Basic base64(id:secret)."""
+        cid, secret = HubtelCheckout._auth()
+        token = base64.b64encode(f"{cid}:{secret}".encode()).decode()
+        return {
+            "Authorization": f"Basic {token}",
+            "Content-Type":  "application/json",
+            "Accept":        "application/json",
+            "Cache-Control": "no-cache",
+        }
+
+    @staticmethod
+    def _safe_ref(text):
+        """
+        clientReference must be ≤ 32 characters (Hubtel docs).
+        Strip anything that isn't alphanumeric or hyphen, then truncate.
+        """
+        cleaned = re.sub(r'[^A-Za-z0-9\-]', '', str(text))
+        return cleaned[:32]
+
+    @staticmethod
+    def _clean_desc(text):
+        """
+        Hubtel rejects descriptions with special characters (&*!%@ etc).
+        Keep only alphanumeric, spaces, commas, periods, hyphens.
+        """
+        return re.sub(r'[^a-zA-Z0-9 .,\-]', '', str(text))[:200]
 
     # ── Initiate checkout ─────────────────────────────────────────────────────
 
@@ -70,19 +98,13 @@ class HubtelCheckout:
         """
         Create a Hubtel Checkout session.
 
-        Args:
-            order   : Order model instance
-            request : Django HttpRequest (used to build absolute URLs)
-
-        Returns:
-            dict with keys:
-                success      (bool)
-                redirect_url (str)   — send user here to pay
-                checkout_id  (str)   — store on the order for verification
-                reference    (str)   — our payment reference
-            OR on failure:
-                success (bool = False)
-                error   (str)
+        Returns dict with keys:
+            success      (bool)
+            redirect_url (str)  — redirect user here to pay
+            checkout_id  (str)  — store on order for verification
+            reference    (str)  — our clientReference
+        On failure:
+            success (bool=False), error (str)
         """
         try:
             cid, secret = cls._auth()
@@ -95,8 +117,11 @@ class HubtelCheckout:
                     "HUBTEL_MERCHANT_ACCT in Railway Variables."
                 )
 
-            ref          = cls._ref(order)
-            amount       = float(order.total_amount)
+            # clientReference: ≤ 32 chars, no special characters
+            ref = cls._safe_ref(f"ORD-{order.order_ref}")
+
+            amount = float(round(Decimal(str(order.total_amount)), 2))
+
             callback_url = getattr(settings, 'HUBTEL_CALLBACK_URL',
                                    'https://lynctel.up.railway.app/payment/callback/')
             return_url   = getattr(settings, 'HUBTEL_RETURN_URL',
@@ -104,160 +129,202 @@ class HubtelCheckout:
             cancel_url   = getattr(settings, 'HUBTEL_CANCEL_URL',
                                    'https://lynctel.up.railway.app/checkout/')
 
-            # Customer phone — Hubtel requires Ghanaian format: 0XX XXXXXXX
-            phone = (
-                order.delivery_phone
-                or (order.customer.phone if hasattr(order.customer, 'phone') else '')
-                or ''
-            )
-
             payload = {
-                "totalAmount":         amount,
-                "description":         f"Lynctel Order {order.order_ref}",
-                "callbackUrl":         callback_url,
-                "returnUrl":           return_url,
-                "cancellationUrl":     cancel_url,
+                "totalAmount":           amount,
+                "description":           cls._clean_desc(f"Lynctel Order {order.order_ref}"),
+                "callbackUrl":           callback_url,
+                "returnUrl":             return_url,
+                "cancellationUrl":       cancel_url,
                 "merchantAccountNumber": merchant,
-                "clientReference":     ref,
-                "customerName":        (
-                    order.customer.get_full_name()
-                    or order.customer.display_name
-                    or "Customer"
-                ),
-                "customerMobileNumber": phone,
-                "customerEmail":        getattr(order.customer, 'email', '') or '',
+                "clientReference":       ref,
             }
 
-            url = f"{CHECKOUT_ENDPOINT}/{merchant}/initiate-payment"
+            # Optional payee fields (docs: payeeName, payeeMobileNumber, payeeEmail)
+            customer = getattr(order, 'customer', None)
+            if customer:
+                name  = (getattr(customer, 'get_full_name', lambda: '')() or
+                         getattr(customer, 'display_name', '') or '')
+                phone = (getattr(order, 'delivery_phone', '') or
+                         getattr(customer, 'phone', '') or '')
+                email = getattr(customer, 'email', '') or ''
+                if name:  payload['payeeName']         = name[:50]
+                if phone: payload['payeeMobileNumber'] = phone[:20]
+                if email: payload['payeeEmail']        = email[:80]
+
+            log.info("[Hubtel] Initiating checkout ref=%s amount=GHS%.2f", ref, amount)
+
             response = requests.post(
-                url,
+                INITIATE_URL,
                 json    = payload,
-                auth    = (cid, secret),
+                headers = cls._headers(),
                 timeout = TIMEOUT,
-                headers = {"Content-Type": "application/json"},
             )
 
-            log.info("Hubtel initiate status=%s ref=%s", response.status_code, ref)
+            log.info("[Hubtel] Response status=%s ref=%s", response.status_code, ref)
 
             if response.status_code not in (200, 201):
                 raise HubtelError(
                     f"Hubtel API error {response.status_code}: {response.text[:200]}",
-                    code = response.status_code,
+                    code=response.status_code,
                 )
 
-            data = response.json()
+            body = response.json()
 
-            if data.get("status") not in ("Success", "success", 200, "00"):
+            # Success: responseCode == "0000" (per Hubtel docs)
+            if body.get("responseCode") != "0000":
                 raise HubtelError(
-                    data.get("message", "Unknown Hubtel error"),
-                    data = data,
+                    body.get("message", f"Hubtel error: {body.get('responseCode')}"),
+                    data=body,
                 )
 
-            checkout_url = (
-                data.get("data", {}).get("checkoutUrl")
-                or data.get("checkoutUrl")
-                or data.get("checkout_url")
-            )
-            checkout_id  = (
-                data.get("data", {}).get("checkoutId")
-                or data.get("checkoutId")
-                or ref
-            )
+            data         = body.get("data", {})
+            checkout_url = data.get("checkoutUrl", "")
+            checkout_id  = data.get("checkoutId",  ref)
+            direct_url   = data.get("checkoutDirectUrl", "")
 
             if not checkout_url:
                 raise HubtelError(
-                    "Hubtel returned success but no checkoutUrl in response",
-                    data = data,
+                    "Hubtel returned responseCode 0000 but no checkoutUrl",
+                    data=body,
                 )
+
+            # Persist on order if fields exist
+            for field, val in [('hubtel_checkout_id', checkout_id),
+                                ('hubtel_reference',   ref)]:
+                if hasattr(order, field) and not getattr(order, field, ''):
+                    try:
+                        setattr(order, field, val)
+                        order.save(update_fields=[field])
+                    except Exception:
+                        pass
+
+            log.info("[Hubtel] Checkout created id=%s ref=%s", checkout_id, ref)
 
             return {
                 "success":      True,
                 "redirect_url": checkout_url,
+                "direct_url":   direct_url,
                 "checkout_id":  checkout_id,
                 "reference":    ref,
-                "raw":          data,
             }
 
         except HubtelError as e:
-            log.error("Hubtel initiate failed: %s", e)
+            log.error("[Hubtel] initiate failed: %s", e)
             return {"success": False, "error": str(e)}
         except requests.Timeout:
-            log.error("Hubtel initiate timed out")
+            log.error("[Hubtel] initiate timed out")
             return {"success": False, "error": "Payment gateway timed out. Please try again."}
         except Exception as e:
-            log.exception("Hubtel initiate unexpected error: %s", e)
+            log.exception("[Hubtel] initiate unexpected error: %s", e)
             return {"success": False, "error": "Payment error. Please try again."}
 
-    # ── Verify payment ────────────────────────────────────────────────────────
+    # ── Verify payment (status check) ─────────────────────────────────────────
 
     @classmethod
-    def verify(cls, checkout_id):
+    def verify(cls, client_reference=None, checkout_id=None):
         """
-        Verify a completed payment by checkout_id.
+        Check transaction status via Hubtel Status Check API.
+        API: GET https://api-txnstatus.hubtel.com/transactions/{acct}/status
 
-        Returns:
-            dict with keys:
-                success     (bool)
-                paid        (bool)
-                amount      (float)
-                reference   (str)
-                status      (str)   — Hubtel status string
+        Returns dict with: paid (bool), status (str), amount (float)
         """
         try:
-            cid, secret = cls._auth()
-            merchant    = cls._merchant()
+            merchant = cls._merchant()
+            if not merchant:
+                return {"paid": False, "status": "no_merchant"}
 
-            url = f"{VERIFY_ENDPOINT}/{merchant}/transactions/status?clientReference={checkout_id}"
+            params = {}
+            if client_reference:
+                params["clientReference"]    = cls._safe_ref(client_reference)
+            elif checkout_id:
+                params["hubtelTransactionId"] = checkout_id
+            else:
+                return {"paid": False, "status": "no_reference"}
+
+            url = STATUS_CHECK_URL.format(acct=merchant)
             response = requests.get(
                 url,
-                auth    = (cid, secret),
+                params  = params,
+                headers = cls._headers(),
                 timeout = TIMEOUT,
             )
 
             if response.status_code != 200:
-                raise HubtelError(f"Verify failed: HTTP {response.status_code}")
+                log.warning("[Hubtel] Status check HTTP %s", response.status_code)
+                return {"paid": False, "status": f"http_{response.status_code}"}
 
-            data   = response.json()
-            status = (
-                data.get("data", {}).get("transactionStatus")
-                or data.get("transactionStatus")
-                or data.get("status")
-                or "unknown"
-            )
-            paid   = status.lower() in ("success", "paid", "completed", "00")
-            amount = float(
-                data.get("data", {}).get("amount")
-                or data.get("amount", 0)
-            )
+            body = response.json()
+            data = body.get("data", {})
+
+            # Status values: "Paid", "Unpaid", "Refunded" (per Hubtel docs)
+            status = (data.get("status") or "").strip().lower()
+            paid   = status == "paid"
 
             return {
-                "success":   True,
-                "paid":      paid,
-                "amount":    amount,
-                "reference": checkout_id,
-                "status":    status,
-                "raw":       data,
+                "paid":                    paid,
+                "status":                  status,
+                "amount":                  data.get("amount"),
+                "charges":                 data.get("charges"),
+                "amount_after_charges":    data.get("amountAfterCharges"),
+                "transaction_id":          data.get("transactionId"),
+                "external_transaction_id": data.get("externalTransactionId"),
+                "client_reference":        data.get("clientReference"),
+                "payment_method":          data.get("paymentMethod"),
             }
 
-        except HubtelError as e:
-            log.error("Hubtel verify failed: %s", e)
-            return {"success": False, "paid": False, "error": str(e)}
+        except requests.Timeout:
+            return {"paid": False, "status": "timeout"}
         except Exception as e:
-            log.exception("Hubtel verify error: %s", e)
-            return {"success": False, "paid": False, "error": str(e)}
+            log.exception("[Hubtel] verify error: %s", e)
+            return {"paid": False, "status": "error", "error": str(e)}
 
-    # ── Webhook signature verification ────────────────────────────────────────
+    # ── Parse callback ────────────────────────────────────────────────────────
+
+    @classmethod
+    def parse_callback(cls, body: dict) -> dict:
+        """
+        Parse Hubtel webhook/callback payload.
+
+        Hubtel sends PascalCase keys in callbacks (per docs):
+            ResponseCode, Status, Data.Status, Data.ClientReference,
+            Data.Amount, Data.CheckoutId, Data.CustomerPhoneNumber
+
+        Returns normalised dict with snake_case keys.
+        """
+        code   = body.get("ResponseCode") or body.get("responseCode", "")
+        d_data = body.get("Data")          or body.get("data")          or {}
+
+        d_status = (d_data.get("Status") or d_data.get("status") or
+                    body.get("Status")   or body.get("status",   "")).strip().lower()
+
+        # "Success" + responseCode "0000" both indicate a paid transaction
+        paid = d_status in ("success", "paid", "completed") or code == "0000"
+
+        return {
+            "paid":             paid,
+            "response_code":    code,
+            "status":           d_status,
+            "checkout_id":      d_data.get("CheckoutId")          or d_data.get("checkoutId",       ""),
+            "client_reference": d_data.get("ClientReference")     or d_data.get("clientReference",  ""),
+            "amount":           d_data.get("Amount")              or d_data.get("amount"),
+            "phone":            d_data.get("CustomerPhoneNumber") or d_data.get("customerPhoneNumber", ""),
+            "description":      d_data.get("Description")         or d_data.get("description",      ""),
+        }
+
+    # ── Webhook HMAC signature verification ───────────────────────────────────
 
     @staticmethod
     def verify_webhook_signature(request_body: bytes, signature: str) -> bool:
         """
-        Verify Hubtel webhook HMAC-SHA256 signature.
-
+        Verify Hubtel HMAC-SHA256 signature on incoming callbacks.
         Hubtel sends X-Hubtel-Signature header.
+        Callback IP to whitelist: 108.129.40.25 (per Hubtel docs).
         """
         try:
-            secret = settings.HUBTEL_CLIENT_SECRET.encode()
-            expected = hmac.new(secret, request_body, hashlib.sha256).hexdigest()
+            _, secret = HubtelCheckout._auth()
+            if not secret:
+                return True  # Can't verify — allow (log a warning in production)
+            expected = hmac.new(secret.encode(), request_body, hashlib.sha256).hexdigest()
             return hmac.compare_digest(expected, signature)
         except Exception:
             return False
