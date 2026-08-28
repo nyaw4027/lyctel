@@ -35,4 +35,5 @@ urlpatterns = [
     # Food orders
     path('food/orders/',                  views.food_order_list,    name='food_order_list'),
     path('food/orders/<str:ref>/',        views.food_order_detail,  name='food_order_detail'),
+    path('food/orders/<str:ref>/status/',   views.food_order_update_status, name='food_order_update_status'),
 ]
