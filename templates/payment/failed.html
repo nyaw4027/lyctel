@@ -19,13 +19,11 @@
 
   <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
     {% if order %}
-    {% if order %}
     <a href="{% url 'payment:initiate' order.order_ref %}"
        class="btn fw-semibold px-4 py-3 rounded-3"
        style="background:#F5A623;color:#0F1B2D">
       🔄 Try Again
     </a>
-    {% endif %}
     {% endif %}
     <a href="{% url 'order:history' %}"
        class="btn fw-semibold px-4 py-3 rounded-3"

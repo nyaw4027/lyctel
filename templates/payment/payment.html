@@ -32,7 +32,7 @@
               <p class="text-muted mb-0" style="font-size:.75rem">× {{ item.quantity }}</p>
             </div>
             <p class="fw-bold text-navy mb-0 flex-shrink-0 small">
-              GHS {{ item.total_price|floatformat:2 }}
+              GHS {{ item.subtotal|floatformat:2 }}
             </p>
           </div>
           {% endfor %}
@@ -79,7 +79,8 @@
           {% csrf_token %}
           <input type="hidden" name="payment_method" value="momo"/>
           <input type="hidden" name="payment_provider" value="hubtel"/>
-          <button type="submit"
+          <button type="submit" id="pay-submit-btn"
+                  onclick="this.disabled=true;this.innerHTML='⏳ Connecting to Hubtel…';this.form.submit();"
                   class="btn w-100 fw-bold py-3 rounded-3 d-flex align-items-center justify-content-center gap-2"
                   style="background:#00B050;color:white;font-size:1rem">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">

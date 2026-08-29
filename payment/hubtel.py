@@ -118,7 +118,19 @@ class HubtelCheckout:
                 )
 
             # clientReference: ≤ 32 chars, no special characters
-            ref = cls._safe_ref(f"ORD-{order.order_ref}")
+            # order_ref is already like "ORD-805E47" — don't double-prefix
+            _base = order.order_ref
+            if _base.startswith("ORD-"):
+                _base = _base[4:]
+            # If order already has a hubtel_reference, generate a unique
+            # suffix so retries don't hit "Duplicated client reference"
+            existing = getattr(order, 'hubtel_reference', '')
+            if existing:
+                import uuid as _uuid
+                _suffix = _uuid.uuid4().hex[:4].upper()
+                ref = cls._safe_ref(f"{_base}-{_suffix}")
+            else:
+                ref = cls._safe_ref(_base)
 
             amount = float(round(Decimal(str(order.total_amount)), 2))
 
@@ -334,7 +346,13 @@ class HubtelCheckout:
         if not cid or not secret:
             return {"success": False, "error": "Hubtel credentials not configured."}
 
-        ref = cls._safe_ref(f"FOOD-{order.order_ref}")
+        # Strip existing prefix from order_ref to avoid FOOD-ORD-xxx
+        _base = order.order_ref
+        for pfx in ("FOOD-", "ORD-"):
+            if _base.startswith(pfx):
+                _base = _base[len(pfx):]
+                break
+        ref = cls._safe_ref(f"FOOD-{_base}")
 
         if not callback_url:
             callback_url = getattr(settings, 'HUBTEL_CALLBACK_URL',

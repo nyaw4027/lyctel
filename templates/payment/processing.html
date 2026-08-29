@@ -15,9 +15,11 @@
   <h1 class="h4 fw-bold text-navy mb-2" style="font-family:'Syne',sans-serif">
     Processing your payment
   </h1>
+  {% if order %}
   <p class="text-muted mb-1">
     Order <strong>{{ order.order_ref }}</strong>
   </p>
+  {% endif %}
   <p class="text-muted small mb-4">
     Please wait while we confirm your payment with Hubtel.<br/>
     <strong>Do not close or refresh this page.</strong>
@@ -53,6 +55,13 @@
       .then(function (data) {
         if (data.paid && data.redirect) {
           window.location.href = data.redirect;
+        } else if (data.status === 'failed') {
+          var orderRef = '{{ order.order_ref|default:"" }}';
+          if (orderRef) {
+            window.location.href = '/checkout/failed/' + orderRef + '/';
+          } else {
+            window.location.href = '{% url "order:history" %}';
+          }
         }
       })
       .catch(function () {});
@@ -61,11 +70,14 @@
     if (elapsed < maxWait) {
       setTimeout(check, interval);
     } else {
-      // Timed out — tell the customer to check their orders page
-      document.querySelector('h1').textContent = 'Payment confirmation is taking longer than usual';
-      document.querySelector('.alert').innerHTML =
-        'Your payment may still be processing. ' +
-        '<a href="/order/history/" class="alert-link">Check My Orders →</a>';
+      // Timed out — show message and offer order history link
+      // (webhook will still mark it paid if Hubtel confirms later)
+      var h1 = document.querySelector('h1');
+      var alert = document.querySelector('.alert');
+      if (h1) h1.textContent = 'Payment confirmation is taking longer than usual';
+      if (alert) alert.innerHTML =
+        'Your payment may still be processing in the background. ' +
+        '<a href="{% url 'order:history' %}" class="alert-link fw-semibold">Check My Orders →</a>';
     }
   }
 

@@ -164,22 +164,66 @@ setTimeout(function() {
 }, 1200);
 {% endif %}
 
-// Listen for messages from Hubtel iframe (postMessage API)
+// ── postMessage listener (Hubtel iFrame events) ──────────────────────────────
+var _redirected = false;
+function goProcessing() {
+  if (_redirected) return;
+  _redirected = true;
+  window.location.href = "{% url 'payment:processing' %}?order={{ order.order_ref }}";
+}
+function goFailed() {
+  if (_redirected) return;
+  _redirected = true;
+  window.location.href = "{% url 'payment:failed' order.order_ref %}";
+}
+
 window.addEventListener('message', function(event) {
-  // Only trust Hubtel domains
-  if (!event.origin || !event.origin.includes('hubtel.com')) return;
+  if (!event.origin) return;
+  var trusted = event.origin.includes('hubtel.com') || event.origin.includes('pay.hubtel');
+  if (!trusted) return;
 
   var data = event.data || {};
-  var type = data.type || data.action || '';
+  var type = data.type || data.action || data.event || '';
+  var status = (data.status || '').toLowerCase();
 
-  if (type === 'payment_success' || data.status === 'success') {
-    // Redirect to processing page to confirm server-side
-    window.location.href = "{% url 'payment:processing' %}?order={{ order.order_ref }}";
-  } else if (type === 'payment_failed' || data.status === 'failed') {
-    window.location.href = "{% url 'payment:failed' order.order_ref %}";
-  } else if (type === 'checkout_closed' || type === 'cancel') {
+  if (type === 'payment_success' || status === 'success' || status === 'paid') {
+    goProcessing();
+  } else if (type === 'payment_failed' || status === 'failed' || status === 'error') {
+    goFailed();
+  } else if (type === 'checkout_closed' || type === 'cancel' || status === 'cancelled') {
     window.location.href = "{% url 'order:history' %}";
   }
 });
+
+// ── Fallback: poll payment status every 5s (in case postMessage doesn't fire) ─
+// Hubtel iFrame on mobile Safari often blocks postMessage — polling ensures
+// the customer is never stuck on the payment page indefinitely.
+{% if order %}
+(function () {
+  var POLL_URL = "{% url 'payment:hubtel_status' order.order_ref %}";
+  var pollCount = 0;
+  var MAX_POLLS = 36; // 3 minutes
+
+  function pollStatus() {
+    if (_redirected || pollCount >= MAX_POLLS) return;
+    pollCount++;
+    fetch(POLL_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.paid && d.redirect) {
+          _redirected = true;
+          window.location.href = d.redirect;
+        } else if (d.status === 'failed') {
+          goFailed();
+        }
+      })
+      .catch(function() {});
+    setTimeout(pollStatus, 5000);
+  }
+
+  // Start polling 8s after page load (give iFrame time to load + user to pay)
+  setTimeout(pollStatus, 8000);
+})();
+{% endif %}
 </script>
 {% endblock %}

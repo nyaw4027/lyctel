@@ -19,15 +19,14 @@
 
   <!-- Direct payment info -->
   {% if order.delivery_fee %}
-  <div class="mx-3 mb-4 rounded-3 p-3" style="background:#fffbeb;border:1px solid #fde68a">
-    <p class="fw-bold text-navy mb-2 small">💳 Pay Delivery Fee to Rider</p>
-    <div class="d-flex justify-content-between mb-1">
-      <span class="text-muted small">Delivery fee</span>
-      <span class="fw-bold text-navy">GHS {{ order.delivery_fee|floatformat:2 }}</span>
+  <div class="mx-3 mb-4 rounded-3 p-3" style="background:#f0fdf4;border:1px solid #bbf7d0">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span>✅</span>
+      <p class="fw-bold text-navy mb-0 small">GHS {{ order.delivery_fee|floatformat:2 }} delivery included</p>
     </div>
     <p class="text-muted mb-0" style="font-size:.78rem">
-      Pay <strong>GHS {{ order.delivery_fee|floatformat:2 }}</strong>
-      directly to your rider (cash or MoMo) — not online.
+      Your full payment of <strong>GHS {{ order.total_amount|floatformat:2 }}</strong>
+      (including delivery) was received via Hubtel.
     </p>
   </div>
   {% endif %}
@@ -92,8 +91,8 @@
       {% for item in items %}
       <div class="d-flex align-items-center justify-content-between small">
         <div class="d-flex align-items-center gap-2 min-w-0">
-          {% if item.product and item.product.primary_image %}
-          <img src="{{ item.product.primary_image }}" class="rounded-3 object-fit-cover flex-shrink-0" style="width:2.5rem;height:2.5rem;"/>
+          {% if item.product and item.product.images.first %}
+          <img src="{{ item.product.images.first.image.url }}" class="rounded-3 object-fit-cover flex-shrink-0" style="width:2.5rem;height:2.5rem;"/>
           {% else %}
           <div class="rounded-3 bg-light flex-shrink-0 d-flex align-items-center justify-content-center" style="width:2.5rem;height:2.5rem;">📦</div>
           {% endif %}
@@ -101,6 +100,8 @@
         </div>
         <span class="fw-semibold text-navy flex-shrink-0 ms-3">GHS {{ item.subtotal }}</span>
       </div>
+      {% empty %}
+      <p class="small text-muted mb-0">No items found.</p>
       {% endfor %}
     </div>
 
