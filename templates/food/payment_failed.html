@@ -10,7 +10,7 @@
   </p>
   <div class="d-flex gap-3 justify-content-center flex-wrap">
     {% if order %}
-    <a href="{% url 'food:food_pay' order.order_ref %}"
+    <a href="{% url 'food:payment_initiate' order.order_ref %}"
        class="btn fw-bold rounded-3 px-4 py-3"
        style="background:#F5A623;color:#0F1B2D">
       🔄 Try Again
