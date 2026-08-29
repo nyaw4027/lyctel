@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Payment Failed — Lynctel Food{% endblock %}
+{% block content %}
+<div class="container py-5 px-3 text-center" style="max-width:440px;margin:auto">
+  <div style="font-size:3.5rem;margin-bottom:12px">❌</div>
+  <h1 class="fw-bold text-navy mb-2" style="font-size:1.3rem">Food Order Payment Failed</h1>
+  <p class="text-muted mb-1">Order: <strong>{{ order.order_ref }}</strong></p>
+  <p class="text-muted mb-4" style="font-size:.88rem">
+    {{ reason|default:"Your payment could not be completed. No money was deducted." }}
+  </p>
+  <div class="d-flex gap-3 justify-content-center flex-wrap">
+    {% if order %}
+    <a href="{% url 'food:food_pay' order.order_ref %}"
+       class="btn fw-bold rounded-3 px-4 py-3"
+       style="background:#F5A623;color:#0F1B2D">
+      🔄 Try Again
+    </a>
+    {% endif %}
+    <a href="{% url 'food:order_history' %}"
+       class="btn btn-outline-secondary fw-semibold rounded-3 px-4 py-3">
+      View Orders
+    </a>
+  </div>
+  <p class="text-muted mt-4 small">
+    Need help?
+    <a href="https://wa.me/233558040216" class="text-navy fw-semibold">WhatsApp us</a>
+  </p>
+</div>
+{% endblock %}

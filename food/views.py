@@ -1504,3 +1504,35 @@ def _save_food_ratings(request, order):
                 )
     except Exception:
         pass
+
+@login_required
+def food_payment_return(request, order_ref):
+    """
+    Browser return URL after Hubtel checkout (iFrame postMessage or redirect).
+    Checks payment status and routes accordingly:
+      - Paid   → order tracking page
+      - Pending → payment processing page (polls every 3s)
+      - Failed  → order history with error message
+    """
+    from food.models import FoodOrder
+    try:
+        order = FoodOrder.objects.get(order_ref=order_ref, customer=request.user)
+    except FoodOrder.DoesNotExist:
+        messages.error(request, 'Order not found.')
+        return redirect('food:order_history')
+
+    if order.payment_status == 'paid':
+        return redirect('food:order_track', ref=order_ref)
+
+    if order.payment_status == 'failed':
+        messages.error(request, 'Payment failed. Please try again.')
+        return redirect('food:order_history')
+
+    # Pending — show processing page which polls every 3s
+    return render(request, 'food/payment_processing.html', {
+        'order':      order,
+        'poll_url':   request.build_absolute_uri(
+                          f'/food/payment/status/{order_ref}/'),
+        'cancel_url': request.build_absolute_uri('/food/orders/'),
+        'cart_count': 0,
+    })

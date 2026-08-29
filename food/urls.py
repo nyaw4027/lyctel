@@ -49,4 +49,6 @@ urlpatterns = [
     path('payment/callback/<str:tx_ref>/',          views.food_payment_callback,   name='payment_callback'),
     path('payment/webhook/',                        views.food_payment_webhook,    name='payment_webhook'),
     path('payment/status/<str:order_ref>/',         views.food_payment_status,     name='payment_status'),
+    # Browser return URL after Hubtel payment (iFrame postMessage + direct return)
+    path('payment/return/<str:order_ref>/',         views.food_payment_return,     name='pay_return'),
 ]

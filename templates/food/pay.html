@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Pay for Food Order — {{ order.order_ref }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  body { background: #0F1B2D; }
+  .pay-wrap {
+    min-height:100vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:16px;
+  }
+  .pay-card {
+    background:white;border-radius:20px;width:100%;
+    max-width:480px;overflow:hidden;
+    box-shadow:0 24px 64px rgba(0,0,0,.4);
+  }
+  .pay-header {
+    background:linear-gradient(135deg,#0F1B2D,#1e3a5f);
+    padding:18px 24px;color:white;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  #iframe-wrap { position:relative;width:100%;min-height:540px;background:#f9fafb; }
+  #iframe-wrap iframe { width:100%;min-height:540px;border:none;display:block; }
+  .loader {
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:#f9fafb;gap:10px;
+  }
+  .spinner {
+    width:36px;height:36px;border:4px solid #e5e7eb;
+    border-top-color:#F5A623;border-radius:50%;
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .pill {
+    display:inline-flex;align-items:center;gap:5px;font-size:.68rem;
+    font-weight:700;padding:3px 9px;border-radius:99px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pay-wrap">
+  <div class="pay-card">
+
+    <div class="pay-header">
+      <div>
+        <p style="color:rgba(255,255,255,.45);font-size:.68rem;margin:0;text-transform:uppercase;letter-spacing:.08em">Food Order</p>
+        <p style="color:white;font-weight:700;font-size:.95rem;margin:2px 0 0">{{ order.vendor.name }}</p>
+        <p style="color:rgba(255,255,255,.5);font-size:.75rem;margin:2px 0 0">{{ order.order_ref }}</p>
+      </div>
+      <div style="text-align:right">
+        <p style="color:rgba(255,255,255,.45);font-size:.68rem;margin:0">Total</p>
+        <p style="color:#F5A623;font-weight:900;font-size:1.5rem;margin:0">GHS {{ order.total_amount }}</p>
+      </div>
+    </div>
+
+    {% if direct_url %}
+    <!-- iFrame mode -->
+    <div id="iframe-wrap">
+      <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <p style="color:#6b7280;font-size:.82rem;margin:0">Loading Hubtel payment…</p>
+      </div>
+      <iframe src="{{ direct_url }}" title="Hubtel Checkout"
+              allow="payment" onload="frameLoaded()"></iframe>
+    </div>
+
+    {% elif checkout_url %}
+    <!-- Redirect mode fallback -->
+    <div style="padding:32px 24px;text-align:center">
+      <div class="spinner" style="margin:0 auto 16px"></div>
+      <h2 style="font-size:1rem;font-weight:700;color:#0F1B2D;margin-bottom:8px">Redirecting to Hubtel…</h2>
+      <p style="font-size:.82rem;color:#6b7280;margin-bottom:20px">You'll be taken to the payment page momentarily.</p>
+      <a href="{{ checkout_url }}" id="pay-btn"
+         style="display:block;background:#F5A623;color:#0F1B2D;font-weight:700;
+                padding:14px;border-radius:14px;text-decoration:none;margin-bottom:10px">
+        Pay GHS {{ order.total_amount }} →
+      </a>
+    </div>
+
+    {% else %}
+    <!-- Error -->
+    <div style="padding:32px 24px;text-align:center">
+      <div style="font-size:3rem;margin-bottom:12px">⚠️</div>
+      <h2 style="font-size:1rem;font-weight:700;color:#0F1B2D;margin-bottom:8px">Payment unavailable</h2>
+      <p style="font-size:.82rem;color:#6b7280;margin-bottom:20px">Could not connect to the payment gateway.</p>
+      <a href="{% url 'food:order_history' %}"
+         style="display:block;background:#0F1B2D;color:white;font-weight:700;
+                padding:14px;border-radius:14px;text-decoration:none">
+        ← Back to Orders
+      </a>
+    </div>
+    {% endif %}
+
+    <!-- Payment methods -->
+    <div style="padding:12px 16px;border-top:1px solid #f3f4f6;display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+      <span class="pill" style="background:#fef3c7;color:#92400e">📱 MTN MoMo</span>
+      <span class="pill" style="background:#fee2e2;color:#991b1b">📱 Vodafone</span>
+      <span class="pill" style="background:#dbeafe;color:#1e40af">📱 AirtelTigo</span>
+      <span class="pill" style="background:#f3f4f6;color:#374151">💳 Card</span>
+    </div>
+
+    <div style="padding:8px 16px 14px;text-align:center">
+      <a href="{% url 'food:order_history' %}"
+         style="font-size:.75rem;color:#9ca3af;text-decoration:none">← Cancel</a>
+    </div>
+
+    <p style="text-align:center;font-size:.65rem;color:#d1d5db;padding:6px 12px 12px">
+      🔒 Secured by Hubtel · Lynctel never stores your card details
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function frameLoaded() {
+  document.getElementById('loader').style.display = 'none';
+}
+
+{% if checkout_url and not direct_url %}
+setTimeout(function() { window.location.href = "{{ checkout_url|escapejs }}"; }, 1200);
+{% endif %}
+
+window.addEventListener('message', function(e) {
+  if (!e.origin || !e.origin.includes('hubtel.com')) return;
+  var d = e.data || {};
+  var t = d.type || d.action || '';
+  if (t === 'payment_success' || d.status === 'success') {
+    window.location.href = "{% url 'food:pay_return' order.order_ref %}";
+  } else if (t === 'payment_failed' || d.status === 'failed') {
+    window.location.href = "{% url 'food:order_history' %}?payment=failed";
+  } else if (t === 'checkout_closed' || t === 'cancel') {
+    window.location.href = "{% url 'food:order_history' %}";
+  }
+});
+</script>
+{% endblock %}
