@@ -71,12 +71,19 @@ class Order(models.Model):
     subtotal     = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    distance_km  = models.FloatField(null=True, blank=True)
 
     status         = models.CharField(max_length=15, choices=Status.choices, default=Status.PENDING)
     payment_status = models.CharField(max_length=10, choices=PaymentStatus.choices, default=PaymentStatus.UNPAID)
 
     customer_note = models.TextField(blank=True)
+    order_note    = models.TextField(blank=True)   # alias stored from checkout session
     admin_note    = models.TextField(blank=True)
+
+    # ── Hubtel payment fields ─────────────────────────────
+    hubtel_checkout_id = models.CharField(max_length=200, blank=True, default='')
+    hubtel_reference   = models.CharField(max_length=200, blank=True, default='')
+    paid_at            = models.DateTimeField(null=True, blank=True)
 
     created_at   = models.DateTimeField(auto_now_add=True)
     updated_at   = models.DateTimeField(auto_now=True)
@@ -264,4 +271,3 @@ class OrderDispute(models.Model):
         """Convenience: get vendor from first order item."""
         item = self.order.items.select_related('product__vendor').first()
         return item.product.vendor if item and item.product else None
- 

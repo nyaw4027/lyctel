@@ -553,3 +553,141 @@ def flutterwave_webhook(request):
         logger.error('[FLW] Webhook error: %s', exc)
 
     return HttpResponse(status=200)
+
+@login_required
+def payment_processing(request):
+    """
+    Shows processing page while Hubtel confirms payment.
+    Polls payment:hubtel_status every 3s via JS.
+    """
+    from order.models import Order
+    order_ref = request.GET.get('order') or request.session.get('last_order_ref', '')
+    order     = None
+    poll_url  = ''
+    if order_ref:
+        try:
+            order = Order.objects.get(order_ref=order_ref, customer=request.user)
+            poll_url = reverse('payment:hubtel_status', args=[order_ref])
+        except Order.DoesNotExist:
+            pass
+    return render(request, 'payment/processing.html', {
+        'order':      order,
+        'poll_url':   poll_url,
+        'cancel_url': reverse('order:history'),
+        'cart_count': 0,
+    })
+
+
+@login_required
+def payment_failed(request):
+    """Payment failed page with retry option."""
+    from order.models import Order
+    order_ref = request.GET.get('order') or ''
+    order     = None
+    if order_ref:
+        try:
+            order = Order.objects.get(order_ref=order_ref, customer=request.user)
+        except Order.DoesNotExist:
+            pass
+    return render(request, 'payment/failed.html', {
+        'order':      order,
+        'reason':     request.GET.get('reason', 'Payment could not be completed.'),
+        'cart_count': 0,
+    })
+# ── RE-INITIATE from failed page ─────────────────────────────────────────────
+
+@login_required
+def payment_initiate(request, order_ref):
+    """
+    Re-initiates Hubtel checkout for an existing unpaid order.
+    Called when customer clicks "Try Again" on failed.html.
+    URL: payment:initiate <order_ref>
+    """
+    from order.models import Order
+    from payment.hubtel import HubtelCheckout
+
+    try:
+        order = Order.objects.get(order_ref=order_ref, customer=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, 'Order not found.')
+        return redirect('order:history')
+
+    if order.payment_status == 'paid':
+        return redirect('order:confirmation', order_ref=order.order_ref)
+
+    result = HubtelCheckout.initiate(order, request)
+    if not result.get('success'):
+        messages.error(request, result.get('error', 'Payment error. Please try again.'))
+        return render(request, 'payment/failed.html', {
+            'order':  order,
+            'reason': result.get('error', ''),
+            'cart_count': 0,
+        })
+
+    return render(request, 'payment/pay.html', {
+        'order':       order,
+        'checkout_url': result.get('redirect_url', ''),
+        'direct_url':   result.get('direct_url', ''),
+        'cart_count':   0,
+    })
+
+
+# ── PROCESSING PAGE ───────────────────────────────────────────────────────────
+
+@login_required
+def payment_processing(request):
+    """
+    Shows "Processing your payment…" spinner page.
+    Polls payment:hubtel_status every 3s via JS.
+    Called by pay.html postMessage on success: ?order=<ref>
+    """
+    from order.models import Order
+    from django.urls import reverse
+
+    order_ref = request.GET.get('order', '').strip()
+    order     = None
+    poll_url  = ''
+    cancel_url = request.build_absolute_uri('/orders/')
+
+    if order_ref:
+        try:
+            order = Order.objects.get(order_ref=order_ref, customer=request.user)
+            poll_url = request.build_absolute_uri(
+                reverse('payment:hubtel_status', args=[order_ref])
+            )
+            cancel_url = request.build_absolute_uri(
+                reverse('order:history')
+            )
+            # Already paid — skip straight to confirmation
+            if order.payment_status == 'paid':
+                return redirect('order:confirmation', order_ref=order_ref)
+        except Order.DoesNotExist:
+            pass
+
+    return render(request, 'payment/processing.html', {
+        'order':       order,
+        'poll_url':    poll_url,
+        'cancel_url':  cancel_url,
+        'cart_count':  0,
+    })
+
+
+# ── FAILED PAGE ───────────────────────────────────────────────────────────────
+
+@login_required
+def payment_failed(request, order_ref):
+    """
+    Payment failed page. Shows "Try Again" → payment:initiate <order_ref>.
+    """
+    from order.models import Order
+
+    try:
+        order = Order.objects.get(order_ref=order_ref, customer=request.user)
+    except Order.DoesNotExist:
+        return redirect('order:history')
+
+    return render(request, 'payment/failed.html', {
+        'order':      order,
+        'reason':     request.GET.get('reason', 'Your payment could not be completed.'),
+        'cart_count': 0,
+    })
