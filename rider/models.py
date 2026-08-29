@@ -22,7 +22,16 @@ class RiderProfile(models.Model):
         related_name='rider_profile'
     )
 
-    vehicle_type = models.CharField(max_length=50, blank=True)
+    vehicle_type = models.CharField(
+        max_length=50, blank=True, default='motorcycle',
+        choices=[
+            ('motorcycle', 'Motorcycle'),
+            ('bicycle',    'Bicycle'),
+            ('car',        'Car'),
+            ('van',        'Van'),
+            ('foot',       'On Foot'),
+        ],
+    )
     vehicle_plate = models.CharField(max_length=20, blank=True)
 
     id_card = models.ImageField(
@@ -57,11 +66,31 @@ class RiderProfile(models.Model):
     current_lat = models.FloatField(null=True, blank=True)
     current_lng = models.FloatField(null=True, blank=True)
 
+    # MoMo details (settlement tracking only — no auto-transfer)
+    momo_number  = models.CharField(
+        max_length=15, blank=True, default='',
+        help_text="Rider MoMo number for settlement records"
+    )
+    momo_network = models.CharField(
+        max_length=15, blank=True, default='MTN',
+        choices=[
+            ('MTN',        'MTN Mobile Money'),
+            ('VODAFONE',   'Vodafone Cash'),
+            ('AIRTELTIGO', 'AirtelTigo Money'),
+        ],
+    )
     joined_at = models.DateTimeField(auto_now_add=True)
 
     # ─────────────────────────────
     # TOTAL EARNINGS
     # ─────────────────────────────
+    @property
+    def total_deliveries(self):
+        try:
+            return self.deliveries.filter(status='delivered').count()
+        except Exception:
+            return 0
+
     @property
     def total_earnings(self):
         return self.deliveries.filter(
@@ -255,4 +284,3 @@ class RiderBalanceSummary(models.Model):
  
     def __str__(self):
         return f"{self.rider} — owes GHS {self.outstanding}"
-    

@@ -296,9 +296,26 @@ HUBTEL_CLIENT_ID     = config('HUBTEL_CLIENT_ID',     default='')
 HUBTEL_CLIENT_SECRET = config('HUBTEL_CLIENT_SECRET', default='')
 HUBTEL_MERCHANT_ACCT = config('HUBTEL_MERCHANT_ACCT', default='')
 
+# Hubtel callback / return URLs
+HUBTEL_CALLBACK_URL      = config('HUBTEL_CALLBACK_URL',
+                           default='https://lynctel.up.railway.app/checkout/callback/')
+HUBTEL_RETURN_URL        = config('HUBTEL_RETURN_URL',
+                           default='https://lynctel.up.railway.app/orders/')
+HUBTEL_CANCEL_URL        = config('HUBTEL_CANCEL_URL',
+                           default='https://lynctel.up.railway.app/checkout/')
+HUBTEL_FOOD_CALLBACK_URL = config('HUBTEL_FOOD_CALLBACK_URL',
+                           default='https://lynctel.up.railway.app/food/payment/callback/')
+
+# Platform commission (Lynctel keeps this %, rest is owed to vendor)
+FOOD_PLATFORM_CUT = config('FOOD_PLATFORM_CUT', default='0.04')  # 4% on food
+
 FLW_PUBLIC_KEY   = config('FLW_PUBLIC_KEY',   default='')
 FLW_SECRET_KEY   = config('FLW_SECRET_KEY',   default='')
 FLW_WEBHOOK_HASH = config('FLW_WEBHOOK_HASH', default='')
+
+# ── Push notifications helper module ──────────────────────────────────────────
+# Local helper: push_notify.py (NOT the django-push-notifications package)
+# Import as: from push_notify import send_push_notification
 
 # ── SMS ────────────────────────────────────────────────────────────────────────
 ARKESEL_API_KEY   = config('ARKESEL_API_KEY',   default='')

@@ -318,6 +318,298 @@ class HubtelCheckout:
             "payment_date":        d_data.get("PaymentDate")           or d_data.get("paymentDate",          ""),
         }
 
+
+
+    # ── Initiate food order payment ───────────────────────────────────────────
+
+    @classmethod
+    def initiate_food_order(cls, order, callback_url=None, return_url=None, cancel_url=None):
+        """
+        Initiate Hubtel Checkout for a FoodOrder.
+        clientReference format: FOOD-{order_ref} (≤ 36 chars)
+        """
+        cid, secret = cls._auth()
+        merchant    = cls._merchant()
+
+        if not cid or not secret:
+            return {"success": False, "error": "Hubtel credentials not configured."}
+
+        ref = cls._safe_ref(f"FOOD-{order.order_ref}")
+
+        if not callback_url:
+            callback_url = getattr(settings, 'HUBTEL_CALLBACK_URL',
+                                   'https://lynctel.up.railway.app/food/payment/callback/')
+        if not return_url:
+            return_url = f'https://lynctel.up.railway.app/food/orders/{order.order_ref}/pay/verify/'
+        if not cancel_url:
+            cancel_url = 'https://lynctel.up.railway.app/food/orders/'
+
+        payload = {
+            "totalAmount":           float(round(Decimal(str(order.total_amount)), 2)),
+            "description":           cls._clean_desc(
+                f"Food Order {order.order_ref} - {order.vendor.name}"
+            ),
+            "callbackUrl":           callback_url,
+            "returnUrl":             return_url,
+            "cancellationUrl":       cancel_url,
+            "merchantAccountNumber": merchant,
+            "clientReference":       ref,
+        }
+
+        # Optional payee info
+        customer = getattr(order, 'customer', None)
+        if customer:
+            name  = (getattr(customer, 'get_full_name', lambda: '')() or
+                     getattr(customer, 'display_name', '') or '')
+            phone = getattr(customer, 'phone', '') or ''
+            email = getattr(customer, 'email', '') or ''
+            if name:  payload['payeeName']         = name[:50]
+            if phone: payload['payeeMobileNumber'] = phone[:20]
+            if email: payload['payeeEmail']        = email[:80]
+
+        # Persist reference
+        if hasattr(order, 'hubtel_reference') and not getattr(order, 'hubtel_reference', ''):
+            try:
+                order.hubtel_reference = ref
+                order.save(update_fields=['hubtel_reference'])
+            except Exception:
+                pass
+
+        try:
+            response = requests.post(
+                INITIATE_URL, json=payload,
+                headers=cls._headers(), timeout=TIMEOUT,
+            )
+            body = response.json()
+            if body.get("responseCode") != "0000":
+                raise HubtelError(body.get("message", f"HTTP {response.status_code}"))
+
+            data        = body.get("data", {})
+            checkout_url = data.get("checkoutUrl", "")
+            direct_url   = data.get("checkoutDirectUrl", "")
+            checkout_id  = data.get("checkoutId",  ref)
+
+            if hasattr(order, 'hubtel_checkout_id'):
+                try:
+                    order.hubtel_checkout_id = checkout_id
+                    order.save(update_fields=['hubtel_checkout_id'])
+                except Exception:
+                    pass
+
+            return {
+                "success":      True,
+                "redirect_url": checkout_url,
+                "direct_url":   direct_url,
+                "checkout_id":  checkout_id,
+                "reference":    ref,
+            }
+
+        except HubtelError as e:
+            log.error("[Hubtel] food order initiate failed %s: %s", order.order_ref, e)
+            return {"success": False, "error": str(e)}
+        except requests.Timeout:
+            return {"success": False, "error": "Payment gateway timed out."}
+        except Exception as e:
+            log.exception("[Hubtel] food initiate unexpected: %s", e)
+            return {"success": False, "error": str(e)}
+
+    # ── Direct Send Money (rider/vendor payouts) ──────────────────────────────
+
+    @classmethod
+    def send_money(cls, amount, phone, network, reference,
+                   description="Lynctel Payout", callback_url=None):
+        """
+        Send money directly to a mobile money wallet.
+        Used for: rider commission payouts, vendor disbursements.
+
+        Args:
+            amount      (float/Decimal) — GHS amount to send
+            phone       (str)           — recipient MoMo number (e.g. 0241234567)
+            network     (str)           — "MTN", "VODAFONE", "AIRTELTIGO"
+            reference   (str)           — unique reference (≤ 36 chars)
+            description (str)           — description of transfer
+            callback_url (str)          — where Hubtel POSTs the result
+
+        Returns dict: success (bool), transaction_id, status, error
+        """
+        # DISABLED: No outgoing transfers — commission received on customer payment
+        return {"success": False, "error": "No outgoing transfers — commission received on customer payment"}
+        # ── Original code preserved below for reference ──
+        try:
+            cid, secret = cls._auth()
+            merchant    = cls._merchant()
+            if not cid or not secret:
+                raise HubtelError("Hubtel credentials not configured.")
+
+            if not callback_url:
+                callback_url = getattr(
+                    settings, 'HUBTEL_CALLBACK_URL',
+                    'https://lynctel.up.railway.app/payment/callback/'
+                )
+
+            # Normalise phone — remove leading 0, add country code
+            phone_clean = str(phone).strip().replace('+', '').replace(' ', '')
+            if phone_clean.startswith('0'):
+                phone_clean = '233' + phone_clean[1:]
+
+            # Network codes Hubtel accepts
+            network_map = {
+                'mtn':       'MTN',
+                'vodafone':  'VODAFONE',
+                'voda':      'VODAFONE',
+                'airteltigo':'AIRTELTIGO',
+                'tigo':      'AIRTELTIGO',
+                'airtel':    'AIRTELTIGO',
+            }
+            network_code = network_map.get(network.lower(), network.upper())
+
+            payload = {
+                "receiverMobileNumber": phone_clean,
+                "amount":               float(round(Decimal(str(amount)), 2)),
+                "networkCode":          network_code,
+                "description":          cls._clean_desc(description)[:100],
+                "clientReference":      cls._safe_ref(reference),
+                "primaryCallbackUrl":   callback_url,
+            }
+
+            url = f"https://api.hubtel.com/v2/merchantaccount/merchants/{merchant}/send-money"
+            log.info("[Hubtel] Sending GHS %.2f to %s (%s) ref=%s",
+                     payload["amount"], phone_clean, network_code, reference)
+
+            response = requests.post(
+                url,
+                json    = payload,
+                headers = cls._headers(),
+                timeout = TIMEOUT,
+            )
+
+            body = response.json()
+
+            if response.status_code in (200, 201) and body.get("responseCode") == "0000":
+                data = body.get("data", {})
+                log.info("[Hubtel] Send money SUCCESS ref=%s txn=%s",
+                         reference, data.get("transactionId", ""))
+                return {
+                    "success":        True,
+                    "transaction_id": data.get("transactionId", ""),
+                    "status":         "pending",   # confirmed via callback
+                    "reference":      reference,
+                }
+            else:
+                raise HubtelError(
+                    body.get("message", f"HTTP {response.status_code}"),
+                    data=body
+                )
+
+        except HubtelError as e:
+            log.error("[Hubtel] send_money failed ref=%s: %s", reference, e)
+            return {"success": False, "error": str(e)}
+        except requests.Timeout:
+            return {"success": False, "error": "Hubtel timed out."}
+        except Exception as e:
+            log.exception("[Hubtel] send_money unexpected: %s", e)
+            return {"success": False, "error": str(e)}
+
+    # ── Refund ────────────────────────────────────────────────────────────────
+
+    @classmethod
+    def refund(cls, transaction_id, amount=None, description="Lynctel Refund",
+               callback_url=None):
+        """
+        Refund a previous Hubtel payment.
+        Used for: dispute resolution (full or partial refund).
+
+        Args:
+            transaction_id (str)         — Hubtel transaction ID from original payment
+            amount         (Decimal/None)— amount to refund; None = full refund
+            description    (str)         — reason for refund
+            callback_url   (str)         — where Hubtel POSTs the result
+
+        Returns dict: success (bool), refund_id, status, error
+        """
+        # DISABLED: Refund via Hubtel dashboard manually — not from app
+        return {"success": False, "error": "Refund via Hubtel dashboard manually — not from app"}
+        # ── Original code preserved below for reference ──
+        try:
+            cid, secret = cls._auth()
+            merchant    = cls._merchant()
+            if not cid or not secret:
+                raise HubtelError("Hubtel credentials not configured.")
+
+            if not callback_url:
+                callback_url = getattr(
+                    settings, 'HUBTEL_CALLBACK_URL',
+                    'https://lynctel.up.railway.app/payment/callback/'
+                )
+
+            payload = {
+                "transactionId":      transaction_id,
+                "description":        cls._clean_desc(description)[:100],
+                "primaryCallbackUrl": callback_url,
+            }
+            if amount is not None:
+                payload["amount"] = float(round(Decimal(str(amount)), 2))
+
+            url = f"https://api.hubtel.com/v2/merchantaccount/merchants/{merchant}/refunds"
+            log.info("[Hubtel] Refunding txn=%s amount=%s", transaction_id, amount)
+
+            response = requests.post(
+                url,
+                json    = payload,
+                headers = cls._headers(),
+                timeout = TIMEOUT,
+            )
+
+            body = response.json()
+            if response.status_code in (200, 201) and body.get("responseCode") in ("0000", "0"):
+                data = body.get("data", {})
+                log.info("[Hubtel] Refund initiated txn=%s refund_id=%s",
+                         transaction_id, data.get("refundId", ""))
+                return {
+                    "success":   True,
+                    "refund_id": data.get("refundId", ""),
+                    "status":    "pending",
+                }
+            else:
+                raise HubtelError(
+                    body.get("message", f"HTTP {response.status_code}"),
+                    data=body,
+                )
+
+        except HubtelError as e:
+            log.error("[Hubtel] refund failed txn=%s: %s", transaction_id, e)
+            return {"success": False, "error": str(e)}
+        except requests.Timeout:
+            return {"success": False, "error": "Hubtel timed out."}
+        except Exception as e:
+            log.exception("[Hubtel] refund unexpected: %s", e)
+            return {"success": False, "error": str(e)}
+
+    # ── Disburse to vendor (food + ecommerce) ─────────────────────────────────
+
+    @classmethod
+    def disburse_to_vendor(cls, amount, vendor_phone, vendor_network,
+                            order_ref, vendor_name="Vendor", callback_url=None):
+        """
+        Disburse vendor's share of a fulfilled order directly to their MoMo.
+        Commission split: platform keeps its cut, rest goes to vendor.
+
+        Used after order status → delivered or food order → delivered.
+        """
+        # DISABLED: No outgoing transfers — vendor settles via dashboard
+        return {"success": False, "error": "No outgoing transfers — vendor settles via dashboard"}
+        # ── Original code preserved below for reference ──
+        reference   = cls._safe_ref(f"VND-{order_ref}")
+        description = f"Lynctel payout {order_ref}"
+        return cls.send_money(
+            amount       = amount,
+            phone        = vendor_phone,
+            network      = vendor_network,
+            reference    = reference,
+            description  = description,
+            callback_url = callback_url,
+        )
+
     # ── Webhook HMAC signature verification ───────────────────────────────────
 
     @staticmethod
