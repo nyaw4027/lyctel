@@ -196,9 +196,12 @@ def _mark_paid(order, transaction_id: str = '') -> None:
 
     order.payment_status = Order.PaymentStatus.PAID
     order.status         = Order.Status.CONFIRMED
-    if transaction_id and hasattr(order, 'transaction_id'):
-        order.transaction_id = transaction_id
-    order.save()
+    if transaction_id and hasattr(order, 'hubtel_checkout_id'):
+        order.hubtel_checkout_id = transaction_id
+    from django.utils import timezone
+    if hasattr(order, 'paid_at') and not order.paid_at:
+        order.paid_at = timezone.now()
+    order.save(update_fields=['payment_status', 'status', 'hubtel_checkout_id', 'paid_at'])
 
     _split_and_disburse(order)
 
@@ -209,11 +212,11 @@ def _mark_paid(order, transaction_id: str = '') -> None:
         logger.error('[Payment] Delivery creation failed for %s: %s', order.order_ref, exc)
 
     try:
-        arkesel = importlib.import_module('arkesel')
-        arkesel.sms_order_confirmed(order)
-        arkesel.sms_new_order_to_vendor(order)
-    except Exception:
-        pass
+        from notifications.sms import sms_order_confirmed, sms_new_order_to_vendor
+        sms_order_confirmed(order)
+        sms_new_order_to_vendor(order)
+    except Exception as e:
+        logger.warning('[Payment] SMS notification failed: %s', e)
 
     try:
         from push_notify import push_order_confirmed, push_new_order_to_vendor
@@ -295,7 +298,7 @@ def payment_page(request):
         return redirect('payment:hubtel_init', order_pk=order.pk)
 
     return render(request, 'payment/payment.html', {
-        'pending_order': pending_order,
+        'pending':       pending_order,  # template uses {{ pending.delivery_address }}
         'cart':          cart,
         'momo_options':  MOMO_OPTIONS,
         'cart_count':    cart.total_items,
@@ -389,7 +392,8 @@ def hubtel_payment_status(request, order_ref):
     paid  = order.payment_status == Order.PaymentStatus.PAID
     return JsonResponse({
         'paid':     paid,
-        'redirect': reverse('order:tracking', kwargs={'order_ref': order.order_ref}) if paid else None,
+        'redirect': reverse('order:confirmation', kwargs={'order_ref': order.order_ref}) if paid else None,
+        'status':   order.payment_status,
     })
 
 
@@ -426,12 +430,14 @@ def hubtel_webhook(request):
     except Exception:
         return HttpResponse(status=400)
 
-    response_code = body.get('ResponseCode', '')
-    data          = body.get('Data', {})
-    order_ref     = data.get('ClientReference', '')
-    txn_id        = data.get('TransactionId', '')
+    from .hubtel import HubtelCheckout
 
-    logger.info('[Hubtel] Webhook — ref=%s code=%s txn=%s', order_ref, response_code, txn_id)
+    parsed    = HubtelCheckout.parse_callback(body)
+    paid      = parsed['paid']
+    order_ref = parsed['client_reference']  # e.g. "ORD-ABC123"
+    txn_id    = parsed.get('transaction_id', '') or parsed.get('checkout_id', '')
+
+    logger.info('[Hubtel] Webhook — ref=%s paid=%s txn=%s', order_ref, paid, txn_id)
 
     if not order_ref:
         return HttpResponse(status=400)
@@ -439,11 +445,13 @@ def hubtel_webhook(request):
     try:
         order = Order.objects.get(order_ref=order_ref)
     except Order.DoesNotExist:
-        logger.warning('[Hubtel] Webhook: order %s not found', order_ref)
-        return HttpResponse(status=404)
+        logger.warning('[Hubtel] Webhook: order not found for ref=%s', order_ref)
+        return HttpResponse(status=200)  # 200 so Hubtel doesn't retry
 
-    if response_code == '0000':
+    if paid:
         _mark_paid(order, transaction_id=txn_id)
+    else:
+        logger.info('[Hubtel] Webhook: payment not successful — ref=%s', order_ref)
 
     return HttpResponse(status=200)
 
@@ -555,81 +563,11 @@ def flutterwave_webhook(request):
     return HttpResponse(status=200)
 
 @login_required
-def payment_processing(request):
-    """
-    Shows processing page while Hubtel confirms payment.
-    Polls payment:hubtel_status every 3s via JS.
-    """
-    from order.models import Order
-    order_ref = request.GET.get('order') or request.session.get('last_order_ref', '')
-    order     = None
-    poll_url  = ''
-    if order_ref:
-        try:
-            order = Order.objects.get(order_ref=order_ref, customer=request.user)
-            poll_url = reverse('payment:hubtel_status', args=[order_ref])
-        except Order.DoesNotExist:
-            pass
-    return render(request, 'payment/processing.html', {
-        'order':      order,
-        'poll_url':   poll_url,
-        'cancel_url': reverse('order:history'),
-        'cart_count': 0,
-    })
+
 
 
 @login_required
-def payment_failed(request):
-    """Payment failed page with retry option."""
-    from order.models import Order
-    order_ref = request.GET.get('order') or ''
-    order     = None
-    if order_ref:
-        try:
-            order = Order.objects.get(order_ref=order_ref, customer=request.user)
-        except Order.DoesNotExist:
-            pass
-    return render(request, 'payment/failed.html', {
-        'order':      order,
-        'reason':     request.GET.get('reason', 'Payment could not be completed.'),
-        'cart_count': 0,
-    })
-# ── RE-INITIATE from failed page ─────────────────────────────────────────────
 
-@login_required
-def payment_initiate(request, order_ref):
-    """
-    Re-initiates Hubtel checkout for an existing unpaid order.
-    Called when customer clicks "Try Again" on failed.html.
-    URL: payment:initiate <order_ref>
-    """
-    from order.models import Order
-    from payment.hubtel import HubtelCheckout
-
-    try:
-        order = Order.objects.get(order_ref=order_ref, customer=request.user)
-    except Order.DoesNotExist:
-        messages.error(request, 'Order not found.')
-        return redirect('order:history')
-
-    if order.payment_status == 'paid':
-        return redirect('order:confirmation', order_ref=order.order_ref)
-
-    result = HubtelCheckout.initiate(order, request)
-    if not result.get('success'):
-        messages.error(request, result.get('error', 'Payment error. Please try again.'))
-        return render(request, 'payment/failed.html', {
-            'order':  order,
-            'reason': result.get('error', ''),
-            'cart_count': 0,
-        })
-
-    return render(request, 'payment/pay.html', {
-        'order':       order,
-        'checkout_url': result.get('redirect_url', ''),
-        'direct_url':   result.get('direct_url', ''),
-        'cart_count':   0,
-    })
 
 
 # ── PROCESSING PAGE ───────────────────────────────────────────────────────────
