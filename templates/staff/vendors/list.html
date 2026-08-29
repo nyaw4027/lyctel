@@ -1,58 +1,26 @@
 {% extends "staff/base.html" %}
-{% block title %}Vendors — Staff{% endblock %}
-{% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
-  <h1 class="fw-bold mb-0" style="font-size:1.3rem;color:#0F1B2D">Vendors</h1>
-  <form class="d-flex gap-2" method="GET">
-    <input type="text" name="q" value="{{ query }}" placeholder="Search vendor…"
-           class="form-control rounded-3" style="font-size:16px;max-width:200px"/>
-    <button class="btn btn-navy rounded-3 fw-semibold">Search</button>
-  </form>
-</div>
-<div class="d-flex gap-2 mb-3 flex-wrap">
-  
-</div>
-<!-- Status filter -->
-<div class="d-flex gap-2 mb-3 flex-wrap">
-  <a href="?" class="btn btn-sm rounded-3 fw-semibold {% if not filter_status %}btn-navy{% else %}btn-outline-secondary{% endif %}">All</a>
-  <a href="?status=pending" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'pending' %}btn-navy{% else %}btn-outline-secondary{% endif %}">⏳ Pending {% if counts.pending %}<span class="badge rounded-pill bg-warning text-dark ms-1" style="font-size:.6rem">{{ counts.pending }}</span>{% endif %}</a>
-  <a href="?status=active" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'active' %}btn-navy{% else %}btn-outline-secondary{% endif %}">✓ Active</a>
-  <a href="?status=suspended" class="btn btn-sm rounded-3 fw-semibold {% if filter_status == 'suspended' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}">✕ Suspended</a>
-</div>
+{% load i18n %}
+{% block staff_title %}Vendors — Staff{% endblock %}
+{% block page_heading %}Vendors{% endblock %}
 
-<div class="card border-0 shadow-sm rounded-3 overflow-hidden">
-  <div class="table-responsive">
-    <table class="table table-hover mb-0 align-middle small">
-      <thead style="background:#f9fafb">
-        <tr>
-          <th class="px-4 py-3 fw-semibold text-muted">Vendor</th>
-          <th class="px-4 py-3 fw-semibold text-muted">Owner</th>
-          <th class="px-4 py-3 fw-semibold text-muted">Status</th>
-          <th class="px-4 py-3 fw-semibold text-muted">Joined</th>
-          <th class="px-4 py-3"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for v in vendors %}
-        <tr>
-          <td class="px-4 py-3">
-            <p class="fw-bold text-navy mb-0">{{ v.shop_name }}</p>
-            <p class="text-muted mb-0" style="font-size:.72rem">{{ v.shop_category|default:"—" }}</p>
-          </td>
-          <td class="px-4 py-3">{{ v.owner.display_name|default:v.owner.phone }}</td>
-          <td class="px-4 py-3">
-            <span class="badge rounded-pill {% if v.status == 'active' %}text-bg-success{% elif v.status == 'pending' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
-              {{ v.status|title }}
-            </span>
-          </td>
-          <td class="px-4 py-3 text-muted">{{ v.joined_at|date:"M d, Y" }}</td>
-          <td class="px-4 py-3"><a href="{% url 'staff:vendor_detail' v.pk %}" class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold">View</a></td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5" class="text-center py-5 text-muted">No vendors found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+{% block staff_content %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead><tr><th>#</th><th>Vendor</th><th>Owner</th><th>City</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+    <tbody>
+      {% for v in vendors %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td><a href="{% url 'staff:vendor_detail' v.pk %}" class="fw-semibold text-decoration-none">{{ v.shop_name }}</a></td>
+        <td>{{ v.owner.get_full_name|default:v.owner.phone }}</td>
+        <td>{{ v.city }}</td>
+        <td><span class="small text-muted">{{ v.get_status_display }}</span></td>
+        <td class="text-end"><a href="{% url 'staff:vendor_detail' v.pk %}" class="btn btn-sm btn-light">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-3">No vendors found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}
