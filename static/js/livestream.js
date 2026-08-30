@@ -595,6 +595,32 @@ function startTimer() {
 // Confirm JS loaded correctly
 console.log('[livestream.js] ✓ Loaded — STREAM_ID:', STREAM_ID, '| startCamera:', typeof startCamera);
 
+// ── Camera button failsafe (addEventListener as backup for onclick) ────────────
+// Some iOS browsers ignore onclick on elements inside fixed/absolute containers.
+// Adding a direct event listener guarantees the tap is captured.
+(function () {
+  var btn = document.getElementById('start-cam-btn');
+  if (!btn) {
+    // Fallback: find button by text content
+    var btns = document.querySelectorAll('button');
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.includes('Start Camera')) { btn = btns[i]; break; }
+    }
+  }
+  if (btn) {
+    btn.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      startCamera();
+    }, { passive: false });
+    btn.addEventListener('click', function(e) {
+      startCamera();
+    });
+    console.log('[camera] Start Camera button wired via addEventListener ✓');
+  } else {
+    console.warn('[camera] Start Camera button not found');
+  }
+})();
+
 // Restore pinned state — PINNED_IDS supplied by broadcast.html as window.PINNED_IDS
 (function () {
   const ids = window.PINNED_IDS || [];
