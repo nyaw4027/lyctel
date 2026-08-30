@@ -148,6 +148,14 @@ class StreamConsumer(AsyncWebsocketConsumer):
             if not message:
                 return
 
+            # Server-side rate limit: 1 comment per 2 seconds per user
+            # Prevents spam even if client-side throttle is bypassed
+            now = timezone.now().timestamp()
+            last = getattr(self, '_last_comment_ts', 0)
+            if now - last < 2.0:
+                return  # silently drop — client already shows the limit
+            self._last_comment_ts = now
+
             comment = await self._save_comment(message)
             await self.channel_layer.group_send(self.room_group, {
                 'type':       'chat_message',
@@ -318,18 +326,27 @@ class StreamConsumer(AsyncWebsocketConsumer):
                 user=self.user,
                 defaults={'joined_at': timezone.now()},
             )
-        stream.total_viewers += 1
-        stream.save(update_fields=['total_viewers'])
+        from django.db.models import F
+        # F() prevents race condition when multiple viewers join simultaneously
+        # (without it: 5 concurrent joins all read 0, all write 1 → count stays 1)
+        type(stream).objects.filter(pk=stream.pk).update(
+            total_viewers=F('total_viewers') + 1
+        )
 
     @database_sync_to_async
     def _remove_viewer(self):
-        from livestream.models import StreamViewer
+        from livestream.models import StreamViewer, LiveStream
         if self.user.is_authenticated:
             StreamViewer.objects.filter(
                 stream_id=self.stream_id,
                 user=self.user,
                 left_at__isnull=True,
             ).update(left_at=timezone.now())
+        # Decrement with F() and guard against going negative
+        from django.db.models import F, Greatest
+        LiveStream.objects.filter(pk=self.stream_id).update(
+            total_viewers=Greatest(F('total_viewers') - 1, 0)
+        )
 
     @database_sync_to_async
     def _get_viewer_count(self):

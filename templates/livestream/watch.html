@@ -598,10 +598,18 @@ let myPollVote = null;
 const isDesktop = window.innerWidth >= 1024;
 
 const iceConfig = {
-  iceServers:[
-    {urls:'stun:stun.l.google.com:19302'},
-    {urls:'stun:stun1.l.google.com:19302'},
-  ]
+  iceServers: [
+    {urls: 'stun:stun.l.google.com:19302'},
+    {urls: 'stun:stun1.l.google.com:19302'},
+    {urls: 'stun:stun.cloudflare.com:3478'},
+    // Free TURN — critical for Ghana mobile networks (MTN/Vodafone CGNAT)
+    {urls:'turn:openrelay.metered.ca:80',      username:'openrelayproject', credential:'openrelayproject'},
+    {urls:'turn:openrelay.metered.ca:443',     username:'openrelayproject', credential:'openrelayproject'},
+    {urls:'turn:openrelay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject'},
+  ],
+  iceCandidatePoolSize: 10,
+  bundlePolicy:         'max-bundle',
+  rtcpMuxPolicy:        'require',
 };
 
 if (isDesktop) {
@@ -657,7 +665,10 @@ function connectWS() {
     startViewing();
     connectTimeout = setTimeout(()=>{
       const h = document.getElementById('connecting-hint');
-      if(h) h.textContent = 'Still connecting — the streamer may not have started yet.';
+      if(h) h.textContent = 'Retrying connection…';
+      // Retry the full WebRTC handshake — TURN server may need extra time
+      if(pc) { try { pc.close(); } catch(e) {} pc = null; }
+      startViewing();
     }, 15000);
   };
   ws.onmessage = ({data}) => {
@@ -677,10 +688,23 @@ function connectWS() {
       case 'stream_ended':    showEnded(); break;
     }
   };
-  ws.onclose = () => setTimeout(connectWS, 4000);
+  // Keepalive ping to prevent Railway proxy from closing idle WS (30s timeout)
+  if (!window._wsPingInterval) {
+    window._wsPingInterval = setInterval(() => {
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' }));
+    }, 25000);
+  }
+
+  ws.onclose = () => {
+    // Close stale PeerConnection — ICE zombies cause memory leaks and block
+    // new connections when the WebSocket reconnects.
+    if (pc) { try { pc.close(); } catch(e) {} pc = null; }
+    if (connectTimeout) { clearTimeout(connectTimeout); connectTimeout = null; }
+    setTimeout(connectWS, 4000);
+  };
 }
 
-async function startViewing() {
+async async function startViewing() {
   pc = new RTCPeerConnection(iceConfig);
   pc.ontrack = ({streams}) => {
     document.getElementById('remote-video').srcObject = streams[0];
@@ -692,7 +716,27 @@ async function startViewing() {
       ws.send(JSON.stringify({type:'ice',candidate,peer_id:vendorChannel}));
   };
   pc.onconnectionstatechange = () => {
-    if(pc.connectionState==='failed'){ pc.close(); setTimeout(startViewing,2000); }
+    const state = pc.connectionState;
+    if (state === 'failed') {
+      // Hard failure — restart immediately
+      try { pc.close(); } catch(e) {}
+      pc = null;
+      setTimeout(startViewing, 2000);
+    } else if (state === 'disconnected') {
+      // Temporary dropout (network blip) — wait 5s then retry
+      setTimeout(() => {
+        if (pc && pc.connectionState === 'disconnected') {
+          try { pc.close(); } catch(e) {}
+          pc = null;
+          startViewing();
+        }
+      }, 5000);
+    } else if (state === 'connected') {
+      // Connected — clear any pending timeout
+      if (connectTimeout) { clearTimeout(connectTimeout); connectTimeout = null; }
+      const h = document.getElementById('connecting-hint');
+      if (h) h.textContent = '';
+    }
   };
   pc.addTransceiver('video',{direction:'recvonly'});
   pc.addTransceiver('audio',{direction:'recvonly'});
