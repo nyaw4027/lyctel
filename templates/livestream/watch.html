@@ -674,8 +674,19 @@ function connectWS() {
   ws.onmessage = ({data}) => {
     let msg; try { msg = JSON.parse(data); } catch { return; }
     switch(msg.type) {
-      case 'offer':           vendorChannel=msg.sender; handleVendorOffer(msg.sdp); break;
-      case 'ice':             if(pc&&msg.sender===vendorChannel) pc.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(()=>{}); break;
+      case 'offer':  vendorChannel=msg.sender; handleVendorOffer(msg.sdp); break;
+      case 'answer':
+        // Vendor replied to our offer — complete the WebRTC handshake
+        if (pc) {
+          pc.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:msg.sdp}))
+            .catch(e => console.warn('[webrtc] setRemoteDescription answer:', e));
+        }
+        break;
+      case 'ice':
+        if (pc && msg.sender === vendorChannel) {
+          pc.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(()=>{});
+        }
+        break;
       case 'viewer_count':    updateViewers(msg.count); break;
       case 'chat':            appendChat(msg); break;
       case 'gift':            handleGift(msg); break;
@@ -686,6 +697,14 @@ function connectWS() {
       case 'poll_update':     updatePollBars(msg.tallies); break;
       case 'poll_end':        hidePoll(); break;
       case 'stream_ended':    showEnded(); break;
+      case 'vendor_ready':
+        // Vendor just started their camera — re-send our offer immediately
+        // instead of waiting for the 15s timeout to retry
+        if (!pc || pc.connectionState === 'new' || pc.connectionState === 'closed') {
+          if (pc) { try { pc.close(); } catch(e) {} pc = null; }
+          startViewing();
+        }
+        break;
     }
   };
   // Keepalive ping to prevent Railway proxy from closing idle WS (30s timeout)
