@@ -98,14 +98,23 @@ const iceConfig = {
 // ── CAMERA ────────────────────────────────────────────────
 async function startCamera() {
   console.log('[camera] startCamera() called — STREAM_ID:', STREAM_ID);
-  const placeholder = document.getElementById('cam-placeholder');
-  const startBtn    = placeholder ? placeholder.querySelector('button') : null;
 
-  // Show loading state
+  // Primary: use new bulletproof overlay elements
+  const overlay  = document.getElementById('cam-start-overlay');
+  const startBtn = document.getElementById('start-cam-btn');
+  const statusEl = document.getElementById('cam-start-status');
+  const errorEl  = document.getElementById('cam-start-error');
+
+  // Fallback: old cam-placeholder (kept for compatibility)
+  const placeholder = document.getElementById('cam-placeholder');
+
   if (startBtn) {
     startBtn.disabled    = true;
     startBtn.textContent = '⏳ Requesting camera…';
+    startBtn.style.opacity = '0.7';
   }
+  if (statusEl) { statusEl.textContent = 'Asking for camera permission…'; }
+  if (errorEl)  { errorEl.style.display = 'none'; }
 
   try {
     // Check getUserMedia is available (HTTPS required)
@@ -121,6 +130,9 @@ async function startCamera() {
     const video = document.getElementById('local-video');
     if (video) video.srcObject = localStream;
 
+    // Hide the camera start overlay — stream is now live
+    const ov = document.getElementById('cam-start-overlay');
+    if (ov) ov.style.display = 'none';
     if (placeholder) placeholder.style.display = 'none';
 
     const badge = document.getElementById('live-badge');
@@ -160,8 +172,15 @@ async function startCamera() {
       const prev = placeholder.querySelector('.cam-error');
       if (prev) prev.remove();
       errDiv.className = 'cam-error';
-      placeholder.appendChild(errDiv);
+      // Show in new overlay too
+      const el2 = document.getElementById('cam-start-error');
+      if (el2) { el2.textContent = msg; el2.style.display = 'block'; }
+      const sl2 = document.getElementById('cam-start-status');
+      if (sl2) sl2.textContent = '';
     }
+
+    // Re-enable button
+    if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🔴 Start Camera'; startBtn.style.opacity = '1'; }
 
     console.error('[camera]', err);
   }
@@ -595,29 +614,20 @@ function startTimer() {
 // Confirm JS loaded correctly
 console.log('[livestream.js] ✓ Loaded — STREAM_ID:', STREAM_ID, '| startCamera:', typeof startCamera);
 
-// ── Camera button failsafe (addEventListener as backup for onclick) ────────────
-// Some iOS browsers ignore onclick on elements inside fixed/absolute containers.
-// Adding a direct event listener guarantees the tap is captured.
+// Wire Start Camera button (touchend for mobile, click for desktop)
 (function () {
   var btn = document.getElementById('start-cam-btn');
-  if (!btn) {
-    // Fallback: find button by text content
-    var btns = document.querySelectorAll('button');
-    for (var i = 0; i < btns.length; i++) {
-      if (btns[i].textContent.includes('Start Camera')) { btn = btns[i]; break; }
-    }
-  }
   if (btn) {
     btn.addEventListener('touchend', function(e) {
       e.preventDefault();
-      startCamera();
+      if (!btn.disabled) startCamera();
     }, { passive: false });
-    btn.addEventListener('click', function(e) {
-      startCamera();
+    btn.addEventListener('click', function() {
+      if (!btn.disabled) startCamera();
     });
-    console.log('[camera] Start Camera button wired via addEventListener ✓');
+    console.log('[camera] ✓ start-cam-btn wired');
   } else {
-    console.warn('[camera] Start Camera button not found');
+    console.warn('[camera] ✗ start-cam-btn NOT FOUND');
   }
 })();
 

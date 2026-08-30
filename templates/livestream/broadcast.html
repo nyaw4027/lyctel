@@ -23,7 +23,7 @@ document.body.classList.add('page-fullscreen');
   <video id="local-video" autoplay muted playsinline style="pointer-events:none;"></video>
 
   <!-- Camera placeholder -->
-  <div id="cam-placeholder">
+  <div id="cam-placeholder" style="position:relative;z-index:10;">
     <div style="font-size:60px;margin-bottom:20px;" aria-hidden="true">📸</div>
     <p style="color:white;font-weight:700;font-size:18px;margin-bottom:8px;">Ready to go live</p>
     <p style="color:#9ca3af;font-size:14px;margin-bottom:28px;">Tap below to start your camera</p>
@@ -233,6 +233,40 @@ document.body.classList.add('page-fullscreen');
   </div>
 
 </div><!-- end root -->
+<!-- ══ CAMERA START OVERLAY ═══════════════════════════════════════════════════
+     OUTSIDE #root so nothing can block it. z-index:99999 puts it above all.
+     Hidden automatically when startCamera() succeeds.
+═══════════════════════════════════════════════════════════════════════════════ -->
+<div id="cam-start-overlay"
+     style="position:fixed;inset:0;z-index:99999;background:#000;
+            display:flex;flex-direction:column;align-items:center;
+            justify-content:center;text-align:center;padding:32px;
+            font-family:inherit;">
+
+  <div style="font-size:72px;margin-bottom:20px;">📸</div>
+
+  <p style="color:white;font-weight:800;font-size:22px;margin:0 0 10px;">
+    Ready to go live
+  </p>
+  <p style="color:#9ca3af;font-size:15px;margin:0 0 36px;max-width:280px;line-height:1.5;">
+    Tap the button to start your camera and go live
+  </p>
+
+  <button id="start-cam-btn"
+          style="background:#ef4444;color:white;font-weight:800;font-size:18px;
+                 border:none;border-radius:20px;padding:20px 56px;cursor:pointer;
+                 box-shadow:0 8px 40px rgba(239,68,68,.6);
+                 touch-action:manipulation;
+                 -webkit-tap-highlight-color:transparent;
+                 transition:transform .1s,opacity .1s;">
+    🔴 Start Camera
+  </button>
+
+  <p id="cam-start-status" style="color:#9ca3af;font-size:13px;margin:16px 0 0;min-height:18px;"></p>
+  <p id="cam-start-error"  style="color:#fca5a5;font-size:13px;margin:8px 0 0;max-width:290px;
+                                   line-height:1.5;display:none;"></p>
+</div>
+
 
 <!-- ── PIN PRODUCT SHEET ──────────────────────────────── -->
 <div id="pin-backdrop" onclick="closePinSheet()" style="position:fixed;top:0;right:0;bottom:0;left:0;z-index:40;background:rgba(0,0,0,.7);display:none;"></div>
