@@ -97,6 +97,7 @@ const iceConfig = {
 
 // ── CAMERA ────────────────────────────────────────────────
 async function startCamera() {
+  console.log('[camera] startCamera() called — STREAM_ID:', STREAM_ID);
   const placeholder = document.getElementById('cam-placeholder');
   const startBtn    = placeholder ? placeholder.querySelector('button') : null;
 
@@ -202,7 +203,12 @@ async function switchCamera() {
 // ── WEBSOCKET ─────────────────────────────────────────────
 function connectWS() {
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => {};
+  ws.onopen = () => {
+    // Tell the server this is the vendor/broadcaster connection
+    try {
+      ws.send(JSON.stringify({ type: 'vendor_init', stream_id: STREAM_ID }));
+    } catch(e) { console.warn('[ws] vendor_init failed:', e); }
+  };
   ws.onmessage = async({data}) => {
     let msg; try{msg=JSON.parse(data);}catch{return;}
     switch(msg.type){
@@ -585,6 +591,9 @@ function startTimer() {
     document.getElementById('timer').textContent=`${m}:${sec}`;
   },1000);
 }
+
+// Confirm JS loaded correctly
+console.log('[livestream.js] ✓ Loaded — STREAM_ID:', STREAM_ID, '| startCamera:', typeof startCamera);
 
 // Restore pinned state — PINNED_IDS supplied by broadcast.html as window.PINNED_IDS
 (function () {
