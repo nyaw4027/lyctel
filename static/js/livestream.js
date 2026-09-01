@@ -41,7 +41,7 @@ function startRecording() {
   document.getElementById('rec-badge').style.display = 'inline-flex';
 }
 
-function stopRecordingAndUpload() {
+async function stopRecordingAndUpload() {
   return new Promise((resolve) => {
     if (!mediaRecorder || mediaRecorder.state === 'inactive') { resolve(null); return; }
 
@@ -121,6 +121,9 @@ async function startCamera() {
     const video = document.getElementById('local-video');
     if (video) video.srcObject = localStream;
 
+    // Hide the bulletproof camera start overlay
+    const camOverlay = document.getElementById('cam-start-overlay');
+    if (camOverlay) camOverlay.style.display = 'none';
     if (placeholder) placeholder.style.display = 'none';
 
     const badge = document.getElementById('live-badge');
@@ -163,6 +166,13 @@ async function startCamera() {
       placeholder.appendChild(errDiv);
     }
 
+    const camErr = document.getElementById('cam-start-error');
+    if (camErr) { camErr.textContent = msg; camErr.style.display = 'block'; }
+    const camSt  = document.getElementById('cam-start-status');
+    if (camSt)  camSt.textContent = '';
+    // Re-enable button
+    const camBtn = document.getElementById('start-cam-btn');
+    if (camBtn) { camBtn.disabled = false; camBtn.textContent = '🔴 Start Camera'; }
     console.error('[camera]', err);
   }
 }
@@ -183,7 +193,7 @@ function toggleMic() {
   document.getElementById('mic-label').textContent = micOn ? 'Mic' : 'Muted';
 }
 
-async async function switchCamera() {
+async function switchCamera() {
   facingMode = facingMode === 'user' ? 'environment' : 'user';
   if(!localStream) return;
   try {
@@ -201,7 +211,7 @@ async async function switchCamera() {
 }
 
 // ── WEBSOCKET ─────────────────────────────────────────────
-function connectWS() {
+async function connectWS() {
   ws = new WebSocket(WS_URL);
   ws.onopen = () => {
     // Tell the server this is the vendor/broadcaster connection
@@ -278,7 +288,7 @@ async function applyBitrateCap(pc) {
   try { await sender.setParameters(params); } catch (e) { /* not fatal */ }
 }
 
-async async function handleViewerOffer(sdp, viewerChannel) {
+async function handleViewerOffer(sdp, viewerChannel) {
   if(!localStream || !viewerChannel) return;
   if(peerConnections[viewerChannel]) peerConnections[viewerChannel].close();
 
