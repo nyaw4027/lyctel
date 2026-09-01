@@ -665,26 +665,29 @@ function connectWS() {
     startViewing();
     connectTimeout = setTimeout(()=>{
       const h = document.getElementById('connecting-hint');
-      if(h) h.textContent = 'Retrying connection…';
-      // Retry the full WebRTC handshake — TURN server may need extra time
+      if(h) h.textContent = 'Retrying…';
       if(pc) { try { pc.close(); } catch(e) {} pc = null; }
       startViewing();
-    }, 15000);
+    }, 8000);
   };
   ws.onmessage = ({data}) => {
     let msg; try { msg = JSON.parse(data); } catch { return; }
     switch(msg.type) {
       case 'offer':  vendorChannel=msg.sender; handleVendorOffer(msg.sdp); break;
       case 'answer':
-        // Vendor replied to our offer — complete the WebRTC handshake
+        // Vendor replied — save their channel and complete handshake
+        vendorChannel = msg.sender;   // ← CRITICAL: needed for ICE routing
         if (pc) {
           pc.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:msg.sdp}))
+            .then(() => console.log('[webrtc] remote description set ✓'))
             .catch(e => console.warn('[webrtc] setRemoteDescription answer:', e));
         }
         break;
       case 'ice':
-        if (pc && msg.sender === vendorChannel) {
-          pc.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(()=>{});
+        // Server routes ICE via peer_id — all ICE arriving here is meant for us
+        if (pc && msg.candidate) {
+          pc.addIceCandidate(new RTCIceCandidate(msg.candidate))
+            .catch(e => console.warn('[webrtc] addIceCandidate:', e));
         }
         break;
       case 'viewer_count':    updateViewers(msg.count); break;
@@ -731,11 +734,17 @@ async async function startViewing() {
     if(connectTimeout){ clearTimeout(connectTimeout); connectTimeout=null; }
   };
   pc.onicecandidate = ({candidate}) => {
-    if(candidate && ws?.readyState===1)
-      ws.send(JSON.stringify({type:'ice',candidate,peer_id:vendorChannel}));
+    if(candidate && ws?.readyState===1) {
+      ws.send(JSON.stringify({
+        type:     'ice',
+        candidate: candidate,
+        peer_id:  vendorChannel,   // may be null on first offer — server still routes by sender
+      }));
+    }
   };
   pc.onconnectionstatechange = () => {
     const state = pc.connectionState;
+    console.log('[webrtc] connectionState:', state, '| vendorChannel:', vendorChannel);
     if (state === 'failed') {
       // Hard failure — restart immediately
       try { pc.close(); } catch(e) {}
@@ -761,7 +770,12 @@ async async function startViewing() {
   pc.addTransceiver('audio',{direction:'recvonly'});
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-  ws?.readyState===1 && ws.send(JSON.stringify({type:'offer',sdp:offer.sdp}));
+  if (ws?.readyState === 1) {
+    ws.send(JSON.stringify({type:'offer', sdp:offer.sdp}));
+    console.log('[webrtc] offer sent to server ✓');
+  } else {
+    console.warn('[webrtc] WS not ready when trying to send offer — state:', ws?.readyState);
+  }
 }
 
 async function handleVendorOffer(sdp) {
