@@ -10,6 +10,22 @@ Usage:
     from payment.hubtel import HubtelCheckout
     result = HubtelCheckout.initiate(order, request)
     # → {'success': True, 'redirect_url': '...', 'checkout_id': '...'}
+
+FIX (this version):
+    Previous code only generated a unique clientReference suffix if
+    order.hubtel_reference was already saved in the DB. If the DB save
+    failed/was skipped for any reason (missing field, exception before
+    the save block, timeout after Hubtel accepted the request, etc.),
+    every retry sent the EXACT SAME clientReference, causing Hubtel to
+    reject it with "400 Duplicated client reference. Please try again."
+    permanently for that order.
+
+    Fix: generate a fresh unique reference on EVERY initiate() call,
+    regardless of DB state. We always persist the latest reference
+    (no longer gated on "field is currently empty").
+
+    Also corrected _safe_ref truncation from 36 -> 32 chars to match
+    Hubtel's documented clientReference length limit.
 """
 import base64
 import hashlib
@@ -81,7 +97,7 @@ class HubtelCheckout:
         Strip anything that isn't alphanumeric or hyphen, then truncate.
         """
         cleaned = re.sub(r'[^A-Za-z0-9\-]', '', str(text))
-        return cleaned[:36]
+        return cleaned[:32]
 
     @staticmethod
     def _clean_desc(text):
@@ -90,6 +106,17 @@ class HubtelCheckout:
         Keep only alphanumeric, spaces, commas, periods, hyphens.
         """
         return re.sub(r'[^a-zA-Z0-9 .,\-]', '', str(text))[:200]
+
+    @staticmethod
+    def _unique_ref(base):
+        """
+        Build a clientReference that is unique to THIS attempt, every time.
+        Never reuse the same string across two calls to Hubtel — even for
+        retries of the same order — or Hubtel returns:
+            400 Duplicated client reference. Please try again.
+        """
+        suffix = uuid.uuid4().hex[:6].upper()
+        return HubtelCheckout._safe_ref(f"{base}-{suffix}")
 
     # ── Initiate checkout ─────────────────────────────────────────────────────
 
@@ -117,20 +144,18 @@ class HubtelCheckout:
                     "HUBTEL_MERCHANT_ACCT in Railway Variables."
                 )
 
-            # clientReference: ≤ 32 chars, no special characters
-            # order_ref is already like "ORD-805E47" — don't double-prefix
+            # clientReference: ≤ 32 chars, no special characters.
+            # order_ref is already like "ORD-805E47" — don't double-prefix.
             _base = order.order_ref
             if _base.startswith("ORD-"):
                 _base = _base[4:]
-            # If order already has a hubtel_reference, generate a unique
-            # suffix so retries don't hit "Duplicated client reference"
-            existing = getattr(order, 'hubtel_reference', '')
-            if existing:
-                import uuid as _uuid
-                _suffix = _uuid.uuid4().hex[:4].upper()
-                ref = cls._safe_ref(f"{_base}-{_suffix}")
-            else:
-                ref = cls._safe_ref(_base)
+
+            # FIX: always generate a fresh unique reference for THIS attempt.
+            # Do NOT gate uniqueness on whether order.hubtel_reference is
+            # already saved — if a prior save was skipped/failed, that left
+            # every retry sending the identical reference and Hubtel would
+            # reject it as a duplicate forever.
+            ref = cls._unique_ref(_base)
 
             amount = float(round(Decimal(str(order.total_amount)), 2))
 
@@ -200,15 +225,25 @@ class HubtelCheckout:
                     data=body,
                 )
 
-            # Persist on order if fields exist
+            # FIX: always persist the LATEST reference/checkout_id, not just
+            # the first one ever seen. Previously this only wrote the field
+            # if it was currently empty, which is exactly what let the ref
+            # go stale and get reused on retries.
+            update_fields = []
             for field, val in [('hubtel_checkout_id', checkout_id),
                                 ('hubtel_reference',   ref)]:
-                if hasattr(order, field) and not getattr(order, field, ''):
-                    try:
-                        setattr(order, field, val)
-                        order.save(update_fields=[field])
-                    except Exception:
-                        pass
+                if hasattr(order, field):
+                    setattr(order, field, val)
+                    update_fields.append(field)
+            if update_fields:
+                try:
+                    order.save(update_fields=update_fields)
+                except Exception:
+                    log.exception(
+                        "[Hubtel] Failed to persist reference for order %s "
+                        "(checkout was still created successfully, ref=%s)",
+                        order.order_ref, ref,
+                    )
 
             log.info("[Hubtel] Checkout created id=%s ref=%s", checkout_id, ref)
 
@@ -338,7 +373,11 @@ class HubtelCheckout:
     def initiate_food_order(cls, order, callback_url=None, return_url=None, cancel_url=None):
         """
         Initiate Hubtel Checkout for a FoodOrder.
-        clientReference format: FOOD-{order_ref} (≤ 36 chars)
+        clientReference format: FOOD-{order_ref}-{unique suffix} (≤ 32 chars)
+
+        FIX: same duplicate-reference issue as initiate() — now always
+        generates a unique suffix per attempt instead of reusing the same
+        FOOD-{order_ref} string on every retry.
         """
         cid, secret = cls._auth()
         merchant    = cls._merchant()
@@ -352,7 +391,7 @@ class HubtelCheckout:
             if _base.startswith(pfx):
                 _base = _base[len(pfx):]
                 break
-        ref = cls._safe_ref(f"FOOD-{_base}")
+        ref = cls._unique_ref(f"FOOD-{_base}")
 
         if not callback_url:
             callback_url = getattr(settings, 'HUBTEL_CALLBACK_URL',
@@ -385,14 +424,6 @@ class HubtelCheckout:
             if phone: payload['payeeMobileNumber'] = phone[:20]
             if email: payload['payeeEmail']        = email[:80]
 
-        # Persist reference
-        if hasattr(order, 'hubtel_reference') and not getattr(order, 'hubtel_reference', ''):
-            try:
-                order.hubtel_reference = ref
-                order.save(update_fields=['hubtel_reference'])
-            except Exception:
-                pass
-
         try:
             response = requests.post(
                 INITIATE_URL, json=payload,
@@ -407,12 +438,22 @@ class HubtelCheckout:
             direct_url   = data.get("checkoutDirectUrl", "")
             checkout_id  = data.get("checkoutId",  ref)
 
+            # Persist reference (always update to latest, same fix as initiate())
+            update_fields = []
+            if hasattr(order, 'hubtel_reference'):
+                order.hubtel_reference = ref
+                update_fields.append('hubtel_reference')
             if hasattr(order, 'hubtel_checkout_id'):
+                order.hubtel_checkout_id = checkout_id
+                update_fields.append('hubtel_checkout_id')
+            if update_fields:
                 try:
-                    order.hubtel_checkout_id = checkout_id
-                    order.save(update_fields=['hubtel_checkout_id'])
+                    order.save(update_fields=update_fields)
                 except Exception:
-                    pass
+                    log.exception(
+                        "[Hubtel] Failed to persist reference for food order %s (ref=%s)",
+                        order.order_ref, ref,
+                    )
 
             return {
                 "success":      True,
@@ -444,7 +485,7 @@ class HubtelCheckout:
             amount      (float/Decimal) — GHS amount to send
             phone       (str)           — recipient MoMo number (e.g. 0241234567)
             network     (str)           — "MTN", "VODAFONE", "AIRTELTIGO"
-            reference   (str)           — unique reference (≤ 36 chars)
+            reference   (str)           — unique reference (≤ 32 chars)
             description (str)           — description of transfer
             callback_url (str)          — where Hubtel POSTs the result
 
