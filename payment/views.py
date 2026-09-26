@@ -400,6 +400,13 @@ def _confirm_hubtel_payment(order, client_reference: str, callback: dict = None)
     result    = HubtelCheckout.verify(client_reference=reference) if reference else {}
     status    = (result.get('status') or '').lower()
 
+    if status in ('http_401', 'http_403'):
+        try:
+            from django.core.cache import cache
+            cache.set('hubtel_status_api_blocked', 1, 300)
+        except Exception:
+            pass
+
     if result.get('paid'):
         amount = result.get('amount')
         if amount is not None and not _amount_covers(order, amount):
@@ -435,6 +442,20 @@ def _confirm_hubtel_payment(order, client_reference: str, callback: dict = None)
     return False, ''
 
 
+def _iframe_url(result: dict) -> str:
+    """
+    FIX: pay.html embedded Hubtel's checkoutDirectUrl in an iFrame whenever
+    Hubtel returned one. The site CSP (frame-src 'self') blocked it, so
+    customers saw "This content is blocked" or an endless spinner and could
+    not pay. Embedding also needs Hubtel to whitelist our domain and is
+    unreliable on mobile, so we only embed when HUBTEL_USE_IFRAME=True;
+    otherwise pay.html redirects to Hubtel's full checkout page.
+    """
+    if getattr(settings, 'HUBTEL_USE_IFRAME', False):
+        return result.get('direct_url', '')
+    return ''
+
+
 @login_required
 def hubtel_init(request, order_pk):
     order = get_object_or_404(Order, pk=order_pk, customer=request.user)
@@ -454,7 +475,7 @@ def hubtel_init(request, order_pk):
         return redirect('order:history')
 
     checkout_url = result.get('redirect_url', '')
-    direct_url   = result.get('direct_url', '')
+    direct_url   = _iframe_url(result)
 
     # Render pay.html with iFrame (direct_url) or redirect fallback (checkout_url)
     return render(request, 'payment/pay.html', {
@@ -526,7 +547,10 @@ def hubtel_payment_status(request, order_ref):
         from django.core.cache import cache
         key = f'hubtel_verify:{order.pk}'
         try:
-            should_check = cache.add(key, 1, 10)
+            # Skip while Hubtel is refusing status checks (403 = server IP
+            # not whitelisted) instead of calling it on every 5s poll.
+            should_check = (not cache.get('hubtel_status_api_blocked')
+                            and cache.add(key, 1, 10))
         except Exception:
             should_check = True
         if should_check:
@@ -808,6 +832,6 @@ def payment_initiate(request, order_ref):
     return render(request, 'payment/pay.html', {
         'order':        order,
         'checkout_url': result.get('redirect_url', ''),
-        'direct_url':   result.get('direct_url', ''),
+        'direct_url':   _iframe_url(result),
         'cart_count':   0,
     })

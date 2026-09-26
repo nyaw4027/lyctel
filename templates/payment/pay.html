@@ -94,6 +94,15 @@
       ></iframe>
     </div>
 
+    {% if checkout_url %}
+    <!-- Fallback if the embedded page is blocked or never loads -->
+    <div style="padding:12px 20px 0;text-align:center">
+      <a href="{{ checkout_url }}" style="font-size:.85rem;font-weight:600;color:#0F1B2D">
+        Payment page not loading? Open it here →
+      </a>
+    </div>
+    {% endif %}
+
     <!-- Payment method badges -->
     <div style="padding:14px 20px;border-top:1px solid #f3f4f6;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;">
       <span class="method-pill" style="background:#fef3c7;color:#92400e">📱 MTN MoMo</span>

@@ -38,6 +38,8 @@ class HubtelWebhookTests(TestCase):
         self.order.hubtel_reference = self.ref
         self.order.save(update_fields=['hubtel_reference'])
         self.url = reverse('payment:hubtel_webhook')
+        from django.core.cache import cache
+        cache.clear()
 
         # Keep side effects out of the unit under test.
         for target in ('payment.views._split_and_disburse',):
@@ -126,3 +128,39 @@ class HubtelHelperTests(TestCase):
         self.assertIn(reverse('payment:processing'), ret)
         self.assertIn('ORD-ABC123', ret)
         self.assertIn(reverse('payment:hubtel_cancel'), cancel)
+
+
+@override_settings(HUBTEL_CLIENT_ID='id', HUBTEL_CLIENT_SECRET='secret',
+                   HUBTEL_MERCHANT_ACCT='123456')
+class HubtelPayPageTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            **{User.USERNAME_FIELD: 'payer@example.com'}, password='pw12345!')
+        self.order = Order.objects.create(customer=self.user, total_amount=Decimal('90.00'))
+        self.client.force_login(self.user)
+        self.result = {'success': True, 'redirect_url': 'https://pay.hubtel.com/abc',
+                       'direct_url': 'https://pay.hubtel.com/abc/direct',
+                       'checkout_id': 'abc', 'reference': 'X'}
+
+    def _get(self):
+        from payment import views
+        with mock.patch.object(views, 'HUBTEL_CLIENT_ID', 'id'), \
+             mock.patch.object(HubtelCheckout, 'initiate', return_value=self.result):
+            return self.client.get(reverse('payment:hubtel_init', args=[self.order.pk]))
+
+    def test_redirects_to_full_hubtel_page_by_default(self):
+        resp = self._get()
+        self.assertNotContains(resp, '<iframe')
+        self.assertContains(resp, 'https://pay.hubtel.com/abc')
+
+    @override_settings(HUBTEL_USE_IFRAME=True)
+    def test_iframe_mode_has_fallback_link(self):
+        resp = self._get()
+        self.assertContains(resp, '<iframe')
+        self.assertContains(resp, 'Open it here')
+
+    def test_csp_allows_hubtel_frames(self):
+        from django.conf import settings
+        frame_src = settings.CONTENT_SECURITY_POLICY['DIRECTIVES']['frame-src']
+        self.assertIn('https://*.hubtel.com', frame_src)

@@ -312,6 +312,10 @@ HUBTEL_FOOD_CALLBACK_URL = config('HUBTEL_FOOD_CALLBACK_URL',
 HUBTEL_REQUIRE_STATUS_CHECK = config('HUBTEL_REQUIRE_STATUS_CHECK', default=False, cast=bool)
 # Automatic MoMo payouts to vendors on payment. Off: vendors settle via dashboard.
 HUBTEL_AUTO_PAYOUTS         = config('HUBTEL_AUTO_PAYOUTS',         default=False, cast=bool)
+# Embed Hubtel's checkout in an iFrame on /checkout/ instead of redirecting to
+# Hubtel's full page. Hubtel must whitelist the site's domain for embedding,
+# and mobile browsers often block it — so the full-page redirect is the default.
+HUBTEL_USE_IFRAME           = config('HUBTEL_USE_IFRAME',           default=False, cast=bool)
 
 # Platform commission (Lynctel keeps this %, rest is owed to vendor)
 FOOD_PLATFORM_CUT = config('FOOD_PLATFORM_CUT', default='0.04')  # 4% on food
@@ -376,7 +380,9 @@ CONTENT_SECURITY_POLICY = {
                         "api.locationiq.com",
                         "api.hubtel.com",
                         "sms.arkesel.com"),
-        'frame-src':   ("'self'",),
+        # Hubtel's embedded checkout (checkoutDirectUrl) is served from
+        # *.hubtel.com — without this the browser shows "This content is blocked".
+        'frame-src':   ("'self'", "https://*.hubtel.com"),
     },
     'REPORT_ONLY': False,
 }
