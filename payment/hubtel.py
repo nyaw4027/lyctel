@@ -118,6 +118,57 @@ class HubtelCheckout:
         suffix = uuid.uuid4().hex[:6].upper()
         return HubtelCheckout._safe_ref(f"{base}-{suffix}")
 
+    @staticmethod
+    def _order_urls(order, request=None):
+        """
+        Build (callbackUrl, returnUrl, cancellationUrl) for a shop order.
+
+        FIX: these used to come from settings, whose defaults pointed at
+        routes that don't exist (/checkout/callback/ and /checkout/ are
+        404s — the webhook lives at /checkout/hubtel/webhook/). Hubtel's
+        server-to-server notification therefore never reached us and paid
+        orders stayed "unpaid". The return URL was the generic /orders/
+        list, so customers never saw the processing/confirmation page.
+
+        When we have the request we now build the URLs from our own URL
+        routes, so they can't drift out of sync with urls.py.
+        """
+        from django.urls import reverse
+        ref = order.order_ref
+        if request is not None:
+            base = request.build_absolute_uri
+            return (
+                base(reverse('payment:hubtel_webhook')),
+                base(reverse('payment:processing')) + f'?order={ref}',
+                base(reverse('payment:hubtel_cancel')) + f'?ref={ref}',
+            )
+        site = getattr(settings, 'SITE_URL', 'https://lynctel.up.railway.app').rstrip('/')
+        return (
+            getattr(settings, 'HUBTEL_CALLBACK_URL', f'{site}/checkout/hubtel/webhook/'),
+            f'{site}/checkout/processing/?order={ref}',
+            f'{site}/checkout/hubtel/cancel/?ref={ref}',
+        )
+
+    @staticmethod
+    def order_ref_candidates(client_reference):
+        """
+        Map a clientReference we sent to Hubtel back to possible
+        Order.order_ref values.
+
+        initiate() sends "<order_ref without ORD->-<6-char suffix>",
+        e.g. ORD-805E47 → "805E47-A1B2C3". Older orders were sent as the
+        bare order_ref, so that is tried too.
+        """
+        ref = (client_reference or '').strip()
+        if not ref:
+            return []
+        candidates = [ref]
+        head = ref.rsplit('-', 1)[0] if '-' in ref else ref
+        for c in (head, f'ORD-{head}', f'ORD-{ref}'):
+            if c not in candidates:
+                candidates.append(c)
+        return candidates
+
     # ── Initiate checkout ─────────────────────────────────────────────────────
 
     @classmethod
@@ -159,12 +210,7 @@ class HubtelCheckout:
 
             amount = float(round(Decimal(str(order.total_amount)), 2))
 
-            callback_url = getattr(settings, 'HUBTEL_CALLBACK_URL',
-                                   'https://lynctel.up.railway.app/payment/callback/')
-            return_url   = getattr(settings, 'HUBTEL_RETURN_URL',
-                                   f'https://lynctel.up.railway.app/orders/{order.order_ref}/confirm/')
-            cancel_url   = getattr(settings, 'HUBTEL_CANCEL_URL',
-                                   'https://lynctel.up.railway.app/checkout/')
+            callback_url, return_url, cancel_url = cls._order_urls(order, request)
 
             payload = {
                 "totalAmount":           amount,
@@ -344,8 +390,10 @@ class HubtelCheckout:
         d_status = (d_data.get("Status") or d_data.get("status") or
                     body.get("Status")   or body.get("status",   "")).strip().lower()
 
-        # "Success" + responseCode "0000" both indicate a paid transaction
-        paid = d_status in ("success", "paid", "completed") or code == "0000"
+        # FIX: previously `... or code == "0000"`, so any payload carrying
+        # ResponseCode 0000 counted as paid even when Data.Status said
+        # otherwise. Require a success code AND a success status.
+        paid = code == "0000" and d_status in ("success", "paid", "completed")
 
         return {
             "paid":                paid,
