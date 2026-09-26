@@ -430,7 +430,7 @@ class HubtelCheckout:
         cid, secret = cls._auth()
         merchant    = cls._merchant()
 
-        if not cid or not secret:
+        if not cid or not secret or not merchant:
             return {"success": False, "error": "Hubtel credentials not configured."}
 
         # Strip existing prefix from order_ref to avoid FOOD-ORD-xxx
@@ -452,7 +452,8 @@ class HubtelCheckout:
         payload = {
             "totalAmount":           float(round(Decimal(str(order.total_amount)), 2)),
             "description":           cls._clean_desc(
-                f"Food Order {order.order_ref} - {order.vendor.name}"
+                f"Food Order {order.order_ref} - "
+                f"{getattr(order.vendor, 'name', '') or 'Lynctel'}"
             ),
             "callbackUrl":           callback_url,
             "returnUrl":             return_url,
@@ -734,3 +735,100 @@ class HubtelCheckout:
             return hmac.compare_digest(expected, signature)
         except Exception:
             return False
+
+# ── Shared helpers (shop orders + food orders) ────────────────────────────────
+
+# Statuses from HubtelCheckout.verify() that mean "Hubtel could not be asked",
+# as opposed to a definite answer such as "unpaid".
+_STATUS_CHECK_UNAVAILABLE = {'', 'timeout', 'error', 'no_merchant', 'no_reference'}
+
+
+def amount_covers(expected_total, amount) -> bool:
+    """True if the Hubtel-reported `amount` covers `expected_total`."""
+    try:
+        paid = Decimal(str(amount))
+    except Exception:
+        return False
+    return paid + Decimal('0.01') >= Decimal(str(expected_total))
+
+
+def status_api_blocked() -> bool:
+    """True while Hubtel is refusing Status API calls (see confirm_payment)."""
+    try:
+        from django.core.cache import cache
+        return bool(cache.get('hubtel_status_api_blocked'))
+    except Exception:
+        return False
+
+
+def confirm_payment(label, reference, expected_total, callback=None):
+    """
+    Decide whether a Hubtel payment really went through.
+    Returns (paid: bool, transaction_id: str).
+
+    SECURITY: the webhooks are public, CSRF-exempt URLs, so a callback body
+    alone proves nothing — anyone can POST {"ResponseCode": "0000", ...}.
+    We ask Hubtel's Transaction Status API and check the paid amount
+    covers the order total.
+
+    Hubtel only answers the Status API from whitelisted server IPs. If it
+    can't be reached (not whitelisted, timeout), we fall back to the
+    callback payload — still requiring success status and a matching
+    amount — unless HUBTEL_REQUIRE_STATUS_CHECK=True turns that off.
+    With no callback (status polling), only the Status API can confirm.
+    """
+    result = HubtelCheckout.verify(client_reference=reference) if reference else {}
+    status = (result.get('status') or '').lower()
+
+    if status in ('http_401', 'http_403'):
+        # Server IP not whitelisted — stop polls hammering the API for 5 min.
+        try:
+            from django.core.cache import cache
+            cache.set('hubtel_status_api_blocked', 1, 300)
+        except Exception:
+            pass
+
+    if result.get('paid'):
+        amount = result.get('amount')
+        if amount is not None and not amount_covers(expected_total, amount):
+            log.error('[Hubtel] Amount mismatch for %s: paid %s, expected %s',
+                      label, amount, expected_total)
+            return False, ''
+        return True, result.get('transaction_id') or ''
+
+    unavailable = status in _STATUS_CHECK_UNAVAILABLE or status.startswith('http_')
+    if not unavailable:
+        # Hubtel gave a definite answer (e.g. "unpaid", "refunded").
+        log.info('[Hubtel] Status API says %s is %r', reference, status)
+        return False, ''
+
+    if callback is None:
+        return False, ''
+
+    if getattr(settings, 'HUBTEL_REQUIRE_STATUS_CHECK', False):
+        log.error('[Hubtel] Status check unavailable (%s) for %s and '
+                  'HUBTEL_REQUIRE_STATUS_CHECK is on — not confirming.', status, label)
+        return False, ''
+
+    if callback.get('paid') and amount_covers(expected_total, callback.get('amount')):
+        log.warning('[Hubtel] Status check unavailable (%s) — confirming %s from '
+                    'callback payload. Whitelist this server\'s IP with Hubtel so '
+                    'payments can be verified.', status, label)
+        return True, callback.get('transaction_id') or callback.get('checkout_id') or ''
+
+    log.error('[Hubtel] Callback for %s not accepted (paid=%s amount=%s expected=%s)',
+              label, callback.get('paid'), callback.get('amount'), expected_total)
+    return False, ''
+
+
+def iframe_url(result: dict) -> str:
+    """
+    Hubtel's embeddable checkout URL, or '' to use the full-page redirect.
+
+    Embedding needs Hubtel to whitelist our domain and is unreliable on
+    mobile (customers saw "This content is blocked" / an endless spinner),
+    so we only embed when HUBTEL_USE_IFRAME=True.
+    """
+    if getattr(settings, 'HUBTEL_USE_IFRAME', False):
+        return result.get('direct_url', '')
+    return ''

@@ -1081,7 +1081,7 @@ def food_payment_initiate(request, order_ref):
     if not _hubtel_ready:
         # Mark as pending cash order — rider collects on delivery
         try:
-            order = FoodOrder.objects.get(order_ref=order_ref)
+            order = FoodOrder.objects.get(order_ref=order_ref, customer=request.user)
             order.payment_method = FoodOrder.PaymentMethod.CASH_ON_DELIVERY
             order.save(update_fields=['payment_method'])
         except Exception:
@@ -1119,67 +1119,56 @@ def food_payment_initiate(request, order_ref):
         messages.success(request, f'Order {order_ref} placed! Pay the rider on delivery.')
         return redirect('food:order_track', ref=order_ref)
 
-    total  = _order_total(order)   # safe regardless of FoodOrder field names
-    tx_ref = f'FOOD-{order_ref}'[:36]  # Hubtel clientReference max 36 chars
-    base   = request.build_absolute_uri('/').rstrip('/')
+    # FIX (several bugs that stopped food orders being paid online):
+    #  - Hubtel nests checkoutUrl under "data"; we read it from the top level,
+    #    so every attempt ended in "Payment could not start".
+    #  - The same clientReference (FOOD-<ref>) was reused on every retry, which
+    #    Hubtel rejects as "Duplicated client reference".
+    #  - FoodPayment.transaction_id was overwritten with Hubtel's checkoutId,
+    #    so neither the webhook nor the return URL could find the payment.
+    #  - The callback URL was hard-coded instead of reversed from urls.py.
+    # HubtelCheckout.initiate_food_order already handles the API correctly
+    # (unique reference per attempt, nested response), so use it.
+    from payment.hubtel import HubtelCheckout, iframe_url
 
-    # Record payment intent
-    fp, _ = FoodPayment.objects.get_or_create(
-        food_order=order,
-        defaults={
+    total = _order_total(order)
+    result = HubtelCheckout.initiate_food_order(
+        order,
+        callback_url = request.build_absolute_uri(reverse('food:payment_webhook')),
+        return_url   = request.build_absolute_uri(reverse('food:pay_return', args=[order.order_ref])),
+        cancel_url   = request.build_absolute_uri(reverse('food:order_track', args=[order.order_ref])),
+    )
+
+    if result.get('success'):
+        # One FoodPayment per order; it always holds the LATEST attempt's
+        # clientReference (transaction_id) and Hubtel checkoutId (gateway_ref).
+        fields = {
             'amount':         total,
-            'transaction_id': tx_ref,
+            'transaction_id': result['reference'],
+            'gateway_ref':    result.get('checkout_id', '')[:100],
             'momo_number':    order.delivery_phone or '',
             'provider':       'hubtel',
             'status':         FoodPayment.Status.PENDING,
-        },
-    )
+        }
+        fp = FoodPayment.objects.filter(food_order=order).first()
+        if fp is None:
+            FoodPayment.objects.create(food_order=order, **fields)
+        elif fp.status != FoodPayment.Status.SUCCESS:
+            for k, v in fields.items():
+                setattr(fp, k, v)
+            fp.save(update_fields=list(fields))
 
-    try:
-        resp = http_requests.post(
-            'https://payproxyapi.hubtel.com/items/initiate',
-            headers={'Authorization': _hubtel_auth(), 'Content-Type': 'application/json'},
-            json={
-                'totalAmount':           float(total),
-                'description':           re.sub(r'[^a-zA-Z0-9 .,-]', '', f'{order.vendor.name} order Lynctel')[:200],
-                'clientReference':       fp.transaction_id,
-                'callbackUrl':           f'{base}/food/payment/webhook/',
-                'returnUrl':             f'{base}/food/payment/callback/{fp.transaction_id}/',
-                'cancellationUrl':       f'{base}/food/order/{order_ref}/',
-                'merchantAccountNumber': merch,
-            },
-            timeout=15,
-        )
-        data         = resp.json()
-        checkout_url = data.get('checkoutUrl') or data.get('checkoutDirectUrl')
+        return render(request, 'food/pay.html', {
+            'order':        order,
+            'checkout_url': result.get('redirect_url', ''),
+            'direct_url':   iframe_url(result),
+            'cart_count':   0,
+        })
 
-        if checkout_url:
-            direct_url = data.get('checkoutDirectUrl', '')
-            checkout_id = data.get('checkoutId', fp.transaction_id)
-            # Persist checkout_id
-            try:
-                fp.transaction_id = checkout_id
-                fp.save(update_fields=['transaction_id'])
-            except Exception:
-                pass
-            # Render iFrame (direct_url) or redirect fallback
-            return render(request, 'food/pay.html', {
-                'order':        order,
-                'checkout_url': checkout_url,
-                'direct_url':   direct_url,
-                'cart_count':   0,
-            })
-
-        # Hubtel returned an error
-        import logging
-        logging.getLogger(__name__).error(
-            '[FoodPayment] Hubtel initiate failed for %s: %s', order_ref, data)
-        messages.error(request, data.get('message') or 'Payment could not start. Try again.')
-
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).error('[FoodPayment] Exception for %s: %s', order_ref, e)
-        messages.error(request, 'Could not reach payment gateway. Try again or pay on delivery.')
+    import logging
+    logging.getLogger(__name__).error(
+        '[FoodPayment] Hubtel initiate failed for %s: %s', order_ref, result.get('error'))
+    messages.error(request, result.get('error') or 'Payment could not start. Try again.')
 
     # If we reach here something went wrong — go to tracking so order isn't lost
     return redirect('food:order_track', ref=order_ref)
@@ -1209,23 +1198,77 @@ def food_payment_callback(request, tx_ref):
     })
 
 
+def _find_food_payment(client_reference, checkout_id=''):
+    """
+    Find the FoodPayment a Hubtel callback refers to: by the stored
+    clientReference, then checkoutId, then by the order_ref encoded in the
+    reference ("FOOD-AB12CD-XY34ZW" → FOOD-AB12CD; legacy "FOOD-FOOD-AB12CD").
+    """
+    qs = FoodPayment.objects.select_related('food_order')
+    if client_reference:
+        fp = qs.filter(transaction_id=client_reference).first()
+        if fp:
+            return fp
+    if checkout_id:
+        fp = qs.filter(gateway_ref=checkout_id).first()
+        if fp:
+            return fp
+    ref = (client_reference or '').strip()
+    if not ref:
+        return None
+    candidates = {ref, ref.rsplit('-', 1)[0]}
+    if ref.startswith('FOOD-FOOD-'):
+        candidates.add(ref[5:])
+    return qs.filter(food_order__order_ref__in=candidates).first()
+
+
+def _confirm_food_payment(fp, reference, callback=None):
+    from payment.hubtel import confirm_payment
+    return confirm_payment(
+        label          = fp.food_order.order_ref,
+        reference      = reference or fp.transaction_id,
+        expected_total = _order_total(fp.food_order),
+        callback       = callback,
+    )
+
+
 @csrf_exempt
 @require_POST
 def food_payment_webhook(request):
+    """
+    Server-to-server payment notification from Hubtel for food orders.
+
+    SECURITY FIX: this used to mark an order paid for any POST containing
+    ResponseCode "0000" — the URL is public, so anyone could get food free.
+    Payments are now confirmed with Hubtel's Status API and an amount check
+    (payment.hubtel.confirm_payment), the same as shop orders.
+    """
+    import logging
+    log = logging.getLogger(__name__)
     if not _HAS_FOOD_PAYMENT:
         return HttpResponse(status=200)
     try:
         body = json.loads(request.body)
-        if body.get('ResponseCode') == '0000':
-            data  = body.get('Data', {})
-            tx    = data.get('ClientReference', '')
-            txnid = data.get('TransactionId', '')
-            if tx.startswith('FOOD-'):
-                fp = FoodPayment.objects.select_related('food_order').get(transaction_id=tx)
-                if fp.status != FoodPayment.Status.SUCCESS:
-                    _mark_food_paid(fp, fp.food_order, txnid, {'via': 'webhook'})
     except Exception:
-        pass
+        return HttpResponse(status=400)
+
+    from payment.hubtel import HubtelCheckout
+    parsed = HubtelCheckout.parse_callback(body)
+    ref    = parsed['client_reference']
+    log.info('[FoodPayment] Webhook — ref=%s paid=%s amount=%s',
+             ref, parsed['paid'], parsed.get('amount'))
+
+    fp = _find_food_payment(ref, parsed.get('checkout_id', ''))
+    if fp is None:
+        log.warning('[FoodPayment] Webhook: no payment for ref=%s', ref)
+        return HttpResponse(status=200)
+    if fp.status == FoodPayment.Status.SUCCESS or not parsed['paid']:
+        return HttpResponse(status=200)
+
+    ok, txn_id = _confirm_food_payment(fp, ref, callback=parsed)
+    if ok:
+        _mark_food_paid(fp, fp.food_order, txn_id, {'via': 'webhook', 'callback': parsed})
+        log.info('[FoodPayment] Webhook: %s marked paid', fp.food_order.order_ref)
     return HttpResponse(status=200)
 
 
@@ -1233,9 +1276,29 @@ def food_payment_webhook(request):
 def food_payment_status(request, order_ref):
     order = get_object_or_404(FoodOrder, order_ref=order_ref, customer=request.user)
     paid  = order.payment_status == FoodOrder.PaymentStatus.PAID
+
+    # FIX: if the webhook is late or missed, ask Hubtel directly (at most
+    # every 10s per order, and not while Hubtel is refusing status checks).
+    if not paid and _HAS_FOOD_PAYMENT:
+        from django.core.cache import cache
+        from payment.hubtel import status_api_blocked
+        fp = FoodPayment.objects.filter(food_order=order).first()
+        try:
+            should_check = (fp is not None and not status_api_blocked()
+                            and cache.add(f'hubtel_food_verify:{order.pk}', 1, 10))
+        except Exception:
+            should_check = fp is not None
+        if should_check and fp.status != FoodPayment.Status.SUCCESS:
+            ok, txn_id = _confirm_food_payment(fp, fp.transaction_id)
+            if ok:
+                _mark_food_paid(fp, order, txn_id, {'via': 'status_poll'})
+                order.refresh_from_db()
+                paid = order.payment_status == FoodOrder.PaymentStatus.PAID
+
     return JsonResponse({
         'paid': paid,
         'redirect': reverse('food:order_track', args=[order_ref]) if paid else None,
+        'status': order.payment_status,
     })
 
 
@@ -1373,16 +1436,29 @@ def _pay_rider_on_delivery(order):
 
 
 def _mark_food_paid(fp, order, gateway_ref, gateway_data):
+    """
+    Mark a food order paid. Idempotent: the FoodPayment row is claimed with
+    a conditional UPDATE, so if the webhook and the status poll arrive
+    together only one of them confirms the order and assigns a rider.
+    """
+    now = timezone.now()
     with transaction.atomic():
-        fp.status = FoodPayment.Status.SUCCESS
-        fp.gateway_ref = gateway_ref
-        fp.gateway_response = gateway_data
-        fp.paid_at = timezone.now()
-        fp.save()
-        order.payment_status = FoodOrder.PaymentStatus.PAID
-        order.status         = FoodOrder.Status.CONFIRMED
-        order.confirmed_at   = timezone.now()
-        order.save(update_fields=['payment_status', 'status', 'confirmed_at'])
+        claimed = (FoodPayment.objects
+                   .filter(pk=fp.pk)
+                   .exclude(status=FoodPayment.Status.SUCCESS)
+                   .update(status=FoodPayment.Status.SUCCESS,
+                           gateway_ref=(gateway_ref or fp.gateway_ref or '')[:100],
+                           gateway_response=gateway_data,
+                           paid_at=now))
+        if not claimed:
+            return
+        FoodOrder.objects.filter(pk=order.pk).update(
+            payment_status=FoodOrder.PaymentStatus.PAID,
+            status=FoodOrder.Status.CONFIRMED,
+            confirmed_at=now,
+        )
+    fp.refresh_from_db()
+    order.refresh_from_db()
 
     # Commission is already received in Lynctel's Hubtel merchant account.
     # _record_food_earnings() has already logged the split for accounting.
