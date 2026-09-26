@@ -64,6 +64,13 @@
       <iframe src="{{ direct_url }}" title="Hubtel Checkout"
               allow="payment" onload="frameLoaded()"></iframe>
     </div>
+    {% if checkout_url %}
+    <div style="padding:12px 20px 0;text-align:center">
+      <a href="{{ checkout_url }}" style="font-size:.85rem;font-weight:600;color:#0F1B2D">
+        Payment page not loading? Open it here →
+      </a>
+    </div>
+    {% endif %}
 
     {% elif checkout_url %}
     <!-- Redirect mode fallback -->
