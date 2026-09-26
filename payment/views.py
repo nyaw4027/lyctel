@@ -120,10 +120,17 @@ def _disburse_to_vendor(vendor, amount: Decimal, order_ref: str) -> dict:
 
 def _split_and_disburse(order) -> None:
     """
-    Calculate per-vendor gross/commission/net, record accounting rows,
-    and immediately disburse net amounts via Hubtel Transfers.
-    Commission stays in Lynctel's Hubtel account automatically.
+    Calculate per-vendor gross/commission/net and record accounting rows.
+
+    FIX: this used to fire a live Hubtel transfer for every vendor inside
+    the payment webhook, even though outgoing transfers are disabled
+    everywhere else (payment/hubtel.py: "No outgoing transfers — vendor
+    settles via dashboard"). Each call could block the webhook for up to
+    20s per vendor, then marked the earning FAILED and SMS'd the admin.
+    Automatic payouts now only run when HUBTEL_AUTO_PAYOUTS=True;
+    otherwise earnings stay PENDING for dashboard settlement.
     """
+    auto_payouts = getattr(settings, 'HUBTEL_AUTO_PAYOUTS', False)
     vendor_totals: dict = {}
     for item in order.items.select_related('product__vendor').all():
         vendor = item.product.vendor if item.product else None
@@ -153,6 +160,9 @@ def _split_and_disburse(order) -> None:
                 'rate':   (rate * Decimal('100')).quantize(Decimal('0.01')),
             },
         )
+
+        if not auto_payouts:
+            continue
 
         result = _disburse_to_vendor(vendor, net, order.order_ref)
         earning_qs = VendorEarning.objects.filter(vendor=vendor, order=order)
@@ -190,20 +200,35 @@ def _mark_paid(order, transaction_id: str = '') -> None:
     """
     Mark order paid and trigger: split/disburse, delivery, SMS, push.
     Idempotent — safe to call from both webhook and callback.
+
+    FIX: the old check-then-save wasn't atomic. The webhook and the status
+    poll (or a Hubtel webhook retry) could both see UNPAID at the same
+    moment and both run the side effects — duplicate earnings rows,
+    deliveries and SMS. We now claim the order with a single conditional
+    UPDATE, and only the caller whose UPDATE hits a row continues.
     """
-    if order.payment_status == Order.PaymentStatus.PAID:
+    from django.utils import timezone
+
+    fields = {
+        'payment_status': Order.PaymentStatus.PAID,
+        'status':         Order.Status.CONFIRMED,
+        'paid_at':        order.paid_at or timezone.now(),
+    }
+    if transaction_id:
+        fields['hubtel_checkout_id'] = transaction_id
+
+    claimed = (Order.objects
+               .filter(pk=order.pk)
+               .exclude(payment_status=Order.PaymentStatus.PAID)
+               .update(**fields))
+    order.refresh_from_db()
+    if not claimed:
         return
 
-    order.payment_status = Order.PaymentStatus.PAID
-    order.status         = Order.Status.CONFIRMED
-    if transaction_id and hasattr(order, 'hubtel_checkout_id'):
-        order.hubtel_checkout_id = transaction_id
-    from django.utils import timezone
-    if hasattr(order, 'paid_at') and not order.paid_at:
-        order.paid_at = timezone.now()
-    order.save(update_fields=['payment_status', 'status', 'hubtel_checkout_id', 'paid_at'])
-
-    _split_and_disburse(order)
+    try:
+        _split_and_disburse(order)
+    except Exception as exc:
+        logger.exception('[Payment] Earnings split failed for %s: %s', order.order_ref, exc)
 
     try:
         from order.views import create_delivery_for_order
@@ -211,10 +236,15 @@ def _mark_paid(order, transaction_id: str = '') -> None:
     except Exception as exc:
         logger.error('[Payment] Delivery creation failed for %s: %s', order.order_ref, exc)
 
+    # FIX: this imported sms_new_order_to_vendor, which doesn't exist in
+    # notifications/sms.py. The ImportError meant the customer's
+    # "order confirmed" SMS was never sent either.
     try:
-        from notifications.sms import sms_order_confirmed, sms_new_order_to_vendor
-        sms_order_confirmed(order)
-        sms_new_order_to_vendor(order)
+        from notifications import sms as _sms
+        _sms.sms_order_confirmed(order)
+        vendor_sms = getattr(_sms, 'sms_new_order_to_vendor', None)
+        if vendor_sms:
+            vendor_sms(order)
     except Exception as e:
         logger.warning('[Payment] SMS notification failed: %s', e)
 
@@ -307,6 +337,104 @@ def payment_page(request):
 
 # ── Hubtel ─────────────────────────────────────────────────────────────────────
 
+# Statuses from HubtelCheckout.verify() that mean "Hubtel could not be asked",
+# as opposed to a definite answer such as "unpaid".
+_STATUS_CHECK_UNAVAILABLE = {'', 'timeout', 'error', 'no_merchant', 'no_reference'}
+
+
+def _find_order_for_hubtel(client_reference: str, checkout_id: str = ''):
+    """
+    Locate the Order a Hubtel callback refers to.
+
+    FIX: the webhook used to do Order.objects.get(order_ref=ClientReference).
+    Since HubtelCheckout.initiate() sends a unique per-attempt reference like
+    "805E47-A1B2C3" (not "ORD-805E47"), that lookup never matched, the
+    webhook returned 200 "order not found", and no Hubtel payment was ever
+    confirmed. We now match on the stored reference / checkout id first,
+    then fall back to decoding the order_ref out of the reference (covers a
+    customer paying on an older checkout after pressing "Try again").
+    """
+    from .hubtel import HubtelCheckout
+
+    if client_reference:
+        order = Order.objects.filter(hubtel_reference=client_reference).first()
+        if order:
+            return order
+    if checkout_id:
+        order = Order.objects.filter(hubtel_checkout_id=checkout_id).first()
+        if order:
+            return order
+    candidates = HubtelCheckout.order_ref_candidates(client_reference)
+    if candidates:
+        return Order.objects.filter(order_ref__in=candidates).first()
+    return None
+
+
+def _amount_covers(order, amount) -> bool:
+    """True if the Hubtel-reported amount covers the order total."""
+    try:
+        paid = Decimal(str(amount))
+    except Exception:
+        return False
+    return paid + Decimal('0.01') >= Decimal(str(order.total_amount))
+
+
+def _confirm_hubtel_payment(order, client_reference: str, callback: dict = None):
+    """
+    Decide whether `order` is really paid. Returns (paid: bool, txn_id: str).
+
+    SECURITY FIX: the webhook is a public, CSRF-exempt URL and used to mark
+    any order paid for a POST body containing ResponseCode "0000" — no
+    signature, no amount check. Anyone who knew an order ref could get
+    goods free. We now ask Hubtel's Transaction Status API, and check the
+    paid amount covers the order total.
+
+    Hubtel only answers the Status API from whitelisted server IPs. If it
+    can't be reached (not whitelisted, timeout), we fall back to the
+    callback payload — still requiring success status and matching amount —
+    unless HUBTEL_REQUIRE_STATUS_CHECK=True, which turns that fallback off.
+    """
+    from .hubtel import HubtelCheckout
+
+    reference = client_reference or order.hubtel_reference
+    result    = HubtelCheckout.verify(client_reference=reference) if reference else {}
+    status    = (result.get('status') or '').lower()
+
+    if result.get('paid'):
+        amount = result.get('amount')
+        if amount is not None and not _amount_covers(order, amount):
+            logger.error('[Hubtel] Amount mismatch for %s: paid %s, order total %s',
+                         order.order_ref, amount, order.total_amount)
+            return False, ''
+        return True, result.get('transaction_id') or ''
+
+    unavailable = status in _STATUS_CHECK_UNAVAILABLE or status.startswith('http_')
+    if not unavailable:
+        # Hubtel gave a definite answer (e.g. "unpaid", "refunded").
+        logger.info('[Hubtel] Status API says %s is %r', reference, status)
+        return False, ''
+
+    if callback is None:
+        return False, ''
+
+    if getattr(settings, 'HUBTEL_REQUIRE_STATUS_CHECK', False):
+        logger.error('[Hubtel] Status check unavailable (%s) for %s and '
+                     'HUBTEL_REQUIRE_STATUS_CHECK is on — not confirming.',
+                     status, order.order_ref)
+        return False, ''
+
+    if callback.get('paid') and _amount_covers(order, callback.get('amount')):
+        logger.warning('[Hubtel] Status check unavailable (%s) — confirming %s '
+                       'from callback payload. Whitelist this server\'s IP with '
+                       'Hubtel so payments can be verified.', status, order.order_ref)
+        return True, callback.get('transaction_id') or callback.get('checkout_id') or ''
+
+    logger.error('[Hubtel] Callback for %s not accepted (paid=%s amount=%s total=%s)',
+                 order.order_ref, callback.get('paid'), callback.get('amount'),
+                 order.total_amount)
+    return False, ''
+
+
 @login_required
 def hubtel_init(request, order_pk):
     order = get_object_or_404(Order, pk=order_pk, customer=request.user)
@@ -390,6 +518,23 @@ def hubtel_payment_status(request, order_ref):
     """
     order = get_object_or_404(Order, order_ref=order_ref, customer=request.user)
     paid  = order.payment_status == Order.PaymentStatus.PAID
+
+    # FIX: if the webhook is late or never arrives, the page used to poll
+    # the DB for 2 minutes and give up. Ask Hubtel directly (at most once
+    # every 10s per order) so a paid order still gets confirmed.
+    if not paid and order.hubtel_reference:
+        from django.core.cache import cache
+        key = f'hubtel_verify:{order.pk}'
+        try:
+            should_check = cache.add(key, 1, 10)
+        except Exception:
+            should_check = True
+        if should_check:
+            ok, txn_id = _confirm_hubtel_payment(order, order.hubtel_reference)
+            if ok:
+                _mark_paid(order, transaction_id=txn_id)
+                paid = order.payment_status == Order.PaymentStatus.PAID
+
     return JsonResponse({
         'paid':     paid,
         'redirect': reverse('order:confirmation', kwargs={'order_ref': order.order_ref}) if paid else None,
@@ -432,26 +577,34 @@ def hubtel_webhook(request):
 
     from .hubtel import HubtelCheckout
 
-    parsed    = HubtelCheckout.parse_callback(body)
-    paid      = parsed['paid']
-    order_ref = parsed['client_reference']  # e.g. "ORD-ABC123"
-    txn_id    = parsed.get('transaction_id', '') or parsed.get('checkout_id', '')
+    parsed      = HubtelCheckout.parse_callback(body)
+    client_ref  = parsed['client_reference']   # e.g. "805E47-A1B2C3"
+    checkout_id = parsed.get('checkout_id', '')
 
-    logger.info('[Hubtel] Webhook — ref=%s paid=%s txn=%s', order_ref, paid, txn_id)
+    logger.info('[Hubtel] Webhook — ref=%s checkout=%s paid=%s amount=%s',
+                client_ref, checkout_id, parsed['paid'], parsed.get('amount'))
 
-    if not order_ref:
+    if not client_ref and not checkout_id:
         return HttpResponse(status=400)
 
-    try:
-        order = Order.objects.get(order_ref=order_ref)
-    except Order.DoesNotExist:
-        logger.warning('[Hubtel] Webhook: order not found for ref=%s', order_ref)
+    order = _find_order_for_hubtel(client_ref, checkout_id)
+    if order is None:
+        logger.warning('[Hubtel] Webhook: no order for ref=%s checkout=%s',
+                       client_ref, checkout_id)
         return HttpResponse(status=200)  # 200 so Hubtel doesn't retry
 
-    if paid:
+    if order.payment_status == Order.PaymentStatus.PAID:
+        return HttpResponse(status=200)
+
+    if not parsed['paid']:
+        logger.info('[Hubtel] Webhook: payment not successful — order=%s status=%s code=%s',
+                    order.order_ref, parsed.get('status'), parsed.get('response_code'))
+        return HttpResponse(status=200)
+
+    ok, txn_id = _confirm_hubtel_payment(order, client_ref, callback=parsed)
+    if ok:
         _mark_paid(order, transaction_id=txn_id)
-    else:
-        logger.info('[Hubtel] Webhook: payment not successful — ref=%s', order_ref)
+        logger.info('[Hubtel] Webhook: order %s marked paid (txn=%s)', order.order_ref, txn_id)
 
     return HttpResponse(status=200)
 
@@ -561,13 +714,6 @@ def flutterwave_webhook(request):
         logger.error('[FLW] Webhook error: %s', exc)
 
     return HttpResponse(status=200)
-
-@login_required
-
-
-
-@login_required
-
 
 
 # ── PROCESSING PAGE ───────────────────────────────────────────────────────────
