@@ -105,18 +105,29 @@ def home(request):
         'cart_count':     _cart_count(request),
     })
 
-
 def about(request):
+    page        = None
+    stats       = []
+    features    = []
+    team_members= []
+
     try:
         from .models import AboutPage
-        page = AboutPage.objects.prefetch_related('stats', 'features', 'team').first()
+        page = AboutPage.objects.prefetch_related(
+            'stats', 'features', 'team'
+        ).first()
+        if page:
+            stats        = list(page.stats.all())
+            features     = list(page.features.all())
+            team_members = list(page.team.filter(is_active=True))
     except Exception:
-        page = None
+        pass   # AboutPage table may not exist yet — render with defaults
+
     return render(request, 'frontend/about.html', {
         'page':         page,
-        'stats':        page.stats.all()                 if page else [],
-        'features':     page.features.all()              if page else [],
-        'team_members': page.team.filter(is_active=True) if page else [],
+        'stats':        stats,
+        'features':     features,
+        'team_members': team_members,
         'cart_count':   _cart_count(request),
     })
 
