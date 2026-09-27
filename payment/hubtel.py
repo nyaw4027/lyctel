@@ -10,6 +10,22 @@ Usage:
     from payment.hubtel import HubtelCheckout
     result = HubtelCheckout.initiate(order, request)
     # → {'success': True, 'redirect_url': '...', 'checkout_id': '...'}
+
+FIX (this version):
+    Previous code only generated a unique clientReference suffix if
+    order.hubtel_reference was already saved in the DB. If the DB save
+    failed/was skipped for any reason (missing field, exception before
+    the save block, timeout after Hubtel accepted the request, etc.),
+    every retry sent the EXACT SAME clientReference, causing Hubtel to
+    reject it with "400 Duplicated client reference. Please try again."
+    permanently for that order.
+
+    Fix: generate a fresh unique reference on EVERY initiate() call,
+    regardless of DB state. We always persist the latest reference
+    (no longer gated on "field is currently empty").
+
+    Also corrected _safe_ref truncation from 36 -> 32 chars to match
+    Hubtel's documented clientReference length limit.
 """
 import base64
 import hashlib
@@ -81,7 +97,7 @@ class HubtelCheckout:
         Strip anything that isn't alphanumeric or hyphen, then truncate.
         """
         cleaned = re.sub(r'[^A-Za-z0-9\-]', '', str(text))
-        return cleaned[:36]
+        return cleaned[:32]
 
     @staticmethod
     def _clean_desc(text):
@@ -90,6 +106,68 @@ class HubtelCheckout:
         Keep only alphanumeric, spaces, commas, periods, hyphens.
         """
         return re.sub(r'[^a-zA-Z0-9 .,\-]', '', str(text))[:200]
+
+    @staticmethod
+    def _unique_ref(base):
+        """
+        Build a clientReference that is unique to THIS attempt, every time.
+        Never reuse the same string across two calls to Hubtel — even for
+        retries of the same order — or Hubtel returns:
+            400 Duplicated client reference. Please try again.
+        """
+        suffix = uuid.uuid4().hex[:6].upper()
+        return HubtelCheckout._safe_ref(f"{base}-{suffix}")
+
+    @staticmethod
+    def _order_urls(order, request=None):
+        """
+        Build (callbackUrl, returnUrl, cancellationUrl) for a shop order.
+
+        FIX: these used to come from settings, whose defaults pointed at
+        routes that don't exist (/checkout/callback/ and /checkout/ are
+        404s — the webhook lives at /checkout/hubtel/webhook/). Hubtel's
+        server-to-server notification therefore never reached us and paid
+        orders stayed "unpaid". The return URL was the generic /orders/
+        list, so customers never saw the processing/confirmation page.
+
+        When we have the request we now build the URLs from our own URL
+        routes, so they can't drift out of sync with urls.py.
+        """
+        from django.urls import reverse
+        ref = order.order_ref
+        if request is not None:
+            base = request.build_absolute_uri
+            return (
+                base(reverse('payment:hubtel_webhook')),
+                base(reverse('payment:processing')) + f'?order={ref}',
+                base(reverse('payment:hubtel_cancel')) + f'?ref={ref}',
+            )
+        site = getattr(settings, 'SITE_URL', 'https://lynctel.up.railway.app').rstrip('/')
+        return (
+            getattr(settings, 'HUBTEL_CALLBACK_URL', f'{site}/checkout/hubtel/webhook/'),
+            f'{site}/checkout/processing/?order={ref}',
+            f'{site}/checkout/hubtel/cancel/?ref={ref}',
+        )
+
+    @staticmethod
+    def order_ref_candidates(client_reference):
+        """
+        Map a clientReference we sent to Hubtel back to possible
+        Order.order_ref values.
+
+        initiate() sends "<order_ref without ORD->-<6-char suffix>",
+        e.g. ORD-805E47 → "805E47-A1B2C3". Older orders were sent as the
+        bare order_ref, so that is tried too.
+        """
+        ref = (client_reference or '').strip()
+        if not ref:
+            return []
+        candidates = [ref]
+        head = ref.rsplit('-', 1)[0] if '-' in ref else ref
+        for c in (head, f'ORD-{head}', f'ORD-{ref}'):
+            if c not in candidates:
+                candidates.append(c)
+        return candidates
 
     # ── Initiate checkout ─────────────────────────────────────────────────────
 
@@ -117,29 +195,22 @@ class HubtelCheckout:
                     "HUBTEL_MERCHANT_ACCT in Railway Variables."
                 )
 
-            # clientReference: ≤ 32 chars, no special characters
-            # order_ref is already like "ORD-805E47" — don't double-prefix
+            # clientReference: ≤ 32 chars, no special characters.
+            # order_ref is already like "ORD-805E47" — don't double-prefix.
             _base = order.order_ref
             if _base.startswith("ORD-"):
                 _base = _base[4:]
-            # If order already has a hubtel_reference, generate a unique
-            # suffix so retries don't hit "Duplicated client reference"
-            existing = getattr(order, 'hubtel_reference', '')
-            if existing:
-                import uuid as _uuid
-                _suffix = _uuid.uuid4().hex[:4].upper()
-                ref = cls._safe_ref(f"{_base}-{_suffix}")
-            else:
-                ref = cls._safe_ref(_base)
+
+            # FIX: always generate a fresh unique reference for THIS attempt.
+            # Do NOT gate uniqueness on whether order.hubtel_reference is
+            # already saved — if a prior save was skipped/failed, that left
+            # every retry sending the identical reference and Hubtel would
+            # reject it as a duplicate forever.
+            ref = cls._unique_ref(_base)
 
             amount = float(round(Decimal(str(order.total_amount)), 2))
 
-            callback_url = getattr(settings, 'HUBTEL_CALLBACK_URL',
-                                   'https://lynctel.up.railway.app/payment/callback/')
-            return_url   = getattr(settings, 'HUBTEL_RETURN_URL',
-                                   f'https://lynctel.up.railway.app/orders/{order.order_ref}/confirm/')
-            cancel_url   = getattr(settings, 'HUBTEL_CANCEL_URL',
-                                   'https://lynctel.up.railway.app/checkout/')
+            callback_url, return_url, cancel_url = cls._order_urls(order, request)
 
             payload = {
                 "totalAmount":           amount,
@@ -200,15 +271,25 @@ class HubtelCheckout:
                     data=body,
                 )
 
-            # Persist on order if fields exist
+            # FIX: always persist the LATEST reference/checkout_id, not just
+            # the first one ever seen. Previously this only wrote the field
+            # if it was currently empty, which is exactly what let the ref
+            # go stale and get reused on retries.
+            update_fields = []
             for field, val in [('hubtel_checkout_id', checkout_id),
                                 ('hubtel_reference',   ref)]:
-                if hasattr(order, field) and not getattr(order, field, ''):
-                    try:
-                        setattr(order, field, val)
-                        order.save(update_fields=[field])
-                    except Exception:
-                        pass
+                if hasattr(order, field):
+                    setattr(order, field, val)
+                    update_fields.append(field)
+            if update_fields:
+                try:
+                    order.save(update_fields=update_fields)
+                except Exception:
+                    log.exception(
+                        "[Hubtel] Failed to persist reference for order %s "
+                        "(checkout was still created successfully, ref=%s)",
+                        order.order_ref, ref,
+                    )
 
             log.info("[Hubtel] Checkout created id=%s ref=%s", checkout_id, ref)
 
@@ -309,8 +390,10 @@ class HubtelCheckout:
         d_status = (d_data.get("Status") or d_data.get("status") or
                     body.get("Status")   or body.get("status",   "")).strip().lower()
 
-        # "Success" + responseCode "0000" both indicate a paid transaction
-        paid = d_status in ("success", "paid", "completed") or code == "0000"
+        # FIX: previously `... or code == "0000"`, so any payload carrying
+        # ResponseCode 0000 counted as paid even when Data.Status said
+        # otherwise. Require a success code AND a success status.
+        paid = code == "0000" and d_status in ("success", "paid", "completed")
 
         return {
             "paid":                paid,
@@ -338,12 +421,16 @@ class HubtelCheckout:
     def initiate_food_order(cls, order, callback_url=None, return_url=None, cancel_url=None):
         """
         Initiate Hubtel Checkout for a FoodOrder.
-        clientReference format: FOOD-{order_ref} (≤ 36 chars)
+        clientReference format: FOOD-{order_ref}-{unique suffix} (≤ 32 chars)
+
+        FIX: same duplicate-reference issue as initiate() — now always
+        generates a unique suffix per attempt instead of reusing the same
+        FOOD-{order_ref} string on every retry.
         """
         cid, secret = cls._auth()
         merchant    = cls._merchant()
 
-        if not cid or not secret:
+        if not cid or not secret or not merchant:
             return {"success": False, "error": "Hubtel credentials not configured."}
 
         # Strip existing prefix from order_ref to avoid FOOD-ORD-xxx
@@ -352,7 +439,7 @@ class HubtelCheckout:
             if _base.startswith(pfx):
                 _base = _base[len(pfx):]
                 break
-        ref = cls._safe_ref(f"FOOD-{_base}")
+        ref = cls._unique_ref(f"FOOD-{_base}")
 
         if not callback_url:
             callback_url = getattr(settings, 'HUBTEL_CALLBACK_URL',
@@ -365,7 +452,8 @@ class HubtelCheckout:
         payload = {
             "totalAmount":           float(round(Decimal(str(order.total_amount)), 2)),
             "description":           cls._clean_desc(
-                f"Food Order {order.order_ref} - {order.vendor.name}"
+                f"Food Order {order.order_ref} - "
+                f"{getattr(order.vendor, 'name', '') or 'Lynctel'}"
             ),
             "callbackUrl":           callback_url,
             "returnUrl":             return_url,
@@ -385,14 +473,6 @@ class HubtelCheckout:
             if phone: payload['payeeMobileNumber'] = phone[:20]
             if email: payload['payeeEmail']        = email[:80]
 
-        # Persist reference
-        if hasattr(order, 'hubtel_reference') and not getattr(order, 'hubtel_reference', ''):
-            try:
-                order.hubtel_reference = ref
-                order.save(update_fields=['hubtel_reference'])
-            except Exception:
-                pass
-
         try:
             response = requests.post(
                 INITIATE_URL, json=payload,
@@ -407,12 +487,22 @@ class HubtelCheckout:
             direct_url   = data.get("checkoutDirectUrl", "")
             checkout_id  = data.get("checkoutId",  ref)
 
+            # Persist reference (always update to latest, same fix as initiate())
+            update_fields = []
+            if hasattr(order, 'hubtel_reference'):
+                order.hubtel_reference = ref
+                update_fields.append('hubtel_reference')
             if hasattr(order, 'hubtel_checkout_id'):
+                order.hubtel_checkout_id = checkout_id
+                update_fields.append('hubtel_checkout_id')
+            if update_fields:
                 try:
-                    order.hubtel_checkout_id = checkout_id
-                    order.save(update_fields=['hubtel_checkout_id'])
+                    order.save(update_fields=update_fields)
                 except Exception:
-                    pass
+                    log.exception(
+                        "[Hubtel] Failed to persist reference for food order %s (ref=%s)",
+                        order.order_ref, ref,
+                    )
 
             return {
                 "success":      True,
@@ -444,7 +534,7 @@ class HubtelCheckout:
             amount      (float/Decimal) — GHS amount to send
             phone       (str)           — recipient MoMo number (e.g. 0241234567)
             network     (str)           — "MTN", "VODAFONE", "AIRTELTIGO"
-            reference   (str)           — unique reference (≤ 36 chars)
+            reference   (str)           — unique reference (≤ 32 chars)
             description (str)           — description of transfer
             callback_url (str)          — where Hubtel POSTs the result
 
@@ -645,3 +735,100 @@ class HubtelCheckout:
             return hmac.compare_digest(expected, signature)
         except Exception:
             return False
+
+# ── Shared helpers (shop orders + food orders) ────────────────────────────────
+
+# Statuses from HubtelCheckout.verify() that mean "Hubtel could not be asked",
+# as opposed to a definite answer such as "unpaid".
+_STATUS_CHECK_UNAVAILABLE = {'', 'timeout', 'error', 'no_merchant', 'no_reference'}
+
+
+def amount_covers(expected_total, amount) -> bool:
+    """True if the Hubtel-reported `amount` covers `expected_total`."""
+    try:
+        paid = Decimal(str(amount))
+    except Exception:
+        return False
+    return paid + Decimal('0.01') >= Decimal(str(expected_total))
+
+
+def status_api_blocked() -> bool:
+    """True while Hubtel is refusing Status API calls (see confirm_payment)."""
+    try:
+        from django.core.cache import cache
+        return bool(cache.get('hubtel_status_api_blocked'))
+    except Exception:
+        return False
+
+
+def confirm_payment(label, reference, expected_total, callback=None):
+    """
+    Decide whether a Hubtel payment really went through.
+    Returns (paid: bool, transaction_id: str).
+
+    SECURITY: the webhooks are public, CSRF-exempt URLs, so a callback body
+    alone proves nothing — anyone can POST {"ResponseCode": "0000", ...}.
+    We ask Hubtel's Transaction Status API and check the paid amount
+    covers the order total.
+
+    Hubtel only answers the Status API from whitelisted server IPs. If it
+    can't be reached (not whitelisted, timeout), we fall back to the
+    callback payload — still requiring success status and a matching
+    amount — unless HUBTEL_REQUIRE_STATUS_CHECK=True turns that off.
+    With no callback (status polling), only the Status API can confirm.
+    """
+    result = HubtelCheckout.verify(client_reference=reference) if reference else {}
+    status = (result.get('status') or '').lower()
+
+    if status in ('http_401', 'http_403'):
+        # Server IP not whitelisted — stop polls hammering the API for 5 min.
+        try:
+            from django.core.cache import cache
+            cache.set('hubtel_status_api_blocked', 1, 300)
+        except Exception:
+            pass
+
+    if result.get('paid'):
+        amount = result.get('amount')
+        if amount is not None and not amount_covers(expected_total, amount):
+            log.error('[Hubtel] Amount mismatch for %s: paid %s, expected %s',
+                      label, amount, expected_total)
+            return False, ''
+        return True, result.get('transaction_id') or ''
+
+    unavailable = status in _STATUS_CHECK_UNAVAILABLE or status.startswith('http_')
+    if not unavailable:
+        # Hubtel gave a definite answer (e.g. "unpaid", "refunded").
+        log.info('[Hubtel] Status API says %s is %r', reference, status)
+        return False, ''
+
+    if callback is None:
+        return False, ''
+
+    if getattr(settings, 'HUBTEL_REQUIRE_STATUS_CHECK', False):
+        log.error('[Hubtel] Status check unavailable (%s) for %s and '
+                  'HUBTEL_REQUIRE_STATUS_CHECK is on — not confirming.', status, label)
+        return False, ''
+
+    if callback.get('paid') and amount_covers(expected_total, callback.get('amount')):
+        log.warning('[Hubtel] Status check unavailable (%s) — confirming %s from '
+                    'callback payload. Whitelist this server\'s IP with Hubtel so '
+                    'payments can be verified.', status, label)
+        return True, callback.get('transaction_id') or callback.get('checkout_id') or ''
+
+    log.error('[Hubtel] Callback for %s not accepted (paid=%s amount=%s expected=%s)',
+              label, callback.get('paid'), callback.get('amount'), expected_total)
+    return False, ''
+
+
+def iframe_url(result: dict) -> str:
+    """
+    Hubtel's embeddable checkout URL, or '' to use the full-page redirect.
+
+    Embedding needs Hubtel to whitelist our domain and is unreliable on
+    mobile (customers saw "This content is blocked" / an endless spinner),
+    so we only embed when HUBTEL_USE_IFRAME=True.
+    """
+    if getattr(settings, 'HUBTEL_USE_IFRAME', False):
+        return result.get('direct_url', '')
+    return ''

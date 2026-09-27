@@ -53,7 +53,7 @@ def subscribe(request):
         if not endpoint or not p256dh or not auth:
             return JsonResponse({'error': 'Invalid subscription data'}, status=400)
 
-        from accounts.models import PushSubscription
+        from ecommerce.models import PushSubscription
         PushSubscription.objects.update_or_create(
             user     = request.user,
             endpoint = endpoint,
@@ -77,8 +77,10 @@ def send_push_notification(user, title, body, url='/'):
     (e.g. an order status signal).
     """
     try:
-        from accounts.models import PushSubscription
-        subscriptions = PushSubscription.objects.filter(user=user)
+        # FIX: PushSubscription lives in ecommerce.models. Importing it from
+        # the accounts app always failed, so no push notification was ever sent.
+        from ecommerce.models import PushSubscription
+        subscriptions = PushSubscription.objects.filter(user=user, is_active=True)
     except Exception as exc:
         logger.error('[Push] Could not query subscriptions: %s', exc)
         return 0
@@ -329,8 +331,8 @@ def push_rider_new_delivery(delivery):
 def push_dispute_opened(dispute):
     """Notify staff when a customer opens a dispute."""
     try:
-        from accounts.models import User
-        admins = User.objects.filter(role__in=['admin','staff'])
+        from django.contrib.auth import get_user_model
+        admins = get_user_model().objects.filter(role__in=['admin','staff'])
         sent   = 0
         for admin in admins:
             sent += send_push_notification(

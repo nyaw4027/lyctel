@@ -298,13 +298,24 @@ HUBTEL_MERCHANT_ACCT = config('HUBTEL_MERCHANT_ACCT', default='')
 
 # Hubtel callback / return URLs
 HUBTEL_CALLBACK_URL      = config('HUBTEL_CALLBACK_URL',
-                           default='https://lynctel.up.railway.app/checkout/callback/')
+                           default='https://lynctel.up.railway.app/checkout/hubtel/webhook/')
 HUBTEL_RETURN_URL        = config('HUBTEL_RETURN_URL',
                            default='https://lynctel.up.railway.app/orders/')
 HUBTEL_CANCEL_URL        = config('HUBTEL_CANCEL_URL',
                            default='https://lynctel.up.railway.app/checkout/')
 HUBTEL_FOOD_CALLBACK_URL = config('HUBTEL_FOOD_CALLBACK_URL',
                            default='https://lynctel.up.railway.app/food/payment/callback/')
+
+# When True, a Hubtel webhook only confirms an order if the Transaction Status
+# API also says "Paid" (requires this server's IP to be whitelisted by Hubtel).
+# When False, the callback payload is accepted if the Status API is unreachable.
+HUBTEL_REQUIRE_STATUS_CHECK = config('HUBTEL_REQUIRE_STATUS_CHECK', default=False, cast=bool)
+# Automatic MoMo payouts to vendors on payment. Off: vendors settle via dashboard.
+HUBTEL_AUTO_PAYOUTS         = config('HUBTEL_AUTO_PAYOUTS',         default=False, cast=bool)
+# Embed Hubtel's checkout in an iFrame on /checkout/ instead of redirecting to
+# Hubtel's full page. Hubtel must whitelist the site's domain for embedding,
+# and mobile browsers often block it — so the full-page redirect is the default.
+HUBTEL_USE_IFRAME           = config('HUBTEL_USE_IFRAME',           default=False, cast=bool)
 
 # Platform commission (Lynctel keeps this %, rest is owed to vendor)
 FOOD_PLATFORM_CUT = config('FOOD_PLATFORM_CUT', default='0.04')  # 4% on food
@@ -369,7 +380,9 @@ CONTENT_SECURITY_POLICY = {
                         "api.locationiq.com",
                         "api.hubtel.com",
                         "sms.arkesel.com"),
-        'frame-src':   ("'self'",),
+        # Hubtel's embedded checkout (checkoutDirectUrl) is served from
+        # *.hubtel.com — without this the browser shows "This content is blocked".
+        'frame-src':   ("'self'", "https://*.hubtel.com"),
     },
     'REPORT_ONLY': False,
 }
