@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-{% load static %}
 
 {% block title %}{% if page %}{{ page.title }} — Lynctel{% else %}About Us — Lynctel{% endif %}{% endblock %}
 
@@ -143,7 +142,12 @@
           {% if page and page.story_image %}
           <img src="{{ page.story_image.url }}" alt="Our Story"/>
           {% else %}
-          <img src="{% static 'images/about-story.jpg' %}" alt="Our Story"/>
+          <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-center"
+               style="min-height:390px;border-radius:1.25rem;background:linear-gradient(135deg,#0f1b2d 0%,#1a2d47 60%,#000 100%);color:#fff;">
+            <div style="font-size:4rem;line-height:1;margin-bottom:1rem;">🛍️</div>
+            <div class="fw-bold" style="font-size:1.25rem;">Lynctel</div>
+            <div class="small text-white-50 mt-1">Our Story</div>
+          </div>
           {% endif %}
         </div>
       </div>
