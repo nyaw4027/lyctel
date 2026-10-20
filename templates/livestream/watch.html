@@ -454,8 +454,7 @@ document.body.classList.add('page-fullscreen');
                  placeholder="Say something…"
                  maxlength="300"
                  onkeydown="if(event.key==='Enter')sendChat()"
-               oninput="updateCharCount(this.value)"
-               maxlength="300"/>
+               oninput="updateCharCount(this.value)"/>
           <button class="chat-send-btn" onclick="sendChat()" aria-label="Send">↑</button>
           <button class="gift-open-btn" onclick="openGiftSheet()" aria-label="Send gift">🎁</button>
         </div>
@@ -726,7 +725,7 @@ function connectWS() {
   };
 }
 
-async async function startViewing() {
+async function startViewing() {
   pc = new RTCPeerConnection(iceConfig);
   pc.ontrack = ({streams}) => {
     document.getElementById('remote-video').srcObject = streams[0];
@@ -818,8 +817,7 @@ function sendChat() {
 }
 
 function showChatStatus(text, color) {
-  const btn = document.getElementById('chat-send-btn') ||
-              document.getElementById('desktop-chat-send-btn');
+  const btn = document.querySelector('.chat-send-btn');
   if (!btn) return;
   const orig = btn.textContent;
   btn.style.color  = color;
@@ -843,7 +841,7 @@ function appendChat(data) {
   const isVendor = data.is_vendor;
   const avatarBg = isVendor ? '#F5A623' : 'rgba(255,255,255,.18)';
   const avatarCl = isVendor ? '#0F1B2D' : 'white';
-  const initials = (data.initials || data.username || '?')[0].toUpperCase();
+  const initials = esc((data.initials || data.username || '?')[0].toUpperCase());
 
   chatCount++;
   const badge = document.getElementById('chat-count-badge');
@@ -960,7 +958,7 @@ function closeGiftSheet() {
   document.getElementById('gift-sheet-backdrop').classList.remove('open');
 }
 
-async async function sendGift(giftType, btn) {
+async function sendGift(giftType, btn) {
   if (!IS_AUTH) { location.href = '/accounts/login/?next=' + location.pathname; return; }
 
   // Bounce animation
