@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% load i18n static %}
+{% block title %}Stream Stats — {{ stream.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .stat-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #f3f4f6;
+    box-shadow: 0 1px 4px rgba(15,27,45,.06);
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-card__num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 6px;
+    color: #0F1B2D;
+  }
+  .stat-card__label {
+    font-size: 12px;
+    color: #9ca3af;
+  }
+
+  /* ── Mobile gift table → card list ─────────────────────────────
+     On screens < 576px the table columns are too tight.
+     Switch to stacked gift cards for readability.            */
+  @media (max-width: 575.98px) {
+    .gift-table { display: none; }
+    .gift-cards  { display: flex !important; }
+  }
+  @media (min-width: 576px) {
+    .gift-table  { display: table; }
+    .gift-cards  { display: none !important; }
+  }
+  .gift-card-item {
+    border: 1px solid #f3f4f6;
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: white;
+  }
+  /* Touch targets */
+  a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-3 py-md-5" style="max-width:900px">
+
+  <!-- Breadcrumb -->
+  <div class="d-flex align-items-center gap-2 mb-5" style="font-size:13px">
+    <a href="{% url 'vendors:dashboard' %}?tab=products"
+       class="text-decoration-none" style="color:#9ca3af">← Dashboard</a>
+    <span style="color:#d1d5db">/</span>
+    <span class="fw-semibold" style="color:#0F1B2D">Stream Stats</span>
+  </div>
+
+  <!-- Stream header card -->
+  <div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+      <div class="d-flex align-items-center gap-4">
+        {% if stream.thumbnail %}
+        <img src="{{ stream.thumbnail.url }}"
+             class="rounded-3 object-fit-cover flex-shrink-0"
+             style="width:72px;height:90px"/>
+        {% else %}
+        <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+             style="width:72px;height:90px;background:#f3f4f6;font-size:2rem">📺</div>
+        {% endif %}
+        <div class="flex-grow-1 min-w-0">
+          <h2 class="font-display fw-bold text-navy mb-1" style="font-size:1.2rem">
+            {{ stream.title }}
+          </h2>
+          <p class="text-muted mb-2" style="font-size:13px">
+            {{ stream.started_at|date:"M d, Y · g:i A" }}
+            {% if stream.duration_minutes %} · {{ stream.duration_minutes }} mins{% endif %}
+          </p>
+          {% if stream.is_live %}
+          <span class="badge rounded-pill"
+                style="background:#fef2f2;color:#dc2626;font-size:11px;padding:4px 10px">
+            🔴 Live
+          </span>
+          {% else %}
+          <span class="badge rounded-pill"
+                style="background:#f3f4f6;color:#6b7280;font-size:11px;padding:4px 10px">
+            ✓ Ended
+          </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats grid -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-card__num">{{ stream.total_viewers }}</div>
+        <div class="stat-card__label">Total Viewers</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-card__num">{{ stream.peak_viewers }}</div>
+        <div class="stat-card__label">Peak Concurrent</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card" style="background:#f0fdf4;border-color:#bbf7d0">
+        <div class="stat-card__num" style="color:#16a34a;font-size:1.5rem">
+          GHS {{ stream.total_gifts_value|floatformat:2 }}
+        </div>
+        <div class="stat-card__label" style="color:#16a34a">Gifts Received</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card" style="background:#eff6ff;border-color:#bfdbfe">
+        <div class="stat-card__num" style="color:#1d4ed8;font-size:1.5rem">
+          GHS {{ stream.total_sales_value|floatformat:2 }}
+        </div>
+        <div class="stat-card__label" style="color:#1d4ed8">Sales During Stream</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gift history -->
+  {% if gifts %}
+  <div class="card border-0 shadow-sm rounded-3 mb-4 overflow-hidden">
+    <div class="card-header bg-white border-bottom py-3 px-4">
+      <h2 class="font-display fw-bold text-navy mb-0" style="font-size:1rem">
+        🎁 Gift History
+      </h2>
+    </div>
+    <!-- Mobile: stacked gift cards (shown on phones) -->
+    <div class="gift-cards flex-column gap-2 p-3 d-none">
+      {% for gift in gifts %}
+      <div class="gift-card-item">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <span class="fw-semibold text-navy" style="font-size:.88rem">
+            {{ gift.get_gift_type_display }}
+            {{ gift.sender.get_full_name|default:gift.sender.username|default:"Anonymous" }}
+          </span>
+          <span class="fw-bold" style="color:#16a34a;font-size:.88rem">
+            GHS {{ gift.vendor_earnings|default:gift.total_value|floatformat:2 }}
+          </span>
+        </div>
+        <div class="d-flex justify-content-between" style="font-size:.75rem;color:#9ca3af">
+          <span>Value: GHS {{ gift.total_value }}</span>
+          <span>{{ gift.sent_at|date:"g:i A" }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Desktop: full table -->
+    <div class="gift-table table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead style="background:#f9fafb">
+          <tr>
+            <th class="px-4 py-3 fw-semibold"
+                style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;border:none">
+              From
+            </th>
+            <th class="px-4 py-3 fw-semibold text-center"
+                style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;border:none">
+              Gift
+            </th>
+            <th class="px-4 py-3 fw-semibold text-end"
+                style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;border:none">
+              Value
+            </th>
+            <th class="px-4 py-3 fw-semibold text-end"
+                style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;border:none">
+              You Earn
+            </th>
+            <th class="px-4 py-3 fw-semibold text-end d-none d-md-table-cell"
+                style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;border:none">
+              Time
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for gift in gifts %}
+          <tr>
+            <td class="px-4 py-3 fw-semibold text-navy" style="font-size:14px">
+              {{ gift.sender.get_full_name|default:gift.sender.username|default:"Anonymous" }}
+            </td>
+            <td class="px-4 py-3 text-center" style="font-size:1.3rem">
+              {{ gift.get_gift_type_display }}
+            </td>
+            <td class="px-4 py-3 text-end text-muted" style="font-size:14px">
+              GHS {{ gift.total_value }}
+            </td>
+            <td class="px-4 py-3 text-end fw-semibold" style="font-size:14px;color:#16a34a">
+              GHS {{ gift.vendor_earnings|default:gift.total_value|floatformat:2 }}
+            </td>
+            <td class="px-4 py-3 text-end d-none d-md-table-cell text-muted" style="font-size:12px">
+              {{ gift.sent_at|date:"g:i A" }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body py-5 text-center">
+      <div style="font-size:2.5rem;margin-bottom:12px">🎁</div>
+      <p class="text-muted mb-0" style="font-size:14px">
+        No gifts received during this stream.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Earnings note -->
+  <div class="rounded-3 px-4 py-3" style="background:#FFFBF0;border:1px solid rgba(245,166,35,.2)">
+    <p class="mb-0" style="font-size:13px;color:#374151">
+      💡 You earn <strong>80%</strong> of all gifts. Lynctel retains 20% as a platform fee.
+      Gift earnings are credited to your vendor wallet within 24 hours of stream end.
+    </p>
+  </div>
+
+</div>
+{% endblock %}

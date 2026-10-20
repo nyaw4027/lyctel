@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% load i18n static %}
+{% block title %}Go Live — {{ vendor.shop_name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pages/livestream.css' %}">
+<style>
+  /* ── File upload wrapper ─────────────────────────────────────────
+     Hides the raw file input on iOS + Android and uses a styled
+     label as the tap target instead.                           */
+  .file-upload-wrap { display: block; cursor: pointer; }
+  .mobile-file-input {
+    position: absolute;
+    width: 1px; height: 1px;
+    opacity: 0; pointer-events: none;
+    overflow: hidden;
+  }
+
+  /* Highlight the drop zone when focused via keyboard */
+  .file-upload-wrap:focus-within #thumb-preview {
+    border-color: var(--navy) !important;
+    background: #f0f9ff !important;
+  }
+
+  /* iOS: remove tap highlight on file label */
+  .file-upload-wrap, .file-upload-wrap * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Form touch improvements ─────────────────────────────────── */
+  .form-control, .form-control:focus {
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  /* Go live button pulse while loading */
+  #golive-submit:disabled {
+    animation: btn-pulse 1s ease-in-out infinite;
+  }
+  @keyframes btn-pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+  /* ── Touch targets ───────────────────────────────────────────── */
+  a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:680px">
+  <div class="py-3 py-md-5">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 fs-4"
+           style="width:48px;height:48px;background:#dc3545" aria-hidden="true">🔴</div>
+      <div>
+        <h1 class="font-display fw-bold fs-4 text-navy mb-0">Go Live</h1>
+        <p class="text-muted small mb-0">
+          Start a live shopping stream from {{ vendor.shop_name }}
+        </p>
+      </div>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" id="golive-form">
+      {% csrf_token %}
+
+      <!-- Stream details card -->
+      <div class="card border-0 shadow-sm rounded-3 mb-3">
+        <div class="card-body p-4 d-flex flex-column gap-4">
+
+          <!-- Title -->
+          <div>
+            <label for="stream-title" class="form-label fw-semibold">Stream Title *</label>
+            <input id="stream-title" type="text" name="title" maxlength="200" required
+                   placeholder="e.g. New Arrivals Flash Sale 🔥, Electronics Unboxing..."
+                   class="form-control rounded-3"/>
+            <div class="form-text">
+              A good title gets more viewers. Be specific about what you're selling.
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div>
+            <label for="stream-description" class="form-label fw-semibold">
+              Description
+              <span class="text-muted fw-normal">(optional)</span>
+            </label>
+            <textarea id="stream-description" name="description" rows="3"
+                      placeholder="Tell viewers what to expect — products, deals, prizes..."
+                      class="form-control rounded-3"
+                      style="resize:none"></textarea>
+          </div>
+
+          <!-- Cover image -->
+          <div>
+            <label class="form-label fw-semibold" for="thumb-input">
+              Cover Image
+              <span class="text-muted fw-normal">(optional)</span>
+            </label>
+
+            <!-- Mobile-safe file upload — label triggers input -->
+            <label for="thumb-input" class="file-upload-wrap">
+              <div id="thumb-preview"
+                   class="w-100 d-flex flex-column align-items-center justify-content-center
+                          rounded-3 border border-2 border-dashed"
+                   style="height:130px;background:#f9fafb;cursor:pointer;
+                          border-color:#e5e7eb!important;transition:border-color .15s">
+                <span style="font-size:2rem" class="mb-1" aria-hidden="true">🖼</span>
+                <p class="text-muted small mb-0">Tap to upload cover image</p>
+              </div>
+              <input type="file" id="thumb-input" name="thumbnail"
+                     accept="image/*"
+                     class="mobile-file-input"
+                     onchange="previewThumb(this)"/>
+            </label>
+            <p id="thumb-err" class="text-danger mt-2" role="alert" style="font-size:12px;display:none"></p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Products preview -->
+      {% if products %}
+      <div class="card border-0 shadow-sm rounded-3 mb-3">
+        <div class="card-body p-4">
+          <h2 class="font-display fw-bold text-navy fs-5 mb-1">Your Products</h2>
+          <p class="text-muted small mb-3">
+            You can pin products during the stream — viewers can buy without leaving.
+          </p>
+          <div class="row row-cols-3 row-cols-sm-4 g-2"
+               style="max-height:200px;overflow-y:auto">
+            {% for product in products %}
+            <div class="col">
+              <div class="d-flex flex-column align-items-center text-center
+                          bg-light rounded-3 p-2 h-100">
+                {% with product.images.first as img %}
+                {% if img %}
+                <img src="{{ img.image.url }}" alt=""
+                     class="rounded-2 object-fit-cover mb-1" loading="lazy"
+                     style="width:40px;height:40px"/>
+                {% else %}
+                <div class="rounded-2 bg-secondary bg-opacity-25 d-flex
+                            align-items-center justify-content-center mb-1"
+                     style="width:40px;height:40px;font-size:1.1rem" aria-hidden="true">📦</div>
+                {% endif %}
+                {% endwith %}
+                <p class="text-navy fw-semibold mb-0"
+                   style="font-size:.65rem;display:-webkit-box;-webkit-line-clamp:2;
+                          -webkit-box-orient:vertical;overflow:hidden;line-height:1.3">
+                  {{ product.name }}
+                </p>
+                <p class="text-gold fw-bold mb-0" style="font-size:.65rem">
+                  GHS {{ product.final_price }}
+                </p>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Tips -->
+      <div class="rounded-3 p-4 mb-4" style="background:rgba(15,27,45,.05)">
+        <p class="fw-semibold text-navy small mb-3">💡 Tips for a great stream</p>
+        <div class="d-flex flex-column gap-2">
+          <div class="d-flex align-items-start gap-2 small text-muted">
+            <span class="flex-shrink-0" aria-hidden="true">📶</span>
+            <span>Good lighting and a stable internet connection matter most.</span>
+          </div>
+          <div class="d-flex align-items-start gap-2 small text-muted">
+            <span class="flex-shrink-0" aria-hidden="true">🎯</span>
+            <span>Show products close-up. Demonstrate how they work.</span>
+          </div>
+          <div class="d-flex align-items-start gap-2 small text-muted">
+            <span class="flex-shrink-0" aria-hidden="true">🗣️</span>
+            <span>Talk to your viewers. Answer chat questions in real time.</span>
+          </div>
+          <div class="d-flex align-items-start gap-2 small text-muted">
+            <span class="flex-shrink-0" aria-hidden="true">🎁</span>
+            <span>Offer stream-only deals or giveaways to keep viewers engaged.</span>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" id="golive-submit"
+              class="btn btn-danger w-100 rounded-3 fw-bold py-3 d-flex
+                     align-items-center justify-content-center gap-2 fs-6">
+        🔴 Start Live Stream
+      </button>
+      <p class="text-center text-muted small mt-2 mb-0">
+        Your camera will start on the next page after you tap the button.
+      </p>
+
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewThumb(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const errEl = document.getElementById('thumb-err');
+  errEl.style.display = 'none';
+  if (!file.type.startsWith('image/')) {
+    errEl.textContent = '⚠ Please choose a JPG or PNG image.';
+    errEl.style.display = 'block';
+    input.value = '';
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    errEl.textContent = '⚠ File too large — max 5MB.';
+    errEl.style.display = 'block';
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const preview = document.getElementById('thumb-preview');
+    preview.innerHTML = '<img src="' + e.target.result +
+      '" alt="Cover preview" style="width:100%;height:100%;object-fit:cover;border-radius:12px"/>';
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('golive-form').addEventListener('submit', function() {
+  const btn = document.getElementById('golive-submit');
+  const title = document.getElementById('stream-title');
+  if (!title.value.trim()) {
+    title.focus();
+    return false;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<svg style="width:18px;height:18px;animation:spin 1s linear infinite;margin-right:6px" fill="none" viewBox="0 0 24 24"><circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Starting your stream…';
+});
+// CSS for spinner
+const s = document.createElement('style');
+s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+document.head.appendChild(s);
+</script>
+{% endblock %}

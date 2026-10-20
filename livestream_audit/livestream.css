@@ -1,0 +1,1007 @@
+/* ==========================================================
+   LYNCTEL LIVESTREAM — RESPONSIVE CSS
+   Works on: iOS Safari 14+, Android Chrome 76+, Desktop
+   
+   ARCHITECTURE:
+   - Mobile (< 1024px): Single-column, full-screen video
+   - Desktop (≥ 1024px): Video | Chat side panel
+   - Safe areas handled for iPhone notch + Android gesture bar
+   - No `inset` shorthand (unsupported Android < 87)
+   - No `aspect-ratio` on flex children (unreliable Android)
+   - No `will-change:transform` (breaks fixed nav on Android)
+   ========================================================== */
+
+/* ----------------------------------------------------------
+   FULL-SCREEN LAYOUT — Watch & Broadcast pages
+   body:has(#root) = primary (Chrome 105+, Safari 15.4+)
+   body.page-fullscreen = fallback for older Android
+---------------------------------------------------------- */
+
+body:has(#root),
+body.page-fullscreen {
+    margin: 0;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #000;
+    height: 100%;
+}
+
+body:has(#root) #main-navbar,
+body:has(#root) #mobile-nav,
+body.page-fullscreen #main-navbar,
+body.page-fullscreen #mobile-nav {
+    display: none !important;
+}
+
+/* Root container — fixed full-screen */
+#root {
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: -webkit-flex;
+    display: flex;
+    background: #000;
+    z-index: 10;
+    overflow: hidden;
+}
+
+/* Video section — takes all space on mobile, leaves room for desktop panel */
+#video-section {
+    position: relative;
+    -webkit-flex: 1;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+}
+
+/* Raw video elements */
+#remote-video,
+#vod-video,
+#local-video {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+}
+
+/* Mirror front camera for broadcaster */
+#local-video { -webkit-transform: scaleX(-1); transform: scaleX(-1); }
+
+/* Background video wrapper */
+#video-bg {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background: #000;
+}
+
+/* ----------------------------------------------------------
+   CONNECTING OVERLAY
+---------------------------------------------------------- */
+
+#connecting-overlay {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .88);
+    z-index: 10;
+    padding: 24px;
+    text-align: center;
+}
+
+/* ----------------------------------------------------------
+   UI LAYER — stacks all HUD elements over the video
+---------------------------------------------------------- */
+
+#ui-layer,
+#ui {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    pointer-events: none;
+    z-index: 20;
+    overflow: hidden;
+}
+
+/* ----------------------------------------------------------
+   TOP BAR — vendor info, viewer count, share
+---------------------------------------------------------- */
+
+#top-bar {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    gap: .75rem;
+    /* Safe area: push below iPhone notch / Dynamic Island */
+    padding: calc(env(safe-area-inset-top) + .6rem) .75rem .6rem;
+    background: linear-gradient(to bottom, rgba(0,0,0,.75) 0%, transparent 100%);
+    pointer-events: auto;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+}
+
+/* ----------------------------------------------------------
+   VIEWER POLL WIDGET
+---------------------------------------------------------- */
+
+#viewer-poll-widget {
+    margin: 0 .75rem;
+    padding: .875rem;
+    background: rgba(0, 0, 0, .75);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.1);
+    display: none;
+    pointer-events: auto;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+}
+#viewer-poll-widget.show { display: block; }
+
+.vp-btn {
+    width: 100%;
+    position: relative;
+    background: rgba(255,255,255,.08);
+    border: 1.5px solid rgba(255,255,255,.15);
+    border-radius: 10px;
+    padding: 9px 12px;
+    color: rgba(255,255,255,.85);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    overflow: hidden;
+    text-align: left;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-transition: border-color .2s;
+    transition: border-color .2s;
+}
+.vp-btn.voted { border-color: #F5A623; color: #F5A623; }
+.vp-fill {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    background: rgba(245,166,35,.18);
+    border-radius: 10px;
+    -webkit-transition: width .4s ease;
+    transition: width .4s ease;
+    pointer-events: none;
+}
+.vp-text { position: relative; z-index: 1; }
+
+/* ----------------------------------------------------------
+   LIVE POLL WIDGET — Broadcaster
+---------------------------------------------------------- */
+
+#live-poll-widget {
+    margin: 0 .75rem;
+    padding: .875rem;
+    background: rgba(0,0,0,.75);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.1);
+    display: none;
+    pointer-events: auto;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+}
+#live-poll-widget.show { display: block; }
+
+.poll-bar-track {
+    height: 4px;
+    background: rgba(255,255,255,.1);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+.poll-bar-fill {
+    height: 100%;
+    background: #F5A623;
+    border-radius: 2px;
+    -webkit-transition: width .4s ease;
+    transition: width .4s ease;
+}
+
+/* ----------------------------------------------------------
+   PRODUCTS STRIP — pinned items during live
+---------------------------------------------------------- */
+
+#products-strip {
+    display: -webkit-flex;
+    display: flex;
+    gap: 8px;
+    padding: 6px .75rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    pointer-events: auto;
+}
+#products-strip::-webkit-scrollbar { display: none; }
+
+.live-product {
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    width: 80px;
+    background: rgba(0,0,0,.75);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1.5px solid rgba(255,255,255,.08);
+    text-decoration: none;
+    -webkit-transition: -webkit-transform .15s, border-color .15s;
+    transition: transform .15s, border-color .15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.live-product:active { -webkit-transform: scale(.94); transform: scale(.94); }
+.live-product.featured { border-color: #F5A623; }
+
+/* ----------------------------------------------------------
+   CHAT OVERLAY — messages float above video
+---------------------------------------------------------- */
+
+#chat-overlay {
+    -webkit-flex: 1;
+    flex: 1;
+    min-height: 0;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    -webkit-justify-content: flex-end;
+    justify-content: flex-end;
+    padding: 6px 0 6px .75rem;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+#chat-messages {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    gap: 5px;
+    overflow: hidden;
+    /* Show last ~8 messages — prevents old messages from
+       pushing new ones off screen on small phones */
+    max-height: 260px;
+    pointer-events: auto;
+}
+
+/* Chat bubble — overlay style */
+.chat-bubble {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: flex-start;
+    align-items: flex-start;
+    gap: 7px;
+    max-width: calc(100% - 60px);
+    -webkit-animation: slideUp .2s ease;
+    animation: slideUp .2s ease;
+}
+
+@-webkit-keyframes slideUp {
+    from { opacity: 0; -webkit-transform: translateY(8px); transform: translateY(8px); }
+    to   { opacity: 1; -webkit-transform: translateY(0);   transform: translateY(0); }
+}
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.chat-avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+.chat-body {
+    background: rgba(0,0,0,.42);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    border-radius: 0 12px 12px 12px;
+    padding: 6px 10px;
+    max-width: 100%;
+    word-break: break-word;
+}
+.chat-name {
+    font-size: 11px; font-weight: 700;
+    margin: 0 0 2px;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    gap: 4px;
+}
+.chat-text {
+    font-size: 13px;
+    color: rgba(255,255,255,.95);
+    margin: 0; line-height: 1.4;
+}
+.vendor-badge {
+    font-size: 9px;
+    background: #F5A623; color: #0F1B2D;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 99px;
+}
+.chat-system {
+    text-align: left; padding: 2px 0;
+    display: -webkit-flex; display: flex;
+}
+.chat-system span {
+    font-size: 11px;
+    color: rgba(255,255,255,.4);
+    background: rgba(0,0,0,.28);
+    padding: 3px 10px;
+    border-radius: 99px;
+    display: inline-block;
+}
+
+/* ----------------------------------------------------------
+   ACTION RAIL — Like, Gift, Share, Fullscreen
+---------------------------------------------------------- */
+
+#action-rail {
+    position: absolute;
+    right: max(env(safe-area-inset-right), 10px);
+    bottom: 100px;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    gap: 16px;
+    -webkit-align-items: center;
+    align-items: center;
+    pointer-events: auto;
+    z-index: 25;
+}
+
+.rail-btn {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    -webkit-align-items: center;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    min-width: 44px;
+    min-height: 44px;
+    -webkit-justify-content: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.rail-icon {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.45);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 22px;
+    border: 1px solid rgba(255,255,255,.08);
+    -webkit-transition: -webkit-transform .15s;
+    transition: transform .15s;
+}
+.rail-btn:active .rail-icon {
+    -webkit-transform: scale(.86);
+    transform: scale(.86);
+}
+.rail-label {
+    font-size: 10px;
+    color: rgba(255,255,255,.8);
+    font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0,0,0,.6);
+}
+.heart-pop { -webkit-animation: heartPop .3s ease; animation: heartPop .3s ease; }
+@-webkit-keyframes heartPop {
+    0%   { -webkit-transform: scale(1); }
+    50%  { -webkit-transform: scale(1.5); }
+    100% { -webkit-transform: scale(1); }
+}
+@keyframes heartPop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.5); }
+    100% { transform: scale(1); }
+}
+
+/* ----------------------------------------------------------
+   REACTION STRIP — emoji reactions above chat input
+---------------------------------------------------------- */
+
+.reaction-strip {
+    display: -webkit-flex;
+    display: flex;
+    gap: 7px;
+    padding: 5px .75rem 2px;
+    pointer-events: auto;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.reaction-strip::-webkit-scrollbar { display: none; }
+
+.reaction-btn {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,.12);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: none; border-radius: 50%;
+    font-size: 17px; cursor: pointer;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    -webkit-transition: -webkit-transform .12s;
+    transition: transform .12s;
+}
+.reaction-btn:active {
+    -webkit-transform: scale(.8);
+    transform: scale(.8);
+}
+
+/* ----------------------------------------------------------
+   CHAT BAR — bottom input row
+---------------------------------------------------------- */
+
+#chat-bar {
+    pointer-events: auto;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    /* Safe area: clear iPhone home indicator */
+    padding: .5rem .75rem max(env(safe-area-inset-bottom), .75rem);
+    background: linear-gradient(to top, rgba(0,0,0,.8) 0%, transparent 100%);
+}
+
+.chat-bar-row {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    gap: 8px;
+}
+
+#chat-input-field,
+#chat-input,
+#desktop-chat-input {
+    -webkit-flex: 1; flex: 1;
+    background: rgba(255,255,255,.12);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 24px;
+    padding: 10px 16px;
+    color: white;
+    /* font-size ≥ 16px prevents iOS Safari auto-zoom on focus */
+    font-size: 16px;
+    outline: none;
+    min-height: 44px;
+}
+#chat-input-field::placeholder,
+#chat-input::placeholder { color: rgba(255,255,255,.4); }
+
+.chat-send-btn {
+    width: 44px; height: 44px;
+    background: #F5A623;
+    border: none; border-radius: 50%;
+    color: #0F1B2D; font-size: 18px; font-weight: 700;
+    cursor: pointer; -webkit-flex-shrink: 0; flex-shrink: 0;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.gift-open-btn {
+    width: 44px; height: 44px;
+    background: rgba(255,255,255,.15);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border: none; border-radius: 50%;
+    font-size: 20px; cursor: pointer;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-transition: -webkit-transform .15s; transition: transform .15s;
+}
+.gift-open-btn:active { -webkit-transform: scale(.88); transform: scale(.88); }
+
+/* ----------------------------------------------------------
+   GIFT COMBO DISPLAY
+---------------------------------------------------------- */
+
+#gift-combo {
+    position: absolute;
+    left: 16px; bottom: 115px;
+    background: linear-gradient(135deg, rgba(245,166,35,.9), rgba(239,68,68,.9));
+    color: white;
+    font-size: 13px; font-weight: 800;
+    padding: 7px 16px; border-radius: 24px;
+    display: none; pointer-events: none; z-index: 30;
+    box-shadow: 0 4px 16px rgba(245,166,35,.4);
+}
+#gift-combo.show {
+    display: block;
+    -webkit-animation: comboIn .25s cubic-bezier(.4,0,.2,1);
+    animation: comboIn .25s cubic-bezier(.4,0,.2,1);
+}
+@-webkit-keyframes comboIn {
+    from { -webkit-transform: scale(.6); opacity: 0; }
+    to   { -webkit-transform: scale(1);  opacity: 1; }
+}
+@keyframes comboIn {
+    from { transform: scale(.6); opacity: 0; }
+    to   { transform: scale(1);  opacity: 1; }
+}
+
+/* ----------------------------------------------------------
+   GIFT SHEET — mobile bottom sheet
+---------------------------------------------------------- */
+
+#gift-sheet-backdrop {
+    display: none;
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background: rgba(0,0,0,.65);
+    z-index: 50;
+}
+#gift-sheet-backdrop.open { display: block; }
+
+#gift-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #0d0d0d;
+    border-radius: 24px 24px 0 0;
+    padding: 16px 16px max(env(safe-area-inset-bottom), 16px);
+    z-index: 51;
+    -webkit-transform: translateY(100%);
+    transform: translateY(100%);
+    -webkit-transition: -webkit-transform .3s cubic-bezier(.4,0,.2,1);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    border-top: 1px solid #1f1f1f;
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+#gift-sheet.open { -webkit-transform: translateY(0); transform: translateY(0); }
+
+.gift-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-top: 14px;
+}
+@media (max-width: 380px) { .gift-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.gift-btn {
+    background: rgba(255,255,255,.06);
+    border: 1.5px solid rgba(255,255,255,.1);
+    border-radius: 16px;
+    padding: 12px 6px;
+    cursor: pointer;
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    -webkit-align-items: center; align-items: center;
+    gap: 5px; color: white;
+    -webkit-transition: all .18s; transition: all .18s;
+    min-height: 80px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.gift-btn:active { -webkit-transform: scale(.88); transform: scale(.88); border-color: #F5A623; }
+.gift-btn .gift-emoji { font-size: 26px; line-height: 1; }
+.gift-btn .gift-price { font-size: 10px; font-weight: 700; color: #F5A623; }
+.gift-btn .gift-name  { font-size: 10px; color: rgba(255,255,255,.5); }
+
+/* ----------------------------------------------------------
+   FLOATING HEARTS & GIFTS
+---------------------------------------------------------- */
+
+.like-float, .gift-float {
+    position: fixed;
+    font-size: 24px;
+    pointer-events: none;
+    -webkit-animation: floatUp 2.8s ease-out forwards;
+    animation: floatUp 2.8s ease-out forwards;
+    z-index: 40;
+}
+@-webkit-keyframes floatUp {
+    0%   { -webkit-transform: translateY(0)    scale(1);   opacity: 1; }
+    100% { -webkit-transform: translateY(-200px) scale(.3); opacity: 0; }
+}
+@keyframes floatUp {
+    0%   { transform: translateY(0)    scale(1);   opacity: 1; }
+    100% { transform: translateY(-200px) scale(.3); opacity: 0; }
+}
+.emoji-float {
+    position: fixed;
+    font-size: 22px;
+    pointer-events: none;
+    -webkit-animation: floatUp 2.4s ease-out forwards;
+    animation: floatUp 2.4s ease-out forwards;
+    z-index: 40;
+}
+
+/* ----------------------------------------------------------
+   DESKTOP SIDE PANEL
+   Hidden on mobile, shown as 320px panel on desktop
+---------------------------------------------------------- */
+
+#desktop-side {
+    width: 320px;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    background: #0d0d0d;
+    border-left: 1px solid #1f1f1f;
+    display: none;          /* hidden on mobile */
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Show desktop panel on large screens */
+@media (min-width: 1024px) {
+    #desktop-side { display: -webkit-flex; display: flex; }
+}
+
+.desktop-chat-bubble {
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: flex-start; align-items: flex-start;
+    gap: 8px;
+    -webkit-animation: fadeIn .2s ease; animation: fadeIn .2s ease;
+}
+@-webkit-keyframes fadeIn {
+    from { opacity: 0; -webkit-transform: translateY(4px); }
+    to   { opacity: 1; -webkit-transform: translateY(0); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.desktop-chat-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+.desktop-chat-body { -webkit-flex: 1; flex: 1; min-width: 0; }
+.desktop-chat-name {
+    font-size: 11px; font-weight: 700; margin: 0 0 2px;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center; gap: 4px;
+}
+.desktop-chat-text {
+    font-size: 13px; color: white; margin: 0;
+    word-break: break-word; line-height: 1.4;
+}
+.desktop-gift-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.desktop-gift-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    padding: 8px 4px; cursor: pointer;
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    -webkit-align-items: center; align-items: center;
+    gap: 3px; color: white;
+    -webkit-transition: all .18s; transition: all .18s;
+    -webkit-tap-highlight-color: transparent;
+}
+.desktop-gift-btn:hover  { background: rgba(245,166,35,.15); border-color: #F5A623; }
+.desktop-gift-btn:active { -webkit-transform: scale(.88); transform: scale(.88); }
+
+/* Stat pills — broadcaster top bar */
+.stat-pill {
+    background: rgba(0,0,0,.5);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    color: rgba(255,255,255,.8);
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 99px;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center; gap: 3px;
+}
+
+/* REC badge */
+#rec-badge {
+    display: none;
+    background: rgba(239,68,68,.2);
+    border: 1px solid #ef4444; color: #f87171;
+    font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: 6px;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    -webkit-align-items: center; align-items: center; gap: 4px;
+}
+.rec-dot {
+    width: 6px; height: 6px; background: #ef4444;
+    border-radius: 50%;
+    -webkit-animation: pulse 1.2s infinite; animation: pulse 1.2s infinite;
+}
+
+/* Broadcaster rail */
+#rail {
+    pointer-events: none; /* container: pass-through; buttons below: auto */
+    position: absolute;
+    right: max(env(safe-area-inset-right), 10px);
+    top: 50%;
+    -webkit-transform: translateY(-50%);
+    transform: translateY(-50%);
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    gap: 14px;
+    -webkit-align-items: center; align-items: center;
+    pointer-events: auto; z-index: 25;
+}
+.rbtn {
+    pointer-events: auto;
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    -webkit-align-items: center; align-items: center;
+    gap: 3px; background: none; border: none;
+    cursor: pointer; padding: 0;
+    min-width: 48px; min-height: 48px;
+    -webkit-justify-content: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.ricon {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(0,0,0,.5);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    font-size: 22px;
+    border: 1px solid rgba(255,255,255,.1);
+    -webkit-transition: -webkit-transform .15s; transition: transform .15s;
+}
+.rbtn:active .ricon { -webkit-transform: scale(.86); transform: scale(.86); }
+.rlabel { font-size: 10px; color: rgba(255,255,255,.75); font-weight: 600; }
+
+/* Bottom area — broadcast */
+#bottom-area {
+    margin-top: auto;
+    pointer-events: auto;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+    padding-bottom: max(env(safe-area-inset-bottom), 8px);
+    background: linear-gradient(to top, rgba(0,0,0,.8) 0%, transparent 100%);
+}
+
+/* Sheets — pin product and poll */
+#pin-sheet,
+#poll-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #111;
+    border-radius: 24px 24px 0 0;
+    padding: 16px 16px max(env(safe-area-inset-bottom), 16px);
+    z-index: 51;
+    -webkit-transform: translateY(100%); transform: translateY(100%);
+    -webkit-transition: -webkit-transform .3s cubic-bezier(.4,0,.2,1);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    border-top: 1px solid #222;
+    max-height: 75vh; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+#pin-sheet.open,
+#poll-sheet.open { -webkit-transform: translateY(0); transform: translateY(0); }
+
+#poll-sheet input {
+    width: 100%;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    padding: 11px 14px; color: white;
+    font-size: 16px; outline: none;
+    margin-bottom: 10px; box-sizing: border-box;
+}
+
+/* ----------------------------------------------------------
+   STREAM LIST PAGE — stream-card grid
+   Uses padding-bottom trick instead of aspect-ratio.
+   padding-bottom:177.78% = (16÷9)×100% = 9:16 portrait
+   Works on all Android versions (IE8+).
+---------------------------------------------------------- */
+
+.ls-card {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding-bottom: 177.78%;   /* 9:16 portrait */
+    overflow: hidden;
+    border-radius: 14px;
+    background: #1e293b;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-transition: opacity .15s; transition: opacity .15s;
+}
+.ls-card:active { opacity: .85; }
+
+/* At 768px+ switch to 4:5 ratio — tighter grid fits more cards */
+@media (min-width: 768px) {
+    .ls-card { padding-bottom: 125%; }
+}
+
+/* All children fill the card */
+.ls-thumb,
+.ls-overlay,
+.ls-info,
+.ls-badge {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+}
+
+.ls-thumb {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+}
+.ls-overlay {
+    background: linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.15) 50%, transparent 70%);
+    pointer-events: none;
+}
+
+/* Info: only bottom strip — override the full inset */
+.ls-info {
+    top: auto;
+    padding: 10px;
+}
+
+/* Badge: only top-left */
+.ls-badge {
+    bottom: auto; right: auto;
+    width: auto; height: auto;
+    font-size: .62rem; font-weight: 800;
+    padding: 3px 8px; border-radius: 99px;
+    display: -webkit-inline-flex; display: inline-flex;
+    -webkit-align-items: center; align-items: center;
+    gap: 4px; line-height: 1;
+}
+
+.ls-viewers {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: rgba(0,0,0,.55);
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    color: rgba(255,255,255,.9);
+    font-size: .62rem; font-weight: 700;
+    padding: 3px 8px; border-radius: 99px;
+}
+.ls-replay {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    -webkit-transition: opacity .2s; transition: opacity .2s;
+}
+.ls-card:active .ls-replay { opacity: 1; }
+
+.ls-vendor { color: white; font-size: .78rem; font-weight: 700; margin: 0 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ls-title  { color: rgba(255,255,255,.65); font-size: .68rem; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; }
+.ls-meta   { color: rgba(255,255,255,.5); font-size: .65rem; margin: 2px 0 0; }
+.ls-logo   { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 1.5px solid rgba(255,255,255,.35); -webkit-flex-shrink: 0; flex-shrink: 0; }
+.ls-dot    {
+    width: 5px; height: 5px; background: white; border-radius: 50%;
+    -webkit-animation: lsDot 1.4s ease-in-out infinite;
+    animation: lsDot 1.4s ease-in-out infinite;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+@-webkit-keyframes lsDot {
+    0%,100% { opacity:1; -webkit-transform:scale(1); }
+    50%      { opacity:.4; -webkit-transform:scale(.7); }
+}
+@keyframes lsDot {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.4; transform:scale(.7); }
+}
+
+/* ----------------------------------------------------------
+   BROADCASTER — camera placeholder
+---------------------------------------------------------- */
+
+#cam-placeholder {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    -webkit-align-items: center; align-items: center;
+    -webkit-justify-content: center; justify-content: center;
+    background: #0a0a0a; z-index: 5;
+    text-align: center; padding: 24px;
+}
+
+/* ----------------------------------------------------------
+   ANIMATIONS
+---------------------------------------------------------- */
+
+@-webkit-keyframes spin    { to { -webkit-transform: rotate(360deg); } }
+@keyframes spin            { to { transform: rotate(360deg); } }
+@-webkit-keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:.5} }
+@keyframes pulse           { 0%,100%{opacity:1} 50%{opacity:.5} }
+@-webkit-keyframes liveGlow{ 0%,100%{box-shadow:0 0 8px rgba(239,68,68,.6)} 50%{box-shadow:0 0 20px rgba(239,68,68,.9)} }
+@keyframes liveGlow        { 0%,100%{box-shadow:0 0 8px rgba(239,68,68,.6)} 50%{box-shadow:0 0 20px rgba(239,68,68,.9)} }
+
+/* ----------------------------------------------------------
+   RESPONSIVENESS — tablet and desktop tweaks
+---------------------------------------------------------- */
+
+/* Tablet (768px+): larger action rail icons */
+@media (min-width: 768px) {
+    .rail-icon, .ricon { width: 50px; height: 50px; font-size: 24px; }
+    #chat-messages { max-height: 320px; }
+    .gift-grid { grid-template-columns: repeat(6, 1fr); }
+    .live-product { width: 88px; }
+}
+
+/* Desktop (1024px+): adjust for side panel presence */
+@media (min-width: 1024px) {
+    #action-rail { right: 16px; bottom: 100px; gap: 20px; }
+    #chat-messages { max-height: 400px; }
+    #top-bar { padding-top: calc(env(safe-area-inset-top) + .875rem); }
+}
+
+/* iOS Safari standalone (PWA) */
+@media (display-mode: standalone) {
+    #top-bar { padding-top: calc(env(safe-area-inset-top) + .6rem); }
+    #chat-bar { padding-bottom: max(env(safe-area-inset-bottom), 1rem); }
+    #gift-sheet { padding-bottom: max(env(safe-area-inset-bottom), 1.5rem); }
+}
+
+/* Touch-only devices — remove hover effects that don't apply */
+@media (hover: none) and (pointer: coarse) {
+    .ls-card:hover { opacity: 1; }
+    .desktop-gift-btn:hover { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        -webkit-animation-duration: .001ms !important;
+        animation-duration: .001ms !important;
+        -webkit-animation-iteration-count: 1 !important;
+        animation-iteration-count: 1 !important;
+        -webkit-transition-duration: .001ms !important;
+        transition-duration: .001ms !important;
+    }
+}
