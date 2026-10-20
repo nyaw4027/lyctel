@@ -70,16 +70,17 @@ class Delivery(models.Model):
     delivered_at = models.DateTimeField(null=True, blank=True)
     created_at   = models.DateTimeField(auto_now_add=True)
 
-    # ── Commission: 95% to rider, 5% to app ─────────────────────────────
+    # ── Commission: 90% to rider, 10% to app ────────────────────────────
     def calculate_commission(self):
         """
-        FIXED: was using rider.commission_rate (default 50%).
-        Now uses delivery/utils.calculate_rider_commission() → 95%.
+        Rider's share of the delivery fee. Single source of truth is
+        ecommerce/commission.py (COMMISSION_RIDER_PCT, default 10 -> rider 90%).
+        Runs on every save(), so it must agree with delivery/services.py.
         """
         if not self.delivery_fee:
             return Decimal('0.00')
-        from delivery.utils import calculate_rider_commission
-        return calculate_rider_commission(Decimal(str(self.delivery_fee)))
+        from ecommerce.commission import split_delivery_fee
+        return split_delivery_fee(self.delivery_fee)['payee']
 
     # ── Smart pricing ─────────────────────────────────────────────────────
     def save(self, *args, **kwargs):

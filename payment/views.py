@@ -140,9 +140,13 @@ def _split_and_disburse(order) -> None:
         vendor_totals[vendor] = vendor_totals.get(vendor, Decimal('0')) + gross
 
     for vendor, gross in vendor_totals.items():
-        rate       = Decimal(str(vendor.commission_rate or 4)) / Decimal('100')
-        commission = (gross * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        net        = (gross - commission).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        # Single source of truth: ecommerce/commission.py (5% app / 95% vendor).
+        # This used to read vendor.commission_rate (default 4) so every vendor was charged 4%.
+        from ecommerce.commission import split_product_sale
+        _sp        = split_product_sale(gross, vendor)
+        commission = _sp['app']
+        net        = _sp['payee']
+        rate       = _sp['app_pct'] / Decimal('100')
 
         # FIX: AppCommission requires 'rate' — omitting it caused IntegrityError
         VendorEarning.objects.get_or_create(

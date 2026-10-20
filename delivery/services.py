@@ -120,10 +120,10 @@ def assign_rider_to_delivery(delivery, notify=True):
         return None
 
     with transaction.atomic():
-        rate = Decimal(str(rider.commission_rate)) / Decimal('100')
-        delivery.rider_commission = (
-            Decimal(str(delivery.delivery_fee)) * rate
-        ).quantize(Decimal('0.01'))
+        # Rider gets 90% of the delivery fee, app keeps 10% (ecommerce/commission.py).
+        # This used to use rider.commission_rate (default 50) -> riders got half.
+        from ecommerce.commission import split_delivery_fee
+        delivery.rider_commission = split_delivery_fee(delivery.delivery_fee)['payee']
         delivery.rider       = rider
         delivery.status      = delivery.Status.ASSIGNED
         delivery.assigned_at = timezone.now()

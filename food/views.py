@@ -61,11 +61,14 @@ except ImportError:
 
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-FOOD_VENDOR_SHARE    = Decimal('0.96')   # vendor keeps 96% of item subtotal
-FOOD_APP_VENDOR_CUT  = Decimal('0.04')   # app earns  4% of item subtotal
-FOOD_RIDER_SHARE     = Decimal('0.95')   # rider keeps 95% of delivery fee
-FOOD_APP_RIDER_CUT   = Decimal('0.05')   # app earns  5% of delivery fee
-FOOD_APP_SHARE       = Decimal('0.04')   # kept for backward compat
+# Commission now comes from ecommerce/commission.py (vendor 5% / rider fee 10%).
+# These names are kept only because other modules may import them.
+from ecommerce.commission import split_product_sale, split_delivery_fee, vendor_commission_pct, rider_commission_pct
+FOOD_APP_VENDOR_CUT  = vendor_commission_pct() / Decimal('100')        # 0.05
+FOOD_VENDOR_SHARE    = Decimal('1') - FOOD_APP_VENDOR_CUT              # 0.95
+FOOD_APP_RIDER_CUT   = rider_commission_pct() / Decimal('100')         # 0.10
+FOOD_RIDER_SHARE     = Decimal('1') - FOOD_APP_RIDER_CUT               # 0.90
+FOOD_APP_SHARE       = FOOD_APP_VENDOR_CUT                             # backward compat
 BASE_FARE         = Decimal('5.00')
 PER_KM_RATE       = Decimal('2.50')
 MIN_FARE          = Decimal('8.00')
@@ -928,7 +931,7 @@ def checkout(request):
                 dropoff_lat=float(dlat) if dlat else None,
                 dropoff_lng=float(dlng) if dlng else None,
                 delivery_fee=delivery_fee,
-                rider_commission=delivery_fee * Decimal('0.5'),
+                rider_commission=split_delivery_fee(delivery_fee)['payee'],   # was fee*0.5 (rider got 50%)
                 distance_km=distance_km, zone=zone,
                 delivery_type=Delivery.DeliveryType.EXPRESS,
                 status=Delivery.Status.PENDING, delivery_note=note,
@@ -1368,8 +1371,8 @@ def _record_food_earnings(order):
     Record the commission split the moment an order is placed,
     for EVERY payment type (cash, MoMo on delivery, Hubtel prepaid).
 
-    Vendor split  → 96% to vendor / 4% to app
-    Rider split   → 95% to rider  / 5% to app
+    Vendor split  → 95% to vendor / 5% to app
+    Rider split   → 90% to rider  / 10% to app
 
     For cash orders: records what is owed; disbursement happens via
     weekly settlement (vendor pays 4% commission to Lynctel).
@@ -1379,9 +1382,10 @@ def _record_food_earnings(order):
         return
 
     # ── Vendor earnings ──────────────────────────────────────────────────
-    item_gross        = Decimal(str(order.subtotal or 0))
-    vendor_commission = (item_gross * FOOD_APP_VENDOR_CUT).quantize(Decimal('0.01'))
-    vendor_payout     = (item_gross * FOOD_VENDOR_SHARE).quantize(Decimal('0.01'))
+    _vs               = split_product_sale(order.subtotal, order.vendor)
+    item_gross        = _vs['gross']
+    vendor_commission = _vs['app']        # app keeps this
+    vendor_payout     = _vs['payee']      # vendor receives this (gross - commission, exact)
 
     if _HAS_VENDOR_EARNING and FoodVendorEarning is not None:
         FoodVendorEarning.objects.get_or_create(
@@ -1396,11 +1400,12 @@ def _record_food_earnings(order):
         )
 
     # ── Rider / delivery earnings ────────────────────────────────────────
-    delivery_gross    = Decimal(str(order.delivery_fee or 0))
-    rider_commission  = (delivery_gross * FOOD_APP_RIDER_CUT).quantize(Decimal('0.01'))
-    rider_payout      = (delivery_gross * FOOD_RIDER_SHARE).quantize(Decimal('0.01'))
+    _rs               = split_delivery_fee(order.delivery_fee)
+    delivery_gross    = _rs['gross']
+    rider_commission  = _rs['app']        # app keeps 10%
+    rider_payout      = _rs['payee']      # rider gets 90%
 
-    # Update Delivery record with the correct rider earnings (95%)
+    # Update Delivery record with the correct rider earnings (90%)
     if order.delivery and _HAS_DELIVERY and Delivery is not None:
         try:
             order.delivery.rider_commission = rider_payout
