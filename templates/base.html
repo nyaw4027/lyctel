@@ -33,6 +33,11 @@
   <meta name="twitter:image" content="{% static 'icons/icon-512x512.png' %}"/>
   <link rel="manifest" href="/manifest.json"/>
   <meta name="theme-color" content="#0F1B2D" id="meta-theme-color"/>
+  <!-- Tells Samsung Internet / Chrome the site has its own dark mode,
+       so they stop force-inverting the colours. -->
+  <meta name="color-scheme" content="light dark"/>
+  <!-- Stops Samsung Internet turning order refs and prices into phone links -->
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -221,7 +226,7 @@
     }
     #cart-drawer.open { transform: translateX(0); }
     #cart-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,.4);
       z-index: 1055; opacity: 0; visibility: hidden; transition: all .3s;
     }
     #cart-overlay.open { opacity: 1; visibility: visible; }
@@ -280,7 +285,7 @@
       box-shadow: 0 -8px 40px rgba(15,27,45,.2); padding: 24px 24px 44px;
     }
     #ios-install-sheet.show { display: block; animation: slideUp .35s cubic-bezier(.4,0,.2,1) forwards; }
-    #ios-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9998; }
+    #ios-overlay { display: none; position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,.5); z-index: 9998; }
     #ios-overlay.show { display: block; }
 
     /* ── Animations ───────────────────────────────────────── */
@@ -455,15 +460,10 @@
         --navbar-h: calc(112px + env(safe-area-inset-top));
       }
 
-      /* 4. Bottom: account for iPhone home indicator bar */
-      body {
-        padding-bottom: calc(64px + env(safe-area-inset-bottom)) !important;
-      }
-
-      /* 5. Profile dropdown: reposition for standalone's taller navbar */
-      .profile-dropdown {
-        top: calc(64px + env(safe-area-inset-top)) !important;
-      }
+      /* 4. Bottom padding is handled once in the CROSS-DEVICE block below.
+         5. (Removed) a forced `top` on .profile-dropdown fought Bootstrap's
+            Popper positioning and dropped the menu too low in the
+            installed app on Android and iOS. */
 
       /* 6. Mobile bottom nav already has env(safe-area-inset-bottom) —
             no change needed there */
@@ -479,6 +479,101 @@
     /* ── Autocomplete z-index (must clear iOS keyboard) ───────────────── */
     .autocomplete-dropdown {
       z-index: 1065 !important;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       CROSS-DEVICE / SAMSUNG COMPAT
+       Targets: Samsung Internet, Chrome Android 9–15, One UI 3–7,
+       Galaxy Z Fold cover screens, "Screen zoom" + large-font settings.
+       ══════════════════════════════════════════════════════════════════ */
+    :root {
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
+      --sar: env(safe-area-inset-right, 0px);
+      --mnav-h: 64px;
+    }
+    /* Own the colour scheme so browser dark modes don't invert the UI */
+    :root, :root[data-bs-theme="light"] { color-scheme: light; }
+    :root[data-bs-theme="dark"]         { color-scheme: dark; }
+    @media (prefers-color-scheme: dark) { :root:not([data-bs-theme="light"]) { color-scheme: dark; } }
+
+    /* Stop Chrome/Samsung "font boosting" from inflating random text blocks */
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+    /* No sideways page scroll. Only on <html>: putting it on <html> AND
+       <body> turns body into a scroll box and breaks the sticky navbar. */
+    html { overflow-x: hidden; }
+    @supports (overflow: clip) { html { overflow-x: clip; } }
+    img, video, iframe { max-width: 100%; }
+
+    /* Dynamic viewport height — Samsung Internet's bottom toolbar
+       otherwise hides the bottom of full-height screens */
+    @supports (height: 100dvh) {
+      .min-vh-100 { min-height: 100dvh !important; }
+      .vh-100     { height: 100dvh !important; }
+      #cart-drawer { height: 100dvh; }
+    }
+    #cart-drawer { padding-right: var(--sar); }
+    #drawer-footer { padding-bottom: calc(1rem + var(--sab)) !important; }
+    #drawer-items, #cart-drawer, .dropdown-menu, .modal-body {
+      overscroll-behavior: contain;      /* no pull-to-refresh / page scroll bleed */
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Navbar: let it shrink instead of overflowing ─────────────────── */
+    #main-navbar { padding-left: var(--sal); padding-right: var(--sar); }
+    #main-navbar .navbar-brand { flex-shrink: 1 !important; min-width: 0; overflow: hidden; }
+    #main-navbar .navbar-brand img { flex-shrink: 0; }
+    #main-navbar .brand-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    #main-navbar .ms-auto { flex-shrink: 0; min-width: 0; }
+    @media (max-width: 359.98px) {
+      #main-navbar .d-flex.gap-2.py-2 { gap: .25rem !important; }
+      #main-navbar .ms-auto { gap: 0 !important; }
+      #main-navbar .btn-sm { padding-left: .4rem !important; padding-right: .4rem !important; }
+    }
+    @media (max-width: 329.98px) {          /* Fold cover screen, max screen zoom */
+      #main-navbar .brand-name { display: none; }
+    }
+
+    /* ── Mobile bottom nav ────────────────────────────────────────────── */
+    @media (max-width: 767.98px) {
+      #mobile-nav {
+        height: auto;
+        min-height: calc(var(--mnav-h) + var(--sab));
+        padding-bottom: max(var(--sab), 4px);
+        padding-left: var(--sal); padding-right: var(--sar);
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .mobile-nav-item {
+        min-height: 52px; min-width: 0; padding: 6px 2px;
+        font-size: .6875rem; line-height: 1.15;
+      }
+      .mnav-label {
+        display: block; max-width: 100%;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      body { padding-bottom: calc(var(--mnav-h) + 8px + var(--sab)) !important; }
+
+      /* 16px inputs: no zoom-on-focus jump */
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+      select, textarea { font-size: 16px !important; }
+
+      #pwa-banner { bottom: calc(var(--mnav-h) + 12px + var(--sab)); }
+    }
+    #ios-install-sheet { padding-bottom: calc(24px + var(--sab)); }
+
+    /* Keyboard open: hide the bottom nav so it doesn't cover the field */
+    body.kb-open #mobile-nav, body.kb-open #pwa-banner { display: none !important; }
+    body.kb-open { padding-bottom: 0 !important; }
+
+    /* ── Touch screens: no "stuck" hover after a tap ──────────────────── */
+    @media (hover: none) {
+      .card-hover:hover { transform: none; box-shadow: none !important; }
+      .product-card-hover:hover .product-card-img { transform: none; }
+      .card-hover:active { transform: scale(.98); }
+      .btn-gold:hover { background: var(--gold); color: var(--navy); }
+      .btn-navy:hover { background: var(--navy); color: #fff; }
+      .btn-gold:active, .btn-navy:active { filter: brightness(.92); }
     }
 
   </style>
@@ -779,22 +874,22 @@
   <nav id="mobile-nav" aria-label="Primary mobile navigation">
     <a href="{% url 'frontend:home' %}" class="mobile-nav-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-      Home
+      <span class="mnav-label">Home</span>
     </a>
     <a href="{% url 'products:list' %}" class="mobile-nav-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
-      Products
+      <span class="mnav-label">Products</span>
     </a>
     <a href="{% url 'food:home' %}" class="mobile-nav-item food">
       <span style="font-size:1.25rem;line-height:1" aria-hidden="true">🍔</span>
-      Food
+      <span class="mnav-label">Food</span>
     </a>
     <button type="button" onclick="openCart()" class="mobile-nav-item" aria-label="Open cart">
       <div class="position-relative d-inline-flex">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
         <span id="mobile-cart-count" class="cart-badge {% if not cart_count or cart_count == 0 %}d-none{% endif %}">{{ cart_count|default:0 }}</span>
       </div>
-      Cart
+      <span class="mnav-label">Cart</span>
     </button>
     {% if user.is_authenticated %}
     <a href="{% url 'accounts:profile' %}" class="mobile-nav-item">
@@ -803,12 +898,12 @@
       {% else %}
       <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width:24px;height:24px;background:var(--navy);font-size:9px;font-weight:700" aria-hidden="true">{{ user.first_name|first|upper|default:"U" }}</div>
       {% endif %}
-      Profile
+      <span class="mnav-label">Profile</span>
     </a>
     {% else %}
     <a href="{% url 'accounts:login' %}" class="mobile-nav-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-      Sign In
+      <span class="mnav-label">Sign In</span>
     </a>
     {% endif %}
   </nav>
@@ -867,11 +962,11 @@
     <div class="d-flex flex-column gap-3 mb-4">
       <div class="d-flex align-items-center gap-3 rounded-3 p-3 bg-primary bg-opacity-10">
         <div class="rounded-3 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:#3b82f6" aria-hidden="true">1</div>
-        <div><p class="fw-semibold text-navy mb-0 small">Tap the Share button ⬆</p><p class="text-muted mb-0" style="font-size:.75rem">At the bottom of Safari</p></div>
+        <div><p id="inst-s1" class="fw-semibold text-navy mb-0 small">Tap the Share button ⬆</p><p id="inst-s1b" class="text-muted mb-0" style="font-size:.75rem">At the bottom of Safari</p></div>
       </div>
       <div class="d-flex align-items-center gap-3 rounded-3 p-3" style="background:#f0fdf4">
         <div class="rounded-3 d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0" style="width:40px;height:40px;background:#22c55e" aria-hidden="true">2</div>
-        <div><p class="fw-semibold text-navy mb-0 small">Tap 'Add to Home Screen'</p><p class="text-muted mb-0" style="font-size:.75rem">Scroll down in the Share menu</p></div>
+        <div><p id="inst-s2" class="fw-semibold text-navy mb-0 small">Tap 'Add to Home Screen'</p><p id="inst-s2b" class="text-muted mb-0" style="font-size:.75rem">Scroll down in the Share menu</p></div>
       </div>
       <div class="d-flex align-items-center gap-3 rounded-3 p-3" style="background:var(--gold-light)">
         <div class="rounded-3 d-flex align-items-center justify-content-center fw-bold flex-shrink-0 text-navy" style="width:40px;height:40px;background:var(--gold)" aria-hidden="true">✓</div>
@@ -981,7 +1076,16 @@
     window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();_dp=e;if(!localStorage.getItem('pwa-dismissed')&&!_sa)setTimeout(function(){document.getElementById('pwa-banner').classList.add('show');},window.innerWidth<640?2000:4000);});
     document.getElementById('pwa-install-btn').addEventListener('click',async function(){if(!_dp)return;_dp.prompt();await _dp.userChoice;_dp=null;document.getElementById('pwa-banner').classList.remove('show');});
     function dismissPWA(){document.getElementById('pwa-banner').classList.remove('show');localStorage.setItem('pwa-dismissed','1');}
-    function showInstallPrompt(){if(_sa){alert('Lynctel is already installed! ✅');return;}document.getElementById('ios-install-sheet').classList.add('show');document.getElementById('ios-overlay').classList.add('show');document.body.style.overflow='hidden';}
+    function showInstallPrompt(){
+      if(_sa){alert('Lynctel is already installed! ✅');return;}
+      if(_dp){_dp.prompt();_dp.userChoice.finally(function(){_dp=null;});return;}
+      if(!_iOS){
+        var samsung=/SamsungBrowser/i.test(navigator.userAgent);
+        var t={'inst-s1':samsung?'Tap the menu ☰ (bottom right)':'Tap the menu ⋮ (top right)','inst-s1b':samsung?'In Samsung Internet':'In Chrome',
+               'inst-s2':samsung?"Tap 'Add page to' → 'Home screen'":"Tap 'Install app' or 'Add to Home screen'",'inst-s2b':'Then confirm'};
+        Object.keys(t).forEach(function(id){var e=document.getElementById(id);if(e)e.textContent=t[id];});
+      }
+      document.getElementById('ios-install-sheet').classList.add('show');document.getElementById('ios-overlay').classList.add('show');document.body.style.overflow='hidden';}
     function closeIOSSheet(){document.getElementById('ios-install-sheet').classList.remove('show');document.getElementById('ios-overlay').classList.remove('show');document.body.style.overflow='';}
     if(_iOS&&!_sa&&!localStorage.getItem('ios-hint-shown'))setTimeout(function(){document.getElementById('ios-install-sheet').classList.add('show');document.getElementById('ios-overlay').classList.add('show');localStorage.setItem('ios-hint-shown','1');},6000);
     if(_sa)document.getElementById('pwa-banner').style.display='none';
@@ -1074,6 +1178,31 @@
         wireInput(document.getElementById('desktop-search'), document.getElementById('desktop-autocomplete'));
         wireInput(document.getElementById('mobile-search'),  document.getElementById('mobile-autocomplete'));
       });
+    })();
+
+    // ── KEYBOARD OPEN: hide bottom nav so it doesn't sit over the input ──
+    (function(){
+      var TXT='input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=submit]):not([type=button]),textarea,select,[contenteditable="true"]';
+      var t=null;
+      function mobile(){return window.matchMedia('(max-width: 767.98px)').matches;}
+      document.addEventListener('focusin',function(e){
+        if(mobile()&&e.target.matches&&e.target.matches(TXT)){clearTimeout(t);document.body.classList.add('kb-open');}
+      });
+      document.addEventListener('focusout',function(){
+        clearTimeout(t);t=setTimeout(function(){
+          var a=document.activeElement;
+          if(!(a&&a.matches&&a.matches(TXT)))document.body.classList.remove('kb-open');
+        },150);
+      });
+      // Samsung keyboard can be dismissed with the back gesture without blurring
+      if(window.visualViewport){
+        var maxH=window.visualViewport.height;
+        window.visualViewport.addEventListener('resize',function(){
+          var h=window.visualViewport.height;
+          if(h>maxH)maxH=h;
+          if(h>maxH-120)document.body.classList.remove('kb-open');
+        });
+      }
     })();
 
     // ── PWA INSTALL PROMPT: show after first cart add (not on page load) ──────

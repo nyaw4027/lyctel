@@ -7,14 +7,17 @@ from order.models import OrderItem
 
 
 def _cget(key, default=None):
+    # Was `return _cget(key, default)` — the function called itself ~1000
+    # times until RecursionError, so every home-page cache read silently
+    # returned None and the cache was never used.
     try:
-        return _cget(key, default)
+        return cache.get(key, default)
     except Exception:
         return default
 
 def _cset(key, val, ttl):
     try:
-        _cset(key, val, ttl)
+        cache.set(key, val, ttl)
     except Exception:
         pass
 
@@ -105,24 +108,34 @@ def home(request):
         'cart_count':     _cart_count(request),
     })
 
-def about(request):
-    page        = None
-    stats       = []
-    features    = []
-    team_members= []
 
+def about(request):
+    import logging
+    log = logging.getLogger(__name__)
+    page, stats, features, team_members = None, [], [], []
     try:
         from .models import AboutPage
-        page = AboutPage.objects.prefetch_related(
-            'stats', 'features', 'team'
-        ).first()
-        if page:
-            stats        = list(page.stats.all())
-            features     = list(page.features.all())
-            team_members = list(page.team.filter(is_active=True))
+        page = AboutPage.objects.first()
     except Exception:
-        pass   # AboutPage table may not exist yet — render with defaults
-
+        log.exception('[about] could not load AboutPage')
+    if page is not None:
+        # Each related set is loaded on its own so one bad relation/field
+        # (e.g. no is_active on team members) can't 500 the whole page.
+        try:
+            stats = list(page.stats.all())
+        except Exception:
+            log.exception('[about] stats')
+        try:
+            features = list(page.features.all())
+        except Exception:
+            log.exception('[about] features')
+        try:
+            team_members = list(page.team.filter(is_active=True))
+        except Exception:
+            try:
+                team_members = list(page.team.all())
+            except Exception:
+                log.exception('[about] team')
     return render(request, 'frontend/about.html', {
         'page':         page,
         'stats':        stats,
