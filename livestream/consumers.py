@@ -1,53 +1,46 @@
+"""
+livestream/consumers.py  (audit rewrite)
+
+Signalling model (matches the existing watch.html / livestream.js protocol):
+  * BROADCASTER (vendor) identifies itself with {type:'vendor_init'}. Only the
+    stream owner can become broadcaster. The owner opening watch.html in another
+    tab stays a normal viewer.
+  * VIEWER sends 'offer'  -> delivered ONLY to the broadcaster (was: everyone).
+  * BROADCASTER sends 'answer'/'ice' with peer_id -> delivered ONLY to that viewer.
+  * VIEWER sends 'ice'/'answer' -> delivered ONLY to the broadcaster
+    (or to peer_id when given).
+  * Server sends {type:'vendor_ready'} to viewers when the broadcaster connects,
+    so waiting viewers re-offer immediately instead of waiting for the 8s retry.
+"""
 import json
 import asyncio
-from decimal import Decimal
+import logging
+
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+from django.core.cache import cache
 from django.utils import timezone
+
+log = logging.getLogger(__name__)
+
+MAX_MESSAGE_BYTES = 64 * 1024          # SDP is ~10 KB; anything bigger is abuse
+SIGNAL_LIMIT      = (150, 10.0)        # max signalling msgs / seconds (ICE bursts)
+REACTION_LIMIT    = (6, 1.0)
+POLL_TTL          = 60 * 60 * 6
 
 
 class StreamConsumer(AsyncWebsocketConsumer):
-    """
-    Single WebSocket consumer that handles everything for one live stream.
 
-    WebRTC signaling model:
-      - The VENDOR (broadcaster) is the only one who sends 'offer' on
-        startCamera(). That offer is broadcast to the whole room; each
-        VIEWER answers it individually with their own channel_name as
-        peer_id so the vendor can create one RTCPeerConnection per viewer.
-      - VIEWERS also send their own 'offer' on page load (startViewing())
-        to request the stream. This offer must include the viewer's
-        channel_name as `sender` when relayed to the vendor, so the
-        vendor's handleViewerOffer() can key its peerConnections map
-        correctly and route the matching 'answer' back to THAT viewer only.
-
-    CLIENT → SERVER message types:
-      offer        — WebRTC SDP offer  (viewer requests stream OR vendor pushes one)
-      answer       — WebRTC SDP answer (in reply to an offer)
-      ice          — ICE candidate relay
-      chat         — Chat message
-      gift         — Viewer sends a gift
-      pin_product  — Vendor pins/unpins a product
-      end_stream   — Vendor ends the stream
-      ping         — Keepalive
-
-    SERVER → CLIENT message types:
-      offer / answer / ice  — WebRTC signaling passthrough (always includes `sender`)
-      chat                  — New chat message
-      gift                  — Gift animation broadcast
-      viewer_count          — Current viewer count update
-      pinned_products       — Initial pinned products list (sent on connect)
-      product_pinned        — New product pinned
-      product_unpinned      — Product removed
-      stream_ended          — Stream has ended
-      error                 — Something went wrong
-    """
-
+    # ── lifecycle ─────────────────────────────────────────
     async def connect(self):
-        self.stream_id   = self.scope['url_route']['kwargs']['stream_id']
-        self.room_group  = f'stream_{self.stream_id}'
-        self.user        = self.scope['user']
-        self.is_vendor   = False
+        self.stream_id      = str(self.scope['url_route']['kwargs']['stream_id'])
+        self.room_group     = f'stream_{self.stream_id}'
+        self.user           = self.scope['user']
+        self.is_vendor      = False      # owner of the stream (chat/pin/end rights)
+        self.is_broadcaster = False      # the ONE socket that sends video
+        self._counted       = False
+        self._in_group      = False
+        self._buckets       = {}
 
         stream = await self._get_stream()
         if not stream:
@@ -59,349 +52,327 @@ class StreamConsumer(AsyncWebsocketConsumer):
         try:
             await asyncio.wait_for(
                 self.channel_layer.group_add(self.room_group, self.channel_name),
-                timeout=8,
-            )
-        except (asyncio.TimeoutError, Exception):
-            # Redis hiccup on first connect — accept the socket anyway so
-            # the client doesn't see a hard failure; group features (chat,
-            # gifts, pin updates) may be briefly unavailable until the next
-            # successful operation, but the WebRTC video/audio path itself
-            # does not depend on the channel layer at all.
-            pass
+                timeout=8)
+            self._in_group = True
+        except Exception:
+            log.warning('stream %s: group_add failed', self.stream_id)
 
         await self.accept()
 
-        await self._add_viewer(stream)
+        count = None
+        if not self.is_vendor:                       # owner's tabs are not "viewers"
+            try:
+                count = await self._add_viewer(stream)
+                self._counted = True
+            except Exception:
+                log.exception('stream %s: add_viewer failed', self.stream_id)
+        if count is not None:
+            await self._safe_group_send({'type': 'viewer_count_update', 'count': count})
 
         try:
-            count = await asyncio.wait_for(self._get_viewer_count(), timeout=5)
-            await asyncio.wait_for(
-                self.channel_layer.group_send(self.room_group, {
-                    'type':  'viewer_count_update',
-                    'count': count,
-                }),
-                timeout=5,
-            )
-        except (asyncio.TimeoutError, Exception):
-            pass
+            products = await self._get_pinned_products()
+            await self.send(text_data=json.dumps({'type': 'pinned_products', 'products': products}))
+        except Exception:
+            log.exception('stream %s: pinned_products failed', self.stream_id)
 
-        products = await self._get_pinned_products()
-        await self.send(text_data=json.dumps({
-            'type':     'pinned_products',
-            'products': products,
-        }))
+        # late joiner during a poll
+        poll = cache.get(self._poll_key())
+        if poll:
+            await self.send(text_data=json.dumps({
+                'type': 'poll_start', 'question': poll['question'], 'options': poll['options']}))
+            await self.send(text_data=json.dumps({'type': 'poll_update', 'tallies': poll['tallies']}))
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_group, self.channel_name)
-        await self._remove_viewer()
+        try:
+            if self._in_group:
+                await self.channel_layer.group_discard(self.room_group, self.channel_name)
+        except Exception:
+            pass
+        if self._counted:
+            try:
+                count = await self._remove_viewer()
+                await self._safe_group_send({'type': 'viewer_count_update', 'count': count})
+            except Exception:
+                log.exception('stream %s: remove_viewer failed', self.stream_id)
 
-        count = await self._get_viewer_count()
-        await self.channel_layer.group_send(self.room_group, {
-            'type':  'viewer_count_update',
-            'count': count,
-        })
+    # ── helpers ───────────────────────────────────────────
+    def _poll_key(self):
+        return f'ls:poll:{self.stream_id}'
 
-    async def receive(self, text_data):
+    async def _safe_group_send(self, event):
+        try:
+            await asyncio.wait_for(self.channel_layer.group_send(self.room_group, event), timeout=5)
+        except Exception:
+            log.warning('stream %s: group_send failed', self.stream_id)
+
+    def _allow(self, bucket, limit):
+        """Token-less sliding window: at most limit[0] events per limit[1] seconds."""
+        now = timezone.now().timestamp()
+        n, window = limit
+        hits = [t for t in self._buckets.get(bucket, []) if now - t < window]
+        if len(hits) >= n:
+            self._buckets[bucket] = hits
+            return False
+        hits.append(now)
+        self._buckets[bucket] = hits
+        return True
+
+    async def _relay(self, payload, audience='all'):
+        await self._safe_group_send({'type': 'relay', 'payload': payload, 'audience': audience})
+
+    # ── inbound ───────────────────────────────────────────
+    async def receive(self, text_data=None, bytes_data=None):
+        if not text_data or len(text_data) > MAX_MESSAGE_BYTES:
+            return
         try:
             data = json.loads(text_data)
         except json.JSONDecodeError:
             return
+        if not isinstance(data, dict):
+            return
+        t = data.get('type', '')
 
-        msg_type = data.get('type', '')
+        # --- identify the broadcaster ---------------------
+        if t == 'vendor_init':
+            if self.is_vendor and not self.is_broadcaster:
+                self.is_broadcaster = True
+            if self.is_broadcaster:
+                await self._touch()
+                await self._relay({'type': 'vendor_ready'}, 'viewers')
+            return
 
-        # ── WebRTC signaling ──────────────────────────────
-        if msg_type == 'offer':
-            # Relay to the room, always tagging who sent it so the
-            # receiving side (vendor or viewer) can route correctly.
-            await self.channel_layer.group_send(self.room_group, {
-                'type':   'webrtc_offer',
-                'sdp':    data.get('sdp'),
-                'sender': self.channel_name,
-            })
+        # --- WebRTC signalling ----------------------------
+        if t in ('offer', 'answer', 'ice'):
+            if not self._allow('signal', SIGNAL_LIMIT):
+                return
+            await self._signal(t, data)
+            return
 
-        elif msg_type == 'answer':
-            # peer_id tells the server WHO should receive this answer.
-            # The viewer answering a vendor offer sets peer_id to the
-            # vendor's channel_name (from data.sender on the offer they
-            # received). The vendor answering a viewer's offer sets
-            # peer_id to that viewer's channel_name.
-            await self.channel_layer.group_send(self.room_group, {
-                'type':    'webrtc_answer',
-                'sdp':     data.get('sdp'),
-                'sender':  self.channel_name,
-                'peer_id': data.get('peer_id'),
-            })
-
-        elif msg_type == 'ice':
-            await self.channel_layer.group_send(self.room_group, {
-                'type':      'webrtc_ice',
-                'candidate': data.get('candidate'),
-                'sender':    self.channel_name,
-                'peer_id':   data.get('peer_id'),
-            })
-
-        # ── Chat ──────────────────────────────────────────
-        elif msg_type == 'chat':
+        # --- chat -----------------------------------------
+        if t == 'chat':
             if not self.user.is_authenticated:
                 return
             message = str(data.get('message', '')).strip()[:300]
             if not message:
                 return
-
-            # Server-side rate limit: 1 comment per 2 seconds per user
-            # Prevents spam even if client-side throttle is bypassed
-            now = timezone.now().timestamp()
-            last = getattr(self, '_last_comment_ts', 0)
-            if now - last < 2.0:
-                return  # silently drop — client already shows the limit
-            self._last_comment_ts = now
-
+            if not self._allow('chat', (1, 2.0)):
+                return
             comment = await self._save_comment(message)
-            await self.channel_layer.group_send(self.room_group, {
-                'type':       'chat_message',
-                'message':    message,
-                'username':   self.user.display_name,
-                'initials':   self.user.initials,
-                'user_id':    self.user.id,
-                'comment_id': comment.id,
-                'is_vendor':  self.is_vendor,
-                'sent_at':    comment.sent_at.strftime('%H:%M'),
+            await self._safe_group_send({
+                'type': 'chat_message', 'message': message,
+                'username': self.user.display_name, 'initials': self.user.initials,
+                'user_id': self.user.id, 'comment_id': comment.id,
+                'is_vendor': self.is_vendor,
+                'sent_at': comment.sent_at.strftime('%H:%M'),
             })
+            return
 
-        # ── Gift (payment-required) ───────────────────────────────
-        # Gifts now go through Hubtel payment (views.gift_payment_initiate).
-        # The WS 'gift' message type is only sent by the server after payment
-        # is confirmed via the callback. Clients should NOT send 'gift' directly.
-        # This handler is kept so vendor broadcast.html can receive gift events.
-        elif msg_type == 'gift':
-            # Server-sent gift events (from _broadcast_gift_paid in views.py)
-            # are relayed to all clients. Client-originated 'gift' messages
-            # are silently ignored — they must use the HTTP payment endpoint.
-            pass
+        # --- reactions / likes (throttled, relayed to everyone) --
+        if t in ('like', 'reaction'):
+            if not self._allow('react', REACTION_LIMIT):
+                return
+            await self._relay({'type': 'reaction',
+                               'emoji': str(data.get('emoji', '❤️'))[:8]})
+            return
 
-        # ── Pin product (vendor only) ──────────────────────
-        elif msg_type == 'pin_product':
+        # --- polls ----------------------------------------
+        if t == 'poll_start' and self.is_vendor:
+            opts = data.get('options') or {}
+            a, b = str(opts.get('a', ''))[:60], str(opts.get('b', ''))[:60]
+            q = str(data.get('question', ''))[:140]
+            if not (q and a and b):
+                return
+            poll = {'question': q, 'options': {'a': a, 'b': b}, 'tallies': {'a': 0, 'b': 0}}
+            cache.set(self._poll_key(), poll, POLL_TTL)
+            await self._relay({'type': 'poll_start', 'question': q, 'options': poll['options']}, 'viewers')
+            return
+
+        if t == 'poll_vote':
+            opt = data.get('option')
+            poll = cache.get(self._poll_key())
+            if opt not in ('a', 'b') or not poll or not self.user.is_authenticated:
+                return
+            voted_key = f"{self._poll_key()}:v:{self.user.id}"
+            if not cache.add(voted_key, 1, POLL_TTL):          # one vote per user
+                return
+            poll['tallies'][opt] = poll['tallies'].get(opt, 0) + 1
+            cache.set(self._poll_key(), poll, POLL_TTL)
+            await self._relay({'type': 'poll_update', 'tallies': poll['tallies']}, 'viewers')
+            await self._relay({'type': 'poll_vote', 'option': opt}, 'broadcaster')
+            return
+
+        if t == 'poll_end' and self.is_vendor:
+            cache.delete(self._poll_key())
+            await self._relay({'type': 'poll_end'}, 'viewers')
+            return
+
+        # --- gifts must go through payment (HTTP) ---------
+        if t == 'gift':
+            return
+
+        # --- pin product (vendor only) --------------------
+        if t == 'pin_product':
             if not self.is_vendor:
                 return
             product_id = data.get('product_id')
-            action     = data.get('action', 'pin')
-
-            if action == 'pin':
-                product_data = await self._pin_product(product_id)
-                if product_data:
-                    await self.channel_layer.group_send(self.room_group, {
-                        'type':    'product_pinned',
-                        'product': product_data,
-                    })
+            if data.get('action', 'pin') == 'pin':
+                product = await self._pin_product(product_id)
+                if product:
+                    await self._safe_group_send({'type': 'product_pinned', 'product': product})
             else:
                 await self._unpin_product(product_id)
-                await self.channel_layer.group_send(self.room_group, {
-                    'type':       'product_unpinned',
-                    'product_id': str(product_id),
-                })
+                await self._safe_group_send({'type': 'product_unpinned', 'product_id': str(product_id)})
+            return
 
-        # ── End stream (vendor only) ──────────────────────
-        elif msg_type == 'end_stream':
+        # --- end stream (vendor only) ---------------------
+        if t == 'end_stream':
             if not self.is_vendor:
                 return
             await self._end_stream()
-            await self.channel_layer.group_send(self.room_group, {
-                'type': 'stream_ended_event',
-            })
+            cache.delete(self._poll_key())
+            await self._safe_group_send({'type': 'stream_ended_event'})
+            return
 
-        # ── Ping ─────────────────────────────────────────
-        elif msg_type == 'ping':
+        if t == 'ping':
+            if self.is_broadcaster:
+                await self._touch()            # keeps the stream from being auto-closed as abandoned
             await self.send(text_data=json.dumps({'type': 'pong'}))
 
-    # ── Group message handlers (server → this client) ─────
+    async def _signal(self, t, data):
+        """Route signalling point-to-point instead of spraying the whole room."""
+        base = {'sender': self.channel_name, 'peer_id': data.get('peer_id')}
+        if t == 'offer':
+            # viewer -> broadcaster ; broadcaster -> viewers (legacy push offer)
+            await self._safe_group_send({
+                'type': 'webrtc_offer', 'sdp': data.get('sdp'),
+                'to_broadcaster': not self.is_broadcaster, **base})
+        elif t == 'answer':
+            await self._route(t, 'sdp', data.get('sdp'), base)
+        else:
+            await self._route(t, 'candidate', data.get('candidate'), base)
 
+    async def _route(self, t, field, value, base):
+        target = base['peer_id']
+        msg = {'type': t, field: value, 'sender': self.channel_name}
+        if target and self.is_broadcaster:            # only the broadcaster may address a peer
+            try:
+                await self.channel_layer.send(str(target), {'type': 'direct', 'payload': msg})
+            except Exception:
+                pass
+        elif not self.is_broadcaster:                 # viewers always talk to the broadcaster only
+            await self._safe_group_send({'type': 'to_broadcaster', 'payload': msg})
+        # broadcaster without peer_id is dropped on purpose (was: leaked to everyone)
+
+    # ── outbound (group handlers) ─────────────────────────
     async def webrtc_offer(self, event):
-        # Don't echo back to whoever sent it.
-        if event['sender'] != self.channel_name:
-            await self.send(text_data=json.dumps({
-                'type':   'offer',
-                'sdp':    event['sdp'],
-                'sender': event['sender'],
-            }))
+        if event['sender'] == self.channel_name:
+            return
+        if event['to_broadcaster'] != self.is_broadcaster:
+            return
+        await self.send(text_data=json.dumps(
+            {'type': 'offer', 'sdp': event['sdp'], 'sender': event['sender']}))
 
-    async def webrtc_answer(self, event):
-        target = event.get('peer_id')
-        if target and target == self.channel_name:
-            await self.send(text_data=json.dumps({
-                'type':   'answer',
-                'sdp':    event['sdp'],
-                'sender': event['sender'],
-            }))
-        elif not target and event['sender'] != self.channel_name:
-            # Fallback for any legacy client not yet sending peer_id
-            await self.send(text_data=json.dumps({
-                'type':   'answer',
-                'sdp':    event['sdp'],
-                'sender': event['sender'],
-            }))
+    async def direct(self, event):
+        await self.send(text_data=json.dumps(event['payload']))
 
-    async def webrtc_ice(self, event):
-        target = event.get('peer_id')
-        if target and target == self.channel_name:
-            await self.send(text_data=json.dumps({
-                'type':      'ice',
-                'candidate': event['candidate'],
-                'sender':    event['sender'],
-            }))
-        elif not target and event['sender'] != self.channel_name:
-            await self.send(text_data=json.dumps({
-                'type':      'ice',
-                'candidate': event['candidate'],
-                'sender':    event['sender'],
-            }))
+    async def to_broadcaster(self, event):
+        if self.is_broadcaster:
+            await self.send(text_data=json.dumps(event['payload']))
+
+    async def relay(self, event):
+        aud = event.get('audience', 'all')
+        if aud == 'broadcaster' and not self.is_broadcaster:
+            return
+        if aud == 'viewers' and self.is_broadcaster:
+            return
+        await self.send(text_data=json.dumps(event['payload']))
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
-            'type':       'chat',
-            'message':    event['message'],
-            'username':   event['username'],
-            'initials':   event['initials'],
-            'user_id':    event['user_id'],
-            'comment_id': event['comment_id'],
-            'is_vendor':  event['is_vendor'],
-            'sent_at':    event['sent_at'],
-        }))
+            'type': 'chat', 'message': event['message'], 'username': event['username'],
+            'initials': event['initials'], 'user_id': event['user_id'],
+            'comment_id': event['comment_id'], 'is_vendor': event['is_vendor'],
+            'sent_at': event['sent_at']}))
 
     async def gift_event(self, event):
         await self.send(text_data=json.dumps({
-            'type':        'gift',
-            'gift_type':   event['gift_type'],
-            'emoji':       event['emoji'],
-            'quantity':    event['quantity'],
-            'total_value': event['total_value'],
-            'username':    event['username'],
-            'user_id':     event['user_id'],
-        }))
+            'type': 'gift', 'gift_type': event['gift_type'], 'emoji': event['emoji'],
+            'quantity': event['quantity'], 'total_value': event['total_value'],
+            'username': event['username'], 'user_id': event['user_id']}))
 
     async def viewer_count_update(self, event):
-        await self.send(text_data=json.dumps({
-            'type':  'viewer_count',
-            'count': event['count'],
-        }))
+        await self.send(text_data=json.dumps({'type': 'viewer_count', 'count': event['count']}))
 
     async def product_pinned(self, event):
-        await self.send(text_data=json.dumps({
-            'type':    'product_pinned',
-            'product': event['product'],
-        }))
+        await self.send(text_data=json.dumps({'type': 'product_pinned', 'product': event['product']}))
 
     async def product_unpinned(self, event):
-        await self.send(text_data=json.dumps({
-            'type':       'product_unpinned',
-            'product_id': event['product_id'],
-        }))
+        await self.send(text_data=json.dumps({'type': 'product_unpinned', 'product_id': event['product_id']}))
 
     async def stream_ended_event(self, event):
         await self.send(text_data=json.dumps({'type': 'stream_ended'}))
 
-    # ── DB helpers (sync_to_async) ────────────────────────
-
+    # ── DB helpers ────────────────────────────────────────
     @database_sync_to_async
     def _get_stream(self):
         from livestream.models import LiveStream
         try:
-            return LiveStream.objects.select_related('vendor__owner').get(
-                id=self.stream_id
-            )
-        except LiveStream.DoesNotExist:
+            return LiveStream.objects.select_related('vendor__owner').get(id=self.stream_id)
+        except (LiveStream.DoesNotExist, ValueError):
             return None
 
     @database_sync_to_async
     def _is_stream_vendor(self, stream):
-        if not self.user.is_authenticated:
-            return False
-        return stream.vendor.owner_id == self.user.id
+        return self.user.is_authenticated and stream.vendor.owner_id == self.user.id
 
     @database_sync_to_async
     def _add_viewer(self, stream):
-        from livestream.models import StreamViewer
-        if self.user.is_authenticated:
-            StreamViewer.objects.get_or_create(
-                stream=stream,
-                user=self.user,
-                defaults={'joined_at': timezone.now()},
-            )
+        """current_viewers = live sockets (guests included). total_viewers = unique joins."""
         from django.db.models import F
-        # F() prevents race condition when multiple viewers join simultaneously
-        # (without it: 5 concurrent joins all read 0, all write 1 → count stays 1)
-        type(stream).objects.filter(pk=stream.pk).update(
-            total_viewers=F('total_viewers') + 1
-        )
+        from livestream.models import StreamViewer, LiveStream
+        is_new = True
+        if self.user.is_authenticated:
+            sv, created = StreamViewer.objects.get_or_create(
+                stream=stream, user=self.user, defaults={'joined_at': timezone.now()})
+            if not created:
+                is_new = False
+                StreamViewer.objects.filter(pk=sv.pk).update(left_at=None)   # re-join
+        qs = LiveStream.objects.filter(pk=stream.pk)
+        qs.update(current_viewers=F('current_viewers') + 1,
+                  **({'total_viewers': F('total_viewers') + 1} if is_new else {}))
+        cur = qs.values_list('current_viewers', flat=True).first() or 0
+        LiveStream.objects.filter(pk=stream.pk, peak_viewers__lt=cur).update(peak_viewers=cur)
+        return cur
 
     @database_sync_to_async
     def _remove_viewer(self):
+        from django.db.models import F, Greatest
         from livestream.models import StreamViewer, LiveStream
         if self.user.is_authenticated:
             StreamViewer.objects.filter(
-                stream_id=self.stream_id,
-                user=self.user,
-                left_at__isnull=True,
+                stream_id=self.stream_id, user=self.user, left_at__isnull=True
             ).update(left_at=timezone.now())
-        # Decrement with F() and guard against going negative
-        from django.db.models import F, Greatest
-        LiveStream.objects.filter(pk=self.stream_id).update(
-            total_viewers=Greatest(F('total_viewers') - 1, 0)
-        )
-
-    @database_sync_to_async
-    def _get_viewer_count(self):
-        from livestream.models import StreamViewer
-        return StreamViewer.objects.filter(
-            stream_id=self.stream_id,
-            left_at__isnull=True,
-        ).count()
+        qs = LiveStream.objects.filter(pk=self.stream_id)
+        qs.update(current_viewers=Greatest(F('current_viewers') - 1, 0))
+        return qs.values_list('current_viewers', flat=True).first() or 0
 
     @database_sync_to_async
     def _save_comment(self, message):
         from livestream.models import StreamComment
-        return StreamComment.objects.create(
-            stream_id=self.stream_id,
-            user=self.user,
-            message=message,
-        )
-
-    @database_sync_to_async
-    def _save_gift(self, gift_type, quantity):
-        """
-        NOTE: Gifts now require real payment via Hubtel (views.gift_payment_initiate).
-        The WebSocket gift message type is kept for backward compat but does NOT
-        create a DB record or update totals — that only happens after payment
-        callback confirms the transaction.
-        """
-        from livestream.models import StreamGift
-        valid_types = [c[0] for c in StreamGift.GiftType.choices]
-        if gift_type not in valid_types:
-            return None
-        # Return emoji/value for the animation only (no DB write here)
-        return {
-            'emoji':       StreamGift.GIFT_EMOJIS.get(gift_type, '🎁'),
-            'total_value': StreamGift.GIFT_VALUES.get(gift_type, 0),
-        }
+        return StreamComment.objects.create(stream_id=self.stream_id, user=self.user, message=message)
 
     @database_sync_to_async
     def _get_pinned_products(self):
         from livestream.models import StreamProduct
-        pins = StreamProduct.objects.filter(
-            stream_id=self.stream_id
-        ).select_related('product').prefetch_related('product__images')
-        result = []
-        for pin in pins:
-            p = pin.product
-            result.append({
-                'id':             p.pk,
-                'name':           p.name,
-                'price':          str(p.final_price),
-                'slug':           p.slug,
-                'image':          p.primary_image or '',
-                'is_highlighted': pin.is_highlighted,
-                'in_stock':       p.is_in_stock,
-            })
-        return result
+        pins = StreamProduct.objects.filter(stream_id=self.stream_id) \
+            .select_related('product').prefetch_related('product__images')
+        return [self._product_dict(p.product, p.is_highlighted) for p in pins]
+
+    @staticmethod
+    def _product_dict(p, highlighted):
+        return {'id': p.pk, 'name': p.name, 'price': str(p.final_price), 'slug': p.slug,
+                'image': p.primary_image or '', 'is_highlighted': highlighted,
+                'in_stock': p.is_in_stock}
 
     @database_sync_to_async
     def _pin_product(self, product_id):
@@ -409,41 +380,28 @@ class StreamConsumer(AsyncWebsocketConsumer):
         from products.models import Product
         try:
             stream  = LiveStream.objects.get(id=self.stream_id)
-            product = Product.objects.prefetch_related('images').get(
-                pk=product_id, vendor=stream.vendor
-            )
-            pin, _ = StreamProduct.objects.get_or_create(
-                stream=stream, product=product
-            )
-            StreamProduct.objects.filter(stream=stream).exclude(
-                pk=pin.pk
-            ).update(is_highlighted=False)
+            product = Product.objects.prefetch_related('images').get(pk=product_id, vendor=stream.vendor)
+            pin, _  = StreamProduct.objects.get_or_create(stream=stream, product=product)
+            StreamProduct.objects.filter(stream=stream).exclude(pk=pin.pk).update(is_highlighted=False)
             pin.is_highlighted = True
             pin.save(update_fields=['is_highlighted'])
-
-            return {
-                'id':             product.pk,
-                'name':           product.name,
-                'price':          str(product.final_price),
-                'slug':           product.slug,
-                'image':          product.primary_image or '',
-                'is_highlighted': True,
-                'in_stock':       product.is_in_stock,
-            }
+            return self._product_dict(product, True)
         except Exception:
             return None
 
     @database_sync_to_async
     def _unpin_product(self, product_id):
         from livestream.models import StreamProduct
-        StreamProduct.objects.filter(
-            stream_id=self.stream_id, product_id=product_id
-        ).delete()
+        StreamProduct.objects.filter(stream_id=self.stream_id, product_id=product_id).delete()
+
+    @database_sync_to_async
+    def _touch(self):
+        from livestream.models import LiveStream
+        LiveStream.objects.filter(id=self.stream_id, status=LiveStream.Status.LIVE) \
+            .update(last_heartbeat=timezone.now())
 
     @database_sync_to_async
     def _end_stream(self):
         from livestream.models import LiveStream
-        LiveStream.objects.filter(id=self.stream_id).update(
-            status=LiveStream.Status.ENDED,
-            ended_at=timezone.now(),
-        )
+        LiveStream.objects.filter(id=self.stream_id).exclude(status=LiveStream.Status.ENDED).update(
+            status=LiveStream.Status.ENDED, ended_at=timezone.now(), current_viewers=0)

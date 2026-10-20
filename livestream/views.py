@@ -31,6 +31,7 @@ def vendor_required(view_func):
 
 def stream_list(request):
     """Public list of all currently live streams."""
+    _end_abandoned_streams()
     live_streams = LiveStream.objects.filter(
         status=LiveStream.Status.LIVE
     ).select_related('vendor').order_by('-current_viewers', '-started_at')
@@ -44,6 +45,22 @@ def stream_list(request):
         'recent_streams': recent_streams,
         'cart_count':     _cart_count(request),
     })
+
+
+def _end_abandoned_streams():
+    """
+    A vendor who closes the tab / loses signal never hits "End". Streams stay LIVE
+    forever and show in "Live Now". The broadcaster WebSocket stamps last_heartbeat
+    (see consumers.py); anything silent for 15 min (or never started, 15 min old)
+    is closed here.
+    """
+    from datetime import timedelta
+    from django.db.models import Q
+    cutoff = timezone.now() - timedelta(minutes=15)
+    LiveStream.objects.filter(status=LiveStream.Status.LIVE).filter(
+        Q(last_heartbeat__lt=cutoff) |
+        Q(last_heartbeat__isnull=True, started_at__lt=cutoff)
+    ).update(status=LiveStream.Status.ENDED, ended_at=timezone.now(), current_viewers=0)
 
 
 # ── GO LIVE (vendor) ──────────────────────────────────────
@@ -80,6 +97,7 @@ def go_live(request):
             thumbnail   = thumbnail,
             status      = LiveStream.Status.LIVE,
             started_at  = timezone.now(),
+            last_heartbeat = timezone.now(),
         )
 
         return redirect('livestream:broadcast', stream_id=stream.id)
@@ -184,18 +202,28 @@ def end_stream(request, stream_id):
 
     update_fields = ['status', 'ended_at']
 
-    stream.status   = LiveStream.Status.ENDED
-    stream.ended_at = timezone.now()
+    if stream.status == LiveStream.Status.ENDED:      # idempotent
+        return JsonResponse({
+            'success': True, 'total_viewers': stream.total_viewers,
+            'peak_viewers': stream.peak_viewers, 'gifts_value': str(stream.total_gifts_value),
+            'sales_value': str(stream.total_sales_value), 'duration': stream.duration_minutes,
+        })
+
+    stream.status          = LiveStream.Status.ENDED
+    stream.ended_at        = timezone.now()
+    stream.current_viewers = 0
+    update_fields.append('current_viewers')
 
     if peak_viewers > stream.peak_viewers:
         stream.peak_viewers = peak_viewers
         update_fields.append('peak_viewers')
 
-    if recording_url and hasattr(stream, 'recording_url'):
-        stream.recording_url = recording_url
+    if recording_url.startswith('https://'):
+        stream.recording_url = recording_url[:500]
         update_fields.append('recording_url')
 
     stream.save(update_fields=update_fields)
+    _notify_stream_ended(stream.id)
 
     return JsonResponse({
         'success':       True,
@@ -205,6 +233,28 @@ def end_stream(request, stream_id):
         'sales_value':   str(stream.total_sales_value),
         'duration':      stream.duration_minutes,
     })
+
+
+def _notify_stream_ended(stream_id):
+    """Tell every connected viewer the stream is over (HTTP end used to skip this)."""
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        async_to_sync(get_channel_layer().group_send)(
+            f'stream_{stream_id}', {'type': 'stream_ended_event'})
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning('stream_ended broadcast failed: %s', e)
+
+
+# ── API: HEARTBEAT (viewers poll this; also lets clients notice an ended stream) ──
+
+@require_POST
+def heartbeat(request, stream_id):
+    stream = LiveStream.objects.filter(id=stream_id).only('status', 'vendor_id').first()
+    if not stream:
+        return JsonResponse({'status': 'gone'}, status=404)
+    return JsonResponse({'status': stream.status})
 
 
 # ── API: PIN PRODUCT ──────────────────────────────────────
@@ -218,8 +268,11 @@ def pin_product(request, stream_id):
         return JsonResponse({'error': 'Not a vendor.'}, status=403)
 
     stream     = get_object_or_404(LiveStream, id=stream_id, vendor=vendor)
-    data       = json.loads(request.body)
-    product_id = data.get('product_id')
+    try:
+        data = json.loads(request.body or b'{}')
+        product_id = int(data.get('product_id'))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return JsonResponse({'error': 'Bad request.'}, status=400)
     action     = data.get('action', 'pin')
 
     from products.models import Product
@@ -243,30 +296,13 @@ def pin_product(request, stream_id):
 @login_required
 @require_POST
 def send_gift(request, stream_id):
-    stream    = get_object_or_404(LiveStream, id=stream_id, status=LiveStream.Status.LIVE)
-    gift_type = request.POST.get('gift_type', 'rose')
-    quantity  = max(1, int(request.POST.get('quantity', 1)))
-
-    valid = [c[0] for c in StreamGift.GiftType.choices]
-    if gift_type not in valid:
-        return JsonResponse({'error': 'Invalid gift.'}, status=400)
-
-    gift = StreamGift.objects.create(
-        stream=stream, sender=request.user,
-        gift_type=gift_type, quantity=quantity,
-    )
-
-    LiveStream.objects.filter(id=stream_id).update(
-        total_gifts_value=stream.total_gifts_value + gift.total_value
-    )
-
-    return JsonResponse({
-        'success':       True,
-        'emoji':         StreamGift.GIFT_EMOJIS[gift_type],
-        'total_value':   str(gift.total_value),
-        'vendor_earns':  str(gift.vendor_earnings),
-        'platform_earns': str(gift.platform_cut),
-    })
+    """
+    DISABLED. This used to create a gift and credit the vendor with NO payment,
+    so anyone could POST here and inflate a stream's gift earnings for free.
+    Gifts must go through gift_payment_initiate -> Hubtel -> callback.
+    """
+    return JsonResponse(
+        {'error': 'Gifts must be paid for. Use the gift payment flow.'}, status=402)
 
 
 # ── STREAM STATS (vendor dashboard panel) ─────────────────
@@ -354,9 +390,12 @@ def gift_payment_initiate(request, stream_id):
     """
     import uuid
     stream = get_object_or_404(LiveStream, id=stream_id, status=LiveStream.Status.LIVE)
-    data      = json.loads(request.body)
-    gift_type = data.get('gift_type', 'rose')
-    quantity  = max(1, min(int(data.get('quantity', 1)), 50))
+    try:
+        data      = json.loads(request.body or b'{}')
+        gift_type = str(data.get('gift_type', 'rose'))
+        quantity  = max(1, min(int(data.get('quantity', 1)), 50))
+    except (json.JSONDecodeError, TypeError, ValueError, AttributeError):
+        return JsonResponse({'error': 'Bad request.'}, status=400)
 
     from .models import StreamGift
     valid_types = [c[0] for c in StreamGift.GiftType.choices]
@@ -467,75 +506,91 @@ def gift_payment_initiate(request, stream_id):
 
 from django.views.decorators.csrf import csrf_exempt
 
+def _finalize_gift_paid(gift_id, paid_amount=None):
+    """
+    Mark a gift PAID exactly once and credit the stream with an atomic F() update.
+    Safe against Hubtel retrying the callback, the viewer-return URL racing the
+    callback, and two workers handling both at once (row lock + PAID check).
+    Returns the gift if THIS call performed the transition, else None.
+    """
+    from django.db import transaction
+    from django.db.models import F
+    from decimal import Decimal, InvalidOperation
+    from .models import StreamGift
+
+    with transaction.atomic():
+        gift = (StreamGift.objects.select_for_update()
+                .select_related('stream', 'sender').filter(pk=gift_id).first())
+        if not gift or gift.payment_status == StreamGift.PaymentStatus.PAID:
+            return None
+        if paid_amount is not None:
+            try:
+                if Decimal(str(paid_amount)) < gift.total_value:   # under-payment
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        'Gift %s underpaid: got %s expected %s', gift.pk, paid_amount, gift.total_value)
+                    return None
+            except (InvalidOperation, TypeError):
+                pass
+        gift.payment_status = StreamGift.PaymentStatus.PAID
+        gift.paid_at        = timezone.now()
+        gift.save(update_fields=['payment_status', 'paid_at'])
+        LiveStream.objects.filter(pk=gift.stream_id).update(
+            total_gifts_value=F('total_gifts_value') + gift.total_value)
+    _broadcast_gift_paid(gift)
+    return gift
+
+
+from django.views.decorators.csrf import csrf_exempt
+
+
 @csrf_exempt
 @require_POST
 def gift_payment_callback(request, stream_id):
     """
-    Hubtel POSTs payment result here after viewer pays.
-    We verify the HMAC signature, mark gift as paid, and broadcast
-    the gift animation to all viewers via WebSocket.
+    Hubtel -> server. Hardened:
+      * signature, when present, must verify (a bad one is rejected, not ignored)
+      * clientReference must match the reference WE stored for that gift
+        (not just "GIFT-<pk>-..." which anyone could guess)
+      * amount must cover the gift value
+      * idempotent (see _finalize_gift_paid)
     """
-    import logging, hashlib, hmac as hmac_lib
+    import logging
     log = logging.getLogger(__name__)
+    from .models import StreamGift
 
-    # Verify HMAC signature from Hubtel
     signature = request.headers.get('X-Hubtel-Signature', '')
-    try:
-        from payment.hubtel import HubtelCheckout
-        if signature and not HubtelCheckout.verify_webhook_signature(request.body, signature):
-            log.warning('Gift callback: invalid HMAC signature')
-            return JsonResponse({'error': 'Invalid signature'}, status=401)
-    except Exception:
-        pass  # Allow if signature verification not possible
-
-    try:
-        raw_data   = json.loads(request.body)
-        from payment.hubtel import HubtelCheckout as HC
-        parsed     = HC.parse_callback(raw_data)
-        client_ref = parsed["client_reference"]
-        paid       = parsed["paid"]
-
-        if not client_ref or not client_ref.startswith('GIFT-'):
-            return JsonResponse({'received': True})
-
-        # Find the gift by reference
-        gift_pk = client_ref.split('-')[1]
-        from .models import StreamGift
+    if signature:
         try:
-            gift = StreamGift.objects.select_related('stream', 'sender', 'stream__vendor').get(pk=gift_pk)
-        except (StreamGift.DoesNotExist, ValueError):
-            log.warning('Gift callback: gift %s not found', gift_pk)
+            from payment.hubtel import HubtelCheckout
+            if not HubtelCheckout.verify_webhook_signature(request.body, signature):
+                log.warning('Gift callback: invalid signature')
+                return JsonResponse({'error': 'Invalid signature'}, status=401)
+        except Exception as e:
+            log.warning('Gift callback: signature check unavailable: %s', e)
+
+    try:
+        from payment.hubtel import HubtelCheckout as HC
+        parsed     = HC.parse_callback(json.loads(request.body))
+        client_ref = (parsed.get('client_reference') or '').strip()
+        if not client_ref.startswith('GIFT-'):
             return JsonResponse({'received': True})
 
-        if paid:
-            gift.payment_status = StreamGift.PaymentStatus.PAID
-            gift.paid_at        = timezone.now()
-            try:
-                gift.save(update_fields=['payment_status', 'paid_at'])
-            except Exception:
-                gift.save()
+        gift = StreamGift.objects.filter(
+            hubtel_reference=client_ref, stream_id=stream_id).first()
+        if not gift:
+            log.warning('Gift callback: unknown reference %s', client_ref)
+            return JsonResponse({'received': True})
 
-            # Update stream total gifts value
-            LiveStream.objects.filter(id=gift.stream_id).update(
-                total_gifts_value=gift.stream.total_gifts_value + gift.total_value
-            )
-
-            # Broadcast gift animation to ALL viewers via WebSocket
-            _broadcast_gift_paid(gift)
-
-            log.info('Gift PAID: %s sent %s x%s = GHS %s (vendor: %s, app: %s)',
-                     gift.sender, gift.gift_type, gift.quantity,
-                     gift.total_value, gift.vendor_earnings, gift.platform_cut)
-        else:
-            try:
-                gift.payment_status = StreamGift.PaymentStatus.FAILED
-                gift.save(update_fields=['payment_status'])
-            except Exception:
-                pass
-            log.info('Gift FAILED: %s — status: %s', client_ref, parsed.get('status', 'unknown'))
-
-    except Exception as e:
-        log.exception('Gift callback error: %s', e)
+        if parsed.get('paid'):
+            done = _finalize_gift_paid(gift.pk, parsed.get('amount'))
+            if done:
+                log.info('Gift PAID: %s x%s = GHS %s', done.gift_type, done.quantity, done.total_value)
+        elif gift.payment_status == StreamGift.PaymentStatus.PENDING:
+            StreamGift.objects.filter(pk=gift.pk, payment_status=StreamGift.PaymentStatus.PENDING) \
+                .update(payment_status=StreamGift.PaymentStatus.FAILED)
+    except Exception:
+        log.exception('Gift callback error')
 
     return JsonResponse({'received': True})
 
@@ -567,25 +622,20 @@ def _broadcast_gift_paid(gift):
 
 @login_required
 def gift_payment_verify(request, stream_id):
-    """
-    Viewer returns to this URL after paying on Hubtel.
-    We verify payment status and redirect back to the stream.
-    """
+    """Viewer returns from Hubtel. Confirm with Hubtel, finalize once, go back to the stream."""
+    from .models import StreamGift
     checkout_id = request.GET.get('checkoutId') or request.GET.get('checkout_id', '')
     if checkout_id:
         try:
             from payment.hubtel import HubtelCheckout
             result = HubtelCheckout.verify(checkout_id)
             if result.get('paid'):
-                from .models import StreamGift
-                StreamGift.objects.filter(
-                    hubtel_checkout_id=checkout_id,
-                    sender=request.user,
-                ).update(
-                    payment_status = StreamGift.PaymentStatus.PAID,
-                    paid_at        = timezone.now(),
-                )
+                gift = StreamGift.objects.filter(
+                    hubtel_checkout_id=checkout_id, sender=request.user).first()
+                if gift:
+                    _finalize_gift_paid(gift.pk, result.get('amount'))
         except Exception:
-            pass
+            import logging
+            logging.getLogger(__name__).exception('gift verify failed')
 
     return redirect('livestream:watch', stream_id=stream_id)

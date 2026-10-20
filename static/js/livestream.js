@@ -92,8 +92,17 @@ const iceConfig = {
   iceServers:[
     {urls:'stun:stun.l.google.com:19302'},
     {urls:'stun:stun1.l.google.com:19302'},
-  ]
+    {urls:'stun:stun.cloudflare.com:3478'},
+    // TURN relay: required for Ghana mobile networks behind carrier NAT (MTN/Vodafone/AirtelTigo).
+    // openrelay is a free shared server; replace with your own (Twilio / Metered / coturn) for production.
+    {urls:'turn:openrelay.metered.ca:80',  username:'openrelayproject', credential:'openrelayproject'},
+    {urls:'turn:openrelay.metered.ca:443', username:'openrelayproject', credential:'openrelayproject'},
+    {urls:'turn:openrelay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject'},
+  ],
+  iceCandidatePoolSize: 4,
 };
+const pendingIce = {};            // viewerChannel -> candidates that arrived before the offer was applied
+let   wsPingTimer = null;
 
 // ── CAMERA ────────────────────────────────────────────────
 async function startCamera() {
@@ -197,7 +206,7 @@ async function switchCamera() {
   facingMode = facingMode === 'user' ? 'environment' : 'user';
   if(!localStream) return;
   try {
-    const newStream = await navigator.mediaDevices.getUserMedia({video:{facingMode},audio:true});
+    const newStream = await navigator.mediaDevices.getUserMedia({video:{facingMode},audio:false});   // video only: the old call opened a 2nd mic track that was never stopped
     const newTrack  = newStream.getVideoTracks()[0];
     const oldTrack  = localStream.getVideoTracks()[0];
     if(oldTrack){ oldTrack.stop(); localStream.removeTrack(oldTrack); }
@@ -214,6 +223,10 @@ async function switchCamera() {
 async function connectWS() {
   ws = new WebSocket(WS_URL);
   ws.onopen = () => {
+    // Keepalive + liveness: server stamps last_heartbeat on every ping, and the
+    // Railway proxy drops idle sockets after ~30s.
+    clearInterval(wsPingTimer);
+    wsPingTimer = setInterval(()=>{ if(ws?.readyState===1) ws.send('{"type":"ping"}'); }, 20000);
     // Tell the server this is the vendor/broadcaster connection
     try {
       ws.send(JSON.stringify({ type: 'vendor_init', stream_id: STREAM_ID }));
@@ -231,12 +244,16 @@ async function connectWS() {
             new RTCSessionDescription({type:'answer',sdp:msg.sdp})
           ).catch(()=>{});
         break;
-      case 'ice':
-        if(msg.sender && peerConnections[msg.sender])
-          await peerConnections[msg.sender].addIceCandidate(
-            new RTCIceCandidate(msg.candidate)
-          ).catch(()=>{});
+      case 'ice': {
+        if(!msg.sender || !msg.candidate) break;
+        const pcx = peerConnections[msg.sender];
+        if(pcx && pcx.remoteDescription){
+          await pcx.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(()=>{});
+        } else {                                   // offer still being applied -> buffer
+          (pendingIce[msg.sender] = pendingIce[msg.sender] || []).push(msg.candidate);
+        }
         break;
+      }
       case 'viewer_count':
         document.getElementById('viewer-count').textContent = msg.count;
         if (msg.count > peakViewers) peakViewers = msg.count;
@@ -261,7 +278,7 @@ async function connectWS() {
         break;
     }
   };
-  ws.onclose = () => setTimeout(()=>{if(localStream)connectWS();},3000);
+  ws.onclose = () => { clearInterval(wsPingTimer); setTimeout(()=>{if(localStream)connectWS();},3000); };
 }
 
 // ── WEBRTC ────────────────────────────────────────────────
@@ -291,6 +308,7 @@ async function applyBitrateCap(pc) {
 async function handleViewerOffer(sdp, viewerChannel) {
   if(!localStream || !viewerChannel) return;
   if(peerConnections[viewerChannel]) peerConnections[viewerChannel].close();
+  delete pendingIce[viewerChannel];
 
   const pc = new RTCPeerConnection(iceConfig);
   peerConnections[viewerChannel] = pc;
@@ -302,11 +320,16 @@ async function handleViewerOffer(sdp, viewerChannel) {
       ws.send(JSON.stringify({type:'ice',candidate,peer_id:viewerChannel}));
   };
   pc.onconnectionstatechange = ()=>{
-    if(['failed','disconnected','closed'].includes(pc.connectionState))
-      delete peerConnections[viewerChannel];
+    if(['failed','closed'].includes(pc.connectionState)){
+      try{ pc.close(); }catch(e){}
+      if(peerConnections[viewerChannel]===pc) delete peerConnections[viewerChannel];
+      delete pendingIce[viewerChannel];
+    }
   };
 
   await pc.setRemoteDescription(new RTCSessionDescription({type:'offer',sdp}));
+  for(const c of (pendingIce[viewerChannel]||[])) await pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});
+  delete pendingIce[viewerChannel];
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
 

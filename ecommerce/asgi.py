@@ -15,6 +15,7 @@ import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
+from channels.security.websocket import AllowedHostsOriginValidator
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ecommerce.settings')
 
@@ -26,7 +27,11 @@ from livestream.routing import websocket_urlpatterns as livestream_ws
 
 application = ProtocolTypeRouter({
     'http': django_asgi_app,
-    'websocket': AuthMiddlewareStack(
-        URLRouter(chat_ws + delivery_ws + livestream_ws)
+    # Rejects WebSocket handshakes from origins not in ALLOWED_HOSTS
+    # (stops other sites opening authenticated sockets with a visitor's cookies).
+    'websocket': AllowedHostsOriginValidator(
+        AuthMiddlewareStack(
+            URLRouter(chat_ws + delivery_ws + livestream_ws)
+        )
     ),
 })

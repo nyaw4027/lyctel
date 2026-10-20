@@ -49,6 +49,10 @@ class LiveStream(models.Model):
     ended_at   = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # ── Replay + liveness (added in audit) ────────────────
+    recording_url  = models.URLField(max_length=500, blank=True, default='')
+    last_heartbeat = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ['-created_at']
 

@@ -1,9 +1,12 @@
-from django.http import FileResponse, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_GET
+import logging
 import os
 import json
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 @require_GET
@@ -26,10 +29,11 @@ def service_worker(request):
                 break
 
     if not sw_path:
-        return HttpResponse(
-            '// Service worker not found',
-            content_type='application/javascript',
-        )
+        # Was a 200 containing only a comment, which browsers happily install
+        # as a valid (empty) service worker — so a missing file went
+        # completely unnoticed. A 404 makes the registration fail visibly.
+        logger.error('[pwa] sw.js not found in STATIC_ROOT or STATICFILES_DIRS')
+        raise Http404('sw.js not found')
 
     return FileResponse(
         open(sw_path, 'rb'),
@@ -39,7 +43,7 @@ def service_worker(request):
 
 
 @require_GET
-@cache_control(max_age=86400)
+@cache_control(max_age=3600)   # was 24h: name/icon/colour changes took a day to reach phones
 def web_manifest(request):
     """Serve manifest.json — never crash even if file is missing."""
     manifest_path = None
@@ -57,10 +61,15 @@ def web_manifest(request):
                 manifest_path = candidate
                 break
 
+    data = None
     if manifest_path:
-        with open(manifest_path) as f:
-            data = json.load(f)
-    else:
+        try:
+            with open(manifest_path, encoding='utf-8') as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            # A broken manifest.json used to 500 despite the docstring.
+            logger.exception('[pwa] could not read %s, using fallback', manifest_path)
+    if data is None:
         # Safe inline fallback — never raises 500
         data = {
             'name':             'Lynctel',
@@ -74,13 +83,13 @@ def web_manifest(request):
                     'src':     '/static/icons/icon-192x192.png',
                     'sizes':   '192x192',
                     'type':    'image/png',
-                    'purpose': 'maskable any',
+                    'purpose': 'any',
                 },
                 {
                     'src':     '/static/icons/icon-512x512.png',
                     'sizes':   '512x512',
                     'type':    'image/png',
-                    'purpose': 'maskable any',
+                    'purpose': 'any',
                 },
             ],
         }
