@@ -2,7 +2,7 @@
 {% block title %}Live Tracking — Ride #{{ delivery.pk }}{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
 <style>
   #live-map { height:55vh; min-height:300px; border-radius:16px; z-index:1; }
 </style>
@@ -75,7 +75,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
 <script>
 var DELIVERY_ID = {{ delivery.pk }};
 var PICKUP_LAT  = {{ delivery.pickup_lat|default:"null" }};

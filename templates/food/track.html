@@ -4,7 +4,7 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
 {% if order.delivery.current_lat and order.delivery.current_lng %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
 {% endif %}
 <style>
 .tracking-steps .step { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; }
@@ -144,7 +144,7 @@
 
 {% block extra_js %}
 {% if order.delivery.current_lat and order.delivery.current_lng %}
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
 {% endif %}
 <script>
 (function () {

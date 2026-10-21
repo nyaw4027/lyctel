@@ -3,7 +3,7 @@
 {% block title %}Checkout — {{ cart_vendor.name }}{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
 <style>
   /* Map with fixed-centre pin */
   #map-wrap { position:relative; height:280px; }
@@ -203,7 +203,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
 <script>
 var VLAT = {{ vendor.latitude|default:"5.6037" }};
 var VLNG = {{ vendor.longitude|default:"-0.1870" }};

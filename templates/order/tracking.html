@@ -2,8 +2,8 @@
 {% block title %}Track {{ order.order_ref }} — Lynctel{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
 <style>
   #tracking-map { height: 300px; border-radius: 0; }
   @keyframes pulse-dot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.7} }

@@ -2,7 +2,7 @@
 {% block title %}Delivery Navigation — Lynctel{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
 <style>
   /* Full-screen map layout, Uber-style */
   body { overflow: hidden; }
@@ -237,7 +237,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
 <script>
 (function() {
   const LOCATIONIQ_KEY = "{{ locationiq_key|default:'' }}";

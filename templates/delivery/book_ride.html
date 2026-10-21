@@ -2,7 +2,7 @@
 {% block title %}Book a Ride — Lynctel{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
 <style>
   #pickup-map, #dropoff-map {
     height:220px; border-radius:12px; z-index:1;
@@ -82,7 +82,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
 <script>
 var DEFAULT_LAT = 5.6037, DEFAULT_LNG = -0.1870;
 

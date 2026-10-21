@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://us1.locationiq.com" crossorigin>
 <link rel="preconnect" href="https://nominatim.openstreetmap.org" crossorigin>
 <link rel="dns-prefetch" href="https://api.locationiq.com">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
 <style>
   /* ── Map container ─────────────────────────────────── */
   #delivery-map {
@@ -513,7 +513,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
 <script>
 (function() {
   const LOCATIONIQ_KEY = "{{ locationiq_key|default:'' }}";

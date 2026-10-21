@@ -4,7 +4,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pages/food.css' %}">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
 <style>
   #register-map { height:320px; border-radius:14px; border:2px solid #e5e7eb; }
   .form-section { background:white; border-radius:16px; padding:24px;
@@ -155,7 +155,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
 <script>
 const LOCATIONIQ_KEY = '{{ locationiq_key|escapejs }}';
 

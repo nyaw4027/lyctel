@@ -2,7 +2,7 @@
 {% block title %}Delivery {{ delivery.pk }} — Lynctel Rider{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
 <style>
   body { overflow: hidden; }
   #map { position:fixed; top:0;right:0;bottom:0;left:0; z-index:0; }
@@ -120,7 +120,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js">
+<script src="/static/vendor/leaflet/leaflet.js">
 function selectPay(method) {
   var cash = document.getElementById('pay-cash');
   var momo = document.getElementById('pay-momo');
