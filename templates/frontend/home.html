@@ -21,7 +21,7 @@
       <div id="ob-step-3" class="ob-step p-4 text-center d-none">
         <div class="fs-1 mb-2">💰</div>
         <h2 class="h5 fw-bold text-navy">Sell on Lynctel</h2>
-        <p class="text-muted small mb-4">Open your shop for free. Keep 96% of every sale. Payments straight to your MoMo.</p>
+        <p class="text-muted small mb-4">Open your shop for free. Keep 95% of every sale. Payments straight to your MoMo.</p>
         <a href="{% url 'vendors:apply' %}" class="btn btn-gold w-100 rounded-3 py-2 fw-semibold mb-2">Start Selling</a>
         <button class="btn btn-outline-secondary w-100 rounded-3 py-2 small" onclick="obClose()">Skip for now</button>
       </div>
@@ -540,7 +540,7 @@
               <div class="d-inline-flex align-items-center gap-2 bg-gold bg-opacity-25 text-gold small fw-bold px-3 py-2 rounded-pill mb-3">🏪 Become a Vendor</div>
               <h3 class="font-display fw-bold text-white mb-2" style="font-size:1.1rem;">Sell to Thousands</h3>
               <div class="d-flex flex-column gap-2 mb-3">
-                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span aria-hidden="true">💰</span><p class="text-white small mb-0">Keep <span class="text-gold fw-bold">96%</span> of every sale</p></div>
+                <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span aria-hidden="true">💰</span><p class="text-white small mb-0">Keep <span class="text-gold fw-bold">95%</span> of every sale</p></div>
                 <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span aria-hidden="true">🚀</span><p class="text-white small mb-0">Free setup, no monthly fees</p></div>
                 <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span aria-hidden="true">📊</span><p class="text-white small mb-0">Real-time sales dashboard</p></div>
                 <div class="d-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-2"><span aria-hidden="true">🛵</span><p class="text-white small mb-0">Our riders handle deliveries</p></div>
@@ -599,7 +599,7 @@
 <!-- ═══════════════════════════════════════════════════════
      TRUST BADGES
      ═══════════════════════════════════════════════════════ -->
-<section class="border-bottom bg-white">
+<section class="home-surface border-bottom bg-white">
   <div style="max-width:1280px;margin:0 auto;padding:.75rem 1.5rem;">
     <div class="row row-cols-2 row-cols-md-4 g-3">
       <div class="col d-flex align-items-center gap-2">
@@ -762,7 +762,7 @@
           <span class="hiw-step-icon" aria-hidden="true">💰</span>
           <div class="hiw-step-num">5</div>
           <h3 class="hiw-step-title">Get Paid Fast</h3>
-          <p class="hiw-step-text">Keep 96% of every sale. Earnings hit your account quickly. Track everything on your dashboard.</p>
+          <p class="hiw-step-text">Keep 95% of every sale. Earnings hit your account quickly. Track everything on your dashboard.</p>
         </div>
       </div>
       <div class="text-center mt-5">
@@ -862,7 +862,7 @@
      CATEGORIES
      ═══════════════════════════════════════════════════════ -->
 {% if categories %}
-<section class="py-4 bg-white border-bottom">
+<section class="home-surface py-4 bg-white border-bottom">
   <div style="max-width:1280px;margin:0 auto;padding:0 1.5rem;">
     <div class="d-flex align-items-center justify-content-between mb-3">
       <h2 class="font-display fw-bold text-navy mb-0" style="font-size:1.125rem;">Shop by Category</h2>
@@ -888,7 +888,7 @@
      TRENDING PRODUCTS SLIDER
      ═══════════════════════════════════════════════════════ -->
 {% if hot_products %}
-<section class="bg-white py-4 py-md-5 border-bottom">
+<section class="home-surface bg-white py-4 py-md-5 border-bottom">
   <div style="max-width:1280px;margin:0 auto;padding:0 1.5rem;">
     <div class="d-flex align-items-end justify-content-between mb-4">
       <div>
@@ -905,7 +905,7 @@
       <div class="product-slider-track" id="trending-track">
         {% for product in hot_products %}
         <div class="product-slide-item">
-          <div class="card-hover rounded-3xl overflow-hidden border h-100 d-flex flex-column" style="background:var(--cream);">
+          <div class="card-hover product-card rounded-3xl overflow-hidden border h-100 d-flex flex-column" style="background:var(--cream);">
             <div class="position-relative overflow-hidden" style="height:9rem;">
               <a href="{% url 'products:detail' product.slug %}">
                 {% if product.primary_image %}
@@ -919,9 +919,9 @@
             </div>
             <div class="p-3 d-flex flex-column flex-fill">
               <a href="{% url 'products:detail' product.slug %}" class="small fw-semibold text-navy text-truncate-2 mb-2 text-decoration-none" style="line-height:1.35;">{{ product.name }}</a>
-              <div class="mt-auto d-flex align-items-center justify-content-between gap-1">
+              <div class="product-foot mt-auto d-flex align-items-center justify-content-between gap-1">
                 <div class="d-flex flex-column">
-                  <span class="font-display fw-bold text-navy small">GHS {{ product.final_price }}</span>
+                  <span class="product-price font-display fw-bold text-navy small">GHS {{ product.final_price }}</span>
                   {% if product.has_discount %}<span class="text-secondary text-decoration-line-through" style="font-size:10px;">GHS {{ product.selling_price }}</span>{% endif %}
                 </div>
                 {% if product.is_in_stock %}
@@ -943,7 +943,7 @@
 <!-- ═══════════════════════════════════════════════════════
      NEW ARRIVALS
      ═══════════════════════════════════════════════════════ -->
-<section class="bg-white py-4 py-md-5">
+<section class="home-surface bg-white py-4 py-md-5">
   <div style="max-width:1280px;margin:0 auto;padding:0 1.5rem;">
     <div class="d-flex align-items-end justify-content-between mb-4">
       <div>
@@ -956,7 +956,7 @@
       {% for product in new_products %}
       {% with first_vid=product.videos.all.0 %}
       <div class="col">
-        <div class="card-hover rounded-3xl overflow-hidden border h-100 d-flex flex-column" style="background:var(--cream);">
+        <div class="card-hover product-card rounded-3xl overflow-hidden border h-100 d-flex flex-column" style="background:var(--cream);">
           <div class="video-card-wrap{% if first_vid %} has-video{% endif %} position-relative overflow-hidden" style="height:9rem;">
             <div class="position-absolute top-0 start-0 w-100 h-100">
               <a href="{% url 'products:detail' product.slug %}">
@@ -982,9 +982,9 @@
           </div>
           <div class="p-3 d-flex flex-column flex-fill">
             <a href="{% url 'products:detail' product.slug %}" class="small fw-semibold text-navy text-truncate-2 mb-2 text-decoration-none" style="line-height:1.35;">{{ product.name }}</a>
-            <div class="mt-auto d-flex align-items-center justify-content-between gap-1">
+            <div class="product-foot mt-auto d-flex align-items-center justify-content-between gap-1">
               <div class="d-flex flex-column">
-                <span class="font-display fw-bold text-navy small">GHS {{ product.final_price }}</span>
+                <span class="product-price font-display fw-bold text-navy small">GHS {{ product.final_price }}</span>
                 {% if product.has_discount %}<span class="text-secondary text-decoration-line-through" style="font-size:10px;">GHS {{ product.selling_price }}</span>{% endif %}
               </div>
               {% if product.is_in_stock %}
@@ -1048,7 +1048,7 @@
         <div>
           <p class="text-gold small fw-semibold text-uppercase mb-2" style="letter-spacing:.08em;">For sellers</p>
           <h2 class="font-display fw-bold text-white mb-2" style="font-size:clamp(1.25rem,3vw,1.75rem);">Start Selling on Lynctel</h2>
-          <p class="text-white-50 small" style="max-width:28rem;">No upfront cost. We only take 4% per sale. You keep 96%.</p>
+          <p class="text-white-50 small" style="max-width:28rem;">No upfront cost. We only take 5% per sale. You keep 95%.</p>
         </div>
         <div class="d-flex flex-column flex-sm-row gap-3 w-100 w-md-auto">
           <a href="{% url 'vendors:apply' %}" class="btn-gold fw-semibold px-4 py-3 rounded-2xl btn-press touch-target text-decoration-none text-nowrap">Open Your Shop</a>
